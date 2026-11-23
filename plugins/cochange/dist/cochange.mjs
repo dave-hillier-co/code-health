@@ -1041,22 +1041,22 @@ async function filterHistory(repoPath, view, options = {}) {
   for (const commit of view.commits) {
     if (commitDropped(commit)) continue;
     const files = [];
-    for (const change2 of commit.changes) {
-      if (isPureRename(change2)) {
+    for (const change3 of commit.changes) {
+      if (isPureRename(change3)) {
         dropped.pureRenames++;
-      } else if (builtinExcluded(change2.path)) {
-      } else if (excluded(change2.path)) {
+      } else if (builtinExcluded(change3.path)) {
+      } else if (excluded(change3.path)) {
         dropped.excludedByGlob++;
-      } else if (lockfileSet.has(change2.path.slice(change2.path.lastIndexOf("/") + 1))) {
+      } else if (lockfileSet.has(change3.path.slice(change3.path.lastIndexOf("/") + 1))) {
         dropped.lockfiles++;
-      } else if (attributes.generated.has(change2.path)) {
+      } else if (attributes.generated.has(change3.path)) {
         dropped.generated++;
-        recordDropped("generated", change2.path);
-      } else if (attributes.vendored.has(change2.path)) {
+        recordDropped("generated", change3.path);
+      } else if (attributes.vendored.has(change3.path)) {
         dropped.vendored++;
-        recordDropped("vendored", change2.path);
+        recordDropped("vendored", change3.path);
       } else {
-        files.push(change2);
+        files.push(change3);
       }
     }
     if (files.length === 0) {
@@ -1155,14 +1155,14 @@ var NUMSTAT = /^(\d+|-)\t(\d+|-)\t(.*)$/s;
 var NULL_SHA = /^0+$/;
 function parseLog(output) {
   const commits = [];
-  for (const record of output.split(RS)) {
-    if (record === "") continue;
-    commits.push(parseRecord(record));
+  for (const record2 of output.split(RS)) {
+    if (record2 === "") continue;
+    commits.push(parseRecord(record2));
   }
   return commits;
 }
-function parseRecord(record) {
-  const tokens = record.split("\0");
+function parseRecord(record2) {
+  const tokens = record2.split("\0");
   const header2 = tokens.shift() ?? "";
   const fields = header2.split(US);
   const [sha, parents, authorName, authorEmail, authorDate, committerDate] = fields;
@@ -1238,9 +1238,9 @@ function suppressSqliteWarning() {
   suppressed = true;
   const emitWarning = process.emitWarning.bind(process);
   process.emitWarning = ((warning, ...rest) => {
-    const text3 = typeof warning === "string" ? warning : warning?.message ?? "";
+    const text5 = typeof warning === "string" ? warning : warning?.message ?? "";
     const type = typeof rest[0] === "string" ? rest[0] : warning?.name;
-    if (type === "ExperimentalWarning" && /SQLite/i.test(text3)) return;
+    if (type === "ExperimentalWarning" && /SQLite/i.test(text5)) return;
     emitWarning(warning, ...rest);
   });
 }
@@ -1698,9 +1698,9 @@ function variantOf(stated) {
 function canonical(value) {
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
   if (value !== null && typeof value === "object") {
-    const record = value;
-    const keys = Object.keys(record).filter((key) => record[key] !== void 0).sort();
-    return `{${keys.map((key) => `${JSON.stringify(key)}:${canonical(record[key])}`).join(",")}}`;
+    const record2 = value;
+    const keys = Object.keys(record2).filter((key) => record2[key] !== void 0).sort();
+    return `{${keys.map((key) => `${JSON.stringify(key)}:${canonical(record2[key])}`).join(",")}}`;
   }
   return JSON.stringify(value) ?? "null";
 }
@@ -1852,10 +1852,10 @@ function ensureLocalState(root) {
   if (!existsSync6(ignore)) writeFileSync2(ignore, "*\n");
 }
 var KINDS = /* @__PURE__ */ new Set(["bot", "service", "agent", "person"]);
-function parse(text3, file) {
+function parse(text5, file) {
   let value;
   try {
-    value = JSON.parse(text3);
+    value = JSON.parse(text5);
   } catch (error) {
     throw configError(`${file}: not valid JSON (${error instanceof Error ? error.message : String(error)})`);
   }
@@ -2031,13 +2031,13 @@ function overridesPath(root) {
 function readOverrides(root) {
   const file = overridesPath(root);
   if (!existsSync7(file)) return { active: /* @__PURE__ */ new Set(), inactive: /* @__PURE__ */ new Set(), stamp: null };
-  const text3 = readFileSync6(file, "utf8");
+  const text5 = readFileSync6(file, "utf8");
   const fail = (what) => {
     throw configError(`${file}: ${what}`);
   };
   let value;
   try {
-    value = JSON.parse(text3);
+    value = JSON.parse(text5);
   } catch (error) {
     return fail(`not valid JSON (${error instanceof Error ? error.message : String(error)})`);
   }
@@ -2055,7 +2055,7 @@ function readOverrides(root) {
   const inactive = list("inactive");
   const both = [...active].filter((k) => inactive.has(k));
   if (both.length > 0) fail("an identity cannot be both active and inactive");
-  return { active, inactive, stamp: createHash3("sha256").update(text3).digest("hex").slice(0, 16) };
+  return { active, inactive, stamp: createHash3("sha256").update(text5).digest("hex").slice(0, 16) };
 }
 function readRank(context, settings) {
   const value = context.values.rank;
@@ -2471,10 +2471,10 @@ function emailLocalPart(email) {
   return at === -1 ? normalised : normalised.slice(0, at);
 }
 function normaliseName(name18) {
-  let text3 = name18.normalize("NFD").replace(new RegExp("\\p{M}", "gu"), "").toLowerCase().replace(/\([^)]*\)|\[[^\]]*\]/g, " ").replace(/_/g, " ");
-  const comma = text3.indexOf(",");
-  if (comma !== -1 && text3.indexOf(",", comma + 1) === -1) text3 = `${text3.slice(comma + 1)} ${text3.slice(0, comma)}`;
-  return text3.replace(/[.,]/g, " ").split(/\s+/).filter((t) => t !== "").join(" ");
+  let text5 = name18.normalize("NFD").replace(new RegExp("\\p{M}", "gu"), "").toLowerCase().replace(/\([^)]*\)|\[[^\]]*\]/g, " ").replace(/_/g, " ");
+  const comma = text5.indexOf(",");
+  if (comma !== -1 && text5.indexOf(",", comma + 1) === -1) text5 = `${text5.slice(comma + 1)} ${text5.slice(0, comma)}`;
+  return text5.replace(/[.,]/g, " ").split(/\s+/).filter((t) => t !== "").join(" ");
 }
 function nameTokens(name18) {
   return normaliseName(name18).split(" ").filter((t) => t !== "");
@@ -2629,12 +2629,12 @@ function createNonPersonMatcher(rules10) {
     if (decision) {
       return decision.kind === "person" ? null : { kind: decision.kind, source: "decision", pattern: decision.identity };
     }
-    const text3 = `${name18} <${email}>`;
-    const fromConfig = config.find((c) => c.re.test(text3));
+    const text5 = `${name18} <${email}>`;
+    const fromConfig = config.find((c) => c.re.test(text5));
     if (fromConfig) return { kind: fromConfig.kind, source: "config", pattern: fromConfig.pattern };
-    const agent = builtinAgents.find((c) => c.re.test(text3));
+    const agent = builtinAgents.find((c) => c.re.test(text5));
     if (agent) return { kind: "agent", source: "builtin", pattern: agent.pattern };
-    const bot = builtin.find((c) => c.re.test(text3));
+    const bot = builtin.find((c) => c.re.test(text5));
     if (bot) return { kind: "bot", source: "builtin", pattern: bot.pattern };
     const normalised = normaliseName(name18);
     if (serviceNames.has(normalised)) return { kind: "service", source: "builtin", pattern: normalised };
@@ -2907,14 +2907,14 @@ function bucketLabel(start, bucket) {
   const iso2 = new Date(start * 1e3).toISOString();
   return bucket === "month" ? iso2.slice(0, 7) : iso2.slice(0, 10);
 }
-function parseDate(text3) {
-  const day2 = /^(\d{4})-(\d{2})-(\d{2})(T.*)?$/.exec(text3);
+function parseDate(text5) {
+  const day2 = /^(\d{4})-(\d{2})-(\d{2})(T.*)?$/.exec(text5);
   if (!day2) return null;
   const midnight = Date.UTC(Number(day2[1]), Number(day2[2]) - 1, Number(day2[3]));
-  if (new Date(midnight).toISOString().slice(0, 10) !== text3.slice(0, 10)) return null;
+  if (new Date(midnight).toISOString().slice(0, 10) !== text5.slice(0, 10)) return null;
   if (day2[4] === void 0) return midnight / 1e3;
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.test(text3)) return null;
-  const ms = Date.parse(text3);
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.test(text5)) return null;
+  const ms = Date.parse(text5);
   return Number.isNaN(ms) ? null : Math.floor(ms / 1e3);
 }
 
@@ -3028,13 +3028,13 @@ function countCoupling(changes, guidelines) {
   const together = /* @__PURE__ */ new Map();
   let eligibleChanges = 0;
   let oversizedChanges = 0;
-  for (const change2 of changes) {
-    if (change2.oversized) {
+  for (const change3 of changes) {
+    if (change3.oversized) {
       oversizedChanges++;
       continue;
     }
     eligibleChanges++;
-    const files = [...new Set(change2.files)].sort(compareBytes);
+    const files = [...new Set(change3.files)].sort(compareBytes);
     for (const [i, a] of files.entries()) {
       perFile.set(a, (perFile.get(a) ?? 0) + 1);
       let row2 = together.get(a);
@@ -3056,9 +3056,9 @@ function partnersOf(changes, focus) {
   const perFile = /* @__PURE__ */ new Map();
   const together = /* @__PURE__ */ new Map();
   let changesFocus = 0;
-  for (const change2 of changes) {
-    if (change2.oversized) continue;
-    const files = new Set(change2.files);
+  for (const change3 of changes) {
+    if (change3.oversized) continue;
+    const files = new Set(change3.files);
     for (const file of files) perFile.set(file, (perFile.get(file) ?? 0) + 1);
     if (!files.has(focus)) continue;
     changesFocus++;
@@ -3079,11 +3079,11 @@ function integerOption(context, option, fallback, min, max) {
 }
 function coupledPairs(history, guidelines) {
   const lastStatus = /* @__PURE__ */ new Map();
-  for (const change2 of history.filtered.changes) {
-    for (const file of change2.files) lastStatus.set(file.fileId, file.status);
+  for (const change3 of history.filtered.changes) {
+    for (const file of change3.files) lastStatus.set(file.fileId, file.status);
   }
   const counts = countCoupling(
-    history.filtered.changes.map((change2) => ({ files: change2.files.map((file) => file.fileId), oversized: change2.oversized })),
+    history.filtered.changes.map((change3) => ({ files: change3.files.map((file) => file.fileId), oversized: change3.oversized })),
     guidelines
   );
   const gone = (id) => lastStatus.get(id) === "D";
@@ -3547,18 +3547,18 @@ function counterEvidenceWithin(group) {
 import { createHash as createHash5 } from "node:crypto";
 var PLATFORM_KEYS = /* @__PURE__ */ new Set(["gpg:B5690EEEBB952194"]);
 var isPlatformKey = (key) => PLATFORM_KEYS.has(key);
-function armoredBody(text3, kind) {
-  const begin = text3.indexOf(`-----BEGIN ${kind}-----`);
-  const end = text3.indexOf(`-----END ${kind}-----`);
+function armoredBody(text5, kind) {
+  const begin = text5.indexOf(`-----BEGIN ${kind}-----`);
+  const end = text5.indexOf(`-----END ${kind}-----`);
   if (begin === -1 || end === -1 || end < begin) return void 0;
-  const lines = text3.slice(begin + `-----BEGIN ${kind}-----`.length, end).split("\n").map((line) => line.trim());
+  const lines = text5.slice(begin + `-----BEGIN ${kind}-----`.length, end).split("\n").map((line) => line.trim());
   const blank = lines.indexOf("");
   const body = (blank > 0 ? lines.slice(blank + 1) : lines).filter((line) => line !== "" && !line.startsWith("="));
   const bytes = Buffer.from(body.join(""), "base64");
   return bytes.length === 0 ? void 0 : bytes;
 }
-function sshKey(text3) {
-  const bytes = armoredBody(text3, "SSH SIGNATURE");
+function sshKey(text5) {
+  const bytes = armoredBody(text5, "SSH SIGNATURE");
   if (bytes === void 0 || bytes.length < 14 || bytes.subarray(0, 6).toString("latin1") !== "SSHSIG") return void 0;
   const length = bytes.readUInt32BE(10);
   if (length === 0 || 14 + length > bytes.length) return void 0;
@@ -3595,8 +3595,8 @@ function issuerOf(packet) {
   }
   return fingerprint !== void 0 ? fingerprint.slice(-16) : keyId;
 }
-function pgpKey(text3) {
-  const bytes = armoredBody(text3, "PGP SIGNATURE");
+function pgpKey(text5) {
+  const bytes = armoredBody(text5, "PGP SIGNATURE");
   if (bytes === void 0) return void 0;
   const first = bytes[0];
   if ((first & 128) === 0) return void 0;
@@ -3726,9 +3726,9 @@ async function gatherIdentityFacts(root, view, options) {
     if (commit.changes.length <= MAX_PATHS_FOR_EVIDENCE) {
       const week = weekOf(commit.authorDate);
       const areas = raw.weeks.get(week) ?? /* @__PURE__ */ new Set();
-      for (const change2 of commit.changes) {
-        raw.files.add(change2.path);
-        const area = areaOf(change2.path);
+      for (const change3 of commit.changes) {
+        raw.files.add(change3.path);
+        const area = areaOf(change3.path);
         areas.add(area);
         raw.areaCounts.set(area, (raw.areaCounts.get(area) ?? 0) + 1);
       }
@@ -3828,7 +3828,7 @@ import { existsSync as existsSync9 } from "node:fs";
 import { join as join6 } from "node:path";
 var GREP_CHUNK = 200;
 async function textFilesAt(root, sha, paths) {
-  const text3 = /* @__PURE__ */ new Set();
+  const text5 = /* @__PURE__ */ new Set();
   const prefix = `${sha}:`;
   for (let i = 0; i < paths.length; i += GREP_CHUNK) {
     let out;
@@ -3837,12 +3837,12 @@ async function textFilesAt(root, sha, paths) {
     } catch {
       continue;
     }
-    for (const record of out.split("\n")) {
-      const [pathPart] = record.split("\0");
-      if (pathPart?.startsWith(prefix)) text3.add(pathPart.slice(prefix.length));
+    for (const record2 of out.split("\n")) {
+      const [pathPart] = record2.split("\0");
+      if (pathPart?.startsWith(prefix)) text5.add(pathPart.slice(prefix.length));
     }
   }
-  return text3;
+  return text5;
 }
 async function authoredFilesAt(root, sha, exclude = []) {
   const excluded = compileGlobs(exclude);
@@ -3871,10 +3871,10 @@ function parseBlameRanges(output) {
   }
   ranges.sort((a, b) => a.start - b.start);
   const joined = [];
-  for (const range of ranges) {
+  for (const range2 of ranges) {
     const last = joined[joined.length - 1];
-    if (last && last.sha === range.sha && last.start + last.count === range.start) last.count += range.count;
-    else joined.push({ ...range });
+    if (last && last.sha === range2.sha && last.start + last.count === range2.start) last.count += range2.count;
+    else joined.push({ ...range2 });
   }
   return joined;
 }
@@ -3889,8 +3889,8 @@ async function isAncestor(root, ancestor, descendant) {
     throw error;
   }
 }
-async function pathsChangedIn(root, range) {
-  const out = await runGit(root, ["log", "-c", "--no-renames", "--name-only", "-z", "--format=", range]);
+async function pathsChangedIn(root, range2) {
+  const out = await runGit(root, ["log", "-c", "--no-renames", "--name-only", "-z", "--format=", range2]);
   return new Set(out.split("\0").filter((p) => p !== ""));
 }
 async function changedBetween(root, a, b) {
@@ -4062,8 +4062,8 @@ async function resolveOwners(root, shas, options = {}) {
   if (unique.length === 0) return owners;
   const out = await runGit(root, ["log", "--no-walk=unsorted", "--stdin", "--format=%H%x1f%an%x1f%ae%x1f%B%x1e"], { input: unique.join("\n") + "\n" });
   const authors = /* @__PURE__ */ new Map();
-  for (const record of out.split("")) {
-    const [sha, name18, email, message] = record.replace(/^\n/, "").split("");
+  for (const record2 of out.split("")) {
+    const [sha, name18, email, message] = record2.replace(/^\n/, "").split("");
     if (sha === void 0 || name18 === void 0 || email === void 0) continue;
     const agent = options.matcher?.classify(name18, email)?.kind === "agent";
     authors.set(sha, (agent ? options.matcher?.humanCoAuthor?.(message ?? "") : null) ?? { name: name18, email });
@@ -4092,7 +4092,7 @@ function lineShares(ranges, owners) {
 }
 function commitsInSnapshot(snapshot) {
   const shas = /* @__PURE__ */ new Set();
-  for (const file of snapshot.files.values()) for (const range of file.ranges) shas.add(range.sha);
+  for (const file of snapshot.files.values()) for (const range2 of file.ranges) shas.add(range2.sha);
   return shas;
 }
 function shareHeldBy(shares2, ownerKeys) {
@@ -4124,9 +4124,9 @@ async function refreshBlame(repoPath, options = {}) {
         const reusedKeys = new Set(reusable.map((f) => f.path));
         moveFilesTo(db, settings.id, sha, reusable.filter((f) => f.atCommit !== sha));
         const missing = authored.filter((f) => !reusedKeys.has(f.path));
-        const text3 = await textFilesAt(root, sha, missing.map((f) => f.path));
-        const toBlame = missing.filter((f) => text3.has(f.path));
-        const noText = missing.filter((f) => !text3.has(f.path));
+        const text5 = await textFilesAt(root, sha, missing.map((f) => f.path));
+        const toBlame = missing.filter((f) => text5.has(f.path));
+        const noText = missing.filter((f) => !text5.has(f.path));
         const description = `-w -M${settings.copyDetection ? " -C" : ""}, ${settings.ignoreRevs.length} ignored revisions`;
         putBlamedFiles(db, settings.id, description, sha, noText.map((f) => ({ path: f.path, blob: f.blob, ranges: [] })));
         const ignoreFile = settings.ignoreRevs.length > 0 ? join7(location.cacheDir, `ignore-revs-${settings.id}.txt`) : void 0;
@@ -4301,7 +4301,7 @@ async function measureMapping(context, analysis, options) {
   const snapshot = await readBlame(context.repo.root, { ref: sha, ...blameOptions(history, settings) });
   const bySha = /* @__PURE__ */ new Map();
   for (const file of snapshot.files.values()) {
-    for (const range of file.ranges) bySha.set(range.sha, (bySha.get(range.sha) ?? 0) + range.count);
+    for (const range2 of file.ranges) bySha.set(range2.sha, (bySha.get(range2.sha) ?? 0) + range2.count);
   }
   const linesByNode = /* @__PURE__ */ new Map();
   let unattributed = 0;
@@ -4860,9 +4860,9 @@ function landedText(message) {
 async function readGraph(root, tip) {
   const out = await runGit(root, ["log", "--format=%H%x1f%P%x1f%ct%x1f%B%x1e", tip]);
   const graph = /* @__PURE__ */ new Map();
-  for (const record of out.split("")) {
-    if (record.trim() === "") continue;
-    const [sha, parents, time, ...message] = record.replace(/^\n/, "").split("");
+  for (const record2 of out.split("")) {
+    if (record2.trim() === "") continue;
+    const [sha, parents, time, ...message] = record2.replace(/^\n/, "").split("");
     graph.set(sha, { sha, parents: parents === "" ? [] : parents.split(" "), time: Number(time), message: message.join("").trim() });
   }
   return graph;
@@ -4876,9 +4876,9 @@ async function readLandings(root, tip) {
   const assigned = new Set(line.map((c) => c.sha));
   const landings = [];
   for (const entry of line) {
-    const { title, text: text3 } = landedText(entry.message);
+    const { title, text: text5 } = landedText(entry.message);
     if (entry.parents.length < 2) {
-      landings.push({ id: entry.sha, time: entry.time, how: "direct", title: title ?? entry.message.split("\n", 1)[0].trim(), text: text3, members: [entry.sha], branch: [] });
+      landings.push({ id: entry.sha, time: entry.time, how: "direct", title: title ?? entry.message.split("\n", 1)[0].trim(), text: text5, members: [entry.sha], branch: [] });
       continue;
     }
     const stack = entry.parents.slice(1);
@@ -4899,7 +4899,7 @@ async function readLandings(root, tip) {
       time: entry.time,
       how: "merge",
       title: title ?? entry.message.split("\n", 1)[0].trim(),
-      text: text3,
+      text: text5,
       members: branch.map((commit) => commit.sha),
       branch
     });
@@ -4914,11 +4914,11 @@ function landingOf(landings) {
 function groupByLanding(changes, landings) {
   const of = landingOf(landings);
   const groups = /* @__PURE__ */ new Map();
-  for (const change2 of changes) {
-    for (const landing of new Set(change2.shas.flatMap((sha) => of.get(sha) ?? []))) {
+  for (const change3 of changes) {
+    for (const landing of new Set(change3.shas.flatMap((sha) => of.get(sha) ?? []))) {
       const list = groups.get(landing);
-      if (list) list.push(change2);
-      else groups.set(landing, [change2]);
+      if (list) list.push(change3);
+      else groups.set(landing, [change3]);
     }
   }
   return landings.flatMap((landing) => groups.has(landing) ? [{ landing, changes: groups.get(landing) }] : []);
@@ -5293,9 +5293,9 @@ function testClassifier(patterns = []) {
 // packages/cochange/src/file-statistics.ts
 function fileUnits(changes, present) {
   const units = /* @__PURE__ */ new Map();
-  for (const change2 of changes) {
+  for (const change3 of changes) {
     const seen = /* @__PURE__ */ new Set();
-    for (const file of change2.files) {
+    for (const file of change3.files) {
       if (!present.has(file.fileId)) continue;
       const churn = (file.added ?? 0) + (file.deleted ?? 0);
       const unit = units.get(file.fileId);
@@ -5305,8 +5305,8 @@ function fileUnits(changes, present) {
           files: 1,
           revisions: 1,
           churn,
-          firstSeen: change2.committerDate,
-          lastChanged: change2.committerDate,
+          firstSeen: change3.committerDate,
+          lastChanged: change3.committerDate,
           members: /* @__PURE__ */ new Set([file.fileId])
         });
         seen.add(file.fileId);
@@ -5314,8 +5314,8 @@ function fileUnits(changes, present) {
         if (!seen.has(file.fileId)) unit.revisions++;
         seen.add(file.fileId);
         unit.churn += churn;
-        unit.firstSeen = Math.min(unit.firstSeen, change2.committerDate);
-        unit.lastChanged = Math.max(unit.lastChanged, change2.committerDate);
+        unit.firstSeen = Math.min(unit.firstSeen, change3.committerDate);
+        unit.lastChanged = Math.max(unit.lastChanged, change3.committerDate);
       }
     }
   }
@@ -5326,9 +5326,9 @@ function componentUnits(changes, present, components2) {
     throw configError('code-health.json: --by component needs "components" to be configured');
   }
   const groups = /* @__PURE__ */ new Map();
-  for (const change2 of changes) {
+  for (const change3 of changes) {
     const counted = /* @__PURE__ */ new Set();
-    for (const file of change2.files) {
+    for (const file of change3.files) {
       if (!present.has(file.fileId)) continue;
       const name18 = componentOf(components2, file.fileId);
       const churn = (file.added ?? 0) + (file.deleted ?? 0);
@@ -5339,8 +5339,8 @@ function componentUnits(changes, present, components2) {
           files: 0,
           revisions: 0,
           churn: 0,
-          firstSeen: change2.committerDate,
-          lastChanged: change2.committerDate,
+          firstSeen: change3.committerDate,
+          lastChanged: change3.committerDate,
           members: /* @__PURE__ */ new Set()
         };
         groups.set(name18, unit);
@@ -5352,8 +5352,8 @@ function componentUnits(changes, present, components2) {
         unit.revisions++;
       }
       unit.churn += churn;
-      unit.firstSeen = Math.min(unit.firstSeen, change2.committerDate);
-      unit.lastChanged = Math.max(unit.lastChanged, change2.committerDate);
+      unit.firstSeen = Math.min(unit.firstSeen, change3.committerDate);
+      unit.lastChanged = Math.max(unit.lastChanged, change3.committerDate);
     }
   }
   return [...groups.values()];
@@ -5379,7 +5379,7 @@ async function loadUnits(context, history, by = readBy(context), omitTests = fal
   const { changes } = history.filtered;
   if (!wantsAllFiles(context)) {
     const languages = context.config.effective.languages;
-    const touched = new Set(changes.flatMap((change2) => change2.files.map((file) => file.fileId)));
+    const touched = new Set(changes.flatMap((change3) => change3.files.map((file) => file.fileId)));
     for (const path of [...present]) {
       if (isCodePath(path, languages)) continue;
       present.delete(path);
@@ -5388,7 +5388,7 @@ async function loadUnits(context, history, by = readBy(context), omitTests = fal
   }
   if (omitTests && !wantsTests(context)) {
     const isTest = testClassifier(context.config.effective.testPatterns);
-    const touched = new Set(changes.flatMap((change2) => change2.files.map((file) => file.fileId)));
+    const touched = new Set(changes.flatMap((change3) => change3.files.map((file) => file.fileId)));
     for (const path of [...present]) {
       if (!isTest(path)) continue;
       present.delete(path);
@@ -5428,14 +5428,14 @@ async function readFixes(history, units, classifier, root) {
     const touched = /* @__PURE__ */ new Set();
     const reviewTouched = /* @__PURE__ */ new Map();
     const reviewSeen = /* @__PURE__ */ new Set();
-    for (const change2 of changes) {
+    for (const change3 of changes) {
       const names = /* @__PURE__ */ new Set();
-      for (const file of change2.files) {
+      for (const file of change3.files) {
         const name18 = unitOf.get(file.fileId);
         if (name18 !== void 0) names.add(name18);
       }
       for (const name18 of names) touched.add(name18);
-      for (const sha of change2.shas) {
+      for (const sha of change3.shas) {
         if (!review.has(sha)) continue;
         reviewSeen.add(sha);
         for (const name18 of names) reviewTouched.set(name18, (reviewTouched.get(name18) ?? /* @__PURE__ */ new Set()).add(sha));
@@ -5567,16 +5567,16 @@ function detectIndentUnit(lines) {
   }
   return best;
 }
-function leadingSpaces(text3) {
+function leadingSpaces(text5) {
   let width = 0;
-  while (text3[width] === " ") width++;
+  while (text5[width] === " ") width++;
   return width;
 }
-function levelOf(text3, unit) {
+function levelOf(text5, unit) {
   let tabs = 0;
-  while (text3[tabs] === "	") tabs++;
+  while (text5[tabs] === "	") tabs++;
   let spaces = 0;
-  while (text3[tabs + spaces] === " ") spaces++;
+  while (text5[tabs + spaces] === " ") spaces++;
   return tabs + Math.floor(spaces / unit);
 }
 function indentationMetrics(lines) {
@@ -5625,15 +5625,15 @@ function classifyHeader(segments, profile) {
     return trimmed !== "" && !noise.some((pattern) => pattern.test(trimmed));
   });
   if (kept.length === 0) return { kind: "other" };
-  const text3 = kept.map((segment2) => segment2.text.trim()).join(" ").replace(/\s+/g, " ");
+  const text5 = kept.map((segment2) => segment2.text.trim()).join(" ").replace(/\s+/g, " ");
   const line = kept[0].line;
-  if (control.test(text3)) return { kind: "other" };
+  if (control.test(text5)) return { kind: "other" };
   for (const pattern of types) {
-    const match = pattern.exec(text3);
+    const match = pattern.exec(text5);
     if (match?.groups?.name !== void 0) return { kind: "type", name: cleanName(match.groups.name), line };
   }
   for (const pattern of functions) {
-    const match = pattern.exec(text3);
+    const match = pattern.exec(text5);
     if (match !== null) {
       const name18 = match.groups?.name;
       return { kind: "function", name: name18 === void 0 ? void 0 : cleanName(name18), line };
@@ -5669,12 +5669,12 @@ function isPlainEquals(code, index2) {
   return code[index2 + 1] !== "=" && code[index2 + 1] !== ">" && !/[-+*/%&|^!<>=]/.test(code[index2 - 1] ?? "");
 }
 function endsStatement(code, following) {
-  const text3 = code.trimEnd();
-  if (text3 === "" || /[-+*/%&|^?:=<.,([!~]$/.test(text3) || /(?:^|\s)>$/.test(text3) || text3.endsWith("->")) return false;
+  const text5 = code.trimEnd();
+  if (text5 === "" || /[-+*/%&|^?:=<.,([!~]$/.test(text5) || /(?:^|\s)>$/.test(text5) || text5.endsWith("->")) return false;
   return !continuesFromStart.test(following) && !following.startsWith("{") && !/^else\b/.test(following);
 }
-function angleBalanced(text3) {
-  const flat = text3.replace(/=>|->/g, "");
+function angleBalanced(text5) {
+  const flat = text5.replace(/=>|->/g, "");
   return (flat.match(/</g)?.length ?? 0) <= (flat.match(/>/g)?.length ?? 0);
 }
 function findBracedBlocks(lines, profile) {
@@ -5721,20 +5721,20 @@ function findBracedBlocks(lines, profile) {
     if (top2?.typeOnly === true || parenDepth > 0) return false;
     const kept = [...header2, { line: line.number, text: before }].filter((part) => part.text.trim() !== "");
     if (kept.length === 0) return false;
-    const text3 = kept.map((part) => part.text.trim()).join(" ").replace(/\s+/g, " ");
+    const text5 = kept.map((part) => part.text.trim()).join(" ").replace(/\s+/g, " ");
     let name18;
     let matched = false;
     const members = compile3(profile).members;
     if (members !== void 0) {
-      const found = members.map((pattern) => pattern.exec(text3)).find((match) => match !== null);
+      const found = members.map((pattern) => pattern.exec(text5)).find((match) => match !== null);
       if (found === void 0) return false;
       name18 = found?.groups?.name;
       matched = true;
     }
     for (const [i, pattern] of members === void 0 ? [...boundArrow.entries()] : []) {
-      const match = pattern.exec(text3);
+      const match = pattern.exec(text5);
       if (match === null) continue;
-      if (i === 0 && !inDeclaration && !keywordAssignment.test(text3) && top2?.name === void 0) continue;
+      if (i === 0 && !inDeclaration && !keywordAssignment.test(text5) && top2?.name === void 0) continue;
       if (i === 1 && (top2 === void 0 || top2.name !== void 0)) continue;
       name18 = match.groups?.name;
       matched = true;
@@ -5747,7 +5747,7 @@ function findBracedBlocks(lines, profile) {
       block.name = cleanName(name18);
       block.qualifiedName = qualify(names, block.name);
     }
-    arrow = { block, scopes: stack.length, lastLine: line.number, declaration: inDeclaration || keywordAssignment.test(text3) };
+    arrow = { block, scopes: stack.length, lastLine: line.number, declaration: inDeclaration || keywordAssignment.test(text5) };
     return true;
   };
   for (const [index2, line] of codeLines.entries()) {
@@ -5851,9 +5851,9 @@ function findBracedBlocks(lines, profile) {
     if (parenDepth === 0 && arrow === void 0 && endsLineWithoutSemicolon(line)) header2 = [];
     if (profile.newlineEndsStatements === true && arrow === void 0 && parenDepth === 0 && endsStatement(code, codeLines[index2 + 1]?.code.trim() ?? "")) header2 = [];
     if (arrow !== void 0 && parenDepth === 0 && stack.length === arrow.scopes) {
-      const text3 = code.trimEnd();
+      const text5 = code.trimEnd();
       const following = codeLines[index2 + 1]?.code.trim() ?? "";
-      if (text3 !== "" && !continuesExpression.test(text3) && !continuesFromStart.test(following) && !(profile.expressionBodies === true && /^else\b/.test(following))) {
+      if (text5 !== "" && !continuesExpression.test(text5) && !continuesFromStart.test(following) && !(profile.expressionBodies === true && /^else\b/.test(following))) {
         closeArrow();
         header2 = [];
       }
@@ -6037,12 +6037,12 @@ function stripSource(rawContent, profile) {
   const mask = profile === void 0 ? new Uint8Array(content.length) : maskLiterals(content, profile);
   const lines = [];
   let start = 0;
-  let number2 = 1;
+  let number4 = 1;
   while (start <= content.length) {
     let end = content.indexOf("\n", start);
     if (end === -1) end = content.length;
     if (end === content.length && start === content.length && start > 0) break;
-    const text3 = content.slice(start, end);
+    const text5 = content.slice(start, end);
     let code = "";
     let sawComment = false;
     for (let i = start; i < end; i++) {
@@ -6054,12 +6054,12 @@ function stripSource(rawContent, profile) {
     }
     const startsInString = start > 0 && mask[start - 1] === STRING;
     let kind;
-    if (text3.trim() === "") kind = "blank";
+    if (text5.trim() === "") kind = "blank";
     else if (startsInString && code.trim() === "") kind = "literal";
     else if (code.trim() !== "") kind = "code";
     else kind = sawComment || start > 0 && mask[start - 1] === COMMENT ? "comment" : "code";
-    lines.push({ number: number2, text: text3, code, kind, startsInLiteral: startsInString });
-    number2++;
+    lines.push({ number: number4, text: text5, code, kind, startsInLiteral: startsInString });
+    number4++;
     start = end + 1;
   }
   return lines;
@@ -6220,8 +6220,8 @@ function releaseFunctions(profileName, mapped, blocks, options) {
 }
 
 // packages/lexical/src/indentation-complexity.ts
-function indentationComplexity(text3, path = "") {
-  return analyseSource(path, text3).file.indentationComplexity;
+function indentationComplexity(text5, path = "") {
+  return analyseSource(path, text5).file.indentationComplexity;
 }
 
 // packages/cochange/src/complexity-source.ts
@@ -6270,8 +6270,8 @@ async function loadComplexity(context, headSha, paths) {
     const slice = paths.slice(start, start + batch);
     const texts = await Promise.all(slice.map((path) => readBlobAt(context.repo.root, headSha, path)));
     slice.forEach((path, i) => {
-      const text3 = texts[i];
-      values.set(path, text3 === void 0 || text3.includes("\0") ? null : indentationComplexity(text3, path));
+      const text5 = texts[i];
+      values.set(path, text5 === void 0 || text5.includes("\0") ? null : indentationComplexity(text5, path));
     });
   }
   return { source: "indentation", values, input: null };
@@ -6361,9 +6361,9 @@ async function testDrift(root, history, paths) {
     return test === null ? [] : [[path, test]];
   }));
   const together = /* @__PURE__ */ new Map();
-  for (const change2 of history.filtered.changes) {
-    if (change2.oversized) continue;
-    const touched = new Map(change2.files.map((file) => [file.fileId, file.status]));
+  for (const change3 of history.filtered.changes) {
+    if (change3.oversized) continue;
+    const touched = new Map(change3.files.map((file) => [file.fileId, file.status]));
     for (const [path, test] of siblings) {
       if (touched.has(path) && touched.has(test) && touched.get(test) !== "A") together.set(path, (together.get(path) ?? 0) + 1);
     }
@@ -6463,10 +6463,10 @@ function buildSuccessorIndex(history) {
     add(pair.b, pair.a, degree, pair.support);
   }
   const changesBy = /* @__PURE__ */ new Map();
-  for (const change2 of history.filtered.changes) {
-    if (change2.oversized) continue;
-    const emails = new Set(change2.authors.map((a) => a.toLowerCase()));
-    for (const file of new Set(change2.files.map((f) => f.fileId))) {
+  for (const change3 of history.filtered.changes) {
+    if (change3.oversized) continue;
+    const emails = new Set(change3.authors.map((a) => a.toLowerCase()));
+    for (const file of new Set(change3.files.map((f) => f.fileId))) {
       const byEmail = changesBy.get(file) ?? /* @__PURE__ */ new Map();
       for (const email of emails) byEmail.set(email, (byEmail.get(email) ?? 0) + 1);
       changesBy.set(file, byEmail);
@@ -7111,12 +7111,12 @@ var derived = { command: name4, stated: () => ({}) };
 function fileActivity(history) {
   const recentSince = monthsBefore(history.view.headDate, history.settings.recentMonths);
   const activity = /* @__PURE__ */ new Map();
-  for (const change2 of history.filtered.changes) {
-    for (const id of new Set(change2.files.map((file) => file.fileId))) {
-      const entry = activity.get(id) ?? { path: id, revisions: 0, recentRevisions: 0, lastChanged: change2.committerDate };
+  for (const change3 of history.filtered.changes) {
+    for (const id of new Set(change3.files.map((file) => file.fileId))) {
+      const entry = activity.get(id) ?? { path: id, revisions: 0, recentRevisions: 0, lastChanged: change3.committerDate };
       entry.revisions++;
-      if (change2.committerDate >= recentSince) entry.recentRevisions++;
-      entry.lastChanged = Math.max(entry.lastChanged, change2.committerDate);
+      if (change3.committerDate >= recentSince) entry.recentRevisions++;
+      entry.lastChanged = Math.max(entry.lastChanged, change3.committerDate);
       activity.set(id, entry);
     }
   }
@@ -7893,11 +7893,11 @@ function address(value, where) {
 function readDecisionsInput(path, root) {
   const file = isAbsolute2(path) ? path : resolve(root, path);
   if (!existsSync13(file)) throw usageError(`--from: ${path} does not exist`);
-  const text3 = readFileSync9(file, "utf8");
-  const hash = createHash7("sha256").update(text3).digest("hex").slice(0, 16);
+  const text5 = readFileSync9(file, "utf8");
+  const hash = createHash7("sha256").update(text5).digest("hex").slice(0, 16);
   let value;
   try {
-    value = JSON.parse(text3);
+    value = JSON.parse(text5);
   } catch (error) {
     throw usageError(`--from: ${path} is not valid JSON (${error instanceof Error ? error.message : String(error)})`);
   }
@@ -8268,7 +8268,7 @@ function tokenize(source) {
   const tokens = [];
   const pending = [];
   let expectDelimiter = null;
-  let text3 = "";
+  let text5 = "";
   let unquoted = "";
   let inWord = false;
   let dynamic = false;
@@ -8278,7 +8278,7 @@ function tokenize(source) {
   const flush = () => {
     if (!inWord) return;
     const hasBrace = /\{[^{}]*(,|\.\.)[^{}]*\}/.test(unquoted);
-    const word = { t: "word", text: text3, dynamic: dynamic || hasBrace, glob, quoted };
+    const word = { t: "word", text: text5, dynamic: dynamic || hasBrace, glob, quoted };
     if (!word.dynamic) word.text = plain(word);
     if (expectDelimiter !== null) {
       pending.push({ delimiter: plain(word), strip: expectDelimiter.strip });
@@ -8286,7 +8286,7 @@ function tokenize(source) {
     } else {
       tokens.push(word);
     }
-    text3 = "";
+    text5 = "";
     unquoted = "";
     inWord = false;
     dynamic = false;
@@ -8295,7 +8295,7 @@ function tokenize(source) {
   };
   const add = (char, isQuoted) => {
     inWord = true;
-    text3 += char;
+    text5 += char;
     if (!isQuoted) unquoted += char;
     else quoted = true;
   };
@@ -8305,7 +8305,7 @@ function tokenize(source) {
     if (next === "'" && !insideDouble) {
       dynamic = true;
       inWord = true;
-      text3 += "$";
+      text5 += "$";
       i++;
       return true;
     }
@@ -8314,24 +8314,24 @@ function tokenize(source) {
       dynamic = true;
       const end = source.indexOf("}", i);
       if (end === -1) return false;
-      text3 += source.slice(i, end + 1);
+      text5 += source.slice(i, end + 1);
       i = end + 1;
       return true;
     }
     const name18 = /^[A-Za-z_][A-Za-z0-9_]*/.exec(source.slice(i + 1));
     if (name18 !== null) {
       dynamic = true;
-      text3 += `$${name18[0]}`;
+      text5 += `$${name18[0]}`;
       i += 1 + name18[0].length;
       return true;
     }
     if (next === void 0 || /\s|["'`]/.test(next)) {
-      text3 += LITERAL_DOLLAR;
+      text5 += LITERAL_DOLLAR;
       i++;
       return true;
     }
     dynamic = true;
-    text3 += `$${next}`;
+    text5 += `$${next}`;
     i += 2;
     return true;
   };
@@ -8370,7 +8370,7 @@ function tokenize(source) {
       if (end === -1) return null;
       inWord = true;
       quoted = true;
-      text3 += source.slice(i + 1, end).replaceAll("$", LITERAL_DOLLAR);
+      text5 += source.slice(i + 1, end).replaceAll("$", LITERAL_DOLLAR);
       i = end + 1;
       continue;
     }
@@ -8392,10 +8392,10 @@ function tokenize(source) {
           if (escaped === "\n") {
             i += 2;
           } else if ('"\\$`'.includes(escaped)) {
-            text3 += escaped === "$" ? LITERAL_DOLLAR : escaped;
+            text5 += escaped === "$" ? LITERAL_DOLLAR : escaped;
             i += 2;
           } else {
-            text3 += `\\${escaped}`;
+            text5 += `\\${escaped}`;
             i += 2;
           }
           continue;
@@ -8404,7 +8404,7 @@ function tokenize(source) {
           if (!dollar(true)) return null;
           continue;
         }
-        text3 += c;
+        text5 += c;
         i++;
       }
       if (!closed) return null;
@@ -8425,8 +8425,8 @@ function tokenize(source) {
     if (operator !== void 0) {
       if ((operator === "<" || operator === ">") && source[i + 1] === "(") return null;
       const redirect = /^[0-9<>&|]/.test(operator) && operator !== "&&" && operator !== "||" && operator !== "|" && operator !== "|&" && operator !== "&";
-      if (redirect && inWord && /^[0-9]+$/.test(text3) && unquoted === text3) {
-        text3 = "";
+      if (redirect && inWord && /^[0-9]+$/.test(text5) && unquoted === text5) {
+        text5 = "";
         unquoted = "";
         inWord = false;
         quoted = false;
@@ -8505,20 +8505,20 @@ function parseArgs2(args, spec) {
   let ended = false;
   for (let k = 0; k < args.length; k++) {
     const word = args[k];
-    const text3 = plain(word);
-    if (ended || word.quoted || !text3.startsWith("-") || text3 === "-") {
+    const text5 = plain(word);
+    if (ended || word.quoted || !text5.startsWith("-") || text5 === "-") {
       operands.push(word);
       continue;
     }
     if (word.dynamic) return null;
-    if (text3 === "--") {
+    if (text5 === "--") {
       ended = true;
-    } else if (text3.startsWith("--")) {
-      const equals = text3.indexOf("=");
-      const name18 = equals === -1 ? text3 : text3.slice(0, equals);
+    } else if (text5.startsWith("--")) {
+      const equals = text5.indexOf("=");
+      const name18 = equals === -1 ? text5 : text5.slice(0, equals);
       flags.add(name18);
       if (equals !== -1) {
-        values.push({ name: name18, value: text3.slice(equals + 1) });
+        values.push({ name: name18, value: text5.slice(equals + 1) });
       } else if (spec.valueLong?.includes(name18)) {
         const next = args[k + 1];
         if (next === void 0) return null;
@@ -8526,12 +8526,12 @@ function parseArgs2(args, spec) {
         k++;
       }
     } else {
-      for (let c = 1; c < text3.length; c++) {
-        const char = text3[c];
+      for (let c = 1; c < text5.length; c++) {
+        const char = text5[c];
         flags.add(char);
         if (spec.suffixShort === char) break;
         if (spec.valueShort?.includes(char)) {
-          const rest = text3.slice(c + 1);
+          const rest = text5.slice(c + 1);
           if (rest !== "") {
             values.push({ name: char, value: rest });
           } else {
@@ -8549,11 +8549,11 @@ function parseArgs2(args, spec) {
 }
 var GREP_VALUE_LONG = ["--regexp", "--file", "--max-count", "--after-context", "--before-context", "--context", "--include", "--exclude", "--exclude-dir", "--exclude-from", "--label", "--directories", "--devices", "--binary-files"];
 var RG_VALUE_LONG = ["--regexp", "--file", "--glob", "--iglob", "--type", "--type-not", "--max-count", "--after-context", "--before-context", "--context", "--threads", "--max-columns", "--max-depth", "--replace", "--ignore-file", "--pre", "--sort", "--sortr", "--encoding", "--type-add"];
-var looksLikeFile = (text3) => {
-  const last = text3.split("/").at(-1) ?? "";
+var looksLikeFile = (text5) => {
+  const last = text5.split("/").at(-1) ?? "";
   return last !== "" && last !== "." && last !== ".." && last.includes(".") && !last.endsWith(".");
 };
-var endsLikeDirectory = (text3) => text3.endsWith("/");
+var endsLikeDirectory = (text5) => text5.endsWith("/");
 var Interpretation = class {
   access = { reads: [], searches: [], edits: [] };
   ok = true;
@@ -8568,13 +8568,13 @@ var Interpretation = class {
     this.ok = false;
   }
   /** The path a literal word names, resolved against the working directory. Null (and the line is unparsed) when it cannot be. */
-  resolve(text3) {
-    if (text3.startsWith("/") || text3.startsWith("~") || /^[A-Za-z]:[\\/]/.test(text3)) return text3;
+  resolve(text5) {
+    if (text5.startsWith("/") || text5.startsWith("~") || /^[A-Za-z]:[\\/]/.test(text5)) return text5;
     if (this.cwd === null) {
       this.fail();
       return null;
     }
-    return this.cwd === void 0 ? text3 : posix2.join(this.cwd, text3);
+    return this.cwd === void 0 ? text5 : posix2.join(this.cwd, text5);
   }
   substitute(word) {
     if (!word.dynamic || !word.text.includes("$")) return word;
@@ -8619,13 +8619,13 @@ var Interpretation = class {
 function redirections(command17, run2) {
   for (const { op, target } of command17.redirects) {
     if (target === null || op === "<<<") continue;
-    const text3 = plain(target);
-    if ((op === ">&" || op === "<&") && (/^[0-9]+$/.test(text3) || text3 === "-")) continue;
+    const text5 = plain(target);
+    if ((op === ">&" || op === "<&") && (/^[0-9]+$/.test(text5) || text5 === "-")) continue;
     if (target.dynamic) {
       run2.fail();
       continue;
     }
-    if (text3.startsWith("/dev/")) continue;
+    if (text5.startsWith("/dev/")) continue;
     if (op === "<" || op === "<&") run2.read(target);
     else run2.edit(target);
   }
@@ -8648,29 +8648,29 @@ function perlLike(args, run2) {
   const rest = [];
   for (let k = 0; k < args.length; k++) {
     const word = args[k];
-    const text3 = plain(word);
-    if (word.quoted || !text3.startsWith("-") || text3 === "-") {
+    const text5 = plain(word);
+    if (word.quoted || !text5.startsWith("-") || text5 === "-") {
       rest.push(...args.slice(k));
       break;
     }
     if (word.dynamic) return run2.fail();
-    if (text3 === "--") {
+    if (text5 === "--") {
       rest.push(...args.slice(k + 1));
       break;
     }
-    for (let c = 1; c < text3.length; c++) {
-      const char = text3[c];
+    for (let c = 1; c < text5.length; c++) {
+      const char = text5[c];
       if (char === "i") {
         inPlace = true;
         break;
       }
       if (char === "e" || char === "E") {
         hasScript = true;
-        if (text3.slice(c + 1) === "") k++;
+        if (text5.slice(c + 1) === "") k++;
         break;
       }
       if ("IMmx".includes(char)) {
-        if (text3.slice(c + 1) === "") k++;
+        if (text5.slice(c + 1) === "") k++;
         break;
       }
     }
@@ -8732,16 +8732,16 @@ function gitLike(args, run2) {
   const saved = run2.cwd;
   let k = 0;
   while (k < args.length) {
-    const text3 = plain(args[k]);
+    const text5 = plain(args[k]);
     if (args[k].dynamic) return run2.fail();
-    if (text3 === "-C") {
+    if (text5 === "-C") {
       const dir = args[k + 1];
       if (dir === void 0 || dir.dynamic) return run2.fail();
       run2.cwd = run2.resolve(plain(dir));
       k += 2;
-    } else if (text3 === "-c" || text3 === "--git-dir" || text3 === "--work-tree" || text3 === "--namespace") {
+    } else if (text5 === "-c" || text5 === "--git-dir" || text5 === "--work-tree" || text5 === "--namespace") {
       k += 2;
-    } else if (text3.startsWith("-")) {
+    } else if (text5.startsWith("-")) {
       k++;
     } else {
       break;
@@ -8752,9 +8752,9 @@ function gitLike(args, run2) {
   if (sub === "show") {
     for (const word of rest) {
       if (word.dynamic) return run2.fail();
-      const text3 = plain(word);
-      const colon = text3.indexOf(":");
-      if (!text3.startsWith("-") && colon > 0 && colon < text3.length - 1) run2.access.reads.push(text3.slice(colon + 1));
+      const text5 = plain(word);
+      const colon = text5.indexOf(":");
+      if (!text5.startsWith("-") && colon > 0 && colon < text5.length - 1) run2.access.reads.push(text5.slice(colon + 1));
     }
   } else if (sub === "mv" || sub === "rm") {
     moveLike(sub === "mv" ? "mv" : "rm", rest, run2);
@@ -8823,8 +8823,8 @@ function interpreterLike(args, command17, run2, name18) {
 function findLike(args, run2) {
   const paths = [];
   for (const word of args) {
-    const text3 = plain(word);
-    if (!word.quoted && (text3.startsWith("-") || text3 === "(" || text3 === "!")) break;
+    const text5 = plain(word);
+    if (!word.quoted && (text5.startsWith("-") || text5 === "(" || text5 === "!")) break;
     paths.push(word);
   }
   for (const word of args) {
@@ -8840,11 +8840,11 @@ function execute2(command17, run2, piped) {
   while (words2[0] !== void 0 && !words2[0].quoted && !words2[0].dynamic && SKIPPED_KEYWORDS.has(plain(words2[0]))) words2 = words2.slice(1);
   if (words2[0] !== void 0 && !words2[0].quoted && UNPARSED_KEYWORDS.has(plain(words2[0]))) return run2.fail();
   while (words2[0] !== void 0 && !words2[0].dynamic && /^[A-Za-z_][A-Za-z0-9_]*=/.test(plain(words2[0]))) {
-    const text3 = plain(words2[0]);
-    const equals = text3.indexOf("=");
-    const name19 = text3.slice(0, equals);
+    const text5 = plain(words2[0]);
+    const equals = text5.indexOf("=");
+    const name19 = text5.slice(0, equals);
     if (words2[0].glob) run2.variables.delete(name19);
-    else run2.variables.set(name19, text3.slice(equals + 1));
+    else run2.variables.set(name19, text5.slice(equals + 1));
     words2 = words2.slice(1);
   }
   redirections(substituted, run2);
@@ -8852,8 +8852,8 @@ function execute2(command17, run2, piped) {
   for (; ; ) {
     const head2 = words2[0];
     if (head2.dynamic) return run2.fail();
-    const text3 = plain(head2);
-    if (!WRAPPERS.has(text3)) break;
+    const text5 = plain(head2);
+    if (!WRAPPERS.has(text5)) break;
     words2 = words2.slice(1);
     while (words2[0] !== void 0 && (plain(words2[0]).startsWith("-") || /^[A-Za-z_][A-Za-z0-9_]*=/.test(plain(words2[0])))) words2 = words2.slice(1);
     if (words2.length === 0) return;
@@ -9003,8 +9003,8 @@ function shellActionsOf(block, cwd) {
   ];
 }
 var INTERRUPT_MARKER = "[Request interrupted by user";
-function isHumanText(text3) {
-  return typeof text3 === "string" && !text3.startsWith(INTERRUPT_MARKER);
+function isHumanText(text5) {
+  return typeof text5 === "string" && !text5.startsWith(INTERRUPT_MARKER);
 }
 function isHumanPrompt(line, message) {
   if (line["isMeta"] === true || line["toolUseResult"] !== void 0) return false;
@@ -9040,10 +9040,10 @@ function earliest(lines) {
   }
   return best;
 }
-function parseTranscript(text3, scope = "main") {
+function parseTranscript(text5, scope = "main") {
   const lines = [];
   let skippedLines = 0;
-  const body = text3.charCodeAt(0) === 65279 ? text3.slice(1) : text3;
+  const body = text5.charCodeAt(0) === 65279 ? text5.slice(1) : text5;
   for (const raw of body.split(/\r?\n/)) {
     if (raw === "") continue;
     try {
@@ -9160,8 +9160,8 @@ function sessionFiles(projectsDir, root) {
 }
 
 // packages/transcripts/src/session-edits.ts
-function readSessionEdits(text3, sessionId, roots, effort = "all") {
-  const parsed = parseTranscript(text3);
+function readSessionEdits(text5, sessionId, roots, effort = "all") {
+  const parsed = parseTranscript(text5);
   if (parsed.status !== "recognised") return null;
   const edits = [];
   for (const event of parsed.events) {
@@ -9184,15 +9184,15 @@ function readRepoSessionEdits(options) {
     for (const file of sessionFiles(projectsDir, root)) {
       if (seen.has(file.path) || !existsSync15(file.path)) continue;
       seen.add(file.path);
-      let text3;
+      let text5;
       try {
-        text3 = readFileSync11(file.path, "utf8");
+        text5 = readFileSync11(file.path, "utf8");
       } catch {
         continue;
       }
-      const parsed = parseTranscript(text3);
+      const parsed = parseTranscript(text5);
       if (parsed.cwds.length > 0 && !parsed.cwds.some((cwd) => isWithinRepo(cwd, repoRoots))) continue;
-      const result = readSessionEdits(text3, file.sessionId, repoRoots, options.effort ?? "all");
+      const result = readSessionEdits(text5, file.sessionId, repoRoots, options.effort ?? "all");
       if (result !== null && inWindow(window, result.startedAt)) sessions.push(result);
     }
   }
@@ -9264,12 +9264,12 @@ function chooseControls(revisions, actedOn, overlap) {
 }
 function sharingChanges(changes, files) {
   const shared = /* @__PURE__ */ new Set();
-  for (const change2 of touching(changes, files)) for (const f of change2.files) if (!files.has(f.fileId)) shared.add(f.fileId);
+  for (const change3 of touching(changes, files)) for (const f of change3.files) if (!files.has(f.fileId)) shared.add(f.fileId);
   return shared;
 }
 function revisionsOf(changes) {
   const counts = /* @__PURE__ */ new Map();
-  for (const change2 of changes) for (const id of new Set(change2.files.map((f) => f.fileId))) counts.set(id, (counts.get(id) ?? 0) + 1);
+  for (const change3 of changes) for (const id of new Set(change3.files.map((f) => f.fileId))) counts.set(id, (counts.get(id) ?? 0) + 1);
   return counts;
 }
 
@@ -9493,9 +9493,9 @@ function normaliseValue(value) {
   if (typeof value === "number") return Number(value.toFixed(FLOAT_PRECISION2));
   if (Array.isArray(value)) return value.map(normaliseValue);
   if (value !== null && typeof value === "object") {
-    const record = value;
+    const record2 = value;
     const sorted = {};
-    for (const key of Object.keys(record).sort()) if (record[key] !== void 0) sorted[key] = normaliseValue(record[key]);
+    for (const key of Object.keys(record2).sort()) if (record2[key] !== void 0) sorted[key] = normaliseValue(record2[key]);
     return sorted;
   }
   return value;
@@ -9541,16 +9541,16 @@ function pieceProblems(where, slot, piece, allowed) {
   const problems = [];
   const extra = Object.keys(piece).filter((key) => key !== "verdict" && key !== "text" && !allowed.includes(key));
   if (extra.length > 0) problems.push(`${where} has fields the slot does not take: ${extra.join(", ")}`);
-  const { verdict, text: text3 } = piece;
+  const { verdict, text: text5 } = piece;
   if (slot.verdicts.length > 0) {
     if (typeof verdict !== "string" || verdict === "") problems.push(`${where} needs a verdict, one of: ${slot.verdicts.join(", ")}`);
     else if (!slot.verdicts.includes(verdict)) problems.push(`${where} has verdict "${verdict}", which is not one of: ${slot.verdicts.join(", ")}`);
   } else if (verdict !== void 0) {
     problems.push(`${where} has a verdict, and this slot takes text only`);
   }
-  if (typeof text3 !== "string") problems.push(`${where} needs text, a string`);
-  else if (text3.trim() === "") problems.push(`${where} has empty text`);
-  else if (text3.length > slot.maxChars) problems.push(`${where} has ${text3.length} characters of text and the limit is ${slot.maxChars}`);
+  if (typeof text5 !== "string") problems.push(`${where} needs text, a string`);
+  else if (text5.trim() === "") problems.push(`${where} has empty text`);
+  else if (text5.length > slot.maxChars) problems.push(`${where} has ${text5.length} characters of text and the limit is ${slot.maxChars}`);
   return problems;
 }
 function entryProblems(slot, entry) {
@@ -9597,21 +9597,21 @@ ${problems.map((p) => `  - ${p}`).join("\n")}`);
 
 // packages/report/src/text.ts
 import { createHash as createHash9 } from "node:crypto";
-function escapeHtml(text3) {
-  return text3.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function escapeHtml(text5) {
+  return text5.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
-function oneLine(text3) {
-  return text3.replace(/\s+/g, " ").trim();
+function oneLine(text5) {
+  return text5.replace(/\s+/g, " ").trim();
 }
 var MD_SPECIAL = /[\\|*<>[\]]/g;
-function escapeMd(text3) {
-  const line = oneLine(text3);
+function escapeMd(text5) {
+  const line = oneLine(text5);
   const balanced = (line.match(/`/g) ?? []).length % 2 === 0;
   if (!balanced) return line.replace(/[\\|*`<>[\]]/g, (c) => `\\${c}`);
   return line.split("`").map((part, i) => i % 2 === 1 ? part.replace(/\|/g, "\\|") : part.replace(MD_SPECIAL, (c) => `\\${c}`)).join("`");
 }
-function inlineHtml(text3) {
-  const escaped = escapeHtml(text3);
+function inlineHtml(text5) {
+  const escaped = escapeHtml(text5);
   return (escaped.match(/`/g) ?? []).length % 2 === 0 ? escaped.replace(/`([^`]+)`/g, "<code>$1</code>") : escaped;
 }
 function formatNumber(value) {
@@ -9621,15 +9621,15 @@ function formatNumber(value) {
 function shortHash(content) {
   return createHash9("sha256").update(content).digest("hex").slice(0, 6);
 }
-function slug(text3) {
-  return text3.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "item";
+function slug(text5) {
+  return text5.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "item";
 }
-function count2(n, singular, plural = `${singular}s`) {
-  return `${formatNumber(n)} ${n === 1 ? singular : plural}`;
+function count2(n, singular, plural2 = `${singular}s`) {
+  return `${formatNumber(n)} ${n === 1 ? singular : plural2}`;
 }
-function clip(text3, max) {
+function clip(text5, max) {
   if (max < 1) return "";
-  return text3.length <= max ? text3 : `${text3.slice(0, Math.max(0, max - 1))}…`;
+  return text5.length <= max ? text5 : `${text5.slice(0, Math.max(0, max - 1))}…`;
 }
 
 // packages/report/src/components/evidence-list.ts
@@ -9656,8 +9656,8 @@ function htmlTable(caption, columns6, rows5, options = {}) {
   const head = columns6.map((c) => `<th scope="col"${c.align === "right" ? ' class="number"' : ""}>${escapeHtml(c.label)}</th>`).join("");
   const body = rows5.map((row2) => {
     const cells = row2.map((cell, i) => {
-      const number2 = columns6[i]?.align === "right" ? ' class="number"' : "";
-      return i === 0 && options.rowHeaders === true ? `<th scope="row">${cell}</th>` : `<td${number2}>${cell}</td>`;
+      const number4 = columns6[i]?.align === "right" ? ' class="number"' : "";
+      return i === 0 && options.rowHeaders === true ? `<th scope="row">${cell}</th>` : `<td${number4}>${cell}</td>`;
     });
     return `<tr>${cells.join("")}</tr>`;
   }).join("\n");
@@ -9963,11 +9963,11 @@ function sparklineHtml(data) {
   const line = coordinates.length > 1 ? `<polyline points="${coordinates.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ")}"/>` : "";
   const end = last === void 0 ? "" : `<circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3"/>`;
   const values = data.points.map((p) => p.value);
-  const range = values.length === 0 ? "no points" : `from ${formatNumber(values[0])} to ${formatNumber(values[values.length - 1])}, least ${formatNumber(Math.min(...values))}, greatest ${formatNumber(Math.max(...values))}`;
+  const range2 = values.length === 0 ? "no points" : `from ${formatNumber(values[0])} to ${formatNumber(values[values.length - 1])}, least ${formatNumber(Math.min(...values))}, greatest ${formatNumber(Math.max(...values))}`;
   return figureHtml({
     kind: "sparkline",
     title: data.title,
-    description: `${data.unit} over ${data.points.length} periods, ${range}. The table below lists every value.`,
+    description: `${data.unit} over ${data.points.length} periods, ${range2}. The table below lists every value.`,
     width: WIDTH3,
     height: HEIGHT,
     drawing: `${line}${end}`,
@@ -10319,7 +10319,7 @@ ${body}
 }
 function limitsSection(report, notes2) {
   const slot = report.slots.find((s) => s.id === "limits");
-  const fixed = report.limits.map((text3) => `<li>${inlineHtml(text3)}</li>`).join("\n");
+  const fixed = report.limits.map((text5) => `<li>${inlineHtml(text5)}</li>`).join("\n");
   const judged = slot === void 0 ? "" : renderBlock({ type: "judgement", slot: slot.id }, "html", { slots: report.slots, notes: notes2 });
   return `<section id="limits" aria-labelledby="limits-heading">
 <h2 id="limits-heading">Limits</h2>
@@ -10389,7 +10389,7 @@ function header(report, compact) {
 }
 function markdownPage(report, notes2, options = {}) {
   const context = { slots: report.slots, notes: notes2 };
-  const limits = report.limits.map((text3) => `- ${escapeMd(text3)}`);
+  const limits = report.limits.map((text5) => `- ${escapeMd(text5)}`);
   const slot = report.slots.find((s) => s.id === "limits");
   const judged = slot === void 0 ? [] : [renderBlock({ type: "judgement", slot: slot.id }, "md", context)];
   return [
@@ -10463,11 +10463,11 @@ function reportCommand(kinds) {
         stamp: makeStamp(name18, context.repo.head, context.config.hash, build.inputs)
       };
       try {
-        const text3 = request.slots ? serialise(slotsDocument(report)) : produce(report, request, context.cwd);
-        if (request.out === void 0) return { results: [], text: text3 };
+        const text5 = request.slots ? serialise(slotsDocument(report)) : produce(report, request, context.cwd);
+        if (request.out === void 0) return { results: [], text: text5 };
         const file = resolve2(context.cwd, request.out);
         mkdirSync4(dirname3(file), { recursive: true });
-        writeFileSync5(file, text3);
+        writeFileSync5(file, text5);
         return { results: [], text: `wrote ${request.out}
 ` };
       } catch (error) {
@@ -10479,14 +10479,14 @@ function reportCommand(kinds) {
 }
 function readRequest(context) {
   const { slots: slots2, notes: notes2, format: format2, out, compact } = context.values;
-  const text3 = (value, option) => {
+  const text5 = (value, option) => {
     if (value === void 0) return void 0;
     if (typeof value !== "string" || value === "") throw usageError(`--${option} needs a value`);
     return value;
   };
-  const chosen = text3(format2, "format");
+  const chosen = text5(format2, "format");
   if (chosen !== void 0 && chosen !== "html" && chosen !== "md") throw usageError(`--format must be html or md, got "${chosen}"`);
-  const request = { slots: slots2 === true, notes: text3(notes2, "notes"), format: chosen, out: text3(out, "out"), compact: compact === true };
+  const request = { slots: slots2 === true, notes: text5(notes2, "notes"), format: chosen, out: text5(out, "out"), compact: compact === true };
   if (request.slots) {
     if (request.notes !== void 0 || request.format !== void 0 || request.compact) throw usageError("--slots prints the slots and takes no --notes, --format or --compact");
   } else if (request.notes === void 0 && request.format !== "md") {
@@ -10511,359 +10511,6 @@ function produce(report, request, cwd) {
 function repoName(root) {
   return root.split(/[\\/]/).filter(Boolean).pop() ?? root;
 }
-
-// packages/cochange/src/sibling-reports.ts
-import { existsSync as existsSync16, readFileSync as readFileSync13 } from "node:fs";
-var ENVELOPE2 = /* @__PURE__ */ new Set(["schemaVersion", "tool", "command", "repo", "config", "inputs", "results", "truncated", "meta"]);
-function readSiblingResult(root, tool, command17, head) {
-  const file = reportPath(root, tool, command17);
-  if (!existsSync16(file)) return void 0;
-  let document;
-  try {
-    document = JSON.parse(readFileSync13(file, "utf8"));
-  } catch {
-    return void 0;
-  }
-  const repo = document.repo;
-  if (document.tool !== tool || document.command !== command17) return void 0;
-  if (repo?.head !== head || repo?.dirty !== false) return void 0;
-  if (!Array.isArray(document.results) || typeof document.config !== "string") return void 0;
-  return {
-    report: `${tool}.${command17}`,
-    head,
-    config: document.config,
-    rows: document.results,
-    extra: Object.fromEntries(Object.entries(document).filter(([key]) => !ENVELOPE2.has(key)))
-  };
-}
-
-// packages/cochange/src/reports/overview.ts
-var TOP = 5;
-var FIRST_LOOK_MAX = 3;
-var isoDate2 = (seconds) => new Date(typeof seconds === "number" ? seconds * 1e3 : seconds).toISOString().slice(0, 10);
-var percent2 = (share3) => `${Math.round(share3 * 1e3) / 10}%`;
-var number = (value) => typeof value === "number" && Number.isFinite(value) ? value : null;
-var text2 = (value) => typeof value === "string" ? value : null;
-var COMMIT_FILTERS = [
-  ["outsideWindow", "commits outside the analysis window"],
-  ["shallowBoundaryCommits", "shallow boundary commits"],
-  ["importedCommits", "commits of imported history"],
-  ["blameIgnoredCommits", "commits in the blame ignore file"],
-  ["botCommits", "commits by bots and service accounts"],
-  ["suiteCommits", "commits trailed by this suite"],
-  ["emptyAfterFiltering", "commits with no file left after filtering"]
-];
-var CHANGE_FILTERS = [
-  ["pureRenames", "file changes that only rename"],
-  ["excludedByGlob", "file changes matching exclude globs"],
-  ["lockfiles", "lockfile changes"],
-  ["generated", "generated file changes"],
-  ["vendored", "vendored file changes"]
-];
-var FILE_KINDS = { generated: "generated files", vendored: "vendored files", nonCode: "non-code files", tests: "test files" };
-function excludedCounts(filters, files, builtin) {
-  return [
-    ...[...COMMIT_FILTERS, ...CHANGE_FILTERS].map(([key, what]) => ({ what, count: filters.dropped[key] })),
-    { what: `changes over the changeset limit of ${filters.maxChangesetSize} files`, count: filters.oversizedChanges },
-    ...Object.entries(files).map(([kind, count3]) => ({ what: `${FILE_KINDS[kind] ?? kind} left out of the rankings`, count: count3 })),
-    ...Object.entries(builtin).map(([entry, count3]) => ({ what: `files under the built-in exclude ${entry}`, count: count3 }))
-  ];
-}
-var grade = (evidence) => evidence.grade;
-function evidenceBlocks(evidence) {
-  const g = evidence.guidelines.strong;
-  const share3 = (value, guideline) => guideline === 0 ? 0 : value / guideline * 100;
-  const merge2 = evidence.commitSize;
-  return [
-    {
-      type: "facts",
-      caption: "Evidence behind the history-based results",
-      facts: [
-        { label: "Evidence grade", value: evidence.grade },
-        { label: "Months of usable history", value: String(evidence.usableHistoryMonths) },
-        { label: "Active contributors in the window", value: String(evidence.activeContributors) },
-        { label: "Logical changes in the window", value: String(evidence.logicalChangesInWindow) },
-        { label: "Shallow clone", value: evidence.truncated.shallow ? `yes, ${evidence.truncated.boundaryCommits} boundary commits` : "no" },
-        { label: "Imported history", value: evidence.importedHistory.length === 0 ? "none detected" : `${evidence.importedHistory.length} detected` },
-        {
-          label: "Merge policy",
-          value: merge2.shifted ? `the median files per change moved from ${merge2.earlierMedian} to ${merge2.laterMedian}, which usually means a change of merge policy` : `no shift in the median files per change (${merge2.earlierMedian} earlier, ${merge2.laterMedian} later)`
-        }
-      ]
-    },
-    {
-      type: "guideline-bars",
-      title: "History against the guidelines for strong evidence",
-      unit: "percent of the guideline for strong evidence",
-      source: `Guidelines for strong evidence: ${g.months} months, ${g.logicalChanges} logical changes, ${g.contributors} contributors.`,
-      bars: [
-        { label: `Months of history (${evidence.usableHistoryMonths} of ${g.months})`, value: share3(evidence.usableHistoryMonths, g.months), guideline: 100 },
-        { label: `Logical changes (${evidence.logicalChangesInWindow} of ${g.logicalChanges})`, value: share3(evidence.logicalChangesInWindow, g.logicalChanges), guideline: 100 },
-        { label: `Contributors (${evidence.activeContributors} of ${g.contributors})`, value: share3(evidence.activeContributors, g.contributors), guideline: 100 }
-      ]
-    },
-    { type: "trend-marker", label: "Median files per logical change", earlier: merge2.earlierMedian, later: merge2.laterMedian, windows: ["the earlier half", "the later half"] }
-  ];
-}
-function fixBlocks(convention) {
-  return [
-    {
-      type: "facts",
-      caption: "Fix convention check",
-      facts: [
-        { label: "Landed changes in the window", value: String(convention.landedChanges) },
-        { label: "Changes whose title or message is a fix", value: `${convention.fixes} (${percent2(convention.share)})` },
-        { label: "Conventional Commits fix prefixes", value: String(convention.forms.conventionalCommits) },
-        { label: "Fix verbs", value: String(convention.forms.fixVerb) },
-        { label: "Issue references", value: String(convention.forms.issueReference) },
-        { label: "Convention followed", value: convention.followsConvention ? "yes" : "no" }
-      ]
-    },
-    ...convention.note === null ? [] : [{ type: "notice", level: "notice", text: convention.note }]
-  ];
-}
-function excludedBlocks(excluded) {
-  return [
-    {
-      type: "ranked-table",
-      caption: "What the run left out, with counts",
-      numbered: false,
-      columns: [
-        { key: "what", label: "Left out" },
-        { key: "count", label: "Count", align: "right" }
-      ],
-      rows: excluded.map((e) => ({ what: e.what, count: e.count }))
-    }
-  ];
-}
-function missingResult(title, command17) {
-  return {
-    candidates: [],
-    blocks: [{ type: "notice", level: "notice", text: `No stored ${title} for this commit. Run \`${command17}\` to store it, then run the overview again.` }],
-    read: null,
-    missing: command17
-  };
-}
-function resultFrom(stored, title, command17, build) {
-  if (stored === void 0) return missingResult(title, command17);
-  const { block, candidates } = build(stored);
-  return { candidates, blocks: [block], read: { report: stored.report, head: stored.head, config: stored.config }, missing: null };
-}
-var top = (rows5) => rows5.slice(0, TOP);
-function complexityResult(stored) {
-  return resultFrom(stored, "complexity analyse result", "complexity analyse", (s) => {
-    const rows5 = top(s.rows);
-    return {
-      candidates: rows5.flatMap((row2) => text2(row2.id) === null ? [] : [{ ref: `complexity:${text2(row2.id)}`, label: `${text2(row2.id)} (complexity)` }]),
-      block: {
-        type: "ranked-table",
-        caption: "Most complex units, from complexity analyse",
-        noun: "units",
-        total: s.rows.length,
-        columns: [
-          { key: "id", label: "Unit" },
-          { key: "cognitive", label: "Cognitive", align: "right" },
-          { key: "cyclomatic", label: "Cyclomatic", align: "right" },
-          { key: "nesting", label: "Nesting", align: "right" },
-          { key: "length", label: "Length", align: "right" },
-          { key: "labels", label: "Labels" }
-        ],
-        rows: rows5.map((row2) => ({
-          id: text2(row2.id) ?? text2(row2.path),
-          cognitive: number(row2.cognitive),
-          cyclomatic: number(row2.cyclomatic),
-          nesting: number(row2.nesting),
-          length: number(row2.length),
-          labels: Array.isArray(row2.labels) && row2.labels.length > 0 ? row2.labels.join(", ") : null
-        }))
-      }
-    };
-  });
-}
-function cyclesResult(stored) {
-  return resultFrom(stored, "structure cycles result", "structure cycles", (s) => {
-    const rows5 = top(s.rows);
-    return {
-      candidates: rows5.flatMap((row2) => text2(row2.id) === null ? [] : [{ ref: `structure:${text2(row2.id)}`, label: `${text2(row2.id)} (import cycle)` }]),
-      block: {
-        type: "ranked-table",
-        caption: "Largest import cycles, from structure cycles",
-        noun: "cycles",
-        total: s.rows.length,
-        columns: [
-          { key: "id", label: "Cycle" },
-          { key: "size", label: "Modules", align: "right" },
-          { key: "method", label: "Method" },
-          { key: "coChangeAcross", label: "Co-changes across", align: "right" },
-          { key: "unblockedGain", label: "Unblocked gain", align: "right" }
-        ],
-        rows: rows5.map((row2) => ({
-          id: text2(row2.id),
-          size: number(row2.size),
-          method: text2(row2.method),
-          coChangeAcross: number(row2.coChangeAcross),
-          unblockedGain: number(row2.unblockedGain)
-        }))
-      }
-    };
-  });
-}
-function localityResult(stored) {
-  return resultFrom(stored, "locality analyse result", "locality analyse", (s) => {
-    const rows5 = top(s.rows);
-    const ranking = (row2) => typeof row2.ranking === "object" && row2.ranking !== null ? row2.ranking : {};
-    const guideline = rows5.map((row2) => number(ranking(row2).guideline)).find((g) => g !== null) ?? void 0;
-    return {
-      candidates: rows5.flatMap((row2) => text2(row2.path) === null ? [] : [{ ref: `locality:${text2(row2.path)}`, label: `${text2(row2.path)} (locality)` }]),
-      block: {
-        type: "ranked-table",
-        caption: "Units furthest from where they are used, from locality analyse",
-        noun: "units",
-        total: s.rows.length,
-        columns: [
-          { key: "path", label: "Unit" },
-          { key: "recommendation", label: "Recommendation" },
-          { key: "gain", label: `Gain (${text2(rows5[0]?.scoreUnit) ?? "score"})`, align: "right", ...guideline === void 0 ? {} : { guideline: { value: guideline, note: "locality.minDistance gain guideline" } } },
-          { key: "distance", label: "Distance", align: "right" },
-          { key: "target", label: "Target" }
-        ],
-        rows: rows5.map((row2) => ({
-          path: text2(row2.path),
-          recommendation: text2(row2.recommendation),
-          gain: number(ranking(row2).value) ?? number(row2.score),
-          distance: number(row2.distance),
-          target: text2(row2.target)
-        }))
-      }
-    };
-  });
-}
-function hotspotResult(rows5) {
-  const shown = top(rows5);
-  return {
-    candidates: shown.map((row2) => ({ ref: `hotspot:${row2.path}`, label: `${row2.path} (hotspot ranking)` })),
-    read: null,
-    missing: null,
-    blocks: [
-      {
-        type: "ranked-table",
-        caption: "Highest hotspot scores, from cochange hotspots",
-        noun: "files",
-        total: rows5.length,
-        columns: [
-          { key: "path", label: "File" },
-          { key: "score", label: "Score", align: "right" },
-          { key: "frequency", label: "Revisions", align: "right" },
-          { key: "complexity", label: "Complexity", align: "right" },
-          { key: "fixes", label: "Fixes", align: "right" },
-          { key: "recommendation", label: "Flag" }
-        ],
-        rows: shown.map((row2) => ({ path: row2.path, score: row2.score, frequency: row2.frequency, complexity: row2.complexity, fixes: row2.fixes, recommendation: row2.recommendation }))
-      },
-      scoreHistogram(rows5)
-    ]
-  };
-}
-function scoreHistogram(rows5) {
-  const bins = Array.from({ length: 10 }, (_, i) => ({ label: `${(i / 10).toFixed(1)} to ${((i + 1) / 10).toFixed(1)}`, count: 0 }));
-  for (const row2 of rows5) if (row2.score !== null) bins[Math.min(9, Math.floor(row2.score * 10))].count++;
-  return { type: "histogram", title: "Distribution of hotspot scores", unit: "files", bins };
-}
-function slots(candidates) {
-  return [
-    {
-      id: "first-look",
-      title: "Judgement: where to start",
-      about: { kind: "report", ref: "overview", label: "the repository" },
-      task: `Choose up to ${FIRST_LOOK_MAX} subjects from the candidates that the tables in this report say are worth a look first, most worthwhile first. For each, give a verdict and one or two sentences of why that cite only values shown in this report. Do not add numbers the report does not show. When the evidence grade is weak, say the history-based results are tentative.`,
-      verdicts: ["investigate-first", "worth-a-look", "evidence-too-weak"],
-      maxChars: 320,
-      choose: { max: FIRST_LOOK_MAX, candidates }
-    },
-    {
-      id: "limits",
-      title: "Judgement: what limits these results",
-      about: { kind: "report", ref: "overview", label: "the repository" },
-      task: "In at most three sentences, say what limits how far these results can be trusted for this repository, using only the evidence, the exclusions and the missing results shown above.",
-      verdicts: [],
-      maxChars: 500
-    }
-  ];
-}
-function limitsOf(evidence, missing, complexitySource) {
-  return [
-    "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-    `Each table shows the top ${TOP} of its result and says how many rows it leaves out; the command prints the rest.`,
-    ...evidence.grade === "weak" ? ["The evidence grade is weak, so history-based results are tentative and static signals should lead."] : [],
-    ...evidence.truncated.shallow ? [`The clone is shallow, so history before ${evidence.truncated.availableSince === null ? "its boundary" : isoDate2(evidence.truncated.availableSince)} is missing.`] : [],
-    ...evidence.commitSize.shifted ? ["A change of merge policy shifts what a commit means, so compare windows within one policy."] : [],
-    ...complexitySource === "indentation" ? ["Hotspot complexity is the indentation proxy, because no complexity report covers this commit."] : [],
-    ...missing.length === 0 ? [] : [`Not stored for this commit: ${missing.join(", ")}. The overview reads other plugins' stored results and never computes them.`]
-  ];
-}
-var overview = {
-  summary: "Evidence, fix convention, exclusions and the top results of each plugin, with a judgement of what to look at first",
-  options: { ...windowOptions, "no-refresh": { type: "boolean" }, ...noCacheOption },
-  optionHelp: {
-    since: "analyse history from this date (ISO 8601); needed on a shallow clone",
-    until: "analyse history up to this date (ISO 8601, exclusive)",
-    "no-refresh": "read the history cache without bringing it up to date",
-    "no-cache": "compute the hotspot ranking again instead of reading the stored one"
-  },
-  async build(context) {
-    const output = await command5.run(context);
-    const extra = output.extra;
-    const { evidence } = extra;
-    const rows5 = output.results;
-    const root = context.repo.root;
-    const head = context.repo.head;
-    const results = [
-      hotspotResult(rows5),
-      complexityResult(readSiblingResult(root, "complexity", "analyse", head)),
-      cyclesResult(readSiblingResult(root, "structure", "cycles", head)),
-      localityResult(readSiblingResult(root, "locality", "analyse", head))
-    ];
-    const candidates = results.flatMap((r) => r.candidates);
-    const missing = results.flatMap((r) => r.missing === null ? [] : [r.missing]);
-    const excluded = excludedCounts(extra.filtersApplied, droppedCounts(), builtinOmissions());
-    const inputs = output.inputs ?? {};
-    return {
-      title: "Code health overview",
-      inputs: {
-        since: context.values.since ?? null,
-        until: context.values.until ?? null,
-        complexityReport: inputs.complexityReport ?? null,
-        storedResultsRead: results.flatMap((r) => r.read === null ? [] : [r.read])
-      },
-      header: {
-        evidenceGrade: grade(evidence),
-        historyWindow: `${evidence.usableHistoryMonths} months of usable history; the analysis window is ${evidence.window.months} months, ${isoDate2(extra.window.since)} to ${isoDate2(extra.window.until)}`,
-        excluded: excluded.filter((e) => e.count > 0)
-      },
-      sections: [
-        { id: "first-look", heading: "What to look at first", blocks: [{ type: "judgement", slot: "first-look" }] },
-        { id: "evidence", heading: "Evidence", blocks: evidenceBlocks(evidence) },
-        { id: "fix-convention", heading: "Fix convention", blocks: fixBlocks(extra.fixConvention) },
-        { id: "excluded", heading: "What was excluded", blocks: excludedBlocks(excluded) },
-        { id: "results", heading: "Top results of each plugin", blocks: results.flatMap((r) => r.blocks) }
-      ],
-      limits: limitsOf(evidence, missing, extra.complexitySource),
-      slots: slots(candidates)
-    };
-  }
-};
-
-// packages/cochange/src/commands/report.ts
-var name13 = "report";
-var command12 = reportCommand({ overview });
-
-// packages/cochange/src/commands/risk.ts
-var risk_exports = {};
-__export(risk_exports, {
-  command: () => command13,
-  name: () => name14,
-  rules: () => rules8
-});
 
 // packages/cochange/src/risk/change.ts
 var git2 = async (root, args) => (await runGit(root, args)).trim();
@@ -10937,9 +10584,9 @@ async function rawDiff(root, base, head, similarity) {
   }
   const numbers = (await runGit(root, [...common, "--numstat", ...target])).split("\0");
   for (let i = 0; i < numbers.length; ) {
-    const record = numbers[i++];
-    if (record === void 0 || record === "") continue;
-    const [added, deleted, inline] = record.split("	");
+    const record2 = numbers[i++];
+    if (record2 === void 0 || record2 === "") continue;
+    const [added, deleted, inline] = record2.split("	");
     const path = inline === "" ? (i++, numbers[i++]) : inline;
     const file = found.get(path);
     if (!file) continue;
@@ -10949,17 +10596,17 @@ async function rawDiff(root, base, head, similarity) {
   }
   return [...found.values()].sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 }
-async function extractChange(root, view, range, worktree, options) {
-  const raw = await rawDiff(root, range.base, worktree ? null : range.head, options.similarity);
+async function extractChange(root, view, range2, worktree, options) {
+  const raw = await rawDiff(root, range2.base, worktree ? null : range2.head, options.similarity);
   const excluded = compileGlobs(options.exclude);
   const lockfiles = new Set(DEFAULT_LOCKFILES);
-  const blobs = await listBlobs(root, range.head);
+  const blobs = await listBlobs(root, range2.head);
   const tree = blobs.map((entry) => entry.path);
   const blobOf = new Map(blobs.map((entry) => [entry.path, entry.blob]));
-  const builtinExcluded = builtinExcluder(root, await listGitlinks(root, range.head));
+  const builtinExcluded = builtinExcluder(root, await listGitlinks(root, range2.head));
   const classes = await classifyFiles(
     root,
-    range.head,
+    range2.head,
     raw.map((file) => ({ path: file.path, blob: blobOf.get(file.path) ?? null })),
     tree
   );
@@ -10992,293 +10639,23 @@ async function extractChange(root, view, range, worktree, options) {
       fileId: view.renames.resolve(file.oldPath ?? file.path, -1)
     });
   }
-  const log = await runGit(root, ["log", "--reverse", "--format=%H%x1f%B%x1e", `${range.base}..${range.head}`]);
+  const log = await runGit(root, ["log", "--reverse", "--format=%H%x1f%B%x1e", `${range2.base}..${range2.head}`]);
   const commits = log.split("").map((entry) => entry.replace(/^\n/, "")).filter((entry) => entry.trim() !== "").map((entry) => {
     const [sha, ...message] = entry.split("");
     return { sha: sha.trim(), message: message.join("") };
   });
   const owners = await resolveOwners(root, commits.map((c) => c.sha), options.owner);
   const agentCommits = commits.filter((c) => findAgentTrailers(c.message, options.agentPatterns).length > 0).length;
-  return { ...range, worktree, commits, files, moved, filtered, agentCommits, owners };
-}
-
-// packages/cochange/src/risk/factor-docs.ts
-var FACTOR_DOCS = [
-  {
-    name: "size",
-    family: "size-and-diffusion",
-    layer: "history",
-    banding: "percentile",
-    signal: "Lines added plus deleted, and files touched",
-    definition: "The sum of added and deleted lines over the files left after the noise filters (binary files add nothing). Banded on the lines. The file count is shown beside it.",
-    why: "Larger changes hide more, and review attention per line falls as size grows."
-  },
-  {
-    name: "spread",
-    family: "size-and-diffusion",
-    layer: "history",
-    banding: "percentile",
-    signal: "Change spread of the touched files, with folders and components touched",
-    definition: "The mean tree distance over every pair of touched files, the suite's one tree distance function. Zero for a change of one file. The distinct folders, and the components when configured, are shown beside it.",
-    why: "A scattered change needs knowledge of several areas at once."
-  },
-  {
-    name: "entropy",
-    family: "size-and-diffusion",
-    layer: "history",
-    banding: "percentile",
-    signal: "How evenly the churn is distributed over the touched files",
-    definition: "Shannon entropy in bits, H = -sum(p log2 p), where p is each file's share of the change's churn (Hassan's change entropy as Kamei et al. use it). Zero for a change concentrated in one file.",
-    why: "A change concentrated in one file is easier to follow than the same churn smeared over twenty."
-  },
-  {
-    name: "mixed-purpose",
-    family: "size-and-diffusion",
-    layer: "history",
-    banding: "count",
-    signal: "Renames or moves combined with content changes",
-    definition: "The number of moved files, when the change also edits content (another file, or the moved file itself). Zero otherwise. Pure moves are filtered out of past history, so the baseline cannot see them, which is why the factor is banded on a count and not against the baseline. The backtest sees only moves that also edit the file.",
-    why: "The change is probably several changes, and a reviewer cannot evaluate a move and a behaviour change together."
-  },
-  {
-    name: "hotspots-touched",
-    family: "history",
-    layer: "history",
-    banding: "percentile",
-    signal: "Share of the change's churn landing in hot files",
-    definition: "A file is hot when it was changed within the recent window and its revisions in the analysis window put it in the top (100 - cochange.hotspotPercentile) percent of changed files, as of the base. Complexity is left out of the ranking, because it cannot be measured for every past commit. The factor is the share of the change's churn that lands in hot files.",
-    why: "Hotspots are where complexity and change meet, and where defects concentrate."
-  },
-  {
-    name: "defect-history",
-    family: "history",
-    layer: "history",
-    banding: "percentile",
-    signal: "Share of each touched file's revisions that were fixes",
-    definition: `Over the touched files' revisions in the analysis window, counted as changes that landed on the main line (a merge with the commits it brought in is one revision), the share made by a landed change whose own title matches history.fixPatterns (cochange.fixPatterns when set): the pull request title of a merge, the subject of a squash or direct commit. A fix made on a branch before it merged was caught in review and does not make the change a fix. A revert is not a fix. Each file lists the commits that matched and the pattern that matched, and the patterns also match subjects that are not defects, such as "fix the bug report template", while a fix of typos, spelling, lint or formatting, and a commit with a non-fix Conventional Commits type are left out by history.fixExcludePatterns. Unavailable when no change in the window matches, since the repository then has no convention to read.`,
-    why: "Code that has needed fixing tends to need it again."
-  },
-  {
-    name: "contention",
-    family: "history",
-    layer: "history",
-    banding: "percentile",
-    signal: "Distinct authors who changed the touched files in the recent window",
-    definition: "The number of distinct authors, other than the change's own, who changed any touched file within cochange.recentMonths of the change. A count only: no name appears in the evidence.",
-    why: "Concurrent work raises the chance of semantic conflicts that a clean merge does not show."
-  },
-  {
-    name: "age",
-    family: "history",
-    layer: "history",
-    banding: "percentile",
-    signal: "Touched files not changed within the stale window, and files changed within the last few days",
-    definition: "Two shares of the touched files that already existed: those last changed more than cochange.staleMonths before the change, and those last changed within cochange.risk.settlingDays. Each side is banded on its own and the factor takes the higher.",
-    why: "Old code has lost its context. Very recent code is still settling."
-  },
-  {
-    name: "abandoned-touched",
-    family: "history",
-    layer: "history",
-    banding: "count",
-    signal: "Touched files already abandoned, or with high abandonment probability",
-    definition: "Needs the knowledge analysis (cochange.knowledge.enabled), and is unavailable without it. Counts the touched files that existed at the base and are abandoned there (at least cochange.knowledge.abandonmentGuideline percent of the lines held by people belong to people who have left, judged at the tip's date), or whose simulated probability of becoming abandoned within the horizon reaches cochange.knowledge.atRiskProbability percent. Banded on the count. Computed from the blame cache and never stored, and the evidence names files, not people.",
-    why: "Nobody is left who can review these with first-hand knowledge."
-  },
-  {
-    name: "missing-co-change",
-    family: "completeness",
-    layer: "history",
-    banding: "count",
-    signal: "Files that usually change with a touched file and are missing from the change",
-    definition: "Files whose confidence towards a touched file is at least cochange.risk.missingConfidence percent, with support of at least cochange.minSupport, over the eligible changes of the analysis window, that exist and are not touched by the change. Confidence is shared changes divided by the touched file's changes. Banded on the count.",
-    why: "The strongest single completeness signal: these files have needed changing every other time."
-  },
-  {
-    name: "novel-coupling",
-    family: "completeness",
-    layer: "history",
-    banding: "count",
-    signal: "Pairs of touched files at high tree distance that have never changed together",
-    definition: "Pairs of touched, existing files with history, at tree distance of at least cochange.risk.novelDistance, that were never in one eligible change before. Banded on the count of pairs.",
-    why: "The change may be introducing a dependency between areas that were independent."
-  },
-  {
-    name: "test-evidence",
-    family: "completeness",
-    layer: "history",
-    banding: "count",
-    signal: "Source files changed without the tests that usually change with them, and test deletions",
-    definition: "Touched source files whose sibling test exists, is untouched by the change, and changed with the file in at least cochange.risk.testShare percent of its revisions (with support of at least cochange.minSupport), plus deleted test files. Banded on the count.",
-    why: "Behaviour may have changed without tests following."
-  },
-  {
-    name: "blast-radius",
-    family: "structure-and-content",
-    layer: "history",
-    banding: "percentile",
-    signal: "Files with high co-change confidence towards the touched files",
-    definition: "Without a locality report, the number of files with confidence and support at or above the missing-co-change guidelines towards any touched file. With locality's report for this commit, the fan-in of the touched files. When a parse adapter reads any touched file, also the exported symbols of the touched files whose signature changed (kind or interface size) or that were removed, each with the number of files that used it at the base, placed against every exported symbol's fan-in. The band is the highest of these.",
-    why: "A flaw in widely used code is inherited by every consumer."
-  },
-  {
-    name: "complexity-delta",
-    family: "structure-and-content",
-    layer: "lexical",
-    banding: "count",
-    signal: "Units that are new and over a guideline, or over a guideline and worse",
-    definition: "With the complexity plugin's diff passed in: the units it reports as new and over its guideline, or over it and worse. Without it: the touched code files (those a lexer profile reads, so not prose or licence text) whose indentation complexity rose by at least cochange.risk.complexityRise. Banded on the count, and not counted in the score.",
-    why: "The change is adding code that is hard to understand."
-  },
-  {
-    name: "structure-delta",
-    family: "structure-and-content",
-    layer: "structural",
-    banding: "count",
-    signal: "New cycles and layer violations",
-    definition: "From the structure plugin's check, passed in with --evidence. Unavailable without it. Any new cycle or violation is an event that raises the impact band, and it is not also counted in the score.",
-    why: "The change makes later changes more expensive."
-  },
-  {
-    name: "sensitive-paths",
-    family: "structure-and-content",
-    layer: "history",
-    banding: "count",
-    signal: "Touched files matching the configured sensitive globs",
-    definition: "Touched files (or their old paths) matching cochange.risk.sensitivePaths: migrations, authentication, build and CI configuration, dependency manifests. Any match is an event that raises the impact band, and it is not also counted in the score.",
-    why: "Some paths carry consequences that no history signal captures."
-  },
-  {
-    name: "authorship",
-    family: "placement",
-    layer: "placement",
-    banding: "none",
-    signal: "Share of each touched file's lines last authored by the change's authors",
-    definition: "From the blame cache at the base: lines last written by the authors, over the lines held by people, per touched file. Lines held by bots, services and agents belong to nobody.",
-    why: "The author is modifying code they wrote."
-  },
-  {
-    name: "change-familiarity",
-    family: "placement",
-    layer: "placement",
-    banding: "none",
-    signal: "The authors' earlier changes to each touched file, weighted by recency",
-    definition: "Each earlier merged change of a touched file by one of the authors counts 1, halved for every cochange.risk.recencyHalfLifeMonths it is old.",
-    why: "Familiarity fades, so a change from three years ago counts for less than one from last month."
-  },
-  {
-    name: "neighbourhood",
-    family: "placement",
-    layer: "placement",
-    banding: "none",
-    signal: "The authors' earlier changes to files coupled with the touched files, to the same folder, and to the same configured component",
-    definition: "The authors' earlier changes to the files that changed with the touched file at the missing-co-change guidelines, to files in its folder, and to files in its component when cochange components are configured.",
-    why: "Someone who knows the surroundings is better placed than a file-level count shows."
-  },
-  {
-    name: "first-touch-share",
-    family: "placement",
-    layer: "placement",
-    banding: "none",
-    signal: "Share of the change's churn in first-touch files",
-    definition: "The churn in files whose label is first-touch, over the change's churn.",
-    why: "The part of the change made without any history in that code."
-  },
-  {
-    name: "owner-distance",
-    family: "placement",
-    layer: "placement",
-    banding: "none",
-    signal: "Touched files with a clear owner who is not among the change's authors",
-    definition: "Touched files where one active developer holds at least cochange.risk.ownerShare percent of the lines and is not an author of the change.",
-    why: "Low-ownership changes to owned code are where the ownership research finds more failures, and the owner is the obvious reviewer."
-  },
-  {
-    name: "no-owner",
-    family: "placement",
-    layer: "placement",
-    banding: "none",
-    signal: "Touched files with no active developer holding a meaningful share",
-    definition: "Touched files where no active developer holds at least cochange.risk.regularShare percent of the lines.",
-    why: "Neither the author nor any reviewer has first-hand knowledge."
-  }
-];
-var factorDoc = (name18) => FACTOR_DOCS.find((doc) => doc.name === name18);
-var LEVEL_RULES = [
-  {
-    id: "baseline",
-    text: "The baseline population is the repository's past changes as they were merged: the commits a merge commit brought in, taken together, or a squash commit, or a single commit on the main line. The most recent cochange.risk.baselineChanges of them inside the analysis window form it, each measured as of its own time."
-  },
-  {
-    id: "bands",
-    text: "A factor's value is placed against the baseline: above the cochange.risk.moderatePercentile (default 75th) is moderate, above the highPercentile (default 90th) is high. The comparison is strict, percentiles are nearest rank, and a value of zero is always low. Count-based factors band on the count: cochange.risk.countModerate and countHigh. A two-sided factor takes the higher of its sides."
-  },
-  {
-    id: "unavailable",
-    text: "A factor that cannot be computed, or whose value cannot be placed because fewer than cochange.risk.minBaseline merged changes could be compared, is unavailable. It is never reported as low and it adds nothing to the score."
-  },
-  {
-    id: "families",
-    text: "Factors that measure nearly the same thing form a family: size and diffusion, history of the touched code, completeness, and structure and content. A family counts once, at the band of its highest scored factor (low 0, moderate 1, high 2). The score is the sum."
-  },
-  {
-    id: "impact",
-    text: "The impact band is the score placed against the baseline's own scores, by the same strict percentiles. By construction no more than a quarter of changes are moderate or above and no more than a tenth are high, however many factors there are."
-  },
-  {
-    id: "events",
-    text: "Three findings are events, not positions in a distribution: a high missing-co-change, any structure-delta, and any sensitive-paths match. Together they raise the impact band by one step, once. sensitive-paths, structure-delta and complexity-delta are not also counted in the score."
-  },
-  {
-    id: "placement",
-    text: "Placement is close when most of the change's churn is in owner or regular files, distant when most is in first-touch files or no-owner is high, mixed otherwise, and unknown when most files are unknown. It is computed for the invoking user's own change, or for anyone's when cochange.risk.placement is any."
-  },
-  {
-    id: "level",
-    text: "Impact low: routine when placement is close or mixed or unknown, attention when distant. Impact moderate: routine when close, attention when mixed or unknown, elevated when distant. Impact high: attention when close, elevated otherwise."
-  },
-  {
-    id: "backtest",
-    text: "A level is shown only where a stored backtest for the repository shows that the levels separate past changes. The suite's maintainers run the backtest; where none is stored, the bands, findings and responses stand alone. The level is advice for review, never a gate."
-  }
-];
-
-// packages/cochange/src/risk/explain.ts
-function explainRules(risk) {
-  return {
-    kind: "explain",
-    topic: "level",
-    rules: LEVEL_RULES.map((rule) => ({ ...rule })),
-    settings: {
-      moderatePercentile: risk.moderatePercentile,
-      highPercentile: risk.highPercentile,
-      baselineChanges: risk.baselineChanges,
-      minBaseline: risk.minBaseline,
-      countModerate: risk.countModerate,
-      countHigh: risk.countHigh,
-      disabled: [...risk.disabled].sort()
-    },
-    factors: FACTOR_DOCS.map(({ name: name18, family, layer, banding, signal }) => ({ name: name18, family, layer, banding, signal }))
-  };
-}
-async function explainFactor(name18, assess) {
-  const doc = factorDoc(name18);
-  if (!doc) throw usageError(`unknown factor "${name18}"; factors: ${FACTOR_DOCS.map((d) => d.name).join(", ")}`);
-  let driven = null;
-  if (doc.family !== "placement") {
-    const assessed = await assess();
-    driven = assessed.factors.find((factor) => factor.name === name18) ?? null;
-  }
-  return { kind: "explain", topic: name18, doc: { ...doc }, branch: driven };
+  return { ...range2, worktree, commits, files, moved, filtered, agentCommits, owners };
 }
 
 // packages/cochange/src/risk/abandonment-report.ts
-import { existsSync as existsSync17, readFileSync as readFileSync14 } from "node:fs";
+import { existsSync as existsSync16, readFileSync as readFileSync13 } from "node:fs";
 function readAbandonmentReport(root, head, config, overridesStamp) {
   const file = reportPath2(root, REPORT);
-  if (!existsSync17(file)) return null;
+  if (!existsSync16(file)) return null;
   try {
-    const document = JSON.parse(readFileSync14(file, "utf8"));
+    const document = JSON.parse(readFileSync13(file, "utf8"));
     if (document.tool !== "cochange" || document.command !== REPORT) return null;
     if (document.repo?.head !== head || document.repo?.dirty !== false || document.config !== config) return null;
     if (document.inputs?.mode !== "rate" || (document.inputs.overrides?.hash ?? null) !== overridesStamp) return null;
@@ -11307,17 +10684,17 @@ var unavailable = (reason) => ({
   value: {},
   evidence: []
 });
-async function abandonedTouched(context, history, change2) {
+async function abandonedTouched(context, history, change3) {
   const section2 = context.config.effective[TOOL2].knowledge;
   if (section2?.enabled !== true) return { measurement: unavailable("knowledge analysis is not enabled (cochange.knowledge.enabled)"), report: null };
   const settings = readKnowledgeSettings(context.config.effective);
   const root = context.repo.root;
-  const report = change2.worktree ? null : readAbandonmentReport(root, change2.head, context.config.hash, readOverrides(root).stamp);
-  if (report !== null) return { measurement: fromReport(report, change2, settings.atRiskProbability), report: report.input };
-  return { measurement: await fromBlame(context, history, change2, settings), report: null };
+  const report = change3.worktree ? null : readAbandonmentReport(root, change3.head, context.config.hash, readOverrides(root).stamp);
+  if (report !== null) return { measurement: fromReport(report, change3, settings.atRiskProbability), report: report.input };
+  return { measurement: await fromBlame(context, history, change3, settings), report: null };
 }
-function fromReport(report, change2, atRiskProbability) {
-  const touched = [...new Set(change2.files.filter((f) => f.status !== "A" && f.status !== "D").map((f) => f.path))].sort();
+function fromReport(report, change3, atRiskProbability) {
+  const touched = [...new Set(change3.files.filter((f) => f.status !== "A" && f.status !== "D").map((f) => f.path))].sort();
   const rows5 = touched.flatMap((file) => {
     const row2 = report.files.get(file);
     if (row2 === void 0) return [];
@@ -11326,11 +10703,11 @@ function fromReport(report, change2, atRiskProbability) {
   });
   return { ...measurement(rows5, touched.length, 0), source: "abandonment report" };
 }
-async function fromBlame(context, history, change2, settings) {
+async function fromBlame(context, history, change3, settings) {
   const root = context.repo.root;
-  const paths = [...new Set(change2.files.filter((f) => f.status !== "A").map((f) => f.oldPath ?? f.path))].sort();
+  const paths = [...new Set(change3.files.filter((f) => f.status !== "A").map((f) => f.oldPath ?? f.path))].sort();
   if (paths.length === 0) return measurement([], 0, 0);
-  const options = { ref: change2.base, ...blameOptions(history, settings), paths };
+  const options = { ref: change3.base, ...blameOptions(history, settings), paths };
   if (context.values["no-refresh"] !== true) await refreshBlame(root, options);
   const snapshot = await readBlame(root, options);
   const identity = { localMailmap: history.identities.localMailmap, matcher: history.identities.matcher };
@@ -11356,7 +10733,7 @@ async function fromBlame(context, history, change2, settings) {
     const probability = abandoned ? 1 : probabilities.get(file.path) ?? 0;
     return { path: file.path, abandoned, probability, share: round4(goneLinesOf(file, model.developers) / file.people) };
   }).filter((row2) => row2.abandoned || row2.probability > 0 && row2.probability * 100 >= settings.atRiskProbability);
-  const nowPath = new Map(change2.files.map((f) => [f.oldPath ?? f.path, f.path]));
+  const nowPath = new Map(change3.files.map((f) => [f.oldPath ?? f.path, f.path]));
   return measurement(
     rows5.map((row2) => ({ file: nowPath.get(row2.path) ?? row2.path, abandoned: row2.abandoned, probability: round4(row2.probability), abandonedShare: row2.share })),
     snapshot.files.size,
@@ -11379,37 +10756,37 @@ function measurement(evidence, files, unknown) {
 }
 
 // packages/cochange/src/risk/composition.ts
-import { existsSync as existsSync18, readFileSync as readFileSync16 } from "node:fs";
+import { existsSync as existsSync17, readFileSync as readFileSync15 } from "node:fs";
 import { join as join12 } from "node:path";
 
 // packages/cochange/src/risk/evidence-inputs.ts
 import { createHash as createHash10 } from "node:crypto";
-import { readFileSync as readFileSync15 } from "node:fs";
+import { readFileSync as readFileSync14 } from "node:fs";
 import { isAbsolute as isAbsolute4, join as join11 } from "node:path";
 var NO_EVIDENCE = { complexity: null, structure: null, stamps: [] };
-function readEvidence(root, files, change2) {
+function readEvidence(root, files, change3) {
   let complexity = null;
   let structure = null;
   const stamps = [];
   for (const file of files) {
     const path = isAbsolute4(file) ? file : join11(root, file);
-    let text3;
+    let text5;
     try {
-      text3 = readFileSync15(path, "utf8");
+      text5 = readFileSync14(path, "utf8");
     } catch {
       throw usageError(`--evidence ${file}: cannot read it (a relative path is taken from the repository root)`);
     }
     let document;
     try {
-      document = JSON.parse(text3);
+      document = JSON.parse(text5);
     } catch {
       throw usageError(`--evidence ${file}: not JSON; pass the output of \`complexity diff --json\` or \`structure check --json\``);
     }
     const tool = String(document.tool ?? "");
     const command17 = String(document.command ?? "");
-    const stamp2 = { tool, command: command17, hash: createHash10("sha256").update(text3).digest("hex").slice(0, 16) };
+    const stamp2 = { tool, command: command17, hash: createHash10("sha256").update(text5).digest("hex").slice(0, 16) };
     if (!Array.isArray(document.results)) throw usageError(`--evidence ${file}: no results list`);
-    checkAgainst(file, document, change2);
+    checkAgainst(file, document, change3);
     if (tool === "complexity" && command17 === "diff") {
       if (complexity) throw usageError("--evidence names complexity diff twice");
       const raw = document;
@@ -11442,14 +10819,14 @@ function numberAt(value, key) {
   const found = typeof value === "object" && value !== null ? value[key] : void 0;
   return typeof found === "number" ? found : null;
 }
-function checkAgainst(file, document, change2) {
+function checkAgainst(file, document, change3) {
   const base = document.inputs?.base?.sha ?? document.inputs?.baseSha;
-  if (typeof base === "string" && base !== change2.base) {
-    throw usageError(`--evidence ${file}: made against ${base.slice(0, 10)}, but this change starts at ${change2.base.slice(0, 10)}; run it for the same base`);
+  if (typeof base === "string" && base !== change3.base) {
+    throw usageError(`--evidence ${file}: made against ${base.slice(0, 10)}, but this change starts at ${change3.base.slice(0, 10)}; run it for the same base`);
   }
   const head = document.inputs?.head?.sha ?? document.inputs?.analysed;
-  if (!change2.worktree && typeof head === "string" && head !== change2.head) {
-    throw usageError(`--evidence ${file}: made up to ${head.slice(0, 10)}, but this change ends at ${change2.head.slice(0, 10)}`);
+  if (!change3.worktree && typeof head === "string" && head !== change3.head) {
+    throw usageError(`--evidence ${file}: made up to ${head.slice(0, 10)}, but this change ends at ${change3.head.slice(0, 10)}`);
   }
 }
 function aboveGuideline(evidence) {
@@ -11460,8 +10837,8 @@ function aboveGuideline(evidence) {
 }
 
 // packages/cochange/src/risk/composition.ts
-async function liveMeasurements(root, change2, risk, evidence, abandoned) {
-  return [await complexityDelta(root, change2, risk, evidence), structureDelta(evidence), abandoned];
+async function liveMeasurements(root, change3, risk, evidence, abandoned) {
+  return [await complexityDelta(root, change3, risk, evidence), structureDelta(evidence), abandoned];
 }
 function structureDelta(evidence) {
   const base = { name: "structure-delta", family: "structure-and-content", layer: "structural", kind: "count", source: "structure check" };
@@ -11477,7 +10854,7 @@ function structureDelta(evidence) {
     evidence: findings.slice(0, 5).map((finding) => ({ kind: finding.kind, id: finding.id }))
   };
 }
-async function complexityDelta(root, change2, risk, evidence) {
+async function complexityDelta(root, change3, risk, evidence) {
   const base = { name: "complexity-delta", family: "structure-and-content", kind: "count" };
   if (evidence.complexity !== null) {
     const units = aboveGuideline(evidence.complexity);
@@ -11493,10 +10870,10 @@ async function complexityDelta(root, change2, risk, evidence) {
   }
   const rows5 = [];
   let examined = 0;
-  for (const file of change2.files) {
+  for (const file of change3.files) {
     if (file.status === "D" || file.binary) continue;
-    const before = file.status === "A" ? "" : await readBlobAt(root, change2.base, file.oldPath ?? file.path);
-    const after = change2.worktree ? readWorktree(root, file.path) : await readBlobAt(root, change2.head, file.path);
+    const before = file.status === "A" ? "" : await readBlobAt(root, change3.base, file.oldPath ?? file.path);
+    const after = change3.worktree ? readWorktree(root, file.path) : await readBlobAt(root, change3.head, file.path);
     if (after === void 0 || before === void 0 || after.includes("\0") || before.includes("\0")) continue;
     const now = analyseSource(file.path, after);
     if (now.profile === null) continue;
@@ -11518,16 +10895,16 @@ async function complexityDelta(root, change2, risk, evidence) {
 }
 function readWorktree(root, path) {
   try {
-    return readFileSync16(join12(root, path), "utf8");
+    return readFileSync15(join12(root, path), "utf8");
   } catch {
     return void 0;
   }
 }
 function readLocalityFanIn(root, head) {
   const file = reportPath2(root, "analyse", "locality");
-  if (!existsSync18(file)) return null;
+  if (!existsSync17(file)) return null;
   try {
-    const document = JSON.parse(readFileSync16(file, "utf8"));
+    const document = JSON.parse(readFileSync15(file, "utf8"));
     if (document.tool !== "locality" || document.command !== "analyse") return null;
     if (document.repo?.head !== head || document.repo?.dirty !== false) return null;
     if (!Array.isArray(document.results) || typeof document.config !== "string") return null;
@@ -11589,24 +10966,24 @@ var HistoryState = class {
     }
   }
   /** Adds a change. Call `advance(change.time)` first, and add changes oldest first. */
-  add(change2, fix) {
-    const ids = change2.files.map((file) => file.fileId);
+  add(change3, fix) {
+    const ids = change3.files.map((file) => file.fileId);
     const eligible = ids.length <= this.options.maxChangesetSize;
     const ordinal = this.ordinal++;
-    for (const file of change2.files) {
-      const record = this.record(file.fileId);
-      record.revisions.push({ time: change2.time, authors: change2.authors, fix });
-      record.present = file.status !== "D";
-      if (eligible) record.eligibleChanges.add(ordinal);
+    for (const file of change3.files) {
+      const record2 = this.record(file.fileId);
+      record2.revisions.push({ time: change3.time, authors: change3.authors, fix });
+      record2.present = file.status !== "D";
+      if (eligible) record2.eligibleChanges.add(ordinal);
     }
-    for (const author of change2.authors) {
+    for (const author of change3.authors) {
       const key = author.toLowerCase();
       const seen = this.identities.get(key);
       if (seen) {
-        seen.last = change2.time;
+        seen.last = change3.time;
         seen.changes++;
       } else {
-        this.identities.set(key, { first: change2.time, last: change2.time, changes: 1 });
+        this.identities.set(key, { first: change3.time, last: change3.time, changes: 1 });
       }
     }
     for (const id of ids) {
@@ -11615,14 +10992,14 @@ var HistoryState = class {
       if (inFolder) inFolder.add(id);
       else this.folders.set(folder, /* @__PURE__ */ new Set([id]));
     }
-    const entry = { time: change2.time, files: ids, eligible, fix: fix !== null };
+    const entry = { time: change3.time, files: ids, eligible, fix: fix !== null };
     this.queue.push(entry);
     this.apply(entry, 1);
   }
   record(id) {
-    let record = this.files.get(id);
-    if (!record) this.files.set(id, record = { revisions: [], present: true, eligibleChanges: /* @__PURE__ */ new Set() });
-    return record;
+    let record2 = this.files.get(id);
+    if (!record2) this.files.set(id, record2 = { revisions: [], present: true, eligibleChanges: /* @__PURE__ */ new Set() });
+    return record2;
   }
   evict(entry) {
     this.apply(entry, -1);
@@ -12063,29 +11440,29 @@ function placeChange(facts, state, context, options = {}) {
 
 // packages/cochange/src/risk/history-pass.ts
 var SECONDS_PER_MONTH4 = 30.4375 * 86400;
-function factsOf2(change2) {
+function factsOf2(change3) {
   return {
-    time: change2.time,
-    authors: change2.authors.map((author) => author.toLowerCase()),
-    files: change2.files,
-    moved: change2.files.filter((file) => file.status === "R").length
+    time: change3.time,
+    authors: change3.authors.map((author) => author.toLowerCase()),
+    files: change3.files,
+    moved: change3.files.filter((file) => file.status === "R").length
   };
 }
-var fixOf = (change2, fix) => findFix(fix, change2.id, [change2.text]);
+var fixOf = (change3, fix) => findFix(fix, change3.id, [change3.text]);
 function chronologicalPass(changes, context, options) {
   const state = new HistoryState({ windowSeconds: Math.round(options.windowMonths * SECONDS_PER_MONTH4), maxChangesetSize: options.maxChangesetSize });
   const past = [];
-  for (const [index2, change2] of changes.entries()) {
-    state.advance(change2.time);
-    if (options.measureWhen?.(change2, index2) ?? true) {
-      const facts = factsOf2(change2);
+  for (const [index2, change3] of changes.entries()) {
+    state.advance(change3.time);
+    if (options.measureWhen?.(change3, index2) ?? true) {
+      const facts = factsOf2(change3);
       past.push({
-        change: change2,
+        change: change3,
         measurements: measureHistoryLayer(facts, state, context),
         placement: options.placement ? placeChange(facts, state, context) : null
       });
     }
-    state.add(change2, fixOf(change2, options.fix));
+    state.add(change3, fixOf(change3, options.fix));
   }
   return { state, past };
 }
@@ -12095,7 +11472,7 @@ async function mergedChanges(root, view, changes, tip) {
   const landings = await readLandings(root, tip);
   const commits = new Map(view.commits.map((c) => [c.sha, c]));
   const logicalOf = /* @__PURE__ */ new Map();
-  for (const change2 of changes) for (const sha of change2.shas) logicalOf.set(sha, change2);
+  for (const change3 of changes) for (const sha of change3.shas) logicalOf.set(sha, change3);
   const result = [];
   let merges = 0;
   let direct = 0;
@@ -12108,8 +11485,8 @@ async function mergedChanges(root, view, changes, tip) {
     const distinct = [...new Set(members.flatMap((sha) => logicalOf.has(sha) ? [logicalOf.get(sha)] : []))];
     if (distinct.length === 0) continue;
     const perFile = /* @__PURE__ */ new Map();
-    for (const change2 of distinct) {
-      for (const file of change2.files) {
+    for (const change3 of distinct) {
+      for (const file of change3.files) {
         const list = perFile.get(file.fileId);
         if (list) list.push(file);
         else perFile.set(file.fileId, [file]);
@@ -12243,16 +11620,16 @@ function toFactor(measurement3, banded, risk) {
 async function assessBranch(context, history, request) {
   const root = context.repo.root;
   const risk = readRiskSettings(context.config);
-  const range = await resolveRange(root, { range: request.range, mainBranch: risk.mainBranch, worktree: request.worktree });
+  const range2 = await resolveRange(root, { range: request.range, mainBranch: risk.mainBranch, worktree: request.worktree });
   const measure = measureContext(context, history, risk);
-  const change2 = await extractChange(root, history.view, range, request.worktree, {
+  const change3 = await extractChange(root, history.view, range2, request.worktree, {
     similarity: history.settings.renameSimilarity,
     exclude: history.settings.exclude,
     owner: { localMailmap: history.identities.localMailmap, matcher: history.identities.matcher },
     agentPatterns: history.settings.identities.agentTrailerPatterns
   });
-  const evidence = request.evidence === void 0 || request.evidence.length === 0 ? NO_EVIDENCE : readEvidence(root, request.evidence, { base: change2.base, head: change2.head, worktree: request.worktree });
-  const mainline = await mergedChanges(root, history.view, history.filtered.changes, range.base);
+  const evidence = request.evidence === void 0 || request.evidence.length === 0 ? NO_EVIDENCE : readEvidence(root, request.evidence, { base: change3.base, head: change3.head, worktree: request.worktree });
+  const mainline = await mergedChanges(root, history.view, history.filtered.changes, range2.base);
   const time = history.view.headDate;
   const since = monthsBefore(time, history.settings.windowMonths);
   const total = mainline.changes.length;
@@ -12264,23 +11641,23 @@ async function assessBranch(context, history, request) {
   });
   const facts = {
     time,
-    authors: authorEmails(change2),
-    files: change2.files,
-    moved: change2.moved
+    authors: authorEmails(change3),
+    files: change3.files,
+    moved: change3.moved
   };
   state.advance(time);
-  const abandoned = await abandonedTouched(context, history, change2);
+  const abandoned = await abandonedTouched(context, history, change3);
   const measurements = [
     ...measureHistoryLayer(facts, state, measure),
-    ...await liveMeasurements(root, change2, risk, evidence, abandoned.measurement)
+    ...await liveMeasurements(root, change3, risk, evidence, abandoned.measurement)
   ];
   const baselineMeasures = past.map((p) => p.measurements);
   const bander = makeBander(baselineMeasures, risk);
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
-  const locality = readLocalityFanIn(root, change2.head);
-  const touched = change2.files.filter((file) => file.status !== "D").map((file) => file.fileId);
+  const locality = readLocalityFanIn(root, change3.head);
+  const touched = change3.files.filter((file) => file.status !== "D").map((file) => file.fileId);
   const { changedSignatures, withSignatures } = await import("./chunk-AU4ZAAV4.mjs");
-  const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change2);
+  const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change3);
   const factors = banded.map(({ m, result }) => {
     let factor = toFactor(m, result, risk);
     if (factor.name !== "blast-radius" || factor.status === "disabled") return factor;
@@ -12294,7 +11671,7 @@ async function assessBranch(context, history, request) {
     risk
   );
   return {
-    change: change2,
+    change: change3,
     measurements,
     factors,
     impact,
@@ -12316,8 +11693,8 @@ async function assessBranch(context, history, request) {
     abandonment: abandoned.report
   };
 }
-function authorEmails(change2) {
-  return [...new Set([...change2.owners.values()].filter((o) => o.kind === "person").map((o) => o.email.toLowerCase()))].sort();
+function authorEmails(change3) {
+  return [...new Set([...change3.owners.values()].filter((o) => o.kind === "person").map((o) => o.email.toLowerCase()))].sort();
 }
 function eventsOf(factors) {
   const events = [];
@@ -12328,329 +11705,6 @@ function eventsOf(factors) {
   const sensitive = get("sensitive-paths");
   if (sensitive && Number(sensitive.value.count ?? 0) > 0) events.push("sensitive-paths");
   return events;
-}
-
-// packages/cochange/src/risk/level.ts
-function levelOf2(impact, placement) {
-  if (impact === "unavailable") return null;
-  const column = placement === "close" ? 0 : placement === "distant" ? 2 : 1;
-  const table = {
-    low: ["routine", "routine", "attention"],
-    moderate: ["routine", "attention", "elevated"],
-    high: ["attention", "elevated", "elevated"]
-  };
-  return table[impact][column];
-}
-var LEVELS = ["routine", "attention", "elevated"];
-
-// packages/cochange/src/risk/backtest.ts
-function scoreMainline(changes, context, options) {
-  const { risk } = context;
-  const { past } = chronologicalPass(changes, context, {
-    windowMonths: options.windowMonths,
-    maxChangesetSize: options.maxChangesetSize,
-    fix: risk.fix,
-    placement: true
-  });
-  const scored = [];
-  for (const [at, entry] of past.entries()) {
-    if (options.since !== void 0 && entry.change.time < options.since) continue;
-    const since = monthsBefore(entry.change.time, options.windowMonths);
-    const baseline = past.slice(Math.max(0, at - risk.baselineChanges), at).filter((p) => p.change.time >= since);
-    scored.push(scoreOne(at, entry, baseline, risk));
-  }
-  return scored;
-}
-function scoreOne(index2, entry, baseline, risk) {
-  const measures = baseline.map((p) => p.measurements);
-  const bander = makeBander(measures, risk);
-  const bands = /* @__PURE__ */ new Map();
-  const factors = entry.measurements.map((m) => {
-    const band = risk.disabled.has(m.name) ? "unavailable" : bander(m).band;
-    bands.set(m.name, band);
-    return { name: m.name, family: m.family, band, disabled: risk.disabled.has(m.name) };
-  });
-  const events = [];
-  if (bands.get("missing-co-change") === "high") events.push("missing-co-change");
-  if (!risk.disabled.has("sensitive-paths") && Number(entry.measurements.find((m) => m.name === "sensitive-paths")?.series.count ?? 0) > 0) {
-    events.push("sensitive-paths");
-  }
-  const impact = impactOf(factors, baselineScores(measures, risk), events, risk);
-  const placement = entry.placement?.band ?? "unknown";
-  const missing = (entry.measurements.find((m) => m.name === "missing-co-change")?.evidence ?? []).map((row2) => ({ file: String(row2.file) }));
-  return { index: index2, change: entry.change, bands, impact, placement, level: levelOf2(impact.band, placement), baseline: baseline.length, missing };
-}
-async function revertedShas(root, tip) {
-  const out = await runGit(root, ["log", "--grep=This reverts commit", "--format=%H%x1f%B%x1e", tip]);
-  const reverts = /* @__PURE__ */ new Map();
-  for (const entry of out.split("")) {
-    const [sha, ...body] = entry.replace(/^\n/, "").split("");
-    if (!sha) continue;
-    for (const match of body.join("").matchAll(/This reverts commit ([0-9a-f]{40})/g)) {
-      const list = reverts.get(match[1]);
-      if (list) list.push(sha.trim());
-      else reverts.set(match[1], [sha.trim()]);
-    }
-  }
-  return reverts;
-}
-async function outcomesOf(root, tip, changes, risk, headTime) {
-  const reverts = await revertedShas(root, tip);
-  const unitOfCommit = /* @__PURE__ */ new Map();
-  for (const [index2, change2] of changes.entries()) {
-    unitOfCommit.set(change2.id, index2);
-    for (const sha of change2.shas) unitOfCommit.set(sha, index2);
-  }
-  const reverted = /* @__PURE__ */ new Set();
-  for (const [sha, by] of reverts) {
-    const target = unitOfCommit.get(sha);
-    if (target === void 0) continue;
-    if (by.some((revert) => (unitOfCommit.get(revert) ?? -1) > target)) reverted.add(target);
-  }
-  const touching2 = /* @__PURE__ */ new Map();
-  for (const [index2, change2] of changes.entries()) {
-    for (const file of change2.files) {
-      const list = touching2.get(file.fileId);
-      if (list) list.push(index2);
-      else touching2.set(file.fileId, [index2]);
-    }
-  }
-  const window = risk.followUpDays * SECONDS_PER_DAY2;
-  const fix = changes.map((change2) => fixOf(change2, risk.fix) !== null);
-  const outcomes = /* @__PURE__ */ new Map();
-  for (const [index2, change2] of changes.entries()) {
-    let fixed = false;
-    for (const file of change2.files) {
-      for (const later of touching2.get(file.fileId) ?? []) {
-        if (later <= index2) continue;
-        if (changes[later].time > change2.time + window) break;
-        if (fix[later]) fixed = true;
-      }
-      if (fixed) break;
-    }
-    outcomes.set(change2.id, { reverted: reverted.has(index2), fixed, censored: change2.time + window > headTime });
-  }
-  return outcomes;
-}
-var round5 = (value) => Math.round(value * 1e4) / 1e4;
-var MIN_LEVEL_CHANGES = 5;
-var MIN_TROUBLED = 3;
-function separationOf(levels, troubled) {
-  const usable = levels.filter((row2) => row2.changes >= MIN_LEVEL_CHANGES && row2.rate !== null);
-  if (troubled < MIN_TROUBLED) {
-    return { status: "insufficient", reason: `only ${troubled} past changes were followed by trouble, fewer than the ${MIN_TROUBLED} needed to compare levels` };
-  }
-  if (usable.length < 2) {
-    return { status: "insufficient", reason: `fewer than two levels have at least ${MIN_LEVEL_CHANGES} changes to compare` };
-  }
-  const rates = usable.map((row2) => row2.rate);
-  const rises = rates.every((rate, i) => i === 0 || rate >= rates[i - 1]) && rates.at(-1) > rates[0];
-  const last = usable.at(-1);
-  const beatsBase = last.baseRate === null || last.rate > last.baseRate;
-  return rises && beatsBase ? { status: "separates", reason: `the trouble rate rises from ${usable[0].rate} at ${usable[0].band} to ${last.rate} at ${last.band}, above the ${last.baseRate} of the same files` } : { status: "does-not-separate", reason: `the trouble rate does not rise with the level (${usable.map((row2) => `${row2.band} ${row2.rate}`).join(", ")}) or does not beat the rate of the same files` };
-}
-function summarise(scored, all, outcomes, risk) {
-  const known = scored.filter((s) => outcomes.get(s.change.id)?.censored === false);
-  const troubledOf = (s) => {
-    const o = outcomes.get(s.change.id);
-    return o.reverted || o.fixed;
-  };
-  const perFile = /* @__PURE__ */ new Map();
-  for (const change2 of all) {
-    const outcome = outcomes.get(change2.id);
-    if (!outcome || outcome.censored) continue;
-    const trouble = outcome.reverted || outcome.fixed;
-    for (const file of change2.files) {
-      const row2 = perFile.get(file.fileId) ?? { changes: 0, troubled: 0 };
-      row2.changes++;
-      if (trouble) row2.troubled++;
-      perFile.set(file.fileId, row2);
-    }
-  }
-  const baseOf = (s) => {
-    let changes = 0;
-    let troubled2 = 0;
-    for (const file of s.change.files) {
-      const row2 = perFile.get(file.fileId);
-      if (row2) {
-        changes += row2.changes;
-        troubled2 += row2.troubled;
-      }
-    }
-    return changes === 0 ? null : troubled2 / changes;
-  };
-  const rows5 = (keys, keyOf) => keys.map((band) => {
-    const members = known.filter((s) => keyOf(s) === band);
-    const troubled2 = members.filter(troubledOf).length;
-    const bases = members.map(baseOf).filter((b) => b !== null);
-    return {
-      band,
-      changes: members.length,
-      troubled: troubled2,
-      rate: members.length === 0 ? null : round5(troubled2 / members.length),
-      baseRate: bases.length === 0 ? null : round5(bases.reduce((a, b) => a + b, 0) / bases.length)
-    };
-  });
-  const levels = rows5(LEVELS, (s) => s.level);
-  const factors = [...SCORED_FACTORS].map((name18) => ({
-    name: name18,
-    bands: rows5(["low", "moderate", "high"], (s) => {
-      const band = s.bands.get(name18);
-      return band === void 0 || band === "unavailable" ? null : band;
-    }),
-    unavailable: known.filter((s) => (s.bands.get(name18) ?? "unavailable") === "unavailable").length
-  }));
-  const outcomeList = [...outcomes.values()];
-  const troubled = known.filter(troubledOf).length;
-  const withFinding = scored.filter((s) => s.missing.length > 0);
-  const followed = withFinding.filter((s) => {
-    const until = s.change.time + risk.followUpDays * SECONDS_PER_DAY2;
-    for (const later of all.slice(s.index + 1)) {
-      if (later.time > until) break;
-      if (later.files.some((f) => s.missing.some((m) => m.file === f.fileId))) return true;
-    }
-    return false;
-  }).length;
-  const withLevel = scored.filter((s) => s.level !== null);
-  const fixMatches = all.flatMap((change2) => fixOf(change2, risk.fix) ?? []);
-  return {
-    population: {
-      mergedChanges: all.length,
-      scored: scored.length,
-      withLevel: withLevel.length,
-      censored: scored.filter((s) => outcomes.get(s.change.id)?.censored).length,
-      unscored: all.length - scored.length
-    },
-    outcome: {
-      followUpDays: risk.followUpDays,
-      fixConvention: checkFixConvention(all.map((change2) => change2.text), fixMatches.length),
-      fixes: fixEvidence(fixMatches),
-      reverts: outcomeList.filter((o) => o.reverted).length,
-      troubled,
-      rate: known.length === 0 ? null : round5(troubled / known.length)
-    },
-    levels,
-    impact: rows5(["low", "moderate", "high"], (s) => s.impact.band === "unavailable" ? null : s.impact.band),
-    placement: rows5(["close", "mixed", "distant", "unknown"], (s) => s.placement),
-    factors,
-    completeness: { findings: withFinding.length, followed, share: withFinding.length === 0 ? null : round5(followed / withFinding.length) },
-    elevatedShare: withLevel.length === 0 ? null : round5(withLevel.filter((s) => s.level === "elevated").length / withLevel.length),
-    separation: separationOf(levels, troubled)
-  };
-}
-
-// packages/cochange/src/risk/adoption.ts
-var round6 = (value) => Math.round(value * 1e4) / 1e4;
-var iso = (seconds) => new Date(seconds * 1e3).toISOString();
-function adoptionOf(all, outcomes, adopted, risk, headTime) {
-  const knownUntil = headTime - risk.followUpDays * SECONDS_PER_DAY2;
-  const firstTime = all[0]?.time ?? adopted;
-  const length = Math.max(0, Math.min(adopted - firstTime, knownUntil - adopted));
-  const window = (from, to) => {
-    const members = all.filter((change2) => change2.time >= from && change2.time < to && outcomes.get(change2.id)?.censored === false);
-    const troubled = members.filter((change2) => outcomes.get(change2.id).reverted || outcomes.get(change2.id).fixed).length;
-    return { from: iso(from), to: iso(to), changes: members.length, troubled, rate: members.length === 0 ? null : round6(troubled / members.length) };
-  };
-  const before = window(adopted - length, adopted);
-  const after = window(adopted, adopted + length);
-  const base = { adopted: iso(adopted), windowDays: round6(length / SECONDS_PER_DAY2), before, after };
-  const thin = [before, after].find((side) => side.changes < MIN_LEVEL_CHANGES);
-  if (thin !== void 0 || before.rate === null || after.rate === null) {
-    return {
-      ...base,
-      difference: before.rate === null || after.rate === null ? null : round6(after.rate - before.rate),
-      status: "insufficient",
-      reason: `a window of ${base.windowDays} days either side of the date holds ${before.changes} changes before and ${after.changes} after with a known outcome, and each side needs at least ${MIN_LEVEL_CHANGES}`
-    };
-  }
-  const difference = round6(after.rate - before.rate);
-  const status = difference === 0 ? "unchanged" : difference < 0 ? "lower" : "higher";
-  return {
-    ...base,
-    difference,
-    status,
-    reason: `${before.troubled} of ${before.changes} changes before and ${after.troubled} of ${after.changes} after were followed by trouble within ${risk.followUpDays} days, over ${base.windowDays} days either side. Other changes in practice over the same period are not controlled for.`
-  };
-}
-
-// packages/cochange/src/risk/stored-backtest.ts
-import { existsSync as existsSync19, readFileSync as readFileSync17 } from "node:fs";
-var BACKTEST_REPORT = "risk-backtest";
-function readStoredBacktest(root, configHash) {
-  const file = reportPath2(root, BACKTEST_REPORT);
-  if (!existsSync19(file)) return null;
-  try {
-    const document = JSON.parse(readFileSync17(file, "utf8"));
-    const results = document.results;
-    if (document.tool !== TOOL2 || document.command !== BACKTEST_REPORT || document.config !== configHash) return null;
-    if (typeof document.repo?.head !== "string" || results?.kind !== "backtest" || !results.separation) return null;
-    return {
-      head: document.repo.head,
-      separation: results.separation,
-      population: results.population,
-      outcome: results.outcome,
-      levels: results.levels,
-      elevatedShare: results.elevatedShare ?? null
-    };
-  } catch {
-    return null;
-  }
-}
-
-// packages/cochange/src/risk/run-backtest.ts
-var BACKTEST_LIMITS = [
-  "History layer only: complexity-delta, structure-delta and abandoned-touched would need a parse of every past change, so they are left out of the bands and the level.",
-  "Placement is by change-familiarity and neighbourhood from history alone, not from blame, which is not affordable at every past commit.",
-  "Pure moves are filtered from history, so mixed-purpose sees only moves that also edit the file.",
-  "Hotspots are ranked by change frequency, because complexity cannot be measured at every past commit.",
-  "A change counts as followed by trouble when it was reverted or a fix touched its files within the follow-up window. The file-level test over-counts in busy files, so each rate is shown beside the rate of the same files.",
-  "Results are per factor band and per level, never per person."
-];
-async function runBacktest(context, history) {
-  const risk = readRiskSettings(context.config);
-  const sinceText = context.values.since;
-  if (sinceText !== void 0 && typeof sinceText !== "string") throw usageError("--since needs a date");
-  const since = sinceText === void 0 ? void 0 : parseDate(sinceText);
-  if (sinceText !== void 0 && since === null) throw usageError(`--since must be YYYY-MM-DD or an ISO 8601 date-time with a zone, got "${sinceText}"`);
-  const adoptedText = context.values.adopted;
-  if (adoptedText !== void 0 && typeof adoptedText !== "string") throw usageError("--adopted needs a date");
-  const adopted = adoptedText === void 0 ? void 0 : parseDate(adoptedText);
-  if (adoptedText !== void 0 && adopted === null) throw usageError(`--adopted must be YYYY-MM-DD or an ISO 8601 date-time with a zone, got "${adoptedText}"`);
-  const root = context.repo.root;
-  const measure = measureContext(context, history, risk);
-  const mainline = await mergedChanges(root, history.view, history.filtered.changes, history.view.headSha);
-  const scored = scoreMainline(mainline.changes, measure, {
-    windowMonths: history.settings.windowMonths,
-    maxChangesetSize: history.settings.maxChangesetSize,
-    since: since ?? void 0
-  });
-  const outcomes = await outcomesOf(root, history.view.headSha, mainline.changes, risk, history.view.headDate);
-  const summary = summarise(scored, mainline.changes, outcomes, risk);
-  const output = {
-    inputs: {
-      since: since === void 0 || since === null ? null : new Date(since * 1e3).toISOString(),
-      ...adopted === void 0 || adopted === null ? {} : { adopted: new Date(adopted * 1e3).toISOString() },
-      followUpDays: risk.followUpDays,
-      baselineChanges: risk.baselineChanges,
-      fixPatterns: risk.fix.settings.fixPatterns,
-      fixExcludePatterns: risk.fix.settings.fixExcludePatterns,
-      revertPatterns: risk.fix.settings.revertPatterns,
-      fixMatchBody: risk.fix.settings.fixMatchBody,
-      mergeStyle: { merges: mainline.merges, direct: mainline.direct }
-    },
-    results: {
-      kind: "backtest",
-      ...summary,
-      ...adopted === void 0 || adopted === null ? {} : { adoption: adoptionOf(mainline.changes, outcomes, adopted, risk, history.view.headDate) },
-      limits: [...BACKTEST_LIMITS],
-      stored: false
-    }
-  };
-  if (since === void 0 && adopted === void 0 && history.view.ref === "HEAD") {
-    const stored = await writeReport2(context, BACKTEST_REPORT, output, history.view.headSha);
-    output.results.stored = stored;
-  }
-  return output;
 }
 
 // packages/cochange/src/risk/findings.ts
@@ -12814,6 +11868,19 @@ function findingsOf(assessed, placement) {
   return found.sort((a, b) => STEPS.indexOf(a.step) - STEPS.indexOf(b.step) || (a.id < b.id ? -1 : 1));
 }
 
+// packages/cochange/src/risk/level.ts
+function levelOf2(impact, placement) {
+  if (impact === "unavailable") return null;
+  const column = placement === "close" ? 0 : placement === "distant" ? 2 : 1;
+  const table = {
+    low: ["routine", "routine", "attention"],
+    moderate: ["routine", "attention", "elevated"],
+    high: ["attention", "elevated", "elevated"]
+  };
+  return table[impact][column];
+}
+var LEVELS = ["routine", "attention", "elevated"];
+
 // packages/cochange/src/risk/level-result.ts
 function levelResult(assessed, placement, stored, behind) {
   const band = placement.placement?.band ?? "unknown";
@@ -12828,6 +11895,1509 @@ function levelResult(assessed, placement, stored, behind) {
   const value = levelOf2(assessed.impact.band, band);
   if (value === null) return { ...base, status: "unavailable", value: null, reason: "the impact could not be placed against enough merged changes", backtest };
   return { ...base, status: "shown", value, reason: null, backtest };
+}
+
+// packages/cochange/src/risk/stored-backtest.ts
+import { existsSync as existsSync18, readFileSync as readFileSync16 } from "node:fs";
+var BACKTEST_REPORT = "risk-backtest";
+function readStoredBacktest(root, configHash) {
+  const file = reportPath2(root, BACKTEST_REPORT);
+  if (!existsSync18(file)) return null;
+  try {
+    const document = JSON.parse(readFileSync16(file, "utf8"));
+    const results = document.results;
+    if (document.tool !== TOOL2 || document.command !== BACKTEST_REPORT || document.config !== configHash) return null;
+    if (typeof document.repo?.head !== "string" || results?.kind !== "backtest" || !results.separation) return null;
+    return {
+      head: document.repo.head,
+      separation: results.separation,
+      population: results.population,
+      outcome: results.outcome,
+      levels: results.levels,
+      elevatedShare: results.elevatedShare ?? null
+    };
+  } catch {
+    return null;
+  }
+}
+
+// packages/cochange/src/reports/change-evidence.ts
+import { createHash as createHash11 } from "node:crypto";
+import { readFileSync as readFileSync17 } from "node:fs";
+import { isAbsolute as isAbsolute5, join as join13 } from "node:path";
+var NO_CHANGE_EVIDENCE = { files: [], complexity: null, structure: null, forAssessment: [] };
+var text2 = (value) => typeof value === "string" ? value : "";
+var number = (value) => typeof value === "number" && Number.isFinite(value) ? value : null;
+var record = (value) => typeof value === "object" && value !== null ? value : {};
+function readChangeEvidence(root, files, change3) {
+  let complexity = null;
+  let structure = null;
+  const read = [];
+  const forAssessment = [];
+  for (const file of files) {
+    const path = isAbsolute5(file) ? file : join13(root, file);
+    let content;
+    try {
+      content = readFileSync17(path, "utf8");
+    } catch {
+      throw usageError(`--evidence ${file}: cannot read it (a relative path is taken from the repository root)`);
+    }
+    let document;
+    try {
+      document = JSON.parse(content);
+    } catch {
+      throw usageError(`--evidence ${file}: not JSON; pass the output of \`complexity check --json\`, \`complexity diff --json\` or \`structure check --json\``);
+    }
+    const tool = text2(document.tool);
+    const command17 = text2(document.command);
+    if (!Array.isArray(document.results)) throw usageError(`--evidence ${file}: no results list`);
+    checkAgainst2(file, document, change3);
+    const rows5 = document.results;
+    if (tool === "complexity" && (command17 === "check" || command17 === "diff")) {
+      if (complexity !== null && complexity.source === command17) throw usageError(`--evidence names complexity ${command17} twice`);
+      const parsed = command17 === "check" ? fromCheck(rows5, document) : fromDiff(rows5, document);
+      if (complexity === null || command17 === "check") complexity = parsed;
+      if (command17 === "diff") forAssessment.push(file);
+    } else if (tool === "structure" && command17 === "check") {
+      if (structure !== null) throw usageError("--evidence names structure check twice");
+      structure = rows5.filter((row2) => row2.kind === "cycle" || row2.kind === "layer-violation").map(structureRow);
+      forAssessment.push(file);
+    } else {
+      throw usageError(`--evidence ${file}: ${tool}/${command17} is not evidence this report reads; pass \`complexity check --json\`, \`complexity diff --json\` or \`structure check --json\``);
+    }
+    read.push({ tool, command: command17, hash: createHash11("sha256").update(content).digest("hex").slice(0, 16) });
+  }
+  return { files: read, complexity, structure, forAssessment };
+}
+function fromCheck(rows5, document) {
+  const summary = record(document.summary);
+  return {
+    source: "check",
+    compared: number(summary.compared),
+    unsupportedFiles: number(document.unsupportedFiles) ?? 0,
+    rows: rows5.map((row2) => ({
+      id: text2(row2.id) || text2(row2.path),
+      path: text2(row2.path),
+      unit: text2(row2.unit) || text2(row2.id),
+      kind: row2.finding === "new" ? "new" : "worsened",
+      metric: text2(row2.metric),
+      before: number(row2.before),
+      after: number(row2.after) ?? 0,
+      guideline: number(row2.guideline)
+    }))
+  };
+}
+function fromDiff(rows5, document) {
+  const kept = [];
+  for (const row2 of rows5) {
+    const labels = Array.isArray(row2.labels) ? row2.labels.map(String) : [];
+    const added = row2.change === "added";
+    const before = record(row2.before);
+    const after = record(row2.after);
+    const delta2 = record(row2.delta);
+    for (const label of labels) {
+      const match = /^(.*)-(warn|high)$/.exec(label);
+      if (match === null) continue;
+      const metric = match[1];
+      if (!added && (number(delta2[metric]) ?? 0) <= 0) continue;
+      kept.push({
+        id: text2(row2.id) || text2(row2.path),
+        path: text2(row2.path),
+        unit: text2(row2.unit) || text2(row2.id),
+        kind: added ? "new" : "worsened",
+        metric,
+        before: added ? null : number(before[metric]),
+        after: number(after[metric]) ?? 0,
+        guideline: null
+      });
+    }
+  }
+  return { source: "diff", compared: rows5.length, unsupportedFiles: number(document.unsupportedFiles) ?? 0, rows: kept };
+}
+function structureRow(row2) {
+  const kind = row2.kind === "cycle" ? "cycle" : "layer-violation";
+  const nodes = Array.isArray(row2.nodes) ? row2.nodes.map(String) : [];
+  const detail = kind === "cycle" ? `${nodes.length} modules${typeof row2.level === "string" ? ` at the ${row2.level} level` : ""}${nodes.length > 0 ? `: ${nodes.slice(0, 4).join(", ")}${nodes.length > 4 ? ", ..." : ""}` : ""}` : `${text2(row2.fromLayer) || "a layer"} imports ${text2(row2.toLayer) || "another layer"}`;
+  return { kind, id: text2(row2.id) || text2(row2.edge) || text2(row2.path), level: typeof row2.level === "string" ? row2.level : null, detail };
+}
+function checkAgainst2(file, document, change3) {
+  const inputs = document.inputs;
+  const named = typeof inputs?.base === "object" ? inputs.base?.sha : inputs?.base;
+  const base = inputs?.baseSha ?? named;
+  if (typeof base === "string" && base.length >= 7 && !change3.base.startsWith(base) && base !== change3.base) {
+    throw usageError(`--evidence ${file}: made against ${base.slice(0, 10)}, but this change starts at ${change3.base.slice(0, 10)}; run it for the same base`);
+  }
+  const head = inputs?.head?.sha ?? inputs?.analysed;
+  if (typeof head === "string" && head !== change3.head) {
+    throw usageError(`--evidence ${file}: made up to ${head.slice(0, 10)}, but this change ends at ${change3.head.slice(0, 10)}`);
+  }
+}
+
+// packages/cochange/src/reports/change.ts
+var MAX_ITEMS = 8;
+var ROWS = 15;
+var EVIDENCE_ITEMS = 6;
+var ITEM_VERDICTS = ["needs-change", "accepted-with-reason", "false-positive"];
+var isoDate2 = (iso2) => iso2.slice(0, 10);
+var text3 = (value) => typeof value === "string" ? value : null;
+var number2 = (value) => typeof value === "number" && Number.isFinite(value) ? value : null;
+var plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+var short2 = (sha) => sha.slice(0, 7);
+var clip2 = (value, max) => value.length <= max ? value : `${value.slice(0, max - 3)}...`;
+var ITEM_TASK = "Give a verdict and one or two sentences. needs-change: the change should be altered before it merges, and the text says what. accepted-with-reason: the change stays as it is, and the text gives the reason. false-positive: the finding does not apply, and the text says why. Cite only values shown in this report.";
+function itemSlot(id, about, title, specific) {
+  return { id, title: `Judgement: ${title}`, about, task: `${specific} ${ITEM_TASK}`, verdicts: ITEM_VERDICTS, maxChars: 300 };
+}
+function describeEvidence(record2) {
+  const pair = text3(record2.a) !== null && text3(record2.b) !== null;
+  const idKey = pair ? "a" : ["file", "path", "id", "test"].find((key) => text3(record2[key]) !== null);
+  const rest = Object.entries(record2).filter(([key]) => key !== idKey && !(pair && key === "b")).flatMap(([key, value]) => {
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return [`${key} ${value}`];
+    if (Array.isArray(value)) return [`${key} ${value.length}`];
+    return [];
+  });
+  const id = idKey === void 0 ? "item" : pair ? `${text3(record2.a)} and ${text3(record2.b)}` : text3(record2[idKey]);
+  return { id, text: rest.length === 0 ? "touched by the change" : rest.join(", ") };
+}
+function evidenceItems(records) {
+  return { items: records.slice(0, EVIDENCE_ITEMS).map(describeEvidence), omitted: Math.max(0, records.length - EVIDENCE_ITEMS) };
+}
+function findingItem(finding) {
+  const files = finding.evidence.flatMap((record2) => text3(record2.file) ?? text3(record2.path) ?? []);
+  const label = clip2(files.length === 0 ? finding.summary : `${finding.summary}: ${files.slice(0, 3).join(", ")}${files.length > 3 ? ", ..." : ""}`, 220);
+  const { items, omitted: omitted2 } = evidenceItems(finding.evidence);
+  return {
+    slot: itemSlot(
+      `finding-${finding.id}`,
+      { kind: "finding", ref: `risk:${finding.id}`, label },
+      `${finding.id}`,
+      `Finding "${finding.id}": ${finding.summary}. The risk response is: ${finding.response}${finding.redFlag === null ? "" : ` The usual red flag is ${finding.redFlag}.`}`
+    ),
+    heading: `${finding.id} (${finding.band ?? "no band"}): ${finding.summary}`,
+    evidence: items,
+    omitted: omitted2
+  };
+}
+function structureItem(row2, index2) {
+  const what = row2.kind === "cycle" ? "new import cycle" : "new layer violation";
+  return {
+    slot: itemSlot(
+      `structure-${index2 + 1}`,
+      { kind: "finding", ref: `structure:${row2.id}`, label: clip2(`${what} ${row2.id}: ${row2.detail}`, 220) },
+      `${what} ${row2.id}`,
+      `Structure check says this change adds a ${what} (${row2.id}). Say whether the dependency is intended.`
+    ),
+    heading: `${what}: ${row2.id}`,
+    evidence: [{ id: row2.id, text: row2.detail }],
+    omitted: 0
+  };
+}
+var range = (row2) => row2.before === null ? String(row2.after) : `${row2.before} to ${row2.after}`;
+function complexityItem(rows5, index2) {
+  const first = rows5[0];
+  const unit = first.id;
+  const worst = rows5.map((r) => `${r.metric} ${range(r)}${r.guideline === null ? "" : ` (guideline ${r.guideline})`}`).join(", ");
+  const kind = rows5.some((r) => r.kind === "new") ? "new" : "worsened";
+  return {
+    slot: itemSlot(
+      `complexity-${index2 + 1}`,
+      { kind: "unit", ref: first.id, label: clip2(`${unit} (${kind}): ${worst}`, 220) },
+      `complexity of ${unit}`,
+      `The function ${unit} is ${kind === "new" ? "new and above a complexity guideline" : "above a complexity guideline and got worse"}. Say whether it should be simplified before merge.`
+    ),
+    heading: `${unit}: ${kind === "new" ? "new function above guideline" : "existing function above guideline that got worse"}`,
+    evidence: rows5.map((r) => ({ id: r.metric, text: `${r.kind === "new" ? "new function" : "worsened"}: ${r.before === null ? "" : `before ${r.before}, `}after ${r.after}${r.guideline === null ? ", above its guideline" : `, guideline ${r.guideline}`}` })),
+    omitted: 0
+  };
+}
+function hotspotsItem(factor) {
+  const files = factor.evidence.flatMap((record2) => text3(record2.file) ?? []);
+  const { items, omitted: omitted2 } = evidenceItems(factor.evidence);
+  return {
+    slot: itemSlot(
+      "hotspots-touched",
+      { kind: "finding", ref: "risk:hotspots-touched", label: clip2(`${plural(number2(factor.value.hotFiles) ?? files.length, "hotspot")} touched: ${files.slice(0, 3).join(", ")}${files.length > 3 ? ", ..." : ""}`, 220) },
+      "hotspots touched",
+      "The change puts churn into files that are hotspots. Say whether the change is covered well enough for those files."
+    ),
+    heading: `hotspots touched (${factor.band}): ${plural(number2(factor.value.hotFiles) ?? 0, "hot file")}`,
+    evidence: items,
+    omitted: omitted2
+  };
+}
+function attentionItems(assessed, evidence) {
+  const findings = findingsOf(assessed, null).filter(
+    (f) => !(f.id === "complexity-delta" && evidence.complexity !== null) && !(f.id === "structure-delta" && evidence.structure !== null)
+  );
+  const items = findings.map(findingItem);
+  (evidence.structure ?? []).forEach((row2, i) => items.push(structureItem(row2, i)));
+  const byUnit = /* @__PURE__ */ new Map();
+  for (const row2 of evidence.complexity?.rows ?? []) byUnit.set(row2.id, [...byUnit.get(row2.id) ?? [], row2]);
+  [...byUnit.entries()].forEach(([, rows5], i) => items.push(complexityItem(rows5, i)));
+  const hot = assessed.factors.find((f) => f.name === "hotspots-touched");
+  if (hot !== void 0 && hot.status === "ok" && (hot.band === "moderate" || hot.band === "high")) items.push(hotspotsItem(hot));
+  return { shown: items.slice(0, MAX_ITEMS), total: items.length };
+}
+function guidanceSlot() {
+  return {
+    id: "guidance",
+    title: "Judgement: reviewer guidance",
+    about: { kind: "report", ref: "change", label: "the change" },
+    task: "In at most three sentences, tell the reviewer where to look first and what to ask the author, using only the findings and values shown in this report. When nothing needs attention, say what a quick review can skip. Do not name people.",
+    verdicts: [],
+    maxChars: 500
+  };
+}
+function limitsSlot() {
+  return {
+    id: "limits",
+    title: "Judgement: what limits this summary",
+    about: { kind: "report", ref: "change", label: "the change" },
+    task: "In at most three sentences, say what limits how far this summary can be trusted for this change, using only the evidence grade, the unavailable factors and the missing results shown above.",
+    verdicts: [],
+    maxChars: 500
+  };
+}
+function guidelineText(factor) {
+  const parts2 = Object.entries(factor.guidelines).map(([series, cutoffs]) => {
+    if (cutoffs === null) return `${series}: no cutoff, the baseline is too small`;
+    return series === "count" ? `${series}: moderate from ${cutoffs.moderate}, high from ${cutoffs.high}` : `${series}: moderate above ${cutoffs.moderate}, high above ${cutoffs.high}`;
+  });
+  return parts2.length === 0 ? "none" : parts2.join("; ");
+}
+function valueText(factor) {
+  const parts2 = Object.entries(factor.value).filter(([, value]) => value !== null && typeof value !== "object").map(([key, value]) => `${key} ${value}`);
+  return parts2.length === 0 ? "none" : parts2.join(", ");
+}
+function bandText(factor) {
+  return factor.status === "ok" ? factor.band ?? "none" : factor.status;
+}
+function factorBlocks(assessed, compact) {
+  if (compact) return [];
+  const { factors } = assessed;
+  const baseline = assessed.baseline;
+  const blocks = [
+    {
+      type: "paragraph",
+      text: `Each band compares the change with the ${plural(baseline.population, "merged change")} measured as of their own time since ${isoDate2(baseline.since)}, and counts are met from a stated value. A band labels the value beside it and decides nothing.`
+    },
+    {
+      type: "ranked-table",
+      caption: "Risk factors with their values and bands",
+      numbered: false,
+      columns: [
+        { key: "factor", label: "Factor" },
+        { key: "band", label: "Band" },
+        { key: "value", label: "Value" },
+        { key: "guideline", label: "Guideline" },
+        { key: "evidence", label: "Evidence items", align: "right" }
+      ],
+      rows: factors.map((f) => ({ factor: f.name, band: bandText(f), value: valueText(f), guideline: guidelineText(f), evidence: f.evidence.length }))
+    }
+  ];
+  const unavailable3 = factors.filter((f) => f.status !== "ok");
+  if (unavailable3.length > 0) {
+    blocks.push({ type: "evidence-list", title: "Factors with no band", items: unavailable3.map((f) => ({ id: f.name, text: `${f.status}: ${f.reason ?? "no reason given"}` })) });
+  }
+  return blocks;
+}
+function evidenceBlocks(assessed) {
+  return assessed.factors.filter((f) => f.status === "ok" && f.evidence.length > 0).map((f) => {
+    const { items, omitted: omitted2 } = evidenceItems(f.evidence);
+    return { type: "evidence-list", title: `Evidence for ${f.name}`, items, omitted: omitted2 };
+  });
+}
+function levelBlocks(level) {
+  if (level.status !== "shown") {
+    const why = level.backtest === null && level.status === "unavailable" && level.reason?.startsWith("no stored backtest") ? "a level is shown only where a stored backtest shows that the levels separate past changes, and none is stored for this configuration" : level.reason ?? "it is not available";
+    return [{ type: "notice", level: "notice", text: `No level is shown: ${why}.` }];
+  }
+  const backtest = level.backtest;
+  return [
+    {
+      type: "facts",
+      caption: "Level, from a stored backtest of this repository",
+      facts: [
+        { label: "Level", value: level.value ?? "none" },
+        { label: "Backtest made at", value: short2(backtest.head) },
+        { label: "Commits since the backtest", value: backtest.commitsAgo === null ? "unknown" : String(backtest.commitsAgo) },
+        { label: "Levels separate past changes", value: backtest.separation.status },
+        { label: "Placement", value: "not part of this report, so the level is read with placement unknown, as `cochange risk` reads it when placement is withheld" }
+      ]
+    }
+  ];
+}
+function missingBlocks(assessed) {
+  const factor = assessed.factors.find((f) => f.name === "missing-co-change");
+  if (factor === void 0 || factor.status !== "ok") {
+    return [{ type: "notice", level: "notice", text: `Missing co-change partners could not be computed: ${factor?.reason ?? "the factor is not available"}.` }];
+  }
+  if (factor.evidence.length === 0) return [{ type: "notice", level: "notice", text: "No file that usually changes with a touched file is missing from the change." }];
+  const rows5 = factor.evidence.map((e) => ({ file: text3(e.file), towards: text3(e.towards), confidence: number2(e.confidence), support: number2(e.support) }));
+  return [
+    {
+      type: "ranked-table",
+      caption: "Files that usually change with a touched file and are not in the change",
+      noun: "partners",
+      total: rows5.length,
+      columns: [
+        { key: "file", label: "Missing file" },
+        { key: "towards", label: "Usually changes with" },
+        { key: "confidence", label: "Confidence (%)", align: "right", guideline: { value: assessed.risk.missingConfidence, note: "cochange.risk.missingConfidence", direction: "below" } },
+        { key: "support", label: "Shared changes", align: "right", guideline: { value: assessed.context.minSupport, note: "cochange.minSupport", direction: "below" } }
+      ],
+      rows: rows5.slice(0, ROWS)
+    }
+  ];
+}
+function complexityBlocks(evidence) {
+  const complexity = evidence.complexity;
+  if (complexity === null) {
+    return [{ type: "notice", level: "notice", text: "No complexity comparison was passed in. Run `complexity check --json` (or `complexity diff BASE..HEAD --json`) for this base and pass it with `--evidence FILE`, then run this report again." }];
+  }
+  const blocks = [];
+  if (complexity.rows.length === 0) {
+    blocks.push({ type: "notice", level: "notice", text: `No new function is above a guideline and no existing one above it got worse${complexity.compared === null ? "" : `, over ${plural(complexity.compared, "compared function")}`}, from complexity ${complexity.source}.` });
+  } else {
+    const rows5 = complexity.rows.map((r) => ({
+      unit: r.id,
+      metric: r.metric,
+      change: r.kind === "new" ? "new" : "worsened",
+      before: r.before,
+      after: r.after,
+      guideline: r.guideline,
+      against: r.guideline === null ? "above guideline" : r.after > r.guideline ? `above guideline by ${r.after - r.guideline}` : "at guideline"
+    }));
+    blocks.push({
+      type: "ranked-table",
+      caption: `Functions above a complexity guideline that are new or got worse, from complexity ${complexity.source}`,
+      noun: "rows",
+      total: rows5.length,
+      numbered: false,
+      columns: [
+        { key: "unit", label: "Function" },
+        { key: "metric", label: "Metric" },
+        { key: "change", label: "Change" },
+        { key: "before", label: "Before", align: "right" },
+        { key: "after", label: "After", align: "right" },
+        { key: "guideline", label: "Guideline", align: "right" },
+        { key: "against", label: "Against the guideline" }
+      ],
+      rows: rows5.slice(0, ROWS)
+    });
+  }
+  if (complexity.unsupportedFiles > 0) blocks.push({ type: "notice", level: "limit", text: `${plural(complexity.unsupportedFiles, "changed file")} could not be parsed, so ${complexity.unsupportedFiles === 1 ? "its" : "their"} functions were not compared.` });
+  return blocks;
+}
+function structureBlocks(evidence) {
+  if (evidence.structure === null) {
+    return [{ type: "notice", level: "notice", text: "No structure check was passed in. Run `structure check --json` for this base and pass it with `--evidence FILE`, then run this report again." }];
+  }
+  if (evidence.structure.length === 0) return [{ type: "notice", level: "notice", text: "The change adds no import cycle and no layer violation, from structure check." }];
+  return [
+    {
+      type: "ranked-table",
+      caption: "Import cycles and layer violations the change adds, from structure check",
+      noun: "findings",
+      total: evidence.structure.length,
+      numbered: false,
+      columns: [
+        { key: "kind", label: "Kind" },
+        { key: "id", label: "Finding" },
+        { key: "detail", label: "Detail" }
+      ],
+      rows: evidence.structure.slice(0, ROWS).map((r) => ({ kind: r.kind, id: r.id, detail: r.detail }))
+    }
+  ];
+}
+function hotspotBlocks(assessed) {
+  const factor = assessed.factors.find((f) => f.name === "hotspots-touched");
+  if (factor === void 0 || factor.status !== "ok") {
+    return [{ type: "notice", level: "notice", text: `Hotspots touched could not be computed: ${factor?.reason ?? "the factor is not available"}.` }];
+  }
+  const hot = number2(factor.value.hotFiles) ?? 0;
+  const share3 = number2(factor.value.share) ?? 0;
+  const blocks = [
+    {
+      type: "facts",
+      caption: "Hotspots the change touches",
+      facts: [
+        { label: "Hot files touched", value: String(hot) },
+        { label: "Share of the change's churn in hot files", value: `${Math.round(share3 * 1e3) / 10}%` },
+        { label: "Band", value: bandText(factor) },
+        { label: "Guideline", value: guidelineText(factor) }
+      ]
+    }
+  ];
+  if (factor.evidence.length > 0) {
+    blocks.push({
+      type: "ranked-table",
+      caption: "Hot files the change touches, by revisions in the window",
+      noun: "files",
+      total: factor.evidence.length,
+      columns: [
+        { key: "file", label: "File" },
+        { key: "revisions", label: "Revisions", align: "right" }
+      ],
+      rows: factor.evidence.slice(0, ROWS).map((e) => ({ file: text3(e.file), revisions: number2(e.revisions) }))
+    });
+  }
+  return blocks;
+}
+function changeBlocks(assessed) {
+  const { change: change3 } = assessed;
+  const added = change3.files.reduce((sum, f) => sum + (f.added ?? 0), 0);
+  const deleted = change3.files.reduce((sum, f) => sum + (f.deleted ?? 0), 0);
+  return [
+    {
+      type: "facts",
+      caption: "The change",
+      facts: [
+        { label: "Range", value: `${short2(change3.base)}..${short2(change3.head)}${change3.against === null || change3.against === change3.base ? "" : `, against ${change3.against}`}` },
+        { label: "Commits", value: String(change3.commits.length) },
+        { label: "Files changed", value: String(change3.files.length) },
+        { label: "Lines added and deleted", value: `${added} and ${deleted}` },
+        { label: "Files moved or renamed", value: String(change3.moved) },
+        { label: "Commits with an agent trailer", value: String(change3.agentCommits) }
+      ]
+    }
+  ];
+}
+function attentionSection(items, total, compact) {
+  if (total === 0) return { id: "attention", heading: "Needs attention", blocks: [{ type: "paragraph", text: "Nothing needs attention: the risk factors raise no finding, and the complexity and structure results passed in, where there are any, show nothing new." }] };
+  const blocks = items.flatMap(
+    (item) => compact ? [{ type: "judgement", slot: item.slot.id }] : [{ type: "evidence-list", title: item.heading, items: item.evidence, omitted: item.omitted }, { type: "judgement", slot: item.slot.id }]
+  );
+  if (total > items.length) blocks.push({ type: "notice", level: "notice", text: `${plural(total - items.length, "more item")} need attention and have no judgement slot, to keep the summary short. ${compact ? "The full report lists them" : "The tables below list them"}.` });
+  return { id: "attention", heading: "Needs attention", blocks };
+}
+function excludedOf(assessed) {
+  const dropped = assessed.history.filtersApplied;
+  const labels = [
+    ["outsideWindow", "commits outside the window"],
+    ["shallowBoundaryCommits", "shallow boundary commits"],
+    ["importedCommits", "imported commits"],
+    ["blameIgnoredCommits", "commits in the blame ignore file"],
+    ["botCommits", "bot and service commits"],
+    ["suiteCommits", "commits trailed by this suite"],
+    ["emptyAfterFiltering", "commits with no file left"],
+    ["pureRenames", "rename-only file changes"],
+    ["excludedByGlob", "file changes under exclude globs"],
+    ["lockfiles", "lockfile changes"],
+    ["generated", "generated file changes"],
+    ["vendored", "vendored file changes"]
+  ];
+  const kinds = { generated: "generated files", vendored: "vendored files", nonCode: "non-code files", tests: "test files" };
+  return [
+    { what: "changed paths under the noise filters", count: assessed.change.filtered },
+    ...labels.map(([key, what]) => ({ what: `baseline: ${what}`, count: dropped.dropped[key] })),
+    { what: `baseline: changes over ${dropped.maxChangesetSize} files`, count: dropped.oversizedChanges },
+    ...Object.entries(droppedCounts()).map(([kind, count3]) => ({ what: `${kinds[kind] ?? kind} left out of rankings`, count: count3 ?? 0 })),
+    ...Object.entries(builtinOmissions()).map(([entry, count3]) => ({ what: `files under built-in exclude ${entry}`, count: count3 }))
+  ].filter((e) => e.count > 0);
+}
+function limitsOf(assessed, level, evidence, compact) {
+  const unavailable3 = assessed.factors.filter((f) => f.status === "unavailable").map((f) => f.name);
+  const history = assessed.history.evidence;
+  return [
+    "Guidelines order and label what is shown. They are heuristics for review and decide nothing.",
+    ...history.grade === "weak" ? ["The evidence grade is weak, so the history-based bands are tentative and the static results should lead."] : [],
+    ...history.truncated.shallow ? ["The clone is shallow, so history before its boundary is missing."] : [],
+    ...unavailable3.length === 0 ? [] : [`No band for ${unavailable3.join(", ")}: the factor could not be computed.`],
+    ...level.status === "shown" || compact ? [] : ["No level is shown, because no stored backtest of this repository says the levels separate past changes."],
+    ...evidence.complexity === null ? ["No complexity comparison was passed in, so complexity before and after is not shown."] : [],
+    ...evidence.structure === null ? ["No structure check was passed in, so new cycles and layer violations are not shown."] : [],
+    ...compact ? [] : ["Who wrote the touched code (placement) is about people, so this report leaves it out. Names of people appear nowhere on this page."]
+  ];
+}
+async function commitsSince(root, from, to) {
+  try {
+    return Number((await runGit(root, ["rev-list", "--count", `${from}..${to}`])).trim());
+  } catch {
+    return null;
+  }
+}
+var NO_PLACEMENT = {
+  status: "off",
+  mode: "report",
+  reason: "the change summary leaves placement out",
+  placement: null,
+  factors: [],
+  blame: { used: false, missing: 0, refreshed: false }
+};
+function evidenceFiles(context) {
+  const value = context.values.evidence;
+  return value === void 0 ? [] : (Array.isArray(value) ? value : [value]).map(String);
+}
+var change2 = {
+  summary: "What a branch or pull request changes and the evidence around it: risk factors, missing co-change partners, complexity before and after, new structure findings and hotspots touched",
+  usage: "[BASE[..HEAD]]",
+  options: { evidence: { type: "string", multiple: true }, "no-refresh": { type: "boolean" } },
+  optionHelp: {
+    evidence: "complexity check, complexity diff or structure check output (JSON) for this change's base; repeat for several files",
+    "no-refresh": "read the history cache without bringing it up to date"
+  },
+  async build(context) {
+    if (context.positionals.length > 1) throw usageError("usage: report change [BASE[..HEAD]] [--evidence FILE...]");
+    const root = context.repo.root;
+    const requested = context.positionals[0];
+    const risk = readRiskSettings(context.config);
+    const resolved = await resolveRange(root, { range: requested, mainBranch: risk.mainBranch, worktree: false });
+    const files = evidenceFiles(context);
+    const evidence = files.length === 0 ? NO_CHANGE_EVIDENCE : readChangeEvidence(root, files, resolved);
+    const history = await loadHistory(context, { noRefresh: context.values["no-refresh"] === true, wholeHistory: true, ref: resolved.head });
+    const assessed = await assessBranch(context, history, { range: requested, worktree: false, evidence: evidence.forAssessment });
+    const stored = readStoredBacktest(root, context.config.hash);
+    const behind = stored === null ? null : await commitsSince(root, stored.head, assessed.change.head);
+    const level = levelResult(assessed, NO_PLACEMENT, stored, behind);
+    const compact = context.values.compact === true;
+    const { shown, total } = attentionItems(assessed, evidence);
+    const hist = assessed.history.evidence;
+    const sections = compact ? [
+      attentionSection(shown, total, true),
+      { id: "guidance", heading: "Reviewer guidance", blocks: [{ type: "judgement", slot: "guidance" }] }
+    ] : [
+      { id: "change", heading: "The change", blocks: changeBlocks(assessed) },
+      { id: "guidance", heading: "Reviewer guidance", blocks: [{ type: "judgement", slot: "guidance" }] },
+      attentionSection(shown, total, false),
+      { id: "factors", heading: "Risk factors", blocks: [...factorBlocks(assessed, false), ...levelBlocks(level)] },
+      { id: "missing-co-change", heading: "Missing co-change partners", blocks: missingBlocks(assessed) },
+      { id: "complexity", heading: "Complexity before and after", blocks: complexityBlocks(evidence) },
+      { id: "structure", heading: "Structure findings the change adds", blocks: structureBlocks(evidence) },
+      { id: "hotspots", heading: "Hotspots touched", blocks: hotspotBlocks(assessed) },
+      { id: "evidence", heading: "Evidence behind the factors", blocks: evidenceBlocks(assessed) }
+    ];
+    return {
+      title: `Change summary ${short2(assessed.change.base)}..${short2(assessed.change.head)}${compact ? ` (${plural(assessed.change.commits.length, "commit")}, ${plural(assessed.change.files.length, "file")})` : ""}`,
+      inputs: {
+        range: requested ?? null,
+        base: assessed.change.base,
+        head: assessed.change.head,
+        baseline: assessed.baseline,
+        evidence: evidence.files,
+        locality: assessed.locality?.input ?? null,
+        abandonment: assessed.abandonment,
+        backtest: stored === null ? null : { head: stored.head, config: context.config.hash }
+      },
+      header: {
+        evidenceGrade: hist.grade,
+        historyWindow: `${hist.usableHistoryMonths} months of usable history; the baseline is the ${plural(assessed.baseline.population, "merged change")} since ${isoDate2(assessed.baseline.since)}`,
+        excluded: excludedOf(assessed)
+      },
+      sections,
+      limits: limitsOf(assessed, level, evidence, compact),
+      slots: [...shown.map((item) => item.slot), guidanceSlot(), limitsSlot()]
+    };
+  }
+};
+
+// packages/cochange/src/sibling-reports.ts
+import { existsSync as existsSync19, readFileSync as readFileSync18 } from "node:fs";
+var ENVELOPE2 = /* @__PURE__ */ new Set(["schemaVersion", "tool", "command", "repo", "config", "inputs", "results", "truncated", "meta"]);
+function readSiblingResult(root, tool, command17, head) {
+  const file = reportPath(root, tool, command17);
+  if (!existsSync19(file)) return void 0;
+  let document;
+  try {
+    document = JSON.parse(readFileSync18(file, "utf8"));
+  } catch {
+    return void 0;
+  }
+  const repo = document.repo;
+  if (document.tool !== tool || document.command !== command17) return void 0;
+  if (repo?.head !== head || repo?.dirty !== false) return void 0;
+  if (!Array.isArray(document.results) || typeof document.config !== "string") return void 0;
+  return {
+    report: `${tool}.${command17}`,
+    head,
+    config: document.config,
+    rows: document.results,
+    extra: Object.fromEntries(Object.entries(document).filter(([key]) => !ENVELOPE2.has(key)))
+  };
+}
+
+// packages/cochange/src/reports/overview.ts
+var TOP = 5;
+var FIRST_LOOK_MAX = 3;
+var isoDate3 = (seconds) => new Date(typeof seconds === "number" ? seconds * 1e3 : seconds).toISOString().slice(0, 10);
+var percent2 = (share3) => `${Math.round(share3 * 1e3) / 10}%`;
+var number3 = (value) => typeof value === "number" && Number.isFinite(value) ? value : null;
+var text4 = (value) => typeof value === "string" ? value : null;
+var COMMIT_FILTERS = [
+  ["outsideWindow", "commits outside the analysis window"],
+  ["shallowBoundaryCommits", "shallow boundary commits"],
+  ["importedCommits", "commits of imported history"],
+  ["blameIgnoredCommits", "commits in the blame ignore file"],
+  ["botCommits", "commits by bots and service accounts"],
+  ["suiteCommits", "commits trailed by this suite"],
+  ["emptyAfterFiltering", "commits with no file left after filtering"]
+];
+var CHANGE_FILTERS = [
+  ["pureRenames", "file changes that only rename"],
+  ["excludedByGlob", "file changes matching exclude globs"],
+  ["lockfiles", "lockfile changes"],
+  ["generated", "generated file changes"],
+  ["vendored", "vendored file changes"]
+];
+var FILE_KINDS = { generated: "generated files", vendored: "vendored files", nonCode: "non-code files", tests: "test files" };
+function excludedCounts(filters, files, builtin) {
+  return [
+    ...[...COMMIT_FILTERS, ...CHANGE_FILTERS].map(([key, what]) => ({ what, count: filters.dropped[key] })),
+    { what: `changes over the changeset limit of ${filters.maxChangesetSize} files`, count: filters.oversizedChanges },
+    ...Object.entries(files).map(([kind, count3]) => ({ what: `${FILE_KINDS[kind] ?? kind} left out of the rankings`, count: count3 })),
+    ...Object.entries(builtin).map(([entry, count3]) => ({ what: `files under the built-in exclude ${entry}`, count: count3 }))
+  ];
+}
+var grade = (evidence) => evidence.grade;
+function evidenceBlocks2(evidence) {
+  const g = evidence.guidelines.strong;
+  const share3 = (value, guideline) => guideline === 0 ? 0 : value / guideline * 100;
+  const merge2 = evidence.commitSize;
+  return [
+    {
+      type: "facts",
+      caption: "Evidence behind the history-based results",
+      facts: [
+        { label: "Evidence grade", value: evidence.grade },
+        { label: "Months of usable history", value: String(evidence.usableHistoryMonths) },
+        { label: "Active contributors in the window", value: String(evidence.activeContributors) },
+        { label: "Logical changes in the window", value: String(evidence.logicalChangesInWindow) },
+        { label: "Shallow clone", value: evidence.truncated.shallow ? `yes, ${evidence.truncated.boundaryCommits} boundary commits` : "no" },
+        { label: "Imported history", value: evidence.importedHistory.length === 0 ? "none detected" : `${evidence.importedHistory.length} detected` },
+        {
+          label: "Merge policy",
+          value: merge2.shifted ? `the median files per change moved from ${merge2.earlierMedian} to ${merge2.laterMedian}, which usually means a change of merge policy` : `no shift in the median files per change (${merge2.earlierMedian} earlier, ${merge2.laterMedian} later)`
+        }
+      ]
+    },
+    {
+      type: "guideline-bars",
+      title: "History against the guidelines for strong evidence",
+      unit: "percent of the guideline for strong evidence",
+      source: `Guidelines for strong evidence: ${g.months} months, ${g.logicalChanges} logical changes, ${g.contributors} contributors.`,
+      bars: [
+        { label: `Months of history (${evidence.usableHistoryMonths} of ${g.months})`, value: share3(evidence.usableHistoryMonths, g.months), guideline: 100 },
+        { label: `Logical changes (${evidence.logicalChangesInWindow} of ${g.logicalChanges})`, value: share3(evidence.logicalChangesInWindow, g.logicalChanges), guideline: 100 },
+        { label: `Contributors (${evidence.activeContributors} of ${g.contributors})`, value: share3(evidence.activeContributors, g.contributors), guideline: 100 }
+      ]
+    },
+    { type: "trend-marker", label: "Median files per logical change", earlier: merge2.earlierMedian, later: merge2.laterMedian, windows: ["the earlier half", "the later half"] }
+  ];
+}
+function fixBlocks(convention) {
+  return [
+    {
+      type: "facts",
+      caption: "Fix convention check",
+      facts: [
+        { label: "Landed changes in the window", value: String(convention.landedChanges) },
+        { label: "Changes whose title or message is a fix", value: `${convention.fixes} (${percent2(convention.share)})` },
+        { label: "Conventional Commits fix prefixes", value: String(convention.forms.conventionalCommits) },
+        { label: "Fix verbs", value: String(convention.forms.fixVerb) },
+        { label: "Issue references", value: String(convention.forms.issueReference) },
+        { label: "Convention followed", value: convention.followsConvention ? "yes" : "no" }
+      ]
+    },
+    ...convention.note === null ? [] : [{ type: "notice", level: "notice", text: convention.note }]
+  ];
+}
+function excludedBlocks(excluded) {
+  return [
+    {
+      type: "ranked-table",
+      caption: "What the run left out, with counts",
+      numbered: false,
+      columns: [
+        { key: "what", label: "Left out" },
+        { key: "count", label: "Count", align: "right" }
+      ],
+      rows: excluded.map((e) => ({ what: e.what, count: e.count }))
+    }
+  ];
+}
+function missingResult(title, command17) {
+  return {
+    candidates: [],
+    blocks: [{ type: "notice", level: "notice", text: `No stored ${title} for this commit. Run \`${command17}\` to store it, then run the overview again.` }],
+    read: null,
+    missing: command17
+  };
+}
+function resultFrom(stored, title, command17, build) {
+  if (stored === void 0) return missingResult(title, command17);
+  const { block, candidates } = build(stored);
+  return { candidates, blocks: [block], read: { report: stored.report, head: stored.head, config: stored.config }, missing: null };
+}
+var top = (rows5) => rows5.slice(0, TOP);
+function complexityResult(stored) {
+  return resultFrom(stored, "complexity analyse result", "complexity analyse", (s) => {
+    const rows5 = top(s.rows);
+    return {
+      candidates: rows5.flatMap((row2) => text4(row2.id) === null ? [] : [{ ref: `complexity:${text4(row2.id)}`, label: `${text4(row2.id)} (complexity)` }]),
+      block: {
+        type: "ranked-table",
+        caption: "Most complex units, from complexity analyse",
+        noun: "units",
+        total: s.rows.length,
+        columns: [
+          { key: "id", label: "Unit" },
+          { key: "cognitive", label: "Cognitive", align: "right" },
+          { key: "cyclomatic", label: "Cyclomatic", align: "right" },
+          { key: "nesting", label: "Nesting", align: "right" },
+          { key: "length", label: "Length", align: "right" },
+          { key: "labels", label: "Labels" }
+        ],
+        rows: rows5.map((row2) => ({
+          id: text4(row2.id) ?? text4(row2.path),
+          cognitive: number3(row2.cognitive),
+          cyclomatic: number3(row2.cyclomatic),
+          nesting: number3(row2.nesting),
+          length: number3(row2.length),
+          labels: Array.isArray(row2.labels) && row2.labels.length > 0 ? row2.labels.join(", ") : null
+        }))
+      }
+    };
+  });
+}
+function cyclesResult(stored) {
+  return resultFrom(stored, "structure cycles result", "structure cycles", (s) => {
+    const rows5 = top(s.rows);
+    return {
+      candidates: rows5.flatMap((row2) => text4(row2.id) === null ? [] : [{ ref: `structure:${text4(row2.id)}`, label: `${text4(row2.id)} (import cycle)` }]),
+      block: {
+        type: "ranked-table",
+        caption: "Largest import cycles, from structure cycles",
+        noun: "cycles",
+        total: s.rows.length,
+        columns: [
+          { key: "id", label: "Cycle" },
+          { key: "size", label: "Modules", align: "right" },
+          { key: "method", label: "Method" },
+          { key: "coChangeAcross", label: "Co-changes across", align: "right" },
+          { key: "unblockedGain", label: "Unblocked gain", align: "right" }
+        ],
+        rows: rows5.map((row2) => ({
+          id: text4(row2.id),
+          size: number3(row2.size),
+          method: text4(row2.method),
+          coChangeAcross: number3(row2.coChangeAcross),
+          unblockedGain: number3(row2.unblockedGain)
+        }))
+      }
+    };
+  });
+}
+function localityResult(stored) {
+  return resultFrom(stored, "locality analyse result", "locality analyse", (s) => {
+    const rows5 = top(s.rows);
+    const ranking = (row2) => typeof row2.ranking === "object" && row2.ranking !== null ? row2.ranking : {};
+    const guideline = rows5.map((row2) => number3(ranking(row2).guideline)).find((g) => g !== null) ?? void 0;
+    return {
+      candidates: rows5.flatMap((row2) => text4(row2.path) === null ? [] : [{ ref: `locality:${text4(row2.path)}`, label: `${text4(row2.path)} (locality)` }]),
+      block: {
+        type: "ranked-table",
+        caption: "Units furthest from where they are used, from locality analyse",
+        noun: "units",
+        total: s.rows.length,
+        columns: [
+          { key: "path", label: "Unit" },
+          { key: "recommendation", label: "Recommendation" },
+          { key: "gain", label: `Gain (${text4(rows5[0]?.scoreUnit) ?? "score"})`, align: "right", ...guideline === void 0 ? {} : { guideline: { value: guideline, note: "locality.minDistance gain guideline" } } },
+          { key: "distance", label: "Distance", align: "right" },
+          { key: "target", label: "Target" }
+        ],
+        rows: rows5.map((row2) => ({
+          path: text4(row2.path),
+          recommendation: text4(row2.recommendation),
+          gain: number3(ranking(row2).value) ?? number3(row2.score),
+          distance: number3(row2.distance),
+          target: text4(row2.target)
+        }))
+      }
+    };
+  });
+}
+function hotspotResult(rows5) {
+  const shown = top(rows5);
+  return {
+    candidates: shown.map((row2) => ({ ref: `hotspot:${row2.path}`, label: `${row2.path} (hotspot ranking)` })),
+    read: null,
+    missing: null,
+    blocks: [
+      {
+        type: "ranked-table",
+        caption: "Highest hotspot scores, from cochange hotspots",
+        noun: "files",
+        total: rows5.length,
+        columns: [
+          { key: "path", label: "File" },
+          { key: "score", label: "Score", align: "right" },
+          { key: "frequency", label: "Revisions", align: "right" },
+          { key: "complexity", label: "Complexity", align: "right" },
+          { key: "fixes", label: "Fixes", align: "right" },
+          { key: "recommendation", label: "Flag" }
+        ],
+        rows: shown.map((row2) => ({ path: row2.path, score: row2.score, frequency: row2.frequency, complexity: row2.complexity, fixes: row2.fixes, recommendation: row2.recommendation }))
+      },
+      scoreHistogram(rows5)
+    ]
+  };
+}
+function scoreHistogram(rows5) {
+  const bins = Array.from({ length: 10 }, (_, i) => ({ label: `${(i / 10).toFixed(1)} to ${((i + 1) / 10).toFixed(1)}`, count: 0 }));
+  for (const row2 of rows5) if (row2.score !== null) bins[Math.min(9, Math.floor(row2.score * 10))].count++;
+  return { type: "histogram", title: "Distribution of hotspot scores", unit: "files", bins };
+}
+function slots(candidates) {
+  return [
+    {
+      id: "first-look",
+      title: "Judgement: where to start",
+      about: { kind: "report", ref: "overview", label: "the repository" },
+      task: `Choose up to ${FIRST_LOOK_MAX} subjects from the candidates that the tables in this report say are worth a look first, most worthwhile first. For each, give a verdict and one or two sentences of why that cite only values shown in this report. Do not add numbers the report does not show. When the evidence grade is weak, say the history-based results are tentative.`,
+      verdicts: ["investigate-first", "worth-a-look", "evidence-too-weak"],
+      maxChars: 320,
+      choose: { max: FIRST_LOOK_MAX, candidates }
+    },
+    {
+      id: "limits",
+      title: "Judgement: what limits these results",
+      about: { kind: "report", ref: "overview", label: "the repository" },
+      task: "In at most three sentences, say what limits how far these results can be trusted for this repository, using only the evidence, the exclusions and the missing results shown above.",
+      verdicts: [],
+      maxChars: 500
+    }
+  ];
+}
+function limitsOf2(evidence, missing, complexitySource) {
+  return [
+    "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
+    `Each table shows the top ${TOP} of its result and says how many rows it leaves out; the command prints the rest.`,
+    ...evidence.grade === "weak" ? ["The evidence grade is weak, so history-based results are tentative and static signals should lead."] : [],
+    ...evidence.truncated.shallow ? [`The clone is shallow, so history before ${evidence.truncated.availableSince === null ? "its boundary" : isoDate3(evidence.truncated.availableSince)} is missing.`] : [],
+    ...evidence.commitSize.shifted ? ["A change of merge policy shifts what a commit means, so compare windows within one policy."] : [],
+    ...complexitySource === "indentation" ? ["Hotspot complexity is the indentation proxy, because no complexity report covers this commit."] : [],
+    ...missing.length === 0 ? [] : [`Not stored for this commit: ${missing.join(", ")}. The overview reads other plugins' stored results and never computes them.`]
+  ];
+}
+var overview = {
+  summary: "Evidence, fix convention, exclusions and the top results of each plugin, with a judgement of what to look at first",
+  options: { ...windowOptions, "no-refresh": { type: "boolean" }, ...noCacheOption },
+  optionHelp: {
+    since: "analyse history from this date (ISO 8601); needed on a shallow clone",
+    until: "analyse history up to this date (ISO 8601, exclusive)",
+    "no-refresh": "read the history cache without bringing it up to date",
+    "no-cache": "compute the hotspot ranking again instead of reading the stored one"
+  },
+  async build(context) {
+    const output = await command5.run(context);
+    const extra = output.extra;
+    const { evidence } = extra;
+    const rows5 = output.results;
+    const root = context.repo.root;
+    const head = context.repo.head;
+    const results = [
+      hotspotResult(rows5),
+      complexityResult(readSiblingResult(root, "complexity", "analyse", head)),
+      cyclesResult(readSiblingResult(root, "structure", "cycles", head)),
+      localityResult(readSiblingResult(root, "locality", "analyse", head))
+    ];
+    const candidates = results.flatMap((r) => r.candidates);
+    const missing = results.flatMap((r) => r.missing === null ? [] : [r.missing]);
+    const excluded = excludedCounts(extra.filtersApplied, droppedCounts(), builtinOmissions());
+    const inputs = output.inputs ?? {};
+    return {
+      title: "Code health overview",
+      inputs: {
+        since: context.values.since ?? null,
+        until: context.values.until ?? null,
+        complexityReport: inputs.complexityReport ?? null,
+        storedResultsRead: results.flatMap((r) => r.read === null ? [] : [r.read])
+      },
+      header: {
+        evidenceGrade: grade(evidence),
+        historyWindow: `${evidence.usableHistoryMonths} months of usable history; the analysis window is ${evidence.window.months} months, ${isoDate3(extra.window.since)} to ${isoDate3(extra.window.until)}`,
+        excluded: excluded.filter((e) => e.count > 0)
+      },
+      sections: [
+        { id: "first-look", heading: "What to look at first", blocks: [{ type: "judgement", slot: "first-look" }] },
+        { id: "evidence", heading: "Evidence", blocks: evidenceBlocks2(evidence) },
+        { id: "fix-convention", heading: "Fix convention", blocks: fixBlocks(extra.fixConvention) },
+        { id: "excluded", heading: "What was excluded", blocks: excludedBlocks(excluded) },
+        { id: "results", heading: "Top results of each plugin", blocks: results.flatMap((r) => r.blocks) }
+      ],
+      limits: limitsOf2(evidence, missing, extra.complexitySource),
+      slots: slots(candidates)
+    };
+  }
+};
+
+// packages/cochange/src/commands/report.ts
+var name13 = "report";
+var command12 = reportCommand({ overview, change: change2 });
+
+// packages/cochange/src/commands/risk.ts
+var risk_exports = {};
+__export(risk_exports, {
+  command: () => command13,
+  name: () => name14,
+  rules: () => rules8
+});
+
+// packages/cochange/src/risk/factor-docs.ts
+var FACTOR_DOCS = [
+  {
+    name: "size",
+    family: "size-and-diffusion",
+    layer: "history",
+    banding: "percentile",
+    signal: "Lines added plus deleted, and files touched",
+    definition: "The sum of added and deleted lines over the files left after the noise filters (binary files add nothing). Banded on the lines. The file count is shown beside it.",
+    why: "Larger changes hide more, and review attention per line falls as size grows."
+  },
+  {
+    name: "spread",
+    family: "size-and-diffusion",
+    layer: "history",
+    banding: "percentile",
+    signal: "Change spread of the touched files, with folders and components touched",
+    definition: "The mean tree distance over every pair of touched files, the suite's one tree distance function. Zero for a change of one file. The distinct folders, and the components when configured, are shown beside it.",
+    why: "A scattered change needs knowledge of several areas at once."
+  },
+  {
+    name: "entropy",
+    family: "size-and-diffusion",
+    layer: "history",
+    banding: "percentile",
+    signal: "How evenly the churn is distributed over the touched files",
+    definition: "Shannon entropy in bits, H = -sum(p log2 p), where p is each file's share of the change's churn (Hassan's change entropy as Kamei et al. use it). Zero for a change concentrated in one file.",
+    why: "A change concentrated in one file is easier to follow than the same churn smeared over twenty."
+  },
+  {
+    name: "mixed-purpose",
+    family: "size-and-diffusion",
+    layer: "history",
+    banding: "count",
+    signal: "Renames or moves combined with content changes",
+    definition: "The number of moved files, when the change also edits content (another file, or the moved file itself). Zero otherwise. Pure moves are filtered out of past history, so the baseline cannot see them, which is why the factor is banded on a count and not against the baseline. The backtest sees only moves that also edit the file.",
+    why: "The change is probably several changes, and a reviewer cannot evaluate a move and a behaviour change together."
+  },
+  {
+    name: "hotspots-touched",
+    family: "history",
+    layer: "history",
+    banding: "percentile",
+    signal: "Share of the change's churn landing in hot files",
+    definition: "A file is hot when it was changed within the recent window and its revisions in the analysis window put it in the top (100 - cochange.hotspotPercentile) percent of changed files, as of the base. Complexity is left out of the ranking, because it cannot be measured for every past commit. The factor is the share of the change's churn that lands in hot files.",
+    why: "Hotspots are where complexity and change meet, and where defects concentrate."
+  },
+  {
+    name: "defect-history",
+    family: "history",
+    layer: "history",
+    banding: "percentile",
+    signal: "Share of each touched file's revisions that were fixes",
+    definition: `Over the touched files' revisions in the analysis window, counted as changes that landed on the main line (a merge with the commits it brought in is one revision), the share made by a landed change whose own title matches history.fixPatterns (cochange.fixPatterns when set): the pull request title of a merge, the subject of a squash or direct commit. A fix made on a branch before it merged was caught in review and does not make the change a fix. A revert is not a fix. Each file lists the commits that matched and the pattern that matched, and the patterns also match subjects that are not defects, such as "fix the bug report template", while a fix of typos, spelling, lint or formatting, and a commit with a non-fix Conventional Commits type are left out by history.fixExcludePatterns. Unavailable when no change in the window matches, since the repository then has no convention to read.`,
+    why: "Code that has needed fixing tends to need it again."
+  },
+  {
+    name: "contention",
+    family: "history",
+    layer: "history",
+    banding: "percentile",
+    signal: "Distinct authors who changed the touched files in the recent window",
+    definition: "The number of distinct authors, other than the change's own, who changed any touched file within cochange.recentMonths of the change. A count only: no name appears in the evidence.",
+    why: "Concurrent work raises the chance of semantic conflicts that a clean merge does not show."
+  },
+  {
+    name: "age",
+    family: "history",
+    layer: "history",
+    banding: "percentile",
+    signal: "Touched files not changed within the stale window, and files changed within the last few days",
+    definition: "Two shares of the touched files that already existed: those last changed more than cochange.staleMonths before the change, and those last changed within cochange.risk.settlingDays. Each side is banded on its own and the factor takes the higher.",
+    why: "Old code has lost its context. Very recent code is still settling."
+  },
+  {
+    name: "abandoned-touched",
+    family: "history",
+    layer: "history",
+    banding: "count",
+    signal: "Touched files already abandoned, or with high abandonment probability",
+    definition: "Needs the knowledge analysis (cochange.knowledge.enabled), and is unavailable without it. Counts the touched files that existed at the base and are abandoned there (at least cochange.knowledge.abandonmentGuideline percent of the lines held by people belong to people who have left, judged at the tip's date), or whose simulated probability of becoming abandoned within the horizon reaches cochange.knowledge.atRiskProbability percent. Banded on the count. Computed from the blame cache and never stored, and the evidence names files, not people.",
+    why: "Nobody is left who can review these with first-hand knowledge."
+  },
+  {
+    name: "missing-co-change",
+    family: "completeness",
+    layer: "history",
+    banding: "count",
+    signal: "Files that usually change with a touched file and are missing from the change",
+    definition: "Files whose confidence towards a touched file is at least cochange.risk.missingConfidence percent, with support of at least cochange.minSupport, over the eligible changes of the analysis window, that exist and are not touched by the change. Confidence is shared changes divided by the touched file's changes. Banded on the count.",
+    why: "The strongest single completeness signal: these files have needed changing every other time."
+  },
+  {
+    name: "novel-coupling",
+    family: "completeness",
+    layer: "history",
+    banding: "count",
+    signal: "Pairs of touched files at high tree distance that have never changed together",
+    definition: "Pairs of touched, existing files with history, at tree distance of at least cochange.risk.novelDistance, that were never in one eligible change before. Banded on the count of pairs.",
+    why: "The change may be introducing a dependency between areas that were independent."
+  },
+  {
+    name: "test-evidence",
+    family: "completeness",
+    layer: "history",
+    banding: "count",
+    signal: "Source files changed without the tests that usually change with them, and test deletions",
+    definition: "Touched source files whose sibling test exists, is untouched by the change, and changed with the file in at least cochange.risk.testShare percent of its revisions (with support of at least cochange.minSupport), plus deleted test files. Banded on the count.",
+    why: "Behaviour may have changed without tests following."
+  },
+  {
+    name: "blast-radius",
+    family: "structure-and-content",
+    layer: "history",
+    banding: "percentile",
+    signal: "Files with high co-change confidence towards the touched files",
+    definition: "Without a locality report, the number of files with confidence and support at or above the missing-co-change guidelines towards any touched file. With locality's report for this commit, the fan-in of the touched files. When a parse adapter reads any touched file, also the exported symbols of the touched files whose signature changed (kind or interface size) or that were removed, each with the number of files that used it at the base, placed against every exported symbol's fan-in. The band is the highest of these.",
+    why: "A flaw in widely used code is inherited by every consumer."
+  },
+  {
+    name: "complexity-delta",
+    family: "structure-and-content",
+    layer: "lexical",
+    banding: "count",
+    signal: "Units that are new and over a guideline, or over a guideline and worse",
+    definition: "With the complexity plugin's diff passed in: the units it reports as new and over its guideline, or over it and worse. Without it: the touched code files (those a lexer profile reads, so not prose or licence text) whose indentation complexity rose by at least cochange.risk.complexityRise. Banded on the count, and not counted in the score.",
+    why: "The change is adding code that is hard to understand."
+  },
+  {
+    name: "structure-delta",
+    family: "structure-and-content",
+    layer: "structural",
+    banding: "count",
+    signal: "New cycles and layer violations",
+    definition: "From the structure plugin's check, passed in with --evidence. Unavailable without it. Any new cycle or violation is an event that raises the impact band, and it is not also counted in the score.",
+    why: "The change makes later changes more expensive."
+  },
+  {
+    name: "sensitive-paths",
+    family: "structure-and-content",
+    layer: "history",
+    banding: "count",
+    signal: "Touched files matching the configured sensitive globs",
+    definition: "Touched files (or their old paths) matching cochange.risk.sensitivePaths: migrations, authentication, build and CI configuration, dependency manifests. Any match is an event that raises the impact band, and it is not also counted in the score.",
+    why: "Some paths carry consequences that no history signal captures."
+  },
+  {
+    name: "authorship",
+    family: "placement",
+    layer: "placement",
+    banding: "none",
+    signal: "Share of each touched file's lines last authored by the change's authors",
+    definition: "From the blame cache at the base: lines last written by the authors, over the lines held by people, per touched file. Lines held by bots, services and agents belong to nobody.",
+    why: "The author is modifying code they wrote."
+  },
+  {
+    name: "change-familiarity",
+    family: "placement",
+    layer: "placement",
+    banding: "none",
+    signal: "The authors' earlier changes to each touched file, weighted by recency",
+    definition: "Each earlier merged change of a touched file by one of the authors counts 1, halved for every cochange.risk.recencyHalfLifeMonths it is old.",
+    why: "Familiarity fades, so a change from three years ago counts for less than one from last month."
+  },
+  {
+    name: "neighbourhood",
+    family: "placement",
+    layer: "placement",
+    banding: "none",
+    signal: "The authors' earlier changes to files coupled with the touched files, to the same folder, and to the same configured component",
+    definition: "The authors' earlier changes to the files that changed with the touched file at the missing-co-change guidelines, to files in its folder, and to files in its component when cochange components are configured.",
+    why: "Someone who knows the surroundings is better placed than a file-level count shows."
+  },
+  {
+    name: "first-touch-share",
+    family: "placement",
+    layer: "placement",
+    banding: "none",
+    signal: "Share of the change's churn in first-touch files",
+    definition: "The churn in files whose label is first-touch, over the change's churn.",
+    why: "The part of the change made without any history in that code."
+  },
+  {
+    name: "owner-distance",
+    family: "placement",
+    layer: "placement",
+    banding: "none",
+    signal: "Touched files with a clear owner who is not among the change's authors",
+    definition: "Touched files where one active developer holds at least cochange.risk.ownerShare percent of the lines and is not an author of the change.",
+    why: "Low-ownership changes to owned code are where the ownership research finds more failures, and the owner is the obvious reviewer."
+  },
+  {
+    name: "no-owner",
+    family: "placement",
+    layer: "placement",
+    banding: "none",
+    signal: "Touched files with no active developer holding a meaningful share",
+    definition: "Touched files where no active developer holds at least cochange.risk.regularShare percent of the lines.",
+    why: "Neither the author nor any reviewer has first-hand knowledge."
+  }
+];
+var factorDoc = (name18) => FACTOR_DOCS.find((doc) => doc.name === name18);
+var LEVEL_RULES = [
+  {
+    id: "baseline",
+    text: "The baseline population is the repository's past changes as they were merged: the commits a merge commit brought in, taken together, or a squash commit, or a single commit on the main line. The most recent cochange.risk.baselineChanges of them inside the analysis window form it, each measured as of its own time."
+  },
+  {
+    id: "bands",
+    text: "A factor's value is placed against the baseline: above the cochange.risk.moderatePercentile (default 75th) is moderate, above the highPercentile (default 90th) is high. The comparison is strict, percentiles are nearest rank, and a value of zero is always low. Count-based factors band on the count: cochange.risk.countModerate and countHigh. A two-sided factor takes the higher of its sides."
+  },
+  {
+    id: "unavailable",
+    text: "A factor that cannot be computed, or whose value cannot be placed because fewer than cochange.risk.minBaseline merged changes could be compared, is unavailable. It is never reported as low and it adds nothing to the score."
+  },
+  {
+    id: "families",
+    text: "Factors that measure nearly the same thing form a family: size and diffusion, history of the touched code, completeness, and structure and content. A family counts once, at the band of its highest scored factor (low 0, moderate 1, high 2). The score is the sum."
+  },
+  {
+    id: "impact",
+    text: "The impact band is the score placed against the baseline's own scores, by the same strict percentiles. By construction no more than a quarter of changes are moderate or above and no more than a tenth are high, however many factors there are."
+  },
+  {
+    id: "events",
+    text: "Three findings are events, not positions in a distribution: a high missing-co-change, any structure-delta, and any sensitive-paths match. Together they raise the impact band by one step, once. sensitive-paths, structure-delta and complexity-delta are not also counted in the score."
+  },
+  {
+    id: "placement",
+    text: "Placement is close when most of the change's churn is in owner or regular files, distant when most is in first-touch files or no-owner is high, mixed otherwise, and unknown when most files are unknown. It is computed for the invoking user's own change, or for anyone's when cochange.risk.placement is any."
+  },
+  {
+    id: "level",
+    text: "Impact low: routine when placement is close or mixed or unknown, attention when distant. Impact moderate: routine when close, attention when mixed or unknown, elevated when distant. Impact high: attention when close, elevated otherwise."
+  },
+  {
+    id: "backtest",
+    text: "A level is shown only where a stored backtest for the repository shows that the levels separate past changes. The suite's maintainers run the backtest; where none is stored, the bands, findings and responses stand alone. The level is advice for review, never a gate."
+  }
+];
+
+// packages/cochange/src/risk/explain.ts
+function explainRules(risk) {
+  return {
+    kind: "explain",
+    topic: "level",
+    rules: LEVEL_RULES.map((rule) => ({ ...rule })),
+    settings: {
+      moderatePercentile: risk.moderatePercentile,
+      highPercentile: risk.highPercentile,
+      baselineChanges: risk.baselineChanges,
+      minBaseline: risk.minBaseline,
+      countModerate: risk.countModerate,
+      countHigh: risk.countHigh,
+      disabled: [...risk.disabled].sort()
+    },
+    factors: FACTOR_DOCS.map(({ name: name18, family, layer, banding, signal }) => ({ name: name18, family, layer, banding, signal }))
+  };
+}
+async function explainFactor(name18, assess) {
+  const doc = factorDoc(name18);
+  if (!doc) throw usageError(`unknown factor "${name18}"; factors: ${FACTOR_DOCS.map((d) => d.name).join(", ")}`);
+  let driven = null;
+  if (doc.family !== "placement") {
+    const assessed = await assess();
+    driven = assessed.factors.find((factor) => factor.name === name18) ?? null;
+  }
+  return { kind: "explain", topic: name18, doc: { ...doc }, branch: driven };
+}
+
+// packages/cochange/src/risk/backtest.ts
+function scoreMainline(changes, context, options) {
+  const { risk } = context;
+  const { past } = chronologicalPass(changes, context, {
+    windowMonths: options.windowMonths,
+    maxChangesetSize: options.maxChangesetSize,
+    fix: risk.fix,
+    placement: true
+  });
+  const scored = [];
+  for (const [at, entry] of past.entries()) {
+    if (options.since !== void 0 && entry.change.time < options.since) continue;
+    const since = monthsBefore(entry.change.time, options.windowMonths);
+    const baseline = past.slice(Math.max(0, at - risk.baselineChanges), at).filter((p) => p.change.time >= since);
+    scored.push(scoreOne(at, entry, baseline, risk));
+  }
+  return scored;
+}
+function scoreOne(index2, entry, baseline, risk) {
+  const measures = baseline.map((p) => p.measurements);
+  const bander = makeBander(measures, risk);
+  const bands = /* @__PURE__ */ new Map();
+  const factors = entry.measurements.map((m) => {
+    const band = risk.disabled.has(m.name) ? "unavailable" : bander(m).band;
+    bands.set(m.name, band);
+    return { name: m.name, family: m.family, band, disabled: risk.disabled.has(m.name) };
+  });
+  const events = [];
+  if (bands.get("missing-co-change") === "high") events.push("missing-co-change");
+  if (!risk.disabled.has("sensitive-paths") && Number(entry.measurements.find((m) => m.name === "sensitive-paths")?.series.count ?? 0) > 0) {
+    events.push("sensitive-paths");
+  }
+  const impact = impactOf(factors, baselineScores(measures, risk), events, risk);
+  const placement = entry.placement?.band ?? "unknown";
+  const missing = (entry.measurements.find((m) => m.name === "missing-co-change")?.evidence ?? []).map((row2) => ({ file: String(row2.file) }));
+  return { index: index2, change: entry.change, bands, impact, placement, level: levelOf2(impact.band, placement), baseline: baseline.length, missing };
+}
+async function revertedShas(root, tip) {
+  const out = await runGit(root, ["log", "--grep=This reverts commit", "--format=%H%x1f%B%x1e", tip]);
+  const reverts = /* @__PURE__ */ new Map();
+  for (const entry of out.split("")) {
+    const [sha, ...body] = entry.replace(/^\n/, "").split("");
+    if (!sha) continue;
+    for (const match of body.join("").matchAll(/This reverts commit ([0-9a-f]{40})/g)) {
+      const list = reverts.get(match[1]);
+      if (list) list.push(sha.trim());
+      else reverts.set(match[1], [sha.trim()]);
+    }
+  }
+  return reverts;
+}
+async function outcomesOf(root, tip, changes, risk, headTime) {
+  const reverts = await revertedShas(root, tip);
+  const unitOfCommit = /* @__PURE__ */ new Map();
+  for (const [index2, change3] of changes.entries()) {
+    unitOfCommit.set(change3.id, index2);
+    for (const sha of change3.shas) unitOfCommit.set(sha, index2);
+  }
+  const reverted = /* @__PURE__ */ new Set();
+  for (const [sha, by] of reverts) {
+    const target = unitOfCommit.get(sha);
+    if (target === void 0) continue;
+    if (by.some((revert) => (unitOfCommit.get(revert) ?? -1) > target)) reverted.add(target);
+  }
+  const touching2 = /* @__PURE__ */ new Map();
+  for (const [index2, change3] of changes.entries()) {
+    for (const file of change3.files) {
+      const list = touching2.get(file.fileId);
+      if (list) list.push(index2);
+      else touching2.set(file.fileId, [index2]);
+    }
+  }
+  const window = risk.followUpDays * SECONDS_PER_DAY2;
+  const fix = changes.map((change3) => fixOf(change3, risk.fix) !== null);
+  const outcomes = /* @__PURE__ */ new Map();
+  for (const [index2, change3] of changes.entries()) {
+    let fixed = false;
+    for (const file of change3.files) {
+      for (const later of touching2.get(file.fileId) ?? []) {
+        if (later <= index2) continue;
+        if (changes[later].time > change3.time + window) break;
+        if (fix[later]) fixed = true;
+      }
+      if (fixed) break;
+    }
+    outcomes.set(change3.id, { reverted: reverted.has(index2), fixed, censored: change3.time + window > headTime });
+  }
+  return outcomes;
+}
+var round5 = (value) => Math.round(value * 1e4) / 1e4;
+var MIN_LEVEL_CHANGES = 5;
+var MIN_TROUBLED = 3;
+function separationOf(levels, troubled) {
+  const usable = levels.filter((row2) => row2.changes >= MIN_LEVEL_CHANGES && row2.rate !== null);
+  if (troubled < MIN_TROUBLED) {
+    return { status: "insufficient", reason: `only ${troubled} past changes were followed by trouble, fewer than the ${MIN_TROUBLED} needed to compare levels` };
+  }
+  if (usable.length < 2) {
+    return { status: "insufficient", reason: `fewer than two levels have at least ${MIN_LEVEL_CHANGES} changes to compare` };
+  }
+  const rates = usable.map((row2) => row2.rate);
+  const rises = rates.every((rate, i) => i === 0 || rate >= rates[i - 1]) && rates.at(-1) > rates[0];
+  const last = usable.at(-1);
+  const beatsBase = last.baseRate === null || last.rate > last.baseRate;
+  return rises && beatsBase ? { status: "separates", reason: `the trouble rate rises from ${usable[0].rate} at ${usable[0].band} to ${last.rate} at ${last.band}, above the ${last.baseRate} of the same files` } : { status: "does-not-separate", reason: `the trouble rate does not rise with the level (${usable.map((row2) => `${row2.band} ${row2.rate}`).join(", ")}) or does not beat the rate of the same files` };
+}
+function summarise(scored, all, outcomes, risk) {
+  const known = scored.filter((s) => outcomes.get(s.change.id)?.censored === false);
+  const troubledOf = (s) => {
+    const o = outcomes.get(s.change.id);
+    return o.reverted || o.fixed;
+  };
+  const perFile = /* @__PURE__ */ new Map();
+  for (const change3 of all) {
+    const outcome = outcomes.get(change3.id);
+    if (!outcome || outcome.censored) continue;
+    const trouble = outcome.reverted || outcome.fixed;
+    for (const file of change3.files) {
+      const row2 = perFile.get(file.fileId) ?? { changes: 0, troubled: 0 };
+      row2.changes++;
+      if (trouble) row2.troubled++;
+      perFile.set(file.fileId, row2);
+    }
+  }
+  const baseOf = (s) => {
+    let changes = 0;
+    let troubled2 = 0;
+    for (const file of s.change.files) {
+      const row2 = perFile.get(file.fileId);
+      if (row2) {
+        changes += row2.changes;
+        troubled2 += row2.troubled;
+      }
+    }
+    return changes === 0 ? null : troubled2 / changes;
+  };
+  const rows5 = (keys, keyOf) => keys.map((band) => {
+    const members = known.filter((s) => keyOf(s) === band);
+    const troubled2 = members.filter(troubledOf).length;
+    const bases = members.map(baseOf).filter((b) => b !== null);
+    return {
+      band,
+      changes: members.length,
+      troubled: troubled2,
+      rate: members.length === 0 ? null : round5(troubled2 / members.length),
+      baseRate: bases.length === 0 ? null : round5(bases.reduce((a, b) => a + b, 0) / bases.length)
+    };
+  });
+  const levels = rows5(LEVELS, (s) => s.level);
+  const factors = [...SCORED_FACTORS].map((name18) => ({
+    name: name18,
+    bands: rows5(["low", "moderate", "high"], (s) => {
+      const band = s.bands.get(name18);
+      return band === void 0 || band === "unavailable" ? null : band;
+    }),
+    unavailable: known.filter((s) => (s.bands.get(name18) ?? "unavailable") === "unavailable").length
+  }));
+  const outcomeList = [...outcomes.values()];
+  const troubled = known.filter(troubledOf).length;
+  const withFinding = scored.filter((s) => s.missing.length > 0);
+  const followed = withFinding.filter((s) => {
+    const until = s.change.time + risk.followUpDays * SECONDS_PER_DAY2;
+    for (const later of all.slice(s.index + 1)) {
+      if (later.time > until) break;
+      if (later.files.some((f) => s.missing.some((m) => m.file === f.fileId))) return true;
+    }
+    return false;
+  }).length;
+  const withLevel = scored.filter((s) => s.level !== null);
+  const fixMatches = all.flatMap((change3) => fixOf(change3, risk.fix) ?? []);
+  return {
+    population: {
+      mergedChanges: all.length,
+      scored: scored.length,
+      withLevel: withLevel.length,
+      censored: scored.filter((s) => outcomes.get(s.change.id)?.censored).length,
+      unscored: all.length - scored.length
+    },
+    outcome: {
+      followUpDays: risk.followUpDays,
+      fixConvention: checkFixConvention(all.map((change3) => change3.text), fixMatches.length),
+      fixes: fixEvidence(fixMatches),
+      reverts: outcomeList.filter((o) => o.reverted).length,
+      troubled,
+      rate: known.length === 0 ? null : round5(troubled / known.length)
+    },
+    levels,
+    impact: rows5(["low", "moderate", "high"], (s) => s.impact.band === "unavailable" ? null : s.impact.band),
+    placement: rows5(["close", "mixed", "distant", "unknown"], (s) => s.placement),
+    factors,
+    completeness: { findings: withFinding.length, followed, share: withFinding.length === 0 ? null : round5(followed / withFinding.length) },
+    elevatedShare: withLevel.length === 0 ? null : round5(withLevel.filter((s) => s.level === "elevated").length / withLevel.length),
+    separation: separationOf(levels, troubled)
+  };
+}
+
+// packages/cochange/src/risk/adoption.ts
+var round6 = (value) => Math.round(value * 1e4) / 1e4;
+var iso = (seconds) => new Date(seconds * 1e3).toISOString();
+function adoptionOf(all, outcomes, adopted, risk, headTime) {
+  const knownUntil = headTime - risk.followUpDays * SECONDS_PER_DAY2;
+  const firstTime = all[0]?.time ?? adopted;
+  const length = Math.max(0, Math.min(adopted - firstTime, knownUntil - adopted));
+  const window = (from, to) => {
+    const members = all.filter((change3) => change3.time >= from && change3.time < to && outcomes.get(change3.id)?.censored === false);
+    const troubled = members.filter((change3) => outcomes.get(change3.id).reverted || outcomes.get(change3.id).fixed).length;
+    return { from: iso(from), to: iso(to), changes: members.length, troubled, rate: members.length === 0 ? null : round6(troubled / members.length) };
+  };
+  const before = window(adopted - length, adopted);
+  const after = window(adopted, adopted + length);
+  const base = { adopted: iso(adopted), windowDays: round6(length / SECONDS_PER_DAY2), before, after };
+  const thin = [before, after].find((side) => side.changes < MIN_LEVEL_CHANGES);
+  if (thin !== void 0 || before.rate === null || after.rate === null) {
+    return {
+      ...base,
+      difference: before.rate === null || after.rate === null ? null : round6(after.rate - before.rate),
+      status: "insufficient",
+      reason: `a window of ${base.windowDays} days either side of the date holds ${before.changes} changes before and ${after.changes} after with a known outcome, and each side needs at least ${MIN_LEVEL_CHANGES}`
+    };
+  }
+  const difference = round6(after.rate - before.rate);
+  const status = difference === 0 ? "unchanged" : difference < 0 ? "lower" : "higher";
+  return {
+    ...base,
+    difference,
+    status,
+    reason: `${before.troubled} of ${before.changes} changes before and ${after.troubled} of ${after.changes} after were followed by trouble within ${risk.followUpDays} days, over ${base.windowDays} days either side. Other changes in practice over the same period are not controlled for.`
+  };
+}
+
+// packages/cochange/src/risk/run-backtest.ts
+var BACKTEST_LIMITS = [
+  "History layer only: complexity-delta, structure-delta and abandoned-touched would need a parse of every past change, so they are left out of the bands and the level.",
+  "Placement is by change-familiarity and neighbourhood from history alone, not from blame, which is not affordable at every past commit.",
+  "Pure moves are filtered from history, so mixed-purpose sees only moves that also edit the file.",
+  "Hotspots are ranked by change frequency, because complexity cannot be measured at every past commit.",
+  "A change counts as followed by trouble when it was reverted or a fix touched its files within the follow-up window. The file-level test over-counts in busy files, so each rate is shown beside the rate of the same files.",
+  "Results are per factor band and per level, never per person."
+];
+async function runBacktest(context, history) {
+  const risk = readRiskSettings(context.config);
+  const sinceText = context.values.since;
+  if (sinceText !== void 0 && typeof sinceText !== "string") throw usageError("--since needs a date");
+  const since = sinceText === void 0 ? void 0 : parseDate(sinceText);
+  if (sinceText !== void 0 && since === null) throw usageError(`--since must be YYYY-MM-DD or an ISO 8601 date-time with a zone, got "${sinceText}"`);
+  const adoptedText = context.values.adopted;
+  if (adoptedText !== void 0 && typeof adoptedText !== "string") throw usageError("--adopted needs a date");
+  const adopted = adoptedText === void 0 ? void 0 : parseDate(adoptedText);
+  if (adoptedText !== void 0 && adopted === null) throw usageError(`--adopted must be YYYY-MM-DD or an ISO 8601 date-time with a zone, got "${adoptedText}"`);
+  const root = context.repo.root;
+  const measure = measureContext(context, history, risk);
+  const mainline = await mergedChanges(root, history.view, history.filtered.changes, history.view.headSha);
+  const scored = scoreMainline(mainline.changes, measure, {
+    windowMonths: history.settings.windowMonths,
+    maxChangesetSize: history.settings.maxChangesetSize,
+    since: since ?? void 0
+  });
+  const outcomes = await outcomesOf(root, history.view.headSha, mainline.changes, risk, history.view.headDate);
+  const summary = summarise(scored, mainline.changes, outcomes, risk);
+  const output = {
+    inputs: {
+      since: since === void 0 || since === null ? null : new Date(since * 1e3).toISOString(),
+      ...adopted === void 0 || adopted === null ? {} : { adopted: new Date(adopted * 1e3).toISOString() },
+      followUpDays: risk.followUpDays,
+      baselineChanges: risk.baselineChanges,
+      fixPatterns: risk.fix.settings.fixPatterns,
+      fixExcludePatterns: risk.fix.settings.fixExcludePatterns,
+      revertPatterns: risk.fix.settings.revertPatterns,
+      fixMatchBody: risk.fix.settings.fixMatchBody,
+      mergeStyle: { merges: mainline.merges, direct: mainline.direct }
+    },
+    results: {
+      kind: "backtest",
+      ...summary,
+      ...adopted === void 0 || adopted === null ? {} : { adoption: adoptionOf(mainline.changes, outcomes, adopted, risk, history.view.headDate) },
+      limits: [...BACKTEST_LIMITS],
+      stored: false
+    }
+  };
+  if (since === void 0 && adopted === void 0 && history.view.ref === "HEAD") {
+    const stored = await writeReport2(context, BACKTEST_REPORT, output, history.view.headSha);
+    output.results.stored = stored;
+  }
+  return output;
 }
 
 // packages/cochange/src/risk/identity.ts
@@ -12857,12 +13427,12 @@ var none = (mode, status, reason) => ({
   blame: { used: false, missing: 0, refreshed: false }
 });
 async function blameFacts(context, assessed, authorKeys, noRefresh) {
-  const { change: change2, history, risk } = assessed;
+  const { change: change3, history, risk } = assessed;
   const root = context.repo.root;
-  const paths = [...new Set(change2.files.filter((f) => f.status !== "A").map((f) => f.oldPath ?? f.path))].sort();
+  const paths = [...new Set(change3.files.filter((f) => f.status !== "A").map((f) => f.oldPath ?? f.path))].sort();
   const facts = /* @__PURE__ */ new Map();
   if (paths.length === 0) return { facts, missing: 0, refreshed: false };
-  const options = { ref: change2.base, exclude: history.settings.exclude, paths };
+  const options = { ref: change3.base, exclude: history.settings.exclude, paths };
   if (!noRefresh) await refreshBlame(root, options);
   const snapshot = await readBlame(root, options);
   const owners = await resolveOwners(root, commitsInSnapshot(snapshot), {
@@ -12872,7 +13442,7 @@ async function blameFacts(context, assessed, authorKeys, noRefresh) {
   const developers = await readActiveDevelopers(context, history, assessed.facts.time);
   const active = (owner) => developers.has(owner.email);
   const byKey = new Map([...owners.values()].map((o) => [o.key, o]));
-  for (const file of change2.files) {
+  for (const file of change3.files) {
     const blame = snapshot.files.get(file.oldPath ?? file.path);
     if (!blame) continue;
     const shares2 = lineShares(blame.ranges, owners);
@@ -12893,11 +13463,11 @@ async function blameFacts(context, assessed, authorKeys, noRefresh) {
   return { facts, missing: snapshot.missing.length, refreshed: !noRefresh };
 }
 async function placementFor(context, assessed, noRefresh) {
-  const { risk, change: change2, history } = assessed;
+  const { risk, change: change3, history } = assessed;
   if (risk.placement === "off") return none("off", "off", "cochange.risk.placement is off");
   const authors = [...assessed.facts.authors];
   const user = await invokingUser(context.repo.root, history.identities.localMailmap);
-  if (change2.worktree && user !== null && !authors.includes(user.email.toLowerCase())) authors.push(user.email.toLowerCase());
+  if (change3.worktree && user !== null && !authors.includes(user.email.toLowerCase())) authors.push(user.email.toLowerCase());
   if (risk.placement === "self") {
     if (user === null) return none("self", "withheld", "no git identity is configured (user.email), so the change cannot be shown to be yours");
     const mine = user.email.toLowerCase();
@@ -12905,8 +13475,8 @@ async function placementFor(context, assessed, noRefresh) {
       return none("self", "withheld", "the change was not written only by the invoking git identity; cochange.risk.placement: any computes placement for someone else's branch");
     }
   }
-  const authorKeys = new Set([...change2.owners.values()].filter((o) => o.kind === "person").map((o) => o.key));
-  if (change2.worktree && user !== null) authorKeys.add(`${user.name} <${user.email}>`);
+  const authorKeys = new Set([...change3.owners.values()].filter((o) => o.kind === "person").map((o) => o.key));
+  if (change3.worktree && user !== null) authorKeys.add(`${user.name} <${user.email}>`);
   const blame = await blameFacts(context, assessed, authorKeys, noRefresh);
   const placement = placeChange({ ...assessed.facts, authors }, assessed.state, assessed.context, { blame: blame.facts });
   return {
@@ -12988,29 +13558,29 @@ function describePlacement(outcome) {
 // packages/cochange/src/risk/result.ts
 var FILES_SHOWN = 50;
 function describeChange(assessed) {
-  const { change: change2 } = assessed;
-  const added = change2.files.reduce((sum, file) => sum + (file.added ?? 0), 0);
-  const deleted = change2.files.reduce((sum, file) => sum + (file.deleted ?? 0), 0);
+  const { change: change3 } = assessed;
+  const added = change3.files.reduce((sum, file) => sum + (file.added ?? 0), 0);
+  const deleted = change3.files.reduce((sum, file) => sum + (file.deleted ?? 0), 0);
   return {
-    base: change2.base,
-    head: change2.head,
-    against: change2.against,
-    worktree: change2.worktree,
-    commits: change2.commits.length,
-    files: change2.files.length,
+    base: change3.base,
+    head: change3.head,
+    against: change3.against,
+    worktree: change3.worktree,
+    commits: change3.commits.length,
+    files: change3.files.length,
     added,
     deleted,
-    moved: change2.moved,
-    filteredPaths: change2.filtered,
-    agentCommits: change2.agentCommits,
-    authors: new Set([...change2.owners.values()].filter((o) => o.kind === "person").map((o) => o.key)).size,
-    paths: change2.files.slice(0, FILES_SHOWN).map((file) => ({
+    moved: change3.moved,
+    filteredPaths: change3.filtered,
+    agentCommits: change3.agentCommits,
+    authors: new Set([...change3.owners.values()].filter((o) => o.kind === "person").map((o) => o.key)).size,
+    paths: change3.files.slice(0, FILES_SHOWN).map((file) => ({
       path: file.path,
       status: file.status,
       added: file.added,
       deleted: file.deleted
     })),
-    pathsNotShown: Math.max(0, change2.files.length - FILES_SHOWN)
+    pathsNotShown: Math.max(0, change3.files.length - FILES_SHOWN)
   };
 }
 
@@ -13018,26 +13588,26 @@ function describeChange(assessed) {
 var REVIEWERS_PER_AREA = 3;
 var round7 = (value) => Math.round(value * 100) / 100;
 async function reviewersFor(context, assessed, noRefresh) {
-  const { change: change2, history, state, risk } = assessed;
+  const { change: change3, history, state, risk } = assessed;
   const root = context.repo.root;
   const time = assessed.facts.time;
   const developers = await readActiveDevelopers(context, history, time);
   const windowSince = monthsBefore(time, history.settings.windowMonths);
   const authors = new Set(assessed.facts.authors);
-  if (change2.worktree) {
+  if (change3.worktree) {
     const user = await invokingUser(root, history.identities.localMailmap);
     if (user !== null) authors.add(user.email.toLowerCase());
   }
   const names = /* @__PURE__ */ new Map();
   for (const commit of history.view.commits) names.set(commit.mappedEmail.toLowerCase(), commit.mappedName);
-  const paths = [...new Set(change2.files.filter((f) => f.status !== "A").map((f) => f.oldPath ?? f.path))].sort();
-  const options = { ref: change2.base, exclude: history.settings.exclude, paths };
+  const paths = [...new Set(change3.files.filter((f) => f.status !== "A").map((f) => f.oldPath ?? f.path))].sort();
+  const options = { ref: change3.base, exclude: history.settings.exclude, paths };
   const shares2 = /* @__PURE__ */ new Map();
   if (paths.length > 0) {
     if (!noRefresh) await refreshBlame(root, options);
     const snapshot = await readBlame(root, options);
     const owners = await resolveOwners(root, commitsInSnapshot(snapshot), { localMailmap: history.identities.localMailmap, matcher: history.identities.matcher });
-    for (const file of change2.files) {
+    for (const file of change3.files) {
       const blame = snapshot.files.get(file.oldPath ?? file.path);
       if (!blame) continue;
       const counted = lineShares(blame.ranges, owners);
@@ -13053,7 +13623,7 @@ async function reviewersFor(context, assessed, noRefresh) {
     }
   }
   const byArea = /* @__PURE__ */ new Map();
-  for (const file of change2.files) {
+  for (const file of change3.files) {
     const area = assessed.context.components.length > 0 ? componentOf(assessed.context.components, file.path) : folderOf(file.path) || ".";
     byArea.set(area, [...byArea.get(area) ?? [], file]);
   }
@@ -13085,33 +13655,33 @@ async function reviewersFor(context, assessed, noRefresh) {
     const candidates = [...scores.values()].filter((c) => developers.has(c.email) && !authors.has(c.email.toLowerCase())).map((c) => ({ ...c, authorship: round7(c.authorship) })).sort((a, b) => b.authorship - a.authorship || b.coupledChanges - a.coupledChanges || (a.email < b.email ? -1 : 1));
     return { area, files: files.length, candidates };
   });
-  const total = change2.files.length;
+  const total = change3.files.length;
   return { areas, basis: withBlame === 0 ? "history" : withBlame === total ? "blame" : "mixed" };
 }
 
 // packages/cochange/src/risk/run-risk.ts
-function evidenceFiles(context) {
+function evidenceFiles2(context) {
   const value = context.values.evidence;
   return value === void 0 ? [] : (Array.isArray(value) ? value : [value]).map(String);
 }
-async function commitsSince(root, from, to) {
+async function commitsSince2(root, from, to) {
   try {
     return Number((await runGit(root, ["rev-list", "--count", `${from}..${to}`])).trim());
   } catch {
     return null;
   }
 }
-async function runRisk(context, history, range) {
+async function runRisk(context, history, range2) {
   const worktree = context.values.worktree === true;
-  const assessed = await assessBranch(context, history, { range, worktree, evidence: evidenceFiles(context) });
+  const assessed = await assessBranch(context, history, { range: range2, worktree, evidence: evidenceFiles2(context) });
   const placement = await placementFor(context, assessed, context.values["no-refresh"] === true);
   const stored = readStoredBacktest(context.repo.root, context.config.hash);
-  const behind = stored === null ? null : await commitsSince(context.repo.root, stored.head, assessed.change.head);
+  const behind = stored === null ? null : await commitsSince2(context.repo.root, stored.head, assessed.change.head);
   const level = levelResult(assessed, placement, stored, behind);
   const impactOnly = { kind: "assessment", change: describeChange(assessed), impact: assessed.impact, factors: assessed.factors };
   const kept = { ...impactOnly, factors: assessed.factors.filter((f) => f.name !== "abandoned-touched" || f.status !== "ok") };
   const inputs = {
-    range: range ?? null,
+    range: range2 ?? null,
     worktree,
     baseline: assessed.baseline,
     evidence: assessed.evidence.stamps,
@@ -13119,7 +13689,7 @@ async function runRisk(context, history, range) {
     abandonment: assessed.abandonment,
     backtest: stored === null ? null : { head: stored.head, config: context.config.hash }
   };
-  if (range === void 0 && !worktree) await writeReport2(context, "risk", { inputs, results: kept }, history.view.headSha);
+  if (range2 === void 0 && !worktree) await writeReport2(context, "risk", { inputs, results: kept }, history.view.headSha);
   return {
     inputs,
     results: {
@@ -13130,14 +13700,14 @@ async function runRisk(context, history, range) {
     }
   };
 }
-async function runReviewers(context, history, range) {
+async function runReviewers(context, history, range2) {
   const worktree = context.values.worktree === true;
   const names = context.values.names === true;
   if (context.values.evidence !== void 0) throw usageError("risk reviewers does not take --evidence");
-  const assessed = await assessBranch(context, history, { range, worktree });
+  const assessed = await assessBranch(context, history, { range: range2, worktree });
   const { areas, basis } = await reviewersFor(context, assessed, context.values["no-refresh"] === true);
   return {
-    inputs: { range: range ?? null, worktree, names },
+    inputs: { range: range2 ?? null, worktree, names },
     results: {
       kind: "reviewers",
       names,
@@ -13186,12 +13756,12 @@ var command13 = analysisCommand(name14, {
     if (sub === "backtest" && rest.length > 0) throw usageError("risk backtest takes no arguments");
     if (sub === "backtest" || sub === "explain" && rest.length === 0) return void 0;
     const risk = readRiskSettings(context.config);
-    const range = await resolveRange(context.repo.root, {
+    const range2 = await resolveRange(context.repo.root, {
       range: sub === "explain" ? void 0 : rangeOf(rest),
       mainBranch: risk.mainBranch,
       worktree: context.values.worktree === true
     });
-    return range.head;
+    return range2.head;
   },
   async analyse({ context, history }) {
     const { sub, rest } = parse2(context.positionals);
@@ -13201,7 +13771,7 @@ var command13 = analysisCommand(name14, {
       if (rest[0] === void 0) return { inputs: { topic: "level" }, results: explainRules(risk) };
       return {
         inputs: { topic: rest[0], worktree: context.values.worktree === true },
-        results: await explainFactor(rest[0], () => assessBranch(context, history, { range: void 0, worktree: context.values.worktree === true, evidence: evidenceFiles(context) }))
+        results: await explainFactor(rest[0], () => assessBranch(context, history, { range: void 0, worktree: context.values.worktree === true, evidence: evidenceFiles2(context) }))
       };
     }
     if (sub === "backtest") return runBacktest(context, history);
@@ -13250,8 +13820,8 @@ var command14 = analysisCommand(name15, {
     const bucket = bucketOption(context);
     const measuredChanges = [];
     let excluded = [];
-    for (const change2 of history.filtered.changes) {
-      (change2.suiteCommit ? excluded : measuredChanges).push(change2);
+    for (const change3 of history.filtered.changes) {
+      (change3.suiteCommit ? excluded : measuredChanges).push(change3);
     }
     const byBucket = /* @__PURE__ */ new Map();
     const slot = (time) => {
@@ -13260,8 +13830,8 @@ var command14 = analysisCommand(name15, {
       if (!entry) byBucket.set(start, entry = { changes: [], excluded: 0 });
       return entry;
     };
-    for (const change2 of measuredChanges) slot(change2.committerDate).changes.push(change2);
-    for (const change2 of excluded) slot(change2.committerDate).excluded++;
+    for (const change3 of measuredChanges) slot(change3.committerDate).changes.push(change3);
+    for (const change3 of excluded) slot(change3.committerDate).excluded++;
     const rows5 = [];
     if (byBucket.size > 0) {
       const first = Math.min(...byBucket.keys());
@@ -13381,23 +13951,23 @@ var command16 = analysisCommand(name17, {
     const samples = integerOption(context, "samples", DEFAULT_SAMPLES, 2, MAX_SAMPLES);
     const file = await focusPath(context, history, requested);
     const revisions = [];
-    for (const change2 of history.filtered.changes) {
-      const touched = change2.files.find((f) => f.fileId === file && f.blob !== null);
+    for (const change3 of history.filtered.changes) {
+      const touched = change3.files.find((f) => f.fileId === file && f.blob !== null);
       if (touched) {
-        revisions.push({ commit: change2.shas.at(-1), committerDate: change2.committerDate, path: touched.path, blob: touched.blob });
+        revisions.push({ commit: change3.shas.at(-1), committerDate: change3.committerDate, path: touched.path, blob: touched.blob });
       }
     }
     if (revisions.length === 0) throw usageError(`no revisions of "${requested}" in the analysed history`);
     const rows5 = await Promise.all(
       pickSamples(revisions, samples).map(async (revision) => {
-        const [text3, bytes] = await Promise.all([readBlob(context.repo.root, revision.blob), blobSize(context.repo.root, revision.blob)]);
-        const binary = text3.includes("\0");
+        const [text5, bytes] = await Promise.all([readBlob(context.repo.root, revision.blob), blobSize(context.repo.root, revision.blob)]);
+        const binary = text5.includes("\0");
         return {
           commit: revision.commit,
           date: isoDate(revision.committerDate),
           path: revision.path,
-          complexity: binary ? null : indentationComplexity(text3, revision.path),
-          lines: binary ? null : text3 === "" ? 0 : text3.replace(/\n$/, "").split("\n").length,
+          complexity: binary ? null : indentationComplexity(text5, revision.path),
+          lines: binary ? null : text5 === "" ? 0 : text5.replace(/\n$/, "").split("\n").length,
           bytes
         };
       })

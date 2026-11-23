@@ -40,6 +40,7 @@ When the author is the user, your stance is a pre-flight check: what to fix befo
 | `risk [BASE[..HEAD]] [--worktree] [--evidence FILE]...` | The impact band, placement when allowed, the level when earned, every factor with its value, band and evidence, and the findings with their responses |
 | `risk explain [FACTOR]` | The rules behind the level, or one factor's definition, guidelines and the files that drove it |
 | `risk reviewers [BASE[..HEAD]] [--names]` | Active developers per touched area, ranked by authorship and by changes to coupled files |
+| `report change [BASE[..HEAD]] [--evidence FILE]...` | A change summary page (html or markdown, and a compact form for a pull request comment) with your verdict on each item needing attention. Steps in [references/reports.md](references/reports.md) |
 
 `BASE..HEAD` may name any local refs. `--no-refresh` skips the cache refreshes. `cochange explain risk-<finding>` describes a finding's rule.
 
