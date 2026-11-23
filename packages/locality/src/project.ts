@@ -60,7 +60,7 @@ export async function loadProject(root: string, ref: string, settings: LocalityS
 /** What the Go placement rules read from a project: which Go file uses which, and the `package main` folders. */
 export function goPackagesOf(project: Project): GoPackages {
   const production = new Set(project.production);
-  return goPackages(project.analysis.importEdges.filter((edge) => production.has(edge.from) && production.has(edge.to)), project.texts, project.analysis.consumers.filter((consumer) => production.has(consumer.from) && production.has(consumer.to)));
+  return goPackages(project.analysis.importEdges.filter((edge) => production.has(edge.from) && production.has(edge.to)), project.texts, project.analysis.consumers.filter((consumer) => production.has(consumer.to) && (production.has(consumer.from) || (consumer.from.endsWith(".go") && project.isTest(consumer.from)))));
 }
 
 /** The source lines of a unit, as the structural layer delimits it. */

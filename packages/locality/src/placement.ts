@@ -14,6 +14,7 @@ export interface FileOperation {
 export type RefusalCode =
   | "barrel"
   | "collision"
+  | "does-not-compile"
   | "dirty-working-tree"
   | "fixed-point"
   | "fixed-point-destination"
@@ -24,6 +25,7 @@ export type RefusalCode =
   | "package-boundary"
   | "package-entry"
   | "package-main"
+  | "testdata"
   | "unexported-use";
 
 export interface Refusal {
@@ -94,7 +96,10 @@ export interface GoPackages {
   mainFolders: ReadonlySet<string>;
   /** Production Go files that declare `package main`. */
   mainFiles: ReadonlySet<string>;
-  /** For each production Go file, the unexported names it declares that another production file of the same folder uses. */
+  /**
+   * For each production Go file, the unexported names it declares that another Go file of the same folder uses. A `_test.go` file of the
+   * folder is part of the package for this rule, so it counts as a user.
+   */
   unexportedUses: ReadonlyMap<string, readonly { name: string; by: string }[]>;
   /** The package name each production Go file declares. */
   packageNames: ReadonlyMap<string, string>;
@@ -137,7 +142,9 @@ function goRefusals(operations: readonly FileOperation[], go: GoPackages): Place
   const refusals: PlacementRefusal[] = [];
   const moved = new Map(operations.filter((operation) => operation.from.endsWith(".go") && operation.role === "unit").map((operation) => [operation.from, operation.to]));
   if (moved.size === 0) return refusals;
+  const movedWithTests = new Map([...moved, ...operations.filter((operation) => operation.from.endsWith(".go") && operation.role === "test").map((operation): [string, string] => [operation.from, operation.to])]);
   const newPath = (path: string) => moved.get(path) ?? path;
+  const newPathWithTests = (path: string) => movedWithTests.get(path) ?? path;
   for (const [from, to] of moved) {
     const source = posix.dirname(from);
     const destination = posix.dirname(to);
@@ -159,7 +166,7 @@ function goRefusals(operations: readonly FileOperation[], go: GoPackages): Place
   // An unexported name is reached only from its own package, so its declaring file and the files that use it stay in one folder.
   unexported: for (const [declared, uses] of go.unexportedUses) {
     for (const { name, by } of uses) {
-      if ((moved.has(declared) || moved.has(by)) && posix.dirname(newPath(declared)) !== posix.dirname(newPath(by))) {
+      if ((movedWithTests.has(declared) || movedWithTests.has(by)) && posix.dirname(newPathWithTests(declared)) !== posix.dirname(newPathWithTests(by))) {
         refusals.push({ code: "unexported-use", detail: `unexported symbol used in its package: ${name} used by ${by}`, label: "unexported symbol used in its package" });
         break unexported;
       }
@@ -214,6 +221,13 @@ export function placementRefusals(operations: readonly FileOperation[], manifest
         detail: `${operation.from} to ${operation.to} crosses an internal/ directory, which the Go compiler restricts to code under its parent`,
         label: "crosses internal/",
       });
+    }
+    const dir = posix.dirname(operation.from);
+    if (operation.from.endsWith("_test.go") && dir !== posix.dirname(operation.to)) {
+      const testdata = [...tree].find((path) => path.startsWith(dir === "." ? "testdata/" : `${dir}/testdata/`));
+      if (testdata !== undefined) {
+        refusals.push({ code: "testdata", detail: `${operation.from} would leave ${dir}/testdata behind, and Go tests read ./testdata of their own package folder (${testdata})`, label: "tests read the testdata folder they would leave" });
+      }
     }
     if (landing.has(operation.to)) refusals.push({ code: "collision", detail: `${operation.to} is the destination of two files`, label: "name collision" });
     else if (tree.has(operation.to) && !leaving.has(operation.to)) refusals.push({ code: "collision", detail: `${operation.to} already exists`, label: "name collision" });

@@ -23,6 +23,7 @@
             "barrel",
             "collision",
             "dirty-working-tree",
+            "does-not-compile",
             "fixed-point",
             "fixed-point-destination",
             "import-cycle",
@@ -32,6 +33,7 @@
             "package-boundary",
             "package-entry",
             "package-main",
+            "testdata",
             "unexported-use"
           ]
         },

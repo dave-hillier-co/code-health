@@ -26,6 +26,8 @@ interface MovesExpected {
   rewrites: { path: string; line: number; from: string; to: string }[];
   texts: Record<string, string>;
   warnings: string[];
+  /** What leaves the result not compiling; absent when the fixture has none. */
+  breaks?: string[];
 }
 
 describe.each(ids)("%s: the move fixtures", (id) => {
@@ -49,7 +51,8 @@ describe.each(ids)("%s: the move fixtures", (id) => {
         rewrites: result.rewrites,
         texts: Object.fromEntries([...result.texts].sort(([a], [b]) => (a < b ? -1 : 1))),
         warnings: result.warnings,
-      }).toEqual({ rewrites: expected.rewrites, texts: expected.texts, warnings: expected.warnings });
+        breaks: result.breaks ?? [],
+      }).toEqual({ rewrites: expected.rewrites, texts: expected.texts, warnings: expected.warnings, breaks: expected.breaks ?? [] });
     });
 
     it("declares what confirms references, and with no tool to hand says not confirmed", async () => {

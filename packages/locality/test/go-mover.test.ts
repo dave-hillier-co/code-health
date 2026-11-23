@@ -36,6 +36,21 @@ describe("moving the file that declares what another package used", () => {
   });
 });
 
+describe("a move that leaves code the compiler rejects", () => {
+  const split = treeFromTexts({
+    "go.mod": "module example.com/m\n\ngo 1.22\n",
+    "a/a.go": 'package a\n\nfunc Run() int {\n\treturn helper()\n}\n',
+    "a/helper.go": "package a\n\nfunc helper() int {\n\treturn 1\n}\n",
+    "b/b.go": "package b\n",
+  });
+
+  it("reports an unexported name now reached from another package as a break, not a warning", async () => {
+    const result = await performMove(split, [{ from: "a/helper.go", to: "b/helper.go", role: "unit" }]);
+    expect(result.warnings).toEqual([]);
+    expect(result.breaks).toEqual(["a/a.go:4 helper is not exported and would be reached from another package"]);
+  });
+});
+
 describe("the skeleton of a Go file", () => {
   it("blanks the imports and the package name, so only what a move rewrites differs", async () => {
     const backend = await moverLanguages.find((language) => language.id === "go")!.load();

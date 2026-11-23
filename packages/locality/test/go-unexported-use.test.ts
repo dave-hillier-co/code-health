@@ -77,10 +77,13 @@ test("a Go file moved into a folder with no Go file keeps its package name, so a
   expect((await plan("tools/two/two.go", "tools")).refusals).toEqual([]);
 });
 
-test("the report notes that two moves of different packages into one folder with no Go file conflict", async () => {
+test("the report lists one move into a folder with no Go file and counts the other as left out", async () => {
   const run = await runLocality(repo.path, ["report", "locality", "--slots"]);
   expect(run.code).toBe(0);
   const text = run.stdout;
-  expect(text).toContain("tools has no Go file, and tools/two/two.go (package two) also lands there; a folder holds one package, but this file keeps package one");
-  expect(text).toContain("tools has no Go file, and tools/one/one.go (package one) also lands there; a folder holds one package, but this file keeps package two");
+  const planned = (JSON.parse(text).slots as { about: { ref: string } }[]).map((slot) => slot.about.ref);
+  expect(planned).toContain("tools/one/one.go");
+  expect(planned).not.toContain("tools/two/two.go");
+  expect(text).toContain("another proposed move lands in the same empty folder");
+  expect(text).not.toContain("also lands there");
 });

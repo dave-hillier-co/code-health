@@ -91,6 +91,9 @@ async function dryRun(context: CommandContext, candidate: Candidate, settings: L
     const { performMove } = await import("../move-engine.ts");
     const tree = await treeFromRef(context.repo.root, "HEAD");
     const moved = await performMove(tree, plan.operations);
+    if ((moved.breaks ?? []).length > 0) {
+      return { ...base, refusal: refusalLine((moved.breaks ?? []).map((detail) => ({ code: "does-not-compile", detail }))), rewrites: 0, filesRewritten: 0, failure: null, warnings: [] };
+    }
     return { ...base, rewrites: moved.rewrites.length, filesRewritten: new Set(moved.rewrites.map((r) => r.path)).size, failure: null, warnings: moved.warnings };
   } catch (error) {
     return { ...base, rewrites: 0, filesRewritten: 0, failure: error instanceof Error ? error.message : String(error), warnings: [] };
@@ -121,26 +124,22 @@ const gainColumns = (settings: LocalitySettings) => [
 ];
 
 /**
- * For Go moves, a note when other listed moves land in the same folder, which holds no Go file, under a different package name: each file
- * keeps its package name there, and a folder holds one package, so only one of the moves can be made as listed.
+ * For Go moves, at most one move per target folder that holds no Go file: a folder holds one package, so moves into it from different
+ * packages cannot all be made as listed. The move with the highest gain stays (the first of equals, in the analysis order) and the rest are returned as left out.
  */
-function folderConflicts(moves: readonly Candidate[], files: ReadonlySet<string>, go: GoPackages): Map<string, string> {
+function oneMovePerEmptyFolder(moves: readonly Candidate[], files: ReadonlySet<string>): { kept: Candidate[]; left: Candidate[] } {
   const goFolders = new Set([...files].filter((file) => file.endsWith(".go")).map((file) => posix.dirname(file)));
-  const byTarget = new Map<string, { path: string; name: string }[]>();
+  const best = new Map<string, Candidate>();
   for (const move of moves) {
-    const names = new Set(move.unit.files.flatMap((file) => go.packageNames.get(file) ?? []));
-    if (names.size !== 1 || goFolders.has(move.target === "" ? "." : move.target)) continue;
-    byTarget.set(move.target, [...(byTarget.get(move.target) ?? []), { path: move.path, name: [...names][0]! }]);
+    if (!move.unit.files.every((file) => file.endsWith(".go")) || goFolders.has(move.target === "" ? "." : move.target)) continue;
+    const held = best.get(move.target);
+    if (held === undefined || move.gain > held.gain) best.set(move.target, move);
   }
-  const notes = new Map<string, string>();
-  for (const [target, group] of byTarget) {
-    if (new Set(group.map((entry) => entry.name)).size < 2) continue;
-    for (const entry of group) {
-      const others = group.filter((other) => other.name !== entry.name);
-      notes.set(entry.path, `${folderText(target)} has no Go file, and ${nameList(others.map((other) => `${other.path} (package ${other.name})`), 3)} also lands there; a folder holds one package, but this file keeps package ${entry.name}`);
-    }
-  }
-  return notes;
+  const left = moves.filter((move) => {
+    const held = best.get(move.target);
+    return held !== undefined && held !== move && move.unit.files.every((file) => file.endsWith(".go"));
+  });
+  return { kept: moves.filter((move) => !left.includes(move)), left };
 }
 
 const gainRow = (c: Candidate): Record<string, Cell> => ({
@@ -157,8 +156,7 @@ const gainRow = (c: Candidate): Record<string, Cell> => ({
 });
 
 /** Units the planner can plan without a reason: kind move, ordered by gain over the locality.minDistance guideline. */
-function moveTable(rows: Candidate[], settings: LocalitySettings, notes: ReadonlyMap<string, string>): Block {
-  const noted = rows.some((c) => notes.has(c.path));
+function moveTable(rows: Candidate[], settings: LocalitySettings): Block {
   return {
     type: "ranked-table",
     ...capRows(
@@ -166,8 +164,8 @@ function moveTable(rows: Candidate[], settings: LocalitySettings, notes: Readonl
         caption: "Moves the planner can plan without --reason (kind move), ordered by gain over the locality.minDistance guideline",
         noun: "moves",
         emptyText: "No candidate has kind move, so no unit can be planned without --reason.",
-        columns: noted ? [...gainColumns(settings), { key: "note", label: "Note" }] : gainColumns(settings),
-        rows: rows.map((c) => (noted ? { ...gainRow(c), note: notes.get(c.path) ?? "" } : gainRow(c))),
+        columns: gainColumns(settings),
+        rows: rows.map(gainRow),
       },
       TOP,
       "locality analyse --recommendation move",
@@ -268,12 +266,13 @@ const REASON_WORDS: Record<string, string> = {
 };
 
 /** The units with no proposed move and the units that are recommended blocked or keep, counted by reason. */
-function omittedRows(structural: { placed: number; blocked: number; keep: number; notShown: number; heldMoves: number; byReason: Record<string, number> }, history: HistoryExtra["historyOnly"]): ExcludedCount[] {
+function omittedRows(structural: { placed: number; blocked: number; keep: number; notShown: number; sharedFolder: number; heldMoves: number; byReason: Record<string, number> }, history: HistoryExtra["historyOnly"]): ExcludedCount[] {
   return [
     { what: "units already beside their consumers (rule near-consumers)", count: structural.placed },
     ...Object.entries(structural.byReason).sort(byText).map(([reason, count]) => ({ what: `units with no proposed move: ${reason}`, count })),
     { what: "units recommended blocked, held back by a dependency (listed below with their blockers)", count: structural.blocked },
     { what: "units of kind move that have blockers (listed in the blocked table, not as moves)", count: structural.heldMoves },
+    { what: "units of kind move left out of the moves table: another proposed move lands in the same empty folder", count: structural.sharedFolder },
     { what: "units recommended keep, with nothing to move", count: structural.keep },
     { what: `candidates past the rows of the three candidate tables`, count: structural.notShown },
     ...Object.entries(history.omitted).map(([reason, count]) => ({ what: REASON_WORDS[reason] ?? reason, count })),
@@ -385,8 +384,10 @@ export const localityReport: ReportKind = {
 
     const ofKind = all.filter((c) => KINDS.includes(c.recommendation));
     // A unit with blockers is held back, so it is listed in the blocked table and not as a move the planner can plan.
-    const moves = ofKind.filter((c) => c.recommendation === "move" && c.blockers.length === 0);
+    const unblockedMoves = ofKind.filter((c) => c.recommendation === "move" && c.blockers.length === 0);
     const heldMoves = ofKind.filter((c) => c.recommendation === "move" && c.blockers.length > 0);
+    const files = new Set((await treeFromRef(context.repo.root, "HEAD")).files.keys());
+    const { kept: moves, left: sharedFolder } = oneMovePerEmptyFolder(unblockedMoves, files);
     const reviews = ofKind.filter((c) => c.recommendation === "review" || c.recommendation === "split" || c.recommendation === "inline");
     const scrutinise = ofKind
       .filter((c) => c.recommendation === "scrutinise")
@@ -394,14 +395,13 @@ export const localityReport: ReportKind = {
     // Moves are planned first, then reviews and splits; a scrutinise unit has nothing to move and is not planned.
     const planned = [...moves, ...reviews].slice(0, PLANNED);
     const shownCount = Math.min(moves.length, TOP) + Math.min(reviews.length, TOP_REVIEW) + Math.min(scrutinise.length, TOP_SCRUTINISE);
-    const files = new Set((await treeFromRef(context.repo.root, "HEAD")).files.keys());
     const go = goPackagesOf(await loadProject(context.repo.root, "HEAD", settings));
     const plans: PlanSummary[] = [];
     for (const candidate of planned) plans.push(await dryRun(context, candidate, settings, files, go));
 
     const byKind = extra.summary.byRecommendation;
     const blocked = [...all.filter((c) => c.recommendation === "blocked"), ...heldMoves];
-    const omitted = omittedRows({ placed: extra.summary.placed, blocked: byKind.blocked ?? 0, keep: byKind.keep ?? 0, notShown: ofKind.length - shownCount - heldMoves.length, heldMoves: heldMoves.length, byReason: extra.summary.omitted }, historyOnly);
+    const omitted = omittedRows({ placed: extra.summary.placed, blocked: byKind.blocked ?? 0, keep: byKind.keep ?? 0, notShown: ofKind.length - shownCount - heldMoves.length - sharedFolder.length, sharedFolder: sharedFolder.length, heldMoves: heldMoves.length, byReason: extra.summary.omitted }, historyOnly);
     const unresolved = Object.entries(extra.unresolved).sort(byText);
     const excluded: ExcludedCount[] = [
       ...omitted,
@@ -429,7 +429,7 @@ export const localityReport: ReportKind = {
           },
           ofKind.length === 0
             ? { type: "notice", level: "notice", text: "The analysis found no candidate of kind move, split, inline, scrutinise or review." }
-            : moveTable(moves, settings, folderConflicts(moves, files, go)),
+            : moveTable(moves, settings),
           ...(ofKind.length === 0 ? [] : [reviewTable(reviews, settings), scrutiniseTable(scrutinise, settings)]),
         ],
       },

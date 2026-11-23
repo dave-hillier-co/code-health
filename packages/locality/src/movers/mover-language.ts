@@ -22,7 +22,10 @@ export interface MoveResult {
   rewrites: Rewrite[];
   /** The text of every file the move changes, by its path after the move. Moved files whose text is unchanged are not listed. */
   texts: Map<string, string>;
+  /** What the mover could not rewrite and the result still builds. */
   warnings: string[];
+  /** What leaves the result not compiling, one line each: the move is refused for these, never made with a warning. */
+  breaks?: string[];
   confirmations: MoveConfirmation[];
 }
 

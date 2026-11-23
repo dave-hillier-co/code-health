@@ -38,6 +38,7 @@ export async function performMove(tree: SourceTree, operations: readonly FileOpe
     result.rewrites.push(...part.rewrites);
     for (const [path, text] of part.texts) result.texts.set(path, text);
     result.warnings.push(...part.warnings);
+    if (part.breaks !== undefined && part.breaks.length > 0) result.breaks = [...(result.breaks ?? []), ...part.breaks];
 
     // Each adapter whose files moved is confirmed by its own tool: Java by jdtls and Kotlin by its language server.
     const byAdapter = new Map<LanguageAdapter, FileOperation[]>();

@@ -56,6 +56,8 @@ export const command: Command = {
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : undefined;
     const mentions = moved === undefined ? [] : await textMentions(context.repo.root, plan, isSourceFile);
 
+    for (const broken of moved?.breaks ?? []) refusals.push({ code: "does-not-compile", detail: broken });
+
     let sha: string | null = null;
     let applied = false;
     if (apply && moved !== undefined && refusals.length === 0) {

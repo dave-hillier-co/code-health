@@ -344,6 +344,15 @@ export function analyseProject(project: Project, model: Model, settings: Localit
   const unitsByFile = new Map<string, SourceUnit[]>();
   for (const unit of analysis.units) unitsByFile.set(unit.path, [...(unitsByFile.get(unit.path) ?? []), unit]);
 
+  /** Go test files that use unexported names declared in `files`, and in no other file. */
+  function goTestsOf(files: ReadonlySet<string>): string[] {
+    const declaredBy = new Map<string, Set<string>>();
+    for (const [declared, uses] of go.unexportedUses) {
+      for (const { by } of uses) if (project.isTest(by)) declaredBy.set(by, (declaredBy.get(by) ?? new Set()).add(declared));
+    }
+    return [...declaredBy].filter(([, declared]) => [...declared].every((file) => files.has(file)) && [...declared].some((file) => files.has(file))).map(([test]) => test);
+  }
+
   function testsOf(files: ReadonlySet<string>): { owned: string[]; external: string[] } {
     const touching = new Set([...files].flatMap((file) => testsByFile.get(file) ?? []));
     const owned: string[] = [];
@@ -352,7 +361,10 @@ export function analyseProject(project: Project, model: Model, settings: Localit
       const imported = testImports.get(test) as Set<string>;
       (([...imported].every((file) => files.has(file)) ? owned : external) as string[]).push(test);
     }
-    return { owned, external };
+    // A Go test file of the package's own folder is part of the package: when it uses unexported names of these files only, it moves with them.
+    for (const test of goTestsOf(files)) if (!owned.includes(test)) owned.push(test);
+    owned.sort(compareIds);
+    return { owned, external: external.filter((test) => !owned.includes(test)) };
   }
 
   // Interfaces and abstract classes, by the file that defines them and the symbol.
