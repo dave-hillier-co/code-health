@@ -87,7 +87,7 @@ Each row is a factor. The history and lexical layers supply most of them, so the
 
 | Factor | Signal | Why it matters |
 |---|---|---|
-| `missing-co-change` | Files with confidence at or above the confidence guideline towards a touched file, with support above the minimum, that the change does not touch | The strongest single completeness signal: these files have needed changing every other time |
+| `missing-co-change` | Files with confidence at or above the confidence guideline towards a touched file, with support above the minimum, that the change does not touch. A partner that is a build manifest listing sources (`CMakeLists.txt`, `Makefile`, `meson.build`, Bazel `BUILD`) counts only when the change adds, removes or renames a code file in its folder or below, and a touched build manifest does not make its source files missing; the partners skipped are counted in `manifestPartnersSkipped` and the change report says how many | The strongest single completeness signal: these files have needed changing every other time |
 | `novel-coupling` | Pairs of touched files at high tree distance that have never changed together before | The change may be introducing a dependency between areas that were independent |
 | `test-evidence` | Source files changed without the test files that usually change with them, and test deletions | Behaviour may have changed without tests following |
 
@@ -96,7 +96,7 @@ Each row is a factor. The history and lexical layers supply most of them, so the
 | Factor | Signal | Why it matters |
 |---|---|---|
 | `blast-radius` | Fan-in of the touched files, and of touched exported symbols whose signature changed (*structural*). Without an adapter: the number of files with high co-change confidence towards the touched files. | A flaw in widely used code is inherited by every consumer |
-| `complexity-delta` | Units that are new and above a guideline, or above one and worse, from `complexity diff`. Without the complexity plugin: the change in indentation complexity of touched files that existed at the base. A new file has no complexity before it, so it is counted in `newFiles` and never as a rise from zero. The change summary shows no complexity finding without a comparison passed in. | The change is adding code that is hard to understand |
+| `complexity-delta` | Units that are new and above a guideline, or above one and worse, from `complexity diff`. Without the complexity plugin: the change in indentation complexity of touched production code files that existed at the base (test files and test-support folders, as the shared test classifier decides, are left out). The factor's `source` then reads `indentation proxy, not a complexity comparison`, and the change report's factor table prints that label in the value, and its complexity section says the factor is the indentation proxy. A new file has no complexity before it, so it is counted in `newFiles` and never as a rise from zero. The change summary shows no complexity finding without a comparison passed in. | The change is adding code that is hard to understand |
 | `structure-delta` | New cycles and layer violations, from `structure check` (*structural*) | The change makes later changes more expensive |
 | `sensitive-paths` | Touched files matching configured globs: migrations, authentication, build and CI configuration, public API, dependency manifests | Some paths carry consequences that no history signal captures |
 

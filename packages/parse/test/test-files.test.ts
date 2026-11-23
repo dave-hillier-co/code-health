@@ -43,6 +43,32 @@ describe("a file is a test by its language's conventions", () => {
   });
 });
 
+describe("test-support folders make any file a test", () => {
+  const support = [
+    "pkg/datastore/test/relationships.go",
+    "pkg/testutil/data.go",
+    "internal/testfixtures/world.go",
+    "internal/services/integrationtesting/consistencytestutil/run.go",
+    "e2e/spice/spice.go",
+    "pkg/schema/v2/testing/helpers.go",
+    "internal/dispatch/mocks/mock.go",
+    "src/testhelpers/db.ts",
+  ];
+  const production = ["pkg/contest/entry.go", "pkg/latest/version.go", "pkg/attestation/sign.go", "pkg/testimony/a.go", "cmd/protest.go"];
+
+  test.each(support)("%s is a test", (path) => {
+    expect(testClassifier()(path)).toBe(true);
+  });
+
+  test.each(production)("%s is production", (path) => {
+    expect(testClassifier()(path)).toBe(false);
+  });
+
+  test("a negated pattern makes a support folder production", () => {
+    expect(testClassifier(["!pkg/testing/**"])("pkg/testing/clock.go")).toBe(false);
+  });
+});
+
 describe("testPatterns lay globs over the conventions", () => {
   test("a glob makes a file a test, and the last matching entry wins", () => {
     const isTest = testClassifier(["support/**", "!support/keep/**", "support/keep/but-this.ts"]);

@@ -4,7 +4,7 @@
   "evidence": {
     "activeContributors": 1,
     "commitSize": {
-      "earlierMedian": 1,
+      "earlierMedian": 2,
       "laterMedian": 1,
       "shifted": false
     },
@@ -124,7 +124,7 @@
   },
   "repo": {
     "dirty": false,
-    "head": "d0b315b721ababee7602da4a740d281868bc05c2"
+    "head": "c2a44c1358720ef5d6a5006bb2ece3474a8c6e62"
   },
   "results": {
     "change": {
@@ -132,12 +132,12 @@
       "against": "main",
       "agentCommits": 0,
       "authors": 1,
-      "base": "d0b315b721ababee7602da4a740d281868bc05c2",
+      "base": "c2a44c1358720ef5d6a5006bb2ece3474a8c6e62",
       "commits": 1,
       "deleted": 0,
       "files": 1,
       "filteredPaths": 0,
-      "head": "8a6a027644f4c8cc2e29a2cca5b6d28924ec199e",
+      "head": "7e114855e608d3ad88eb6a4703d4b780c5e64887",
       "landedChanges": 1,
       "moved": 0,
       "paths": [
@@ -417,7 +417,7 @@
         "name": "complexity-delta",
         "reason": null,
         "scored": false,
-        "source": "indentation",
+        "source": "indentation proxy, not a complexity comparison",
         "status": "ok",
         "value": {
           "count": 1,
@@ -586,7 +586,7 @@
               "component": null,
               "coupled": 0,
               "file": "src/app/calc.ts",
-              "folder": 2
+              "folder": 3
             }
           ],
           "family": "placement",
@@ -600,7 +600,7 @@
           "value": {
             "component": null,
             "coupled": 0,
-            "folder": 2
+            "folder": 3
           }
         },
         {

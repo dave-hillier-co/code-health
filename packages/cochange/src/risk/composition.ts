@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { readBlobAt } from "@code-health/history/tree";
 import { analyseSource } from "@code-health/lexical/analyse-source";
+import { testClassifier } from "@code-health/parse/test-files";
 import { reportPath } from "../reports.ts";
 import type { Factor } from "./factor.ts";
 import { bandAgainst, cutoffsOf, higherBand, type Band } from "./bands.ts";
@@ -21,8 +22,9 @@ export async function liveMeasurements(
   risk: RiskSettings,
   evidence: EvidenceInputs,
   abandoned: Measurement,
+  testPatterns: readonly string[] = [],
 ): Promise<Measurement[]> {
-  return [await complexityDelta(root, change, risk, evidence), structureDelta(evidence), abandoned];
+  return [await complexityDelta(root, change, risk, evidence, testClassifier(testPatterns)), structureDelta(evidence), abandoned];
 }
 
 function structureDelta(evidence: EvidenceInputs): Measurement {
@@ -40,7 +42,10 @@ function structureDelta(evidence: EvidenceInputs): Measurement {
   };
 }
 
-async function complexityDelta(root: string, change: BranchChange, risk: RiskSettings, evidence: EvidenceInputs): Promise<Measurement> {
+/** What `source` says when no complexity comparison was passed in and the factor is the indentation proxy. */
+export const INDENTATION_PROXY = "indentation proxy, not a complexity comparison";
+
+async function complexityDelta(root: string, change: BranchChange, risk: RiskSettings, evidence: EvidenceInputs, isTest: (path: string) => boolean): Promise<Measurement> {
   const base = { name: "complexity-delta", family: "structure-and-content", kind: "count" } as const;
   if (evidence.complexity !== null) {
     const units = aboveGuideline(evidence.complexity);
@@ -55,12 +60,12 @@ async function complexityDelta(root: string, change: BranchChange, risk: RiskSet
     };
   }
 
-  // Without the complexity plugin: how much more indentation the touched code files carry than they did at the base.
+  // Without the complexity plugin: how much more indentation the touched production code files carry than they did at the base. Test files and test-support folders are left out, as they are from every other factor.
   const rows: { file: string; before: number; after: number; delta: number }[] = [];
   let examined = 0;
   let added = 0;
   for (const file of change.files) {
-    if (file.status === "D" || file.binary) continue;
+    if (file.status === "D" || file.binary || isTest(file.path)) continue;
     const isNew = file.status === "A";
     const before = isNew ? "" : await readBlobAt(root, change.base, file.oldPath ?? file.path);
     const after = change.worktree ? readWorktree(root, file.path) : await readBlobAt(root, change.head, file.path);
@@ -82,7 +87,7 @@ async function complexityDelta(root: string, change: BranchChange, risk: RiskSet
   return {
     ...base,
     layer: "lexical",
-    source: "indentation",
+    source: INDENTATION_PROXY,
     unavailable: null,
     series: { count: rows.length },
     value: { count: rows.length, files: examined, newFiles: added },

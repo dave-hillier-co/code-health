@@ -109,6 +109,27 @@ const cappedTable = (table: RankedTableData, max: number, command: string): Bloc
 
 const PAIR_ORDER = "Sorted by degree, then shared changes, then path; pairs under the degree guideline come after the others.";
 
+/**
+ * The line that says so when the judged cut falls inside a tie. The table sorts by degree, then shared changes, then
+ * path, so pairs that tie on degree and shared changes are in path order and that order ranks nothing. Null when the
+ * pair after the last judged one differs from it in degree or shared changes.
+ */
+export function tieNotice(production: readonly PairRow[], judged: number): Block | null {
+  if (production.length <= judged) return null;
+  const same = (a: PairRow, b: PairRow) => a.degree === b.degree && a.support === b.support;
+  const edge = production[judged - 1]!;
+  if (!same(edge, production[judged]!)) return null;
+  let first = judged - 1;
+  while (first > 0 && same(production[first - 1]!, edge)) first--;
+  let last = judged;
+  while (last + 1 < production.length && same(production[last + 1]!, edge)) last++;
+  return {
+    type: "notice",
+    level: "notice",
+    text: `Pairs ${first + 1} to ${last + 1} tie on degree and shared changes (degree ${edge.degree}, ${edge.support} shared changes); the order among them is by path, so the ${judged} judged pairs are the first ${judged} by path and not the ${judged} strongest.`,
+  };
+}
+
 const trendOf = (previous: PreviousWindow | undefined): boolean => previous !== undefined && previous.eligibleChanges > 0;
 
 function pairColumns(guideline: { minDegree: number } | null, withTrend: boolean) {
@@ -156,7 +177,7 @@ function expectedSection(expected: readonly ClassifiedPair[], settings: { minDeg
   const counts = EXPECTED_REASONS.map((reason) => ({ reason, count: expected.filter((e) => e.reason === reason).length })).filter((c) => c.count > 0);
   const table = cappedTable(
     {
-      caption: `Expected pairs, listed apart and not judged: a test, fixture or golden file with what it checks, or two data files of one format. ${PAIR_ORDER}`,
+      caption: `Expected pairs, listed apart and not judged: a test, fixture or golden file with what it checks, a C or C++ header with its source file, two build manifests of one toolchain, or two data files of one format. ${PAIR_ORDER}`,
       noun: "pairs",
       total: expected.length,
       emptyText: "No pair is an expected pair: every pair that reaches the support floor is a pair of production files.",
@@ -423,7 +444,7 @@ function slots(judged: readonly PairRow[]): Slot[] {
 function limitsOf(evidence: Evidence, settings: { minSupport: number; tolerance: number }, previous: PreviousWindow | undefined, hiddenMissing: boolean): string[] {
   return [
     "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-    "A pair where either side is a test, a fixture or a golden file, or where both sides are data or configuration files of one format, is an expected pair. It is listed in its own table and not judged.",
+    "A pair where either side is a test, a fixture or a golden file, or where the sides are a C or C++ header and its source file, two build or packaging manifests of one toolchain (go.mod and go.work, Dockerfile variants, package.json and its lockfile), or two data or configuration files of one format, is an expected pair. It is listed in its own table and not judged.",
     `Coupling counts changes that touched both files in the window, over changes at or below the changeset limit; a larger change counts on neither side. A pair that shares fewer than ${settings.minSupport} changes (the support floor) is not listed.`,
     "Files that change together may share a design decision, or only a shared constant, a registry, a protocol, tests or generated code. The numbers cannot tell these apart; the judgements say which it is.",
     `Each table shows the top rows of its result and says how many rows it leaves out; \`cochange coupling\` and \`cochange clusters\` print the rest.`,
@@ -471,12 +492,14 @@ export const coupling: ReportKind = {
     const thin = rows.length < FEW_PAIRS;
     const below = thin ? await pairsBelowFloor(context, inputs.minSupport) : [];
 
+    const tie = tieNotice(production, JUDGED_PAIRS);
     const pairsHeading: Block[] = [
       ...(thin ? thinBlocks(rows.length, inputs.minSupport, below) : []),
       ...(rows.length === 0
         ? []
         : [
             ...pairsSection(production, rows.length, guideline, withTrend),
+            ...(tie === null ? [] : [tie]),
             ...judged.map((_, i): Block => ({ type: "judgement", slot: `pair-${i + 1}` })),
             ...expectedSection(expected, guideline),
             ...trendBlocks(rows, rows.length, guideline, previous),

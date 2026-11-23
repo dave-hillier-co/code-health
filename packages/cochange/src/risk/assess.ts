@@ -117,7 +117,7 @@ export async function assessBranch(
   const abandoned = await abandonedTouched(context, history, change);
   const measurements = [
     ...measureHistoryLayer(facts, state, measure),
-    ...(await liveMeasurements(root, change, risk, evidence, abandoned.measurement)),
+    ...(await liveMeasurements(root, change, risk, evidence, abandoned.measurement, context.config.effective.testPatterns)),
   ];
   const baselineMeasures = past.map((p) => p.measurements);
   const bander = makeBander(baselineMeasures, risk);

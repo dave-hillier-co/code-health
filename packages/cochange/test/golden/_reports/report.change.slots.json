@@ -292,7 +292,7 @@
                 "evidence": 0,
                 "factor": "complexity-delta",
                 "guideline": "count: moderate from 1, high from 3",
-                "value": "count 0, files 1, newFiles 0"
+                "value": "indentation proxy, not a complexity comparison: count 0, files 1, newFiles 0"
               },
               {
                 "band": "moderate",

@@ -99,7 +99,7 @@ Each band compares the change with the 16 merged changes measured as of their ow
 | test-evidence | moderate | count 1 | count: moderate from 1, high from 3 | 1 |
 | blast-radius | moderate | files 2, signatureChanges 0, symbolFanIn 0 | files: moderate above 0, high above 2 | 2 |
 | sensitive-paths | low | count 0 | count: moderate from 1, high from 3 | 0 |
-| complexity-delta | low | count 0, files 1, newFiles 0 | count: moderate from 1, high from 3 | 0 |
+| complexity-delta | low | indentation proxy, not a complexity comparison: count 0, files 1, newFiles 0 | count: moderate from 1, high from 3 | 0 |
 | structure-delta | moderate | count 2 | count: moderate from 1, high from 3 | 2 |
 | abandoned-touched | unavailable | none | none | 0 |
 

@@ -1,8 +1,10 @@
+import { hasAdapter } from "@code-health/parse/languages";
 import { folderOf, treeDistance } from "@code-health/graph/tree-distance";
 import type { FixMatch } from "@code-health/history/fix-commits";
 import { monthsBefore } from "@code-health/history/evidence";
 import { compileGlobs } from "@code-health/history/glob";
 import type { HistoryChange } from "@code-health/history/read";
+import { folderPrefix, listsSourceFiles } from "../expected-pair.ts";
 import { componentOf, type Component } from "../components.ts";
 import { isTestPath, siblingTestOf } from "../sibling-test.ts";
 import { changeSpread } from "../spread-measure.ts";
@@ -255,12 +257,35 @@ function coupledPartners(facts: ChangeFacts, state: HistoryState, context: Measu
   return [...best.values()].sort((a, b) => b.confidence - a.confidence || b.support - a.support || (a.file < b.file ? -1 : 1));
 }
 
+/**
+ * A build manifest that lists sources (`CMakeLists.txt`, `Makefile`) changes with its sources mostly because sources
+ * are added to it or removed from it. It is expected to change with a source file only when the change adds, removes or
+ * renames a code file in its folder or below.
+ */
+function manifestExpected(manifest: string, facts: ChangeFacts): boolean {
+  const folder = folderPrefix(manifest);
+  return facts.files.some((file) => {
+    if (file.status !== "A" && file.status !== "D" && file.status !== "R") return false;
+    const paths = file.oldPath === null ? [file.path] : [file.path, file.oldPath];
+    return paths.some((path) => path.startsWith(folder) && !listsSourceFiles(path) && hasAdapter(path));
+  });
+}
+
+/**
+ * The files missing from the change, and how many partners were skipped because the pairing is with a build manifest
+ * that lists sources. A manifest partner of a touched file counts only when the change adds, removes or renames a code
+ * file in its folder or below; a touched manifest is not a reason to expect its sources, because the edit is mostly the
+ * line that adds or removes the source the change already contains. The skipped partners are counted, not dropped.
+ */
 function missingCoChange(facts: ChangeFacts, state: HistoryState, context: MeasureContext): Measurement {
   const touched = new Set(facts.files.map((file) => file.fileId));
-  const missing = coupledPartners(facts, state, context).filter((partner) => !touched.has(partner.file));
+  const absent = coupledPartners(facts, state, context).filter((partner) => !touched.has(partner.file));
+  const withoutManifests = coupledPartners({ ...facts, files: facts.files.filter((file) => !listsSourceFiles(file.fileId)) }, state, context);
+  const missing = withoutManifests.filter((partner) => !touched.has(partner.file) && (!listsSourceFiles(partner.file) || manifestExpected(partner.file, facts)));
+  const skipped = absent.length - missing.length;
   return measurement("missing-co-change", "completeness", "history", "count", "history", {
     series: { count: missing.length },
-    value: { count: missing.length },
+    value: skipped === 0 ? { count: missing.length } : { count: missing.length, manifestPartnersSkipped: skipped },
     evidence: missing.map((partner) => ({ file: partner.file, towards: partner.towards, confidence: partner.confidence, support: partner.support })),
   });
 }

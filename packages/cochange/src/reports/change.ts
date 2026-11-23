@@ -16,6 +16,7 @@ import type { ReportBuild, Section } from "@code-health/report/report-model";
 import { runGit } from "@code-health/history/git";
 import { loadHistory } from "../history-access.ts";
 import { assessBranch, type Assessed } from "../risk/assess.ts";
+import { INDENTATION_PROXY } from "../risk/composition.ts";
 import { resolveRange } from "../risk/change.ts";
 import type { Factor } from "../risk/factor.ts";
 import { findingsOf, type Finding } from "../risk/findings.ts";
@@ -193,7 +194,8 @@ function valueText(factor: Factor): string {
   const parts = Object.entries(factor.value)
     .filter(([, value]) => value !== null && typeof value !== "object")
     .map(([key, value]) => `${key} ${value}`);
-  return parts.length === 0 ? "none" : parts.join(", ");
+  const label = factor.name === "complexity-delta" && factor.source === INDENTATION_PROXY ? `${INDENTATION_PROXY}: ` : "";
+  return parts.length === 0 ? `${label}none` : `${label}${parts.join(", ")}`;
 }
 
 function bandText(factor: Factor): string {
@@ -296,9 +298,12 @@ function missingBlocks(assessed: Assessed): Block[] {
   if (factor === undefined || factor.status !== "ok") {
     return [{ type: "notice", level: "notice", text: `Missing co-change partners could not be computed: ${factor?.reason ?? "the factor is not available"}.` }];
   }
-  if (factor.evidence.length === 0) return [{ type: "notice", level: "notice", text: "No file that usually changes with a touched file is missing from the change." }];
+  const skipped = number(factor.value.manifestPartnersSkipped) ?? 0;
+  const skippedNotice: Block[] = skipped === 0 ? [] : [{ type: "notice", level: "notice", text: `${plural(skipped, "partner")} left out of this list because the pairing is with a build manifest that lists source files (such as CMakeLists.txt): a manifest counts as missing only when the change adds, removes or renames a code file in its folder, and a touched manifest does not make its source files missing.` }];
+  if (factor.evidence.length === 0) return [...skippedNotice, { type: "notice", level: "notice", text: "No file that usually changes with a touched file is missing from the change." }];
   const rows = factor.evidence.map((e): Record<string, Cell> => ({ file: text(e.file), towards: text(e.towards), confidence: number(e.confidence), support: number(e.support) }));
   return [
+    ...skippedNotice,
     {
       type: "ranked-table",
       caption: "Files that usually change with a touched file and are not in the change",
@@ -318,7 +323,7 @@ function missingBlocks(assessed: Assessed): Block[] {
 function complexityBlocks(evidence: ChangeEvidence): Block[] {
   const complexity = evidence.complexity;
   if (complexity === null) {
-    return [{ type: "notice", level: "notice", text: "No complexity comparison was passed in. Run `complexity check --json` (or `complexity diff BASE..HEAD --json`) for this base and pass it with `--evidence FILE`, then run this report again." }];
+    return [{ type: "notice", level: "notice", text: "No complexity comparison was passed in. The complexity-delta factor in the risk table is the indentation proxy (production code files whose indentation complexity rose), not a complexity comparison, and lists no units. Run `complexity check --json` (or `complexity diff BASE..HEAD --json`) for this base and pass it with `--evidence FILE`, then run this report again." }];
   }
   const blocks: Block[] = [];
   if (complexity.rows.length === 0) {

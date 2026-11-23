@@ -82,7 +82,7 @@ export const RESPONSES: Record<string, { step: Step; response: string; summary: 
     step: "simplify",
     response: "Run `complexity explain` on the named units and simplify before merge.",
     summary: "The change adds code that is hard to understand",
-    explanation: "From `complexity diff` passed in with --evidence: units that are new and over its guideline, or over it and worse. Without that, the touched files whose indentation complexity rose.",
+    explanation: "From `complexity diff` passed in with --evidence: units that are new and over its guideline, or over it and worse. Without that, the touched production code files whose indentation complexity rose (the indentation proxy, not a complexity comparison).",
     redFlag: null,
   },
   "structure-delta": {

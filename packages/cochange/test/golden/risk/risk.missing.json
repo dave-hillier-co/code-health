@@ -486,7 +486,7 @@
         "name": "complexity-delta",
         "reason": null,
         "scored": false,
-        "source": "indentation",
+        "source": "indentation proxy, not a complexity comparison",
         "status": "ok",
         "value": {
           "count": 0,
