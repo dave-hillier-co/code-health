@@ -226,6 +226,7 @@ function treemapBlock(measured: MeasuredPatterns, code: CodeMapFiles): Block[] {
     },
     { type: "notice", level: "notice", text: `The map draws all ${items.length} production code files at HEAD (${lines} lines), the same files at the same places as the map in the hotspots report. ${noBlame === 0 ? "" : `${noBlame} of them have no blame and no pattern, and are hatched. `}${measured.files.length - items.length === 0 ? "" : `${measured.files.length - items.length} other files with a blame (tests, documents, data and configuration) are not drawn. `}The tables below list files of every kind by pattern, hottest first.` },
   ];
+  if (code.excluded.files > 0) blocks.push({ type: "notice", level: "limit", text: `${code.excluded.files} production code files at HEAD (${code.excluded.lines} lines) are left out of the map by the exclude globs, lockfile names, and the generated and vendored file rules, the same filters the blame uses.` });
   if (code.unsized > 0) blocks.push({ type: "notice", level: "limit", text: `${code.unsized} production code files at HEAD are empty or binary and have no lines to size, so they are not drawn.` });
   return blocks;
 }

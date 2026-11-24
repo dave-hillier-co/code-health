@@ -132,6 +132,7 @@ function mapBlocks(rows: readonly HotspotRow[], code: CodeMapFiles, marked: read
       text: `The map draws all ${items.length} production code files at HEAD (${lines} lines), including ${items.length - changed.length} that nothing in the window changed (0 revisions). The band edges sit at the 50th, 75th, 90th and 97th percentile of the revisions of the ${changed.length} files that changed, so band 5 is the most changed and says nothing about good or bad.`,
     },
   ];
+  if (code.excluded.files > 0) blocks.push({ type: "notice", level: "limit", text: `${code.excluded.files} production code files at HEAD (${code.excluded.lines} lines) are left out of the map by the exclude globs, lockfile names, and the generated and vendored file rules, the same filters the rankings use.` });
   if (code.unsized > 0) blocks.push({ type: "notice", level: "limit", text: `${code.unsized} production code files at HEAD are empty or binary and have no lines to size, so they are not drawn.` });
   const drawn = new Set(code.files.map((file) => file.path));
   const absent = rows.filter((row) => !drawn.has(row.path)).length;
@@ -382,6 +383,8 @@ export const hotspots: ReportKind = {
   async build(context: CommandContext): Promise<ReportBuild> {
     const limit = top(context);
     const output = await hotspotsCommand.run(context);
+    // Before the counts below: reading the map's files records the generated and vendored files it meets.
+    const code = await readCodeMapFiles(context, context.repo.head);
     // Read what the ranking left out before the history commands below record their own drops.
     const excluded = excludedCounts((output.extra as { filtersApplied: FiltersApplied }).filtersApplied, droppedCounts(), builtinOmissions());
     const extra = output.extra as { evidence: Evidence; filtersApplied: FiltersApplied; complexitySource: string; window: { since: string; until: string } };
@@ -397,7 +400,6 @@ export const hotspots: ReportKind = {
     const { all: friction, basis } = frictionOf(rows, percentile, cognitiveAbove(analyse));
     const shown = friction.slice(0, limit);
     const judged = shown.slice(0, settings.hotspotJudged);
-    const code = await readCodeMapFiles(context, head);
 
     const trendPaths = shown.slice(0, TREND_FILES).map((f) => f.row.path);
     const trends = await Promise.all(trendPaths.map((path) => trendOf(context, path)));
