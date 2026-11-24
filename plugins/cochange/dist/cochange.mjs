@@ -12037,6 +12037,7 @@ var folderPrefix = (path) => path.slice(0, path.lastIndexOf("/") + 1);
 // packages/cochange/src/risk/measure.ts
 var round2 = (value, places = 6) => Math.round(value * 10 ** places) / 10 ** places;
 var churnOf = (file) => (file.added ?? 0) + (file.deleted ?? 0);
+var isBinary = (file) => file.added === null && file.deleted === null;
 var FIRST_ROWS = 5;
 function measurement2(name18, family, layer, kind, source, parts2) {
   return { name: name18, family, layer, kind, source, unavailable: null, series: {}, value: {}, evidence: [], ...parts2 };
@@ -12080,14 +12081,15 @@ function entropy(facts) {
   const churn = facts.files.map(churnOf).filter((c) => c > 0);
   const total = churn.reduce((sum, c) => sum + c, 0);
   const value = total === 0 ? 0 : round2(churn.reduce((sum, c) => sum - c / total * Math.log2(c / total), 0));
+  const binaryFiles = facts.files.filter(isBinary).length;
   return measurement2("entropy", "size-and-diffusion", "history", "percentile", "history", {
     series: { entropy: value },
-    value: { entropy: value, files: churn.length }
+    value: { entropy: value, filesWithLineChanges: churn.length, ...binaryFiles > 0 ? { binaryFiles } : {} }
   });
 }
 function mixedPurpose(facts) {
   const moved = facts.moved;
-  const edited = facts.files.filter((file) => churnOf(file) > 0 && file.status !== "R").length;
+  const edited = facts.files.filter((file) => (churnOf(file) > 0 || isBinary(file)) && file.status !== "R").length;
   const editedWhileMoved = facts.files.filter((file) => file.status === "R" && churnOf(file) > 0).length;
   const mixed = moved > 0 && (edited > 0 || editedWhileMoved > 0);
   const count3 = mixed ? moved : 0;
@@ -15257,7 +15259,7 @@ var FACTOR_DOCS = [
     layer: "history",
     banding: "percentile",
     signal: "How evenly the churn is distributed over the touched files",
-    definition: "Shannon entropy in bits, H = -sum(p log2 p), where p is each file's share of the change's churn (Hassan's change entropy as Kamei et al. use it). Zero for a change concentrated in one file.",
+    definition: "Shannon entropy in bits, H = -sum(p log2 p), where p is each file's share of the change's churn (Hassan's change entropy as Kamei et al. use it). Zero for a change concentrated in one file. Binary files have no line counts and so no share; they are counted apart as binaryFiles.",
     why: "A change concentrated in one file is easier to follow than the same churn smeared over twenty."
   },
   {
