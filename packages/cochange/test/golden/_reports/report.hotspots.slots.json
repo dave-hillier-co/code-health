@@ -46,8 +46,14 @@
             "items": [
               {
                 "colour": 5,
+                "mark": "1",
                 "path": "src/core/engine.ts",
                 "size": 13
+              },
+              {
+                "colour": 5,
+                "path": "src/core/util.ts",
+                "size": 1
               },
               {
                 "colour": 3,
@@ -58,19 +64,16 @@
                 "colour": 2,
                 "path": "src/ui/page.ts",
                 "size": 5
-              },
-              {
-                "colour": 5,
-                "path": "src/core/util.ts",
-                "size": 1
               }
             ],
+            "markLabel": "the files of the friction list below, each marked with its position in it",
             "sizeLabel": "lines",
-            "title": "The 4 largest files, nested by folder: size is lines, colour is revisions in the window",
+            "tableRows": 20,
+            "title": "The code, nested by folder: size is lines, colour is revisions in the window, outlined tiles are the friction list",
             "type": "treemap"
           },
           {
-            "text": "Colour bands are rank steps of the files shown: the band edges sit at the 50th, 75th, 90th and 97th percentile of their revisions, so band 5 is the most changed and says nothing about good or bad.",
+            "text": "The map draws all 4 production code files at HEAD (26 lines), including 0 that nothing in the window changed (0 revisions). The band edges sit at the 50th, 75th, 90th and 97th percentile of the revisions of the 4 files that changed, so band 5 is the most changed and says nothing about good or bad.",
             "type": "paragraph"
           }
         ],

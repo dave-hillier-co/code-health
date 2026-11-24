@@ -67,6 +67,7 @@ figure.chart svg text { fill: var(--text); }
 svg .folder rect { fill: none; stroke: var(--rule); }
 svg .folder text { fill: var(--muted); }
 svg .tile rect, svg .cell rect { stroke: var(--bg); stroke-width: 1; }
+svg .tile.marked rect { stroke: var(--text); stroke-width: 2; }
 svg .band-1 rect { fill: var(--band-1); } svg .band-1 text { fill: var(--on-band-1); }
 svg .band-2 rect { fill: var(--band-2); } svg .band-2 text { fill: var(--on-band-2); }
 svg .band-3 rect { fill: var(--band-3); } svg .band-3 text { fill: var(--on-band-3); }
@@ -126,6 +127,51 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <h3>Judgement: where knowledge is concentrated</h3>
 <p>Knowledge sits with a few people and the history is short.</p>
 </section>
+<figure class="chart treemap category-treemap">
+<figcaption>The code, nested by folder: size is lines, fill is knowledge-risk pattern</figcaption>
+<svg role="img" aria-labelledby="the-code-nested-by-folder-size-is-lines-fill-is-knowledge-risk-pattern-b305b4-title the-code-nested-by-folder-size-is-lines-fill-is-knowledge-risk-pattern-b305b4-desc" viewBox="0 0 960 520" preserveAspectRatio="xMinYMin meet">
+<title id="the-code-nested-by-folder-size-is-lines-fill-is-knowledge-risk-pattern-b305b4-title">The code, nested by folder: size is lines, fill is knowledge-risk pattern</title>
+<desc id="the-code-nested-by-folder-size-is-lines-fill-is-knowledge-risk-pattern-b305b4-desc">A treemap of 8 items nested by folder. Area is lines; each tile is filled by its first pattern. The table below lists the same items.</desc>
+<g class="folder"><rect x="0.0" y="0.0" width="960.0" height="520.0"/><text x="4.0" y="11.0">src</text></g>
+<g class="folder"><rect x="2.0" y="16.0" width="358.5" height="502.0"/><text x="6.0" y="27.0">core</text></g>
+<g class="folder"><rect x="360.5" y="16.0" width="239.0" height="502.0"/><text x="364.5" y="27.0">api</text></g>
+<g class="folder"><rect x="599.5" y="16.0" width="179.3" height="334.7"/><text x="603.5" y="27.0">gen</text></g>
+<g class="folder"><rect x="778.8" y="16.0" width="179.3" height="334.7"/><text x="782.8" y="27.0">ui</text></g>
+<g class="folder"><rect x="599.5" y="350.7" width="358.5" height="167.3"/><text x="603.5" y="361.7">util</text></g>
+<g class="tile band-4"><title>src/core/engine.ts: 10 lines, First pattern Complex code by former contributors</title><rect x="4.0" y="32.0" width="177.3" height="322.7"/><text x="7.0" y="44.0">engine.ts</text><text x="7.0" y="57.0">CFC</text></g>
+<g class="tile band-4"><title>src/core/lexer.ts: 10 lines, First pattern Complex code by former contributors</title><rect x="181.3" y="32.0" width="177.3" height="322.7"/><text x="184.3" y="44.0">lexer.ts</text><text x="184.3" y="57.0">CFC</text></g>
+<g class="tile band-4"><title>src/core/parser.ts: 10 lines, First pattern Complex code by former contributors</title><rect x="4.0" y="354.7" width="354.5" height="161.3"/><text x="7.0" y="366.7">parser.ts</text><text x="7.0" y="379.7">CFC</text></g>
+<g class="tile band-5"><title>src/api/auth.ts: 10 lines, First pattern Single-owner hotspot</title><rect x="362.5" y="32.0" width="235.0" height="242.0"/><text x="365.5" y="44.0">auth.ts</text><text x="365.5" y="57.0">SOH</text></g>
+<g class="tile band-none"><title>src/api/routes.ts: 10 lines, no First pattern</title><rect x="362.5" y="274.0" width="235.0" height="242.0"/><text x="365.5" y="286.0">routes.ts</text><text x="365.5" y="299.0">none</text></g>
+<g class="tile band-1"><title>src/gen/deps.ts: 10 lines, First pattern Inconclusive</title><rect x="601.5" y="32.0" width="175.3" height="316.7"/><text x="604.5" y="44.0">deps.ts</text><text x="604.5" y="57.0">INC</text></g>
+<g class="tile band-3"><title>src/ui/view.ts: 10 lines, First pattern Single owner</title><rect x="780.8" y="32.0" width="175.3" height="316.7"/><text x="783.8" y="44.0">view.ts</text><text x="783.8" y="57.0">SO</text></g>
+<g class="tile band-3"><title>src/util/log.ts: 10 lines, First pattern Single owner</title><rect x="601.5" y="366.7" width="354.5" height="149.3"/><text x="604.5" y="378.7">log.ts</text><text x="604.5" y="391.7">SO</text></g>
+</svg>
+<table>
+<caption>The code, nested by folder: size is lines, fill is knowledge-risk pattern: the items drawn, largest first</caption>
+<thead><tr><th scope="col">Path</th><th scope="col" class="number">Size (lines)</th><th scope="col">First pattern</th></tr></thead>
+<tbody>
+<tr><th scope="row">src/api/auth.ts</th><td class="number">10</td><td>Single-owner hotspot</td></tr>
+<tr><th scope="row">src/api/routes.ts</th><td class="number">10</td><td>none</td></tr>
+<tr><th scope="row">src/core/engine.ts</th><td class="number">10</td><td>Complex code by former contributors</td></tr>
+<tr><th scope="row">src/core/lexer.ts</th><td class="number">10</td><td>Complex code by former contributors</td></tr>
+<tr><th scope="row">src/core/parser.ts</th><td class="number">10</td><td>Complex code by former contributors</td></tr>
+<tr><th scope="row">src/gen/deps.ts</th><td class="number">10</td><td>Inconclusive</td></tr>
+<tr><th scope="row">src/ui/view.ts</th><td class="number">10</td><td>Single owner</td></tr>
+<tr><th scope="row">src/util/log.ts</th><td class="number">10</td><td>Single owner</td></tr>
+</tbody>
+</table>
+<p class="legend">Area is lines. Every tile is filled by its first pattern, and a tile large enough prints its name and the mark of its first pattern; hatched tiles have none. The marks, with the tiles and lines of each:</p>
+<ul class="legend">
+<li><strong>SOH</strong> Single-owner hotspot: 1 tile, 10 lines</li>
+<li><strong>CFC</strong> Complex code by former contributors: 3 tiles, 30 lines</li>
+<li><strong>SO</strong> Single owner: 2 tiles, 20 lines</li>
+<li><strong>MAD</strong> Many active developers: 0 tiles, 0 lines</li>
+<li><strong>INC</strong> Inconclusive: 1 tile, 10 lines</li>
+<li>hatched, no first pattern: 1 tile, 10 lines</li>
+</ul>
+</figure>
+<aside class="notice notice" role="note"><strong>Notice:</strong> The map draws all 8 production code files at HEAD (80 lines), the same files at the same places as the map in the hotspots report. The tables below list files of every kind by pattern, hottest first.</aside>
 </section>
 <section id="patterns" aria-labelledby="patterns-heading">
 <h2 id="patterns-heading">Knowledge-risk patterns</h2>
@@ -155,50 +201,6 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">No pattern</th><td>None of the above applies</td><td class="number">1</td><td class="number">1</td></tr>
 </tbody>
 </table>
-<figure class="chart treemap category-treemap">
-<figcaption>Files by lines held by people, marked by knowledge-risk pattern</figcaption>
-<svg role="img" aria-labelledby="files-by-lines-held-by-people-marked-by-knowledge-risk-pattern-f97ec0-title files-by-lines-held-by-people-marked-by-knowledge-risk-pattern-f97ec0-desc" viewBox="0 0 960 520" preserveAspectRatio="xMinYMin meet">
-<title id="files-by-lines-held-by-people-marked-by-knowledge-risk-pattern-f97ec0-title">Files by lines held by people, marked by knowledge-risk pattern</title>
-<desc id="files-by-lines-held-by-people-marked-by-knowledge-risk-pattern-f97ec0-desc">A treemap of 8 items nested by folder. Area is lines held by people; each tile is marked with its first pattern. The table below lists the same items.</desc>
-<g class="folder"><rect x="0.0" y="0.0" width="960.0" height="520.0"/><text x="4.0" y="11.0">src</text></g>
-<g class="folder"><rect x="2.0" y="16.0" width="382.4" height="502.0"/><text x="6.0" y="27.0">core</text></g>
-<g class="folder"><rect x="384.4" y="16.0" width="254.9" height="502.0"/><text x="388.4" y="27.0">api</text></g>
-<g class="folder"><rect x="639.3" y="16.0" width="318.7" height="200.8"/><text x="643.3" y="27.0">ui</text></g>
-<g class="folder"><rect x="639.3" y="216.8" width="212.4" height="301.2"/><text x="643.3" y="227.8">util</text></g>
-<g class="folder"><rect x="851.8" y="216.8" width="106.2" height="301.2"/><text x="855.8" y="227.8">gen</text></g>
-<g class="tile band-4"><title>src/core/engine.ts: 10 lines held by people, First pattern Complex code by former contributors</title><rect x="4.0" y="32.0" width="189.2" height="322.7"/><text x="7.0" y="44.0">engine.ts</text><text x="7.0" y="57.0">CFC</text></g>
-<g class="tile band-4"><title>src/core/lexer.ts: 10 lines held by people, First pattern Complex code by former contributors</title><rect x="193.2" y="32.0" width="189.2" height="322.7"/><text x="196.2" y="44.0">lexer.ts</text><text x="196.2" y="57.0">CFC</text></g>
-<g class="tile band-4"><title>src/core/parser.ts: 10 lines held by people, First pattern Complex code by former contributors</title><rect x="4.0" y="354.7" width="378.4" height="161.3"/><text x="7.0" y="366.7">parser.ts</text><text x="7.0" y="379.7">CFC</text></g>
-<g class="tile band-5"><title>src/api/auth.ts: 10 lines held by people, First pattern Single-owner hotspot</title><rect x="386.4" y="32.0" width="250.9" height="242.0"/><text x="389.4" y="44.0">auth.ts</text><text x="389.4" y="57.0">SOH</text></g>
-<g class="tile band-none"><title>src/api/routes.ts: 10 lines held by people, no First pattern</title><rect x="386.4" y="274.0" width="250.9" height="242.0"/><text x="389.4" y="286.0">routes.ts</text><text x="389.4" y="299.0">none</text></g>
-<g class="tile band-3"><title>src/ui/view.ts: 10 lines held by people, First pattern Single owner</title><rect x="641.3" y="32.0" width="314.7" height="182.8"/><text x="644.3" y="44.0">view.ts</text><text x="644.3" y="57.0">SO</text></g>
-<g class="tile band-3"><title>src/util/log.ts: 10 lines held by people, First pattern Single owner</title><rect x="641.3" y="232.8" width="208.4" height="283.2"/><text x="644.3" y="244.8">log.ts</text><text x="644.3" y="257.8">SO</text></g>
-<g class="tile band-1"><title>src/gen/deps.ts: 5 lines held by people, First pattern Inconclusive</title><rect x="853.8" y="232.8" width="102.2" height="283.2"/><text x="856.8" y="244.8">deps.ts</text><text x="856.8" y="257.8">INC</text></g>
-</svg>
-<table>
-<caption>Files by lines held by people, marked by knowledge-risk pattern: the items drawn, largest first</caption>
-<thead><tr><th scope="col">Path</th><th scope="col" class="number">Size (lines held by people)</th><th scope="col">First pattern</th></tr></thead>
-<tbody>
-<tr><th scope="row">src/api/auth.ts</th><td class="number">10</td><td>Single-owner hotspot</td></tr>
-<tr><th scope="row">src/api/routes.ts</th><td class="number">10</td><td>none</td></tr>
-<tr><th scope="row">src/core/engine.ts</th><td class="number">10</td><td>Complex code by former contributors</td></tr>
-<tr><th scope="row">src/core/lexer.ts</th><td class="number">10</td><td>Complex code by former contributors</td></tr>
-<tr><th scope="row">src/core/parser.ts</th><td class="number">10</td><td>Complex code by former contributors</td></tr>
-<tr><th scope="row">src/ui/view.ts</th><td class="number">10</td><td>Single owner</td></tr>
-<tr><th scope="row">src/util/log.ts</th><td class="number">10</td><td>Single owner</td></tr>
-<tr><th scope="row">src/gen/deps.ts</th><td class="number">5</td><td>Inconclusive</td></tr>
-</tbody>
-</table>
-<p class="legend">Area is lines held by people. Each tile prints its name and the mark of its first pattern; hatched tiles have none. The marks are:</p>
-<ul class="legend">
-<li><strong>SOH</strong> Single-owner hotspot: 1 tile</li>
-<li><strong>CFC</strong> Complex code by former contributors: 3 tiles</li>
-<li><strong>SO</strong> Single owner: 2 tiles</li>
-<li><strong>MAD</strong> Many active developers: 0 tiles</li>
-<li><strong>INC</strong> Inconclusive: 1 tile</li>
-</ul>
-</figure>
-<aside class="notice notice" role="note"><strong>Notice:</strong> The treemap draws the 8 production code files with the most lines held by people, of 8. The tables below list files of every kind by pattern, hottest first.</aside>
 <table class="ranked">
 <caption>Top files whose first pattern is single-owner hotspot, hottest first</caption>
 <thead><tr><th scope="col" class="number">#</th><th scope="col">File</th><th scope="col">Hotspot</th><th scope="col" class="number">Complexity</th><th scope="col" class="number">Lines held by people</th><th scope="col" class="number">Active holders</th><th scope="col" class="number">Former holders</th><th scope="col" class="number">Top active holder (%)</th><th scope="col" class="number">Held by former (%)</th><th scope="col" class="number">Bus factor</th></tr></thead>

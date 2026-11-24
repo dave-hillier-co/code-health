@@ -36,7 +36,7 @@ test("every tile names its kind in words and in a mark, and an item with no kind
   expect(html).toContain("ONE");
   expect(html).toContain("<title>src/ui/form.ts: 90 lines, no Kind</title>");
   expect(html).toContain('class="tile band-none"');
-  expect(html).toContain("<li><strong>ONE</strong> Owned by one person: 2 tiles</li>");
+  expect(html).toContain("<li><strong>ONE</strong> Owned by one person: 2 tiles, 600 lines</li>");
 });
 
 test("the table lists the same items, and the items it does not draw are counted", () => {
@@ -62,4 +62,30 @@ test("tiles beyond the limit are counted and not drawn", () => {
   const html = renderBlock(many, "html", context);
   expect(html).toContain("3 smaller items not drawn");
   expect((html.match(/<g class="tile/g) ?? []).length).toBe(2);
+});
+
+test("a treemap and a category treemap of one item set put every tile in the same place", () => {
+  const paths = Array.from({ length: 60 }, (_, i) => `src/m${i % 7}/f${i}.ts`);
+  const tree = { type: "treemap" as const, title: "t", sizeLabel: "lines", colourLabel: "revisions", items: paths.map((path, i) => ({ path, size: 10 + ((i * 37) % 90), colour: i % 5 })) };
+  const cat = { type: "category-treemap" as const, title: "t", sizeLabel: "lines", categoryLabel: "Kind", categories: [{ id: "a", label: "A", mark: "A", band: 2 }], items: tree.items.map((i) => ({ path: i.path, size: i.size, category: "a" })) };
+  const geometry = (html: string) => [...html.matchAll(/<rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"\/>/g)].map((m) => m.slice(1).join(","));
+  const a = geometry(renderBlock(tree, "html", context));
+  expect(a.length).toBeGreaterThan(60);
+  expect(a).toEqual(geometry(renderBlock(cat, "html", context)));
+});
+
+test("a large map draws every item, bare when small, and says how many bare tiles it holds and how many table rows it omits", () => {
+  const items = Array.from({ length: 3000 }, (_, i) => ({ path: `d${i % 40}/e${i % 9}/f${i}.ts`, size: 1 + (i % 17), colour: i % 4 }));
+  const html = renderBlock({ type: "treemap", title: "t", sizeLabel: "lines", colourLabel: "revisions", items, tableRows: 10 }, "html", context);
+  expect(html).toContain('class="tile bare band-');
+  expect(html).toMatch(/\d+ tiles holding [\d,]+ lines too small for a name or tooltip are drawn as bare rectangles/);
+  expect(html).toContain("the table lists 10 of the 3000 items drawn");
+  expect((html.match(/<tr>/g) ?? []).length).toBe(11);
+});
+
+test("a marked tile is outlined and prints its mark, and its row comes first in the table", () => {
+  const html = renderBlock({ type: "treemap", title: "t", sizeLabel: "lines", colourLabel: "revisions", items: [{ path: "a/big.ts", size: 500, colour: 1 }, { path: "a/small.ts", size: 3, colour: 9, mark: "1" }], markLabel: "the friction list" }, "html", context);
+  expect(html).toContain(" marked");
+  expect(html).toContain("Outlined tiles are the friction list (1)");
+  expect(html.indexOf("1 a/small.ts")).toBeLessThan(html.indexOf("a/big.ts</th>"));
 });

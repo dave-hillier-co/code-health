@@ -1,4 +1,4 @@
-**Files by lines, marked by kind** (the items by lines, largest first; marks: ONE Owned by one person (2 tiles); MANY Shared (1 tile); UNK Unknown (1 tile))
+**Files by lines, marked by kind** (the items by lines, largest first; marks: ONE Owned by one person (2 tiles, 600 lines); MANY Shared (1 tile, 120 lines); UNK Unknown (1 tile, 60 lines); none (1 tile, 90 lines))
 
 | Path | Size (lines) | Kind |
 | --- | ---: | --- |

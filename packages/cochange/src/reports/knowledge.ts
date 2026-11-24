@@ -11,6 +11,7 @@ import type { ExcludedCount, Slot } from "@code-health/report/protocol";
 import type { ReportBuild } from "@code-health/report/report-model";
 import { excludedCounts, historyWindowText } from "@code-health/history/report-header";
 import type { FiltersApplied } from "@code-health/history/noise";
+import { readCodeMapFiles, type CodeMapFiles } from "../code-map.ts";
 import { measureCurrent, round4, summariseCurrent } from "../abandonment/current.ts";
 import type { KnowledgeModel } from "../abandonment/knowledge-model.ts";
 import { PATTERNS, type Pattern, type PatternFile } from "../abandonment/patterns.ts";
@@ -21,7 +22,8 @@ import { requireKnowledge } from "../abandonment/settings.ts";
 import { simulateCommand } from "../abandonment/simulate-run.ts";
 
 const TOP = 10;
-const TREEMAP_TILES = 60;
+/** Rows in the table under the map. */
+const MAP_TABLE_ROWS = 20;
 
 interface PatternInfo {
   label: string;
@@ -201,22 +203,31 @@ function guidelineFacts(p: Prepared): Block {
   };
 }
 
-function treemapBlock(measured: MeasuredPatterns): Block[] {
-  const code = measured.files.filter((f) => f.kind === "code");
-  const sized = code.filter((f) => f.peopleLines > 0).sort((a, b) => b.peopleLines - a.peopleLines || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
-  const drawn = sized.slice(0, TREEMAP_TILES);
-  return [
+/**
+ * The map of the code: every production code file of the tree at HEAD, sized by its lines (the size the hotspots map
+ * uses, from the same `readCodeMapFiles` list, so both maps put each tile in the same place) and filled by the first
+ * knowledge-risk pattern of the file. A file with no blame has no pattern and is hatched. The map prints paths and
+ * patterns only, never names.
+ */
+function treemapBlock(measured: MeasuredPatterns, code: CodeMapFiles): Block[] {
+  const pattern = new Map(measured.files.map((f) => [f.path, f.pattern]));
+  const items = code.files.map((file) => ({ path: file.path, size: file.lines, category: pattern.get(file.path) ?? null }));
+  const lines = items.reduce((sum, item) => sum + item.size, 0);
+  const noBlame = items.filter((item) => !pattern.has(item.path)).length;
+  const blocks: Block[] = [
     {
       type: "category-treemap",
-      title: "Files by lines held by people, marked by knowledge-risk pattern",
-      sizeLabel: "lines held by people",
+      title: "The code, nested by folder: size is lines, fill is knowledge-risk pattern",
+      sizeLabel: "lines",
       categoryLabel: "First pattern",
       categories: PATTERNS.map((id) => ({ id, label: PATTERN_INFO[id].label, mark: PATTERN_INFO[id].mark, band: PATTERN_INFO[id].band })),
-      items: drawn.map((f) => ({ path: f.path, size: f.peopleLines, category: f.pattern })),
-      maxTiles: TREEMAP_TILES,
+      items,
+      tableRows: MAP_TABLE_ROWS,
     },
-    { type: "notice", level: "notice", text: `The treemap draws the ${drawn.length} production code files with the most lines held by people, of ${sized.length}. ${measured.files.length - code.length === 0 ? "" : `${measured.files.length - code.length} test, document, data and configuration files are not drawn. `}The tables below list files of every kind by pattern, hottest first.` },
+    { type: "notice", level: "notice", text: `The map draws all ${items.length} production code files at HEAD (${lines} lines), the same files at the same places as the map in the hotspots report. ${noBlame === 0 ? "" : `${noBlame} of them have no blame and no pattern, and are hatched. `}${measured.files.length - items.length === 0 ? "" : `${measured.files.length - items.length} other files with a blame (tests, documents, data and configuration) are not drawn. `}The tables below list files of every kind by pattern, hottest first.` },
   ];
+  if (code.unsized > 0) blocks.push({ type: "notice", level: "limit", text: `${code.unsized} production code files at HEAD are empty or binary and have no lines to size, so they are not drawn.` });
+  return blocks;
 }
 
 function busFactorTable(p: Prepared, measured: MeasuredPatterns, names: Names): Block[] {
@@ -451,6 +462,7 @@ export const knowledge: ReportKind = {
     requireKnowledge(context);
     const p = await prepare(context);
     const measured = await measurePatterns(context, p);
+    const code = await readCodeMapFiles(context, p.history.view.headSha);
     const { model } = p.knowledge;
     const names: Names = { enabled: context.values.names === true, model, byPath: new Map(model.files.map((f) => [f.path, f])) };
     const { evidence, window } = p.history;
@@ -474,6 +486,7 @@ export const knowledge: ReportKind = {
           blocks: [
             ...(single ? [{ type: "notice" as const, level: "notice" as const, text: ONE_CONTRIBUTOR }] : []),
             { type: "judgement", slot: "summary" },
+            ...treemapBlock(measured, code),
           ],
         },
         {
@@ -482,7 +495,6 @@ export const knowledge: ReportKind = {
           blocks: [
             guidelineFacts(p),
             countsTable(p, measured),
-            ...treemapBlock(measured),
             ...withFiles.flatMap((pattern): Block[] => [patternTable(pattern, measured.files, names), { type: "judgement", slot: slotId(pattern) }]),
           ],
         },
