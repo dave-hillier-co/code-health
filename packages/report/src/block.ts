@@ -1,3 +1,4 @@
+import { changeBarsHtml, changeBarsMd, type ChangeBarsData } from "./components/change-bars.ts";
 import { categoryTreemapHtml, categoryTreemapMd, type CategoryTreemapData } from "./components/category-treemap.ts";
 import { evidenceListHtml, evidenceListMd, type EvidenceListData } from "./components/evidence-list.ts";
 import { factsHtml, factsMd, type FactsData } from "./components/facts.ts";
@@ -13,6 +14,8 @@ import { rankedTableHtml, rankedTableMd, type RankedTableData } from "./componen
 import { scatterHtml, scatterMd, type ScatterData } from "./components/scatter.ts";
 import { stabilityChartHtml, stabilityChartMd, type StabilityChartData } from "./components/stability-chart.ts";
 import { sparklineHtml, sparklineMd, type SparklineData } from "./components/sparkline.ts";
+import { trendChartHtml, trendChartMd, type TrendChartData } from "./components/trend-chart.ts";
+import { trendGridHtml, trendGridMd, type TrendGridData } from "./components/trend-grid.ts";
 import { trendMarkerHtml, trendMarkerMd, type TrendMarkerData } from "./components/trend-marker.ts";
 import { treemapHtml, treemapMd, type TreemapData } from "./components/treemap.ts";
 import { resolveLinks, type Siblings } from "./links.ts";
@@ -35,6 +38,9 @@ export type Block =
   | ({ type: "scatter" } & ScatterData)
   | ({ type: "stability-chart" } & StabilityChartData)
   | ({ type: "trend-marker" } & TrendMarkerData)
+  | ({ type: "trend-chart" } & TrendChartData)
+  | ({ type: "trend-grid" } & TrendGridData)
+  | ({ type: "change-bars" } & ChangeBarsData)
   | ({ type: "evidence-list" } & EvidenceListData)
   | ({ type: "notice" } & NoticeData)
   /** The place a slot's entry appears. */
@@ -119,6 +125,9 @@ function renderResolved(block: Block, format: Format, context: BlockContext): st
     case "scatter": return format === "html" ? scatterHtml(block) : scatterMd(block);
     case "stability-chart": return format === "html" ? stabilityChartHtml(block) : stabilityChartMd(block);
     case "trend-marker": return format === "html" ? `<p>${trendMarkerHtml(block)}</p>` : trendMarkerMd(block);
+    case "trend-chart": return format === "html" ? trendChartHtml(block) : trendChartMd(block);
+    case "trend-grid": return format === "html" ? trendGridHtml(block) : trendGridMd(block);
+    case "change-bars": return format === "html" ? changeBarsHtml(block) : changeBarsMd(block);
     case "evidence-list": return format === "html" ? evidenceListHtml(block) : evidenceListMd(block);
     case "notice": return format === "html" ? noticeHtml(block) : noticeMd(block);
     case "judged-items": return renderJudgedItems(block, format, context);

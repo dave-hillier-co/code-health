@@ -258,10 +258,10 @@ function loadConfig(root, spec) {
   }
   const pluginDefaults = { ...spec.section, ...Object.fromEntries(historyKeys.map((key) => [key, historyDefaults[key]])) };
   const defaults = { ...sharedDefaults, [spec.plugin]: pluginDefaults };
-  const rows8 = /* @__PURE__ */ new Map();
+  const rows11 = /* @__PURE__ */ new Map();
   const effective = {};
   for (const key of Object.keys(defaults)) {
-    effective[key] = merge(defaults[key], document2?.[key], key, rows8);
+    effective[key] = merge(defaults[key], document2?.[key], key, rows11);
   }
   readHistory(effective.history, "history");
   const pluginDocument = document2?.[spec.plugin];
@@ -270,10 +270,10 @@ function loadConfig(root, spec) {
   const section2 = effective[spec.plugin];
   for (const key of historyKeys) {
     section2[key] = overlay(effective.history[key], pluginDocument?.[key]);
-    inheritSources(rows8, spec.plugin, key);
+    inheritSources(rows11, spec.plugin, key);
   }
   const sources2 = {};
-  for (const row of rows8.values()) sources2[row.path] = row.source;
+  for (const row of rows11.values()) sources2[row.path] = row.source;
   const hash = createHash("sha256").update(serialise(effective)).digest("hex").slice(0, 16);
   return { file: document2 ? file : null, effective, hash, sources: sources2 };
 }
@@ -284,13 +284,13 @@ function overlay(shared, own) {
   }
   return own;
 }
-function inheritSources(rows8, plugin, key) {
+function inheritSources(rows11, plugin, key) {
   const own = `${plugin}.${key}`;
-  for (const row of [...rows8.values()]) {
+  for (const row of [...rows11.values()]) {
     if (row.path !== own && !row.path.startsWith(`${own}.`)) continue;
     if (row.source === "file") continue;
-    const shared = rows8.get(`history${row.path.slice(plugin.length)}`);
-    if (shared !== void 0) rows8.set(row.path, { ...row, source: shared.source });
+    const shared = rows11.get(`history${row.path.slice(plugin.length)}`);
+    if (shared !== void 0) rows11.set(row.path, { ...row, source: shared.source });
   }
 }
 function readHistory(history, where) {
@@ -328,12 +328,12 @@ function readLanguages(value) {
   return mapped;
 }
 function explainConfig(config) {
-  const rows8 = [];
+  const rows11 = [];
   flatten(config.effective, "", (path, value) => {
-    rows8.push({ path, value, source: config.sources[path] ?? "default" });
+    rows11.push({ path, value, source: config.sources[path] ?? "default" });
   });
-  BUILTIN_EXCLUDE_ENTRIES.forEach((entry, index) => rows8.push({ path: `exclude.built-in[${index}]`, value: entry, source: "built-in" }));
-  return rows8.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  BUILTIN_EXCLUDE_ENTRIES.forEach((entry, index) => rows11.push({ path: `exclude.built-in[${index}]`, value: entry, source: "built-in" }));
+  return rows11.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 }
 function parseDocument(file) {
   let parsed;
@@ -345,15 +345,15 @@ function parseDocument(file) {
   if (!isPlainObject(parsed)) throw configError(`${CONFIG_FILE} must be a JSON object`);
   return parsed;
 }
-function merge(defaultValue, fileValue, path, rows8) {
+function merge(defaultValue, fileValue, path, rows11) {
   if (fileValue === void 0) {
-    flatten(defaultValue, path, (leaf, value) => rows8.set(leaf, { path: leaf, value, source: "default" }));
+    flatten(defaultValue, path, (leaf, value) => rows11.set(leaf, { path: leaf, value, source: "default" }));
     return defaultValue;
   }
   if (isPlainObject(defaultValue)) {
     if (!isPlainObject(fileValue)) throw configError(`${CONFIG_FILE}: ${path} must be an object`);
     if (Object.keys(defaultValue).length === 0) {
-      flatten(fileValue, path, (leaf, value) => rows8.set(leaf, { path: leaf, value, source: "file" }));
+      flatten(fileValue, path, (leaf, value) => rows11.set(leaf, { path: leaf, value, source: "file" }));
       return fileValue;
     }
     for (const key of Object.keys(fileValue)) {
@@ -361,14 +361,14 @@ function merge(defaultValue, fileValue, path, rows8) {
     }
     const merged = {};
     for (const key of Object.keys(defaultValue)) {
-      merged[key] = merge(defaultValue[key], fileValue[key], `${path}.${key}`, rows8);
+      merged[key] = merge(defaultValue[key], fileValue[key], `${path}.${key}`, rows11);
     }
     return merged;
   }
   if (defaultValue !== null && kindOf(fileValue) !== kindOf(defaultValue)) {
     throw configError(`${CONFIG_FILE}: ${path} must be ${article(kindOf(defaultValue))}`);
   }
-  rows8.set(path, { path, value: fileValue, source: "file" });
+  rows11.set(path, { path, value: fileValue, source: "file" });
   return fileValue;
 }
 var removedSettings = {
@@ -475,11 +475,11 @@ function git(cwd, ...args) {
 // packages/cli-kit/src/results.ts
 function shapeResults(results, options) {
   if (!Array.isArray(results)) return { results, truncated: { limit: null, total: null, cut: 0 } };
-  const { limit, fields, columns: columns10 } = options;
-  if (fields && columns10 && columns10.length > 0) {
-    const unknown = fields.filter((field) => !columns10.includes(field));
+  const { limit, fields, columns: columns13 } = options;
+  if (fields && columns13 && columns13.length > 0) {
+    const unknown = fields.filter((field) => !columns13.includes(field));
     if (unknown.length > 0) {
-      throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${columns10.join(", ")}`);
+      throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${columns13.join(", ")}`);
     }
   }
   const sorted = options.presorted === true ? results : [...results].sort(byScoreThenPath);
@@ -523,13 +523,13 @@ function runNotes() {
 }
 
 // packages/cli-kit/src/table.ts
-function renderTable(rows8, columns10, truncated) {
-  if (rows8.length === 0) return "No results.\n";
-  const cells = rows8.map((row) => columns10.map((column) => format(row[column])));
-  const numeric = columns10.map((column) => rows8.every((row) => row[column] == null || typeof row[column] === "number"));
-  const widths = columns10.map((column, i) => Math.max(column.length, ...cells.map((line) => line[i]?.length ?? 0)));
-  const render = (line) => line.map((cell, i) => numeric[i] ? cell.padStart(widths[i] ?? 0) : cell.padEnd(widths[i] ?? 0)).join("  ").trimEnd();
-  const lines2 = [render(columns10), ...cells.map(render)];
+function renderTable(rows11, columns13, truncated) {
+  if (rows11.length === 0) return "No results.\n";
+  const cells = rows11.map((row) => columns13.map((column) => format(row[column])));
+  const numeric = columns13.map((column) => rows11.every((row) => row[column] == null || typeof row[column] === "number"));
+  const widths = columns13.map((column, i) => Math.max(column.length, ...cells.map((line) => line[i]?.length ?? 0)));
+  const render = (line) => line.map((cell2, i) => numeric[i] ? cell2.padStart(widths[i] ?? 0) : cell2.padEnd(widths[i] ?? 0)).join("  ").trimEnd();
+  const lines2 = [render(columns13), ...cells.map(render)];
   if (truncated.cut > 0) lines2.push(`${truncated.cut} more not shown (use --limit N or --limit all)`);
   return lines2.join("\n") + "\n";
 }
@@ -609,8 +609,8 @@ async function execute(cli2, io) {
 `);
   for (const note of noted) if (note.warning !== void 0) io.stderr.write(`${note.warning}
 `);
-  const columns10 = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
-  const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns: columns10, presorted: output.presorted });
+  const columns13 = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
+  const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns: columns13, presorted: output.presorted });
   if (args.json || !io.stdout.isTTY) {
     io.stdout.write(
       serialise(
@@ -640,7 +640,7 @@ async function execute(cli2, io) {
       )
     );
   } else if (Array.isArray(results)) {
-    io.stdout.write(renderTable(results, args.fields ?? columns10, truncated));
+    io.stdout.write(renderTable(results, args.fields ?? columns13, truncated));
     for (const notice of output.notices ?? []) io.stdout.write(`Notice: ${notice}.
 `);
     for (const note of noted) if (note.notice !== void 0) io.stdout.write(`Notice: ${note.notice}.
@@ -1971,12 +1971,12 @@ function setMeta(db, key, value) {
   );
 }
 function storedShas(db) {
-  const rows8 = db.prepare("SELECT sha FROM commits").all();
-  return new Set(rows8.map((r) => r.sha));
+  const rows11 = db.prepare("SELECT sha FROM commits").all();
+  return new Set(rows11.map((r) => r.sha));
 }
 function storedBoundaryShas(db) {
-  const rows8 = db.prepare("SELECT sha FROM commits WHERE boundary = 1").all();
-  return rows8.map((r) => r.sha);
+  const rows11 = db.prepare("SELECT sha FROM commits WHERE boundary = 1").all();
+  return rows11.map((r) => r.sha);
 }
 function deleteCommits(db, shas) {
   const statements = ["commits", "commit_parents", "changes"].map((t) => db.prepare(`DELETE FROM ${t} WHERE sha = ?`));
@@ -2183,7 +2183,7 @@ async function applyMailmap(repoRoot, view, mailmapFile) {
 function select(db, ref, headSha, firstParent) {
   const head = db.prepare("SELECT committer_date FROM commits WHERE sha = ?").get(headSha);
   if (!head) throw new NoCacheError(`Commit ${headSha} is not in the history cache. Run refresh first.`);
-  const rows8 = db.prepare(`${REACH(firstParent)} SELECT c.* FROM commits c JOIN reach ON reach.sha = c.sha`).all(headSha);
+  const rows11 = db.prepare(`${REACH(firstParent)} SELECT c.* FROM commits c JOIN reach ON reach.sha = c.sha`).all(headSha);
   const changeRows = db.prepare(
     `${REACH(firstParent)}
        SELECT ch.* FROM changes ch JOIN reach ON reach.sha = ch.sha ORDER BY ch.sha, ch.idx`
@@ -2205,7 +2205,7 @@ function select(db, ref, headSha, firstParent) {
     if (list) list.push(row);
     else changesBySha.set(row.sha, [row]);
   }
-  const ordered = topologicalOrder(rows8, parents);
+  const ordered = topologicalOrder(rows11, parents);
   const renames = new RenameMap();
   const commits = [];
   for (const row of ordered) {
@@ -2247,9 +2247,9 @@ function select(db, ref, headSha, firstParent) {
   }
   return { ref, headSha, headDate: head.committer_date, firstParent, commits, renames };
 }
-function topologicalOrder(rows8, parents) {
-  const bySha = new Map(rows8.map((r) => [r.sha, r]));
-  const sorted = [...rows8].sort((a, b) => a.committer_date - b.committer_date || (a.sha < b.sha ? -1 : 1));
+function topologicalOrder(rows11, parents) {
+  const bySha = new Map(rows11.map((r) => [r.sha, r]));
+  const sorted = [...rows11].sort((a, b) => a.committer_date - b.committer_date || (a.sha < b.sha ? -1 : 1));
   const done = /* @__PURE__ */ new Set();
   const out = [];
   for (const start of sorted) {
@@ -3639,13 +3639,13 @@ function median3(values) {
   const middle = sorted.length >> 1;
   return sorted.length % 2 === 1 ? sorted[middle] : round12((sorted[middle - 1] + sorted[middle]) / 2);
 }
-function partnersOf(history, group, present, settings) {
+function partnersOf(history, group, present2, settings) {
   const touching = /* @__PURE__ */ new Set();
   for (const member of group) for (const index of history.changesOf.get(member) ?? []) touching.add(index);
   const counts = /* @__PURE__ */ new Map();
   for (const index of touching) {
     for (const file of history.changes[index]) {
-      if (group.has(file) || !present.has(file) || isTestPath(file)) continue;
+      if (group.has(file) || !present2.has(file) || isTestPath(file)) continue;
       counts.set(file, (counts.get(file) ?? 0) + 1);
     }
   }
@@ -3657,10 +3657,10 @@ function partnersOf(history, group, present, settings) {
   }
   return partners.sort((a, b) => b.weight - a.weight || compareIds(a.path, b.path));
 }
-function clusters(history, present, settings) {
+function clusters(history, present2, settings) {
   const byFolder = /* @__PURE__ */ new Map();
   for (const file of [...history.changesOf.keys()].sort(compareIds)) {
-    if (!present.has(file) || isTestPath(file)) continue;
+    if (!present2.has(file) || isTestPath(file)) continue;
     byFolder.set(folderOf(file), [...byFolder.get(folderOf(file)) ?? [], file]);
   }
   const result = [];
@@ -3689,16 +3689,16 @@ function analyseByHistory(history, files, settings) {
       reason: `history is weak (${history.evidence.usableHistoryMonths} months, ${history.evidence.logicalChangesInWindow} logical changes in the window, ${history.evidence.activeContributors} active author ${history.evidence.activeContributors === 1 ? "address" : "addresses"}, agent identities included); history-only candidates need moderate or strong evidence`
     };
   }
-  const present = new Set([...files].filter((file) => history.changesOf.has(file)));
+  const present2 = new Set([...files].filter((file) => history.changesOf.has(file)));
   const isFixed = compileGlobs(settings.fixedPoints);
   const forbidden = (folder) => settings.fixedPoints.length > 0 && isFixed(folder === "" ? "_" : `${folder}/_`);
-  const grouped = clusters(history, present, settings);
+  const grouped = clusters(history, present2, settings);
   const inCluster = new Set(grouped.flat());
-  const units = [...grouped, ...[...present].filter((file) => !inCluster.has(file) && !isTestPath(file)).map((file) => [file])].map((group) => [...group].sort(compareIds)).sort((a, b) => compareIds(a[0], b[0]));
+  const units = [...grouped, ...[...present2].filter((file) => !inCluster.has(file) && !isTestPath(file)).map((file) => [file])].map((group) => [...group].sort(compareIds)).sort((a, b) => compareIds(a[0], b[0]));
   const candidates = [];
   for (const unitFiles of units) {
     const group = new Set(unitFiles);
-    const partners = partnersOf(history, group, present, settings);
+    const partners = partnersOf(history, group, present2, settings);
     if (partners.length === 0) continue;
     const root = unitFiles[0];
     if (unitFiles.some((file) => isFixed(file))) {
@@ -3811,7 +3811,7 @@ var command = {
     const model = buildModel(project, settings, history);
     const analysis = analyseProject(project, model, settings, history);
     const partial = prefixes.length > 0 || wanted !== void 0 || source !== "structural";
-    const rows8 = analysis.candidates.filter(
+    const rows11 = analysis.candidates.filter(
       (candidate) => (wanted === void 0 || candidate.recommendation === wanted) && (prefixes.length === 0 || prefixes.some((prefix) => candidate.path === prefix || candidate.path.startsWith(`${prefix}/`)))
     );
     const unresolved = {};
@@ -3837,7 +3837,7 @@ var command = {
         ...project.analysis.filesWithMacroCode.length === 0 ? {} : { filesWithMacroCode: project.analysis.filesWithMacroCode },
         ...source === "both" ? await crossCheck(context.repo.root, history, settings, model, analysis.candidates) : {}
       },
-      results: rows8,
+      results: rows11,
       columns: ["path", "score", "recommendation", "rule", "location", "target", "gain", "fanIn"],
       ...analysis.omitted.length === 0 ? {} : {
         notices: [
@@ -3866,7 +3866,7 @@ async function historyResult(root, history, settings) {
 }
 async function historyOnly(root, history, settings, prefixes, wanted) {
   const result = await historyResult(root, history, settings);
-  const rows8 = result.candidates.filter(
+  const rows11 = result.candidates.filter(
     (candidate) => (wanted === void 0 || candidate.recommendation === wanted) && (prefixes.length === 0 || prefixes.some((prefix) => candidate.path === prefix || candidate.path.startsWith(`${prefix}/`)))
   );
   return {
@@ -3875,7 +3875,7 @@ async function historyOnly(root, history, settings, prefixes, wanted) {
       historyOnly: { sortMethod: result.sortMethod, omitted: result.omitted, reason: result.reason },
       history: history === void 0 ? null : { window: history.window, ...history.evidence }
     },
-    results: rows8,
+    results: rows11,
     columns: historyColumns,
     notices: [
       `Omitted by reason: ${Object.entries(result.omitted).map(([reason, count3]) => `${reason} ${count3}`).join(", ")} (near-partners are units whose gain is below the locality.minDistance guideline of ${settings.minDistance})`,
@@ -4572,34 +4572,34 @@ function findLike(args, run2) {
   for (const word of paths) run2.search(word);
 }
 function execute2(command9, run2, piped) {
-  let words2 = command9.words.map((word) => run2.substitute(word));
+  let words3 = command9.words.map((word) => run2.substitute(word));
   const redirects = command9.redirects.map((r) => ({ ...r, target: r.target === null ? null : run2.substitute(r.target) }));
-  const substituted = { ...command9, words: words2, redirects };
-  while (words2[0] !== void 0 && !words2[0].quoted && !words2[0].dynamic && SKIPPED_KEYWORDS.has(plain(words2[0]))) words2 = words2.slice(1);
-  if (words2[0] !== void 0 && !words2[0].quoted && UNPARSED_KEYWORDS.has(plain(words2[0]))) return run2.fail();
-  while (words2[0] !== void 0 && !words2[0].dynamic && /^[A-Za-z_][A-Za-z0-9_]*=/.test(plain(words2[0]))) {
-    const text2 = plain(words2[0]);
+  const substituted = { ...command9, words: words3, redirects };
+  while (words3[0] !== void 0 && !words3[0].quoted && !words3[0].dynamic && SKIPPED_KEYWORDS.has(plain(words3[0]))) words3 = words3.slice(1);
+  if (words3[0] !== void 0 && !words3[0].quoted && UNPARSED_KEYWORDS.has(plain(words3[0]))) return run2.fail();
+  while (words3[0] !== void 0 && !words3[0].dynamic && /^[A-Za-z_][A-Za-z0-9_]*=/.test(plain(words3[0]))) {
+    const text2 = plain(words3[0]);
     const equals = text2.indexOf("=");
     const name10 = text2.slice(0, equals);
-    if (words2[0].glob) run2.variables.delete(name10);
+    if (words3[0].glob) run2.variables.delete(name10);
     else run2.variables.set(name10, text2.slice(equals + 1));
-    words2 = words2.slice(1);
+    words3 = words3.slice(1);
   }
   redirections(substituted, run2);
-  if (words2.length === 0) return;
+  if (words3.length === 0) return;
   for (; ; ) {
-    const head2 = words2[0];
+    const head2 = words3[0];
     if (head2.dynamic) return run2.fail();
     const text2 = plain(head2);
     if (!WRAPPERS.has(text2)) break;
-    words2 = words2.slice(1);
-    while (words2[0] !== void 0 && (plain(words2[0]).startsWith("-") || /^[A-Za-z_][A-Za-z0-9_]*=/.test(plain(words2[0])))) words2 = words2.slice(1);
-    if (words2.length === 0) return;
+    words3 = words3.slice(1);
+    while (words3[0] !== void 0 && (plain(words3[0]).startsWith("-") || /^[A-Za-z_][A-Za-z0-9_]*=/.test(plain(words3[0])))) words3 = words3.slice(1);
+    if (words3.length === 0) return;
   }
-  const head = words2[0];
+  const head = words3[0];
   if (head.dynamic) return run2.fail();
   const name9 = posix4.basename(plain(head));
-  const args = words2.slice(1);
+  const args = words3.slice(1);
   const hasInput = command9.redirects.some((r) => r.op === "<" || r.op === "<<<") || command9.heredoc;
   if (HIDING_COMMANDS.has(name9)) return run2.fail();
   if (SHELLS.has(name9)) {
@@ -4673,8 +4673,8 @@ function run(commands2, from, to, interpretation) {
       }
       if (j >= to) return interpretation.fail();
       const start = command9.words.findIndex((word) => !word.quoted && plain(word) === "for");
-      const words2 = command9.words.slice(start + 1).map((word) => interpretation.substitute(word));
-      const [variable, keyword, ...items] = words2;
+      const words3 = command9.words.slice(start + 1).map((word) => interpretation.substitute(word));
+      const [variable, keyword, ...items] = words3;
       if (variable === void 0 || keyword === void 0 || plain(keyword) !== "in" || variable.dynamic) return interpretation.fail();
       if (items.some((item) => item.dynamic || item.glob && !item.quoted)) return interpretation.fail();
       if (commands2[j].redirects.length > 0) return interpretation.fail();
@@ -5414,7 +5414,7 @@ function changeDistance(before, after, renames) {
     reweighted: { edges: 0, uses: 0, distance: 0 },
     reachability: { edges: 0, distance: 0 }
   };
-  const rows8 = [];
+  const rows11 = [];
   for (const edge of after) {
     const key = keyOf(edge.from, edge.to);
     const was = earlier.get(key);
@@ -5425,7 +5425,7 @@ function changeDistance(before, after, renames) {
       parts2.added.edges++;
       parts2.added.uses += edge.weight;
       parts2.added.distance += edge.weight * distance;
-      rows8.push({ from: edge.from, to: edge.to, kind: "added", before: null, after: { weight: edge.weight, distance }, change: edge.weight * distance });
+      rows11.push({ from: edge.from, to: edge.to, kind: "added", before: null, after: { weight: edge.weight, distance }, change: edge.weight * distance });
       continue;
     }
     const wasDistance = treeDistance(was.from, was.to);
@@ -5434,7 +5434,7 @@ function changeDistance(before, after, renames) {
       const change3 = edge.counted ? edge.weight * distance : -was.weight * wasDistance;
       parts2.reachability.edges++;
       parts2.reachability.distance += change3;
-      rows8.push({ from: edge.from, to: edge.to, kind: "reachability", ...sides, change: change3 });
+      rows11.push({ from: edge.from, to: edge.to, kind: "reachability", ...sides, change: change3 });
       continue;
     }
     if (!edge.counted) continue;
@@ -5450,7 +5450,7 @@ function changeDistance(before, after, renames) {
       parts2.reweighted.distance += byWeight;
     }
     if (distance !== wasDistance || edge.weight !== was.weight) {
-      rows8.push({ from: edge.from, to: edge.to, kind: distance !== wasDistance ? "moved" : "reweighted", ...sides, change: byMove + byWeight });
+      rows11.push({ from: edge.from, to: edge.to, kind: distance !== wasDistance ? "moved" : "reweighted", ...sides, change: byMove + byWeight });
     }
   }
   for (const [key, edge] of earlier) {
@@ -5459,15 +5459,15 @@ function changeDistance(before, after, renames) {
     parts2.removed.edges++;
     parts2.removed.uses += edge.weight;
     parts2.removed.distance += edge.weight * distance;
-    rows8.push({ from: edge.from, to: edge.to, kind: "removed", before: { weight: edge.weight, distance }, after: null, change: -edge.weight * distance });
+    rows11.push({ from: edge.from, to: edge.to, kind: "removed", before: { weight: edge.weight, distance }, after: null, change: -edge.weight * distance });
   }
   const start = summarise(before);
   const end = summarise(after);
   parts2.added.meanDistancePerUse = ratio(parts2.added.distance, parts2.added.uses);
   parts2.removed.meanDistancePerUse = ratio(parts2.removed.distance, parts2.removed.uses);
   parts2.added.ratioToCodebaseMean = parts2.added.meanDistancePerUse === null || start.meanDistancePerUse === null ? null : ratio(parts2.added.meanDistancePerUse, start.meanDistancePerUse);
-  rows8.sort((a, b) => Math.abs(b.change) - Math.abs(a.change) || compareIds(a.from, b.from) || compareIds(a.to, b.to));
-  return { before: start, after: end, delta: end.totalUseDistance - start.totalUseDistance, parts: parts2, edges: rows8 };
+  rows11.sort((a, b) => Math.abs(b.change) - Math.abs(a.change) || compareIds(a.from, b.from) || compareIds(a.to, b.to));
+  return { before: start, after: end, delta: end.totalUseDistance - start.totalUseDistance, parts: parts2, edges: rows11 };
 }
 
 // packages/locality/src/change-range.ts
@@ -5890,13 +5890,13 @@ async function compare(context, settings) {
   if (requested !== void 0 && !/^\d{4}-\d{2}-\d{2}$/.test(requested)) throw usageError("--since must be a date such as 2024-03-01");
   const start = requested ?? addDays(dayOf(done.latest), 1);
   const after = matchingWindow(before.window, start, ends);
-  const present = new Set(await listTree(root, view.headSha));
+  const present2 = new Set(await listTree(root, view.headSha));
   const all = [...new Set([...actedOn, ...comparison.group].flatMap(footprintOf))];
   const identities = await identitiesAt(root, view, before.head, all);
   const group = (candidates) => {
     const files = new Set(candidates.flatMap(footprintOf));
     const ids = new Set([...files].map((file) => identities.get(file)));
-    return { candidates, baselineFiles: files, identities: ids, existing: new Set([...ids].filter((id) => present.has(id))) };
+    return { candidates, baselineFiles: files, identities: ids, existing: new Set([...ids].filter((id) => present2.has(id))) };
   };
   const acted = group(actedOn);
   const alone = group(comparison.group);
@@ -6509,12 +6509,12 @@ function noticeMd(data) {
 }
 
 // packages/report/src/tables.ts
-function htmlTable(caption, columns10, rows8, options = {}) {
-  const head = columns10.map((c2) => `<th scope="col"${c2.align === "right" ? ' class="number"' : ""}>${escapeHtml(c2.label)}</th>`).join("");
-  const body = rows8.map((row, r) => {
-    const cells = row.map((cell, i) => {
-      const number2 = columns10[i]?.align === "right" ? ' class="number"' : "";
-      return i === (options.rowHeaderColumn ?? 0) && options.rowHeaders === true ? `<th scope="row">${cell}</th>` : `<td${number2}>${cell}</td>`;
+function htmlTable(caption, columns13, rows11, options = {}) {
+  const head = columns13.map((c2) => `<th scope="col"${c2.align === "right" ? ' class="number"' : ""}>${escapeHtml(c2.label)}</th>`).join("");
+  const body = rows11.map((row, r) => {
+    const cells = row.map((cell2, i) => {
+      const number2 = columns13[i]?.align === "right" ? ' class="number"' : "";
+      return i === (options.rowHeaderColumn ?? 0) && options.rowHeaders === true ? `<th scope="row">${cell2}</th>` : `<td${number2}>${cell2}</td>`;
     });
     const id = options.rowIds?.[r];
     return `<tr${id === null || id === void 0 ? "" : ` id="${escapeHtml(id)}"`}>${cells.join("")}</tr>`;
@@ -6527,10 +6527,10 @@ ${body}
 </tbody>
 </table>`;
 }
-function mdTable(columns10, rows8) {
-  const head = `| ${columns10.map((c2) => escapeMd(c2.label)).join(" | ")} |`;
-  const rule = `| ${columns10.map((c2) => c2.align === "right" ? "---:" : "---").join(" | ")} |`;
-  const body = rows8.map((row) => `| ${row.map((cell) => escapeMd(cell)).join(" | ")} |`);
+function mdTable(columns13, rows11) {
+  const head = `| ${columns13.map((c2) => escapeMd(c2.label)).join(" | ")} |`;
+  const rule = `| ${columns13.map((c2) => c2.align === "right" ? "---:" : "---").join(" | ")} |`;
+  const body = rows11.map((row) => `| ${row.map((cell2) => escapeMd(cell2)).join(" | ")} |`);
   return [head, rule, ...body].join("\n");
 }
 
@@ -6565,15 +6565,15 @@ function omitted(data) {
 function rankedTableHtml(data) {
   const empty = rankedTableEmpty(data);
   if (empty !== void 0) return noticeHtml({ level: "notice", text: empty });
-  const cell = (column, value, href) => {
+  const cell2 = (column, value, href) => {
     const shown2 = linked(escapeHtml(text(value)), href);
     if (!marked(column, value)) return shown2;
     const side = column.guideline?.direction === "below" ? "below" : "above";
     return `${shown2} <span class="marker ${side}" title="${side} guideline">${MARK[side]}<span class="visually-hidden"> ${side} guideline</span></span>`;
   };
-  const columns10 = [...rankColumn(data), ...data.columns.map((c2) => ({ label: c2.label, align: c2.align }))];
-  const rows8 = data.rows.map((row, i) => [...rankCell(data, i), ...data.columns.map((c2) => cell(c2, row[c2.key] ?? null, data.cellHrefs?.[i]?.[c2.key]))]);
-  const table = htmlTable(data.caption, columns10, rows8, { rowHeaders: data.numbered === false, className: "ranked", ...data.rowIds === void 0 ? {} : { rowIds: data.rowIds } });
+  const columns13 = [...rankColumn(data), ...data.columns.map((c2) => ({ label: c2.label, align: c2.align }))];
+  const rows11 = data.rows.map((row, i) => [...rankCell(data, i), ...data.columns.map((c2) => cell2(c2, row[c2.key] ?? null, data.cellHrefs?.[i]?.[c2.key]))]);
+  const table = htmlTable(data.caption, columns13, rows11, { rowHeaders: data.numbered === false, className: "ranked", ...data.rowIds === void 0 ? {} : { rowIds: data.rowIds } });
   const notes4 = [legend(data), omitted(data)].flatMap((n) => n === void 0 ? [] : [`<p class="legend">${inlineHtml(n)}</p>`]);
   for (const see of data.seeAlso ?? []) if (see.href !== void 0) notes4.push(`<p class="legend">${linked(escapeHtml(see.text), see.href)}</p>`);
   return [table, ...notes4].join("\n");
@@ -6581,12 +6581,12 @@ function rankedTableHtml(data) {
 function rankedTableMd(data) {
   const empty = rankedTableEmpty(data);
   if (empty !== void 0) return noticeMd({ level: "notice", text: empty });
-  const columns10 = [...rankColumn(data), ...data.columns.map((c2) => ({ label: c2.label, align: c2.align }))];
-  const rows8 = data.rows.map((row, i) => [...rankCell(data, i), ...data.columns.map((c2) => `${text(row[c2.key] ?? null)}${marked(c2, row[c2.key] ?? null) ? ` ${MARK[c2.guideline?.direction === "below" ? "below" : "above"]}` : ""}`)]);
+  const columns13 = [...rankColumn(data), ...data.columns.map((c2) => ({ label: c2.label, align: c2.align }))];
+  const rows11 = data.rows.map((row, i) => [...rankCell(data, i), ...data.columns.map((c2) => `${text(row[c2.key] ?? null)}${marked(c2, row[c2.key] ?? null) ? ` ${MARK[c2.guideline?.direction === "below" ? "below" : "above"]}` : ""}`)]);
   return [
     `**${escapeMd(data.caption)}**`,
     "",
-    mdTable(columns10, rows8),
+    mdTable(columns13, rows11),
     ...[legend(data), omitted(data)].flatMap((n) => n === void 0 ? [] : ["", `_${escapeMd(n)}_`])
   ].join("\n");
 }
@@ -6602,7 +6602,10 @@ ${parts2.drawing}
   return `<figure class="chart ${parts2.kind}">
 <figcaption>${escapeHtml(parts2.title)}</figcaption>
 ${svg}
+${parts2.fold === void 0 ? parts2.table : `<details>
+<summary>${escapeHtml(parts2.fold)}</summary>
 ${parts2.table}
+</details>`}
 ${parts2.notes ?? ""}</figure>`;
 }
 
@@ -6719,7 +6722,7 @@ function stabilityChartHtml(data) {
 function stabilityChartMd(data) {
   const empty = stabilityChartEmpty(data);
   if (empty !== void 0) return noticeMd({ level: "notice", text: empty });
-  return [`**${escapeMd(data.title)}** (instability I against abstractness A)`, "", mdTable(columns, rows(data).map((r) => r.map((cell, i) => i === 1 ? clip(cell, 80) : cell))), "", notes2(data).map((n) => `_${escapeMd(n)}_`).join("\n\n")].join("\n");
+  return [`**${escapeMd(data.title)}** (instability I against abstractness A)`, "", mdTable(columns, rows(data).map((r) => r.map((cell2, i) => i === 1 ? clip(cell2, 80) : cell2))), "", notes2(data).map((n) => `_${escapeMd(n)}_`).join("\n\n")].join("\n");
 }
 
 // packages/report/src/empty-block.ts
@@ -6761,6 +6764,75 @@ function dropEmptySlots(build) {
   return { ...build, sections, slots: build.slots.filter((slot) => !dropped.has(slot.id)) };
 }
 
+// packages/report/src/components/change-bars.ts
+var WIDTH2 = 760;
+var LABEL_W = 250;
+var VALUE_W = 64;
+var ROW = 22;
+var TOP2 = 22;
+var BOTTOM = 8;
+var MAX_LABEL = 40;
+var words = (data) => data.wording ?? { rise: "rose", fall: "fell" };
+var changeOf = (bar) => bar.to - bar.from;
+var signed = (value) => value > 0 ? `+${formatNumber(value)}` : formatNumber(value);
+var wordOf = (data, bar) => changeOf(bar) > 0 ? words(data).rise : changeOf(bar) < 0 ? words(data).fall : "no change";
+var emptyOf = (data) => data.bars.length === 0 ? data.emptyText ?? `${data.title}: nothing changed.` : void 0;
+var columns2 = (data) => [
+  { label: "Item" },
+  { label: `${data.unit}, ${data.samples[0]}`, align: "right" },
+  { label: `${data.unit}, ${data.samples[1]}`, align: "right" },
+  { label: "Change", align: "right" },
+  { label: "Direction" }
+];
+var rows2 = (data) => data.bars.map((bar) => [bar.label, formatNumber(bar.from), formatNumber(bar.to), signed(changeOf(bar)), wordOf(data, bar)]);
+function changeBarsHtml(data) {
+  const empty = emptyOf(data);
+  if (empty !== void 0) return noticeHtml({ level: "notice", text: empty });
+  const greatestFall = Math.max(0, ...data.bars.map((bar) => -changeOf(bar)));
+  const greatestRise = Math.max(0, ...data.bars.map((bar) => changeOf(bar)));
+  const fallen = greatestFall > 0;
+  const risen = greatestRise > 0;
+  const plotLeft = LABEL_W + VALUE_W;
+  const plotRight = WIDTH2 - VALUE_W;
+  const scale = (plotRight - plotLeft) / Math.max(1e-9, greatestFall + greatestRise);
+  const zero = plotLeft + greatestFall * scale;
+  const height = TOP2 + data.bars.length * ROW + BOTTOM;
+  const at2 = (v) => v.toFixed(1);
+  const { rise, fall } = words(data);
+  const heads = [
+    ...fallen ? [`<text class="axis" x="${at2(zero - 6)}" y="13" text-anchor="end">${escapeHtml(fall)}</text>`] : [],
+    ...risen ? [`<text class="axis" x="${at2(zero + 6)}" y="13">${escapeHtml(rise)}</text>`] : []
+  ];
+  const bars = data.bars.map((bar, i) => {
+    const change3 = changeOf(bar);
+    const y2 = TOP2 + i * ROW;
+    const length = Math.abs(change3) * scale;
+    const x2 = change3 < 0 ? zero - length : zero;
+    const label = linked(`<text class="name" x="${LABEL_W - 8}" y="${y2 + 15}" text-anchor="end">${escapeHtml(clip(bar.label, MAX_LABEL))}</text>`, bar.href);
+    const value = `<text class="value" x="${at2(change3 < 0 ? x2 - 4 : x2 + length + 4)}" y="${y2 + 15}" text-anchor="${change3 < 0 ? "end" : "start"}">${escapeHtml(signed(change3))}</text>`;
+    return `<g class="change ${change3 > 0 ? "rise" : change3 < 0 ? "fall" : "level"}"><title>${escapeHtml(`${bar.label}: ${formatNumber(bar.from)} to ${formatNumber(bar.to)}, ${wordOf(data, bar)}${change3 === 0 ? "" : ` by ${formatNumber(Math.abs(change3))}`}`)}</title>${label}<rect x="${at2(x2)}" y="${y2 + 4}" width="${at2(Math.max(length, 1))}" height="${ROW - 8}"/>${value}</g>`;
+  });
+  const counts = [`${formatNumber(data.bars.filter((b) => changeOf(b) > 0).length)} ${rise}`, `${formatNumber(data.bars.filter((b) => changeOf(b) < 0).length)} ${fall}`];
+  const notes4 = [`Each bar is the value at ${data.samples[1]} minus the value at ${data.samples[0]}. A bar to the right of the line: ${rise}. A bar to the left: ${fall}. The direction is in the words and the sign, not in the colour alone.`, ...data.note === void 0 ? [] : [data.note]];
+  return figureHtml({
+    kind: "change-bars",
+    title: data.title,
+    description: `Horizontal bars of the change in ${data.unit} from ${data.samples[0]} to ${data.samples[1]} for ${formatNumber(data.bars.length)} items: ${counts.join(", ")}. The table below lists both values and the change for each.`,
+    width: WIDTH2,
+    height,
+    drawing: [...heads, `<line class="zero" x1="${at2(zero)}" y1="${TOP2 - 4}" x2="${at2(zero)}" y2="${height - BOTTOM + 2}"/>`, ...bars].join("\n"),
+    table: htmlTable(`${data.title}: ${data.unit} at the two samples`, columns2(data), rows2(data).map((r, k) => r.map((c2, i) => i === 0 ? linked(escapeHtml(c2), data.bars[k]?.href) : escapeHtml(c2))), { rowHeaders: true }),
+    fold: `Table of the ${formatNumber(data.bars.length)} items`,
+    notes: notes4.map((n) => `<p class="legend">${escapeHtml(n)}</p>
+`).join("")
+  });
+}
+function changeBarsMd(data) {
+  const empty = emptyOf(data);
+  if (empty !== void 0) return noticeMd({ level: "notice", text: empty });
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, ${escapeMd(data.samples[0])} to ${escapeMd(data.samples[1])})`, "", mdTable(columns2(data), rows2(data)), ...data.note === void 0 ? [] : ["", `_${escapeMd(data.note)}_`]].join("\n");
+}
+
 // packages/report/src/components/bands.ts
 var BAND_COUNT = 5;
 function makeBands(values, breaks) {
@@ -6794,12 +6866,12 @@ function bandLegend(bands) {
   return bands.ranges.map((r) => r.from === r.to ? `band ${r.band}: ${formatNumber(r.from)}` : `band ${r.band}: ${formatNumber(r.from)} to ${formatNumber(r.to)}`).join(", ");
 }
 function bandCountText(bands) {
-  const words2 = ["no bands", "one band", "two bands", "three bands", "four bands", "five bands"];
-  return words2[bands.ranges.length] ?? `${bands.ranges.length} bands`;
+  const words3 = ["no bands", "one band", "two bands", "three bands", "four bands", "five bands"];
+  return words3[bands.ranges.length] ?? `${bands.ranges.length} bands`;
 }
 
 // packages/report/src/components/treemap.ts
-var WIDTH2 = 960;
+var WIDTH3 = 960;
 var HEIGHT2 = 520;
 var HEADER = 14;
 var PAD = 2;
@@ -6888,7 +6960,7 @@ function paddingOf(r) {
   const least = Math.min(r.w, r.h);
   return least < 12 ? 0 : least < 40 ? 1 : PAD;
 }
-function layoutTreemap(items, width = WIDTH2, height = HEIGHT2) {
+function layoutTreemap(items, width = WIDTH3, height = HEIGHT2) {
   const tiles = [];
   const folders = [];
   const place2 = (node, rect) => {
@@ -6942,7 +7014,7 @@ function drawMap(items) {
     out.push(linked(`<g class="tile ${item.band}${item.mark === void 0 ? "" : " marked"}"><title>${escapeHtml(item.title)}</title>${rect}${labels.join("")}</g>`, item.href));
   }
   for (const band of [...bare.keys()].sort()) out.push(`<g class="tile bare ${band}">${bare.get(band).join("")}</g>`);
-  return { drawing: out.join("\n"), bare: { tiles: bareTiles, size: bareSize }, width: WIDTH2, height: HEIGHT2 };
+  return { drawing: out.join("\n"), bare: { tiles: bareTiles, size: bareSize }, width: WIDTH3, height: HEIGHT2 };
 }
 function tableOrder(items) {
   const marked2 = items.filter((item) => item.mark !== void 0);
@@ -6971,7 +7043,7 @@ var bandName = (item, bands) => item.colour === null ? "none" : String(bands.of(
 var tableItems = (prepared, limit) => tableOrder(prepared.drawn).slice(0, limit);
 var hasMarks = (prepared) => prepared.drawn.some((item) => item.mark !== void 0);
 var rowsOf = (prepared, limit) => tableItems(prepared, limit).map((item) => [...hasMarks(prepared) ? [item.mark ?? ""] : [], item.path, formatNumber(item.size), item.colour === null ? "none" : formatNumber(item.colour), bandName(item, prepared.bands)]);
-function columns2(data, prepared) {
+function columns3(data, prepared) {
   return [...hasMarks(prepared) ? [{ label: "#", align: "right" }] : [], { label: "Path" }, { label: `Size (${data.sizeLabel})`, align: "right" }, { label: `Colour (${data.colourLabel})`, align: "right" }, { label: "Band", align: "right" }];
 }
 var DEFAULT_TABLE_ROWS = 20;
@@ -7016,7 +7088,7 @@ ${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</
     width: map.width,
     height: map.height,
     drawing: map.drawing,
-    table: htmlTable(`${data.title}: ${prepared.drawn.length > tableRows ? "the marked items, then the largest" : "the items drawn, marked first, then largest first"}`, columns2(data, prepared), rowsOf(prepared, tableRows).map((r, k) => r.map((cell, c2) => c2 === pathColumn(prepared) ? linked(escapeHtml(cell), tableItems(prepared, tableRows)[k]?.href) : escapeHtml(cell))), { rowHeaders: true, rowHeaderColumn: pathColumn(prepared) }),
+    table: htmlTable(`${data.title}: ${prepared.drawn.length > tableRows ? "the marked items, then the largest" : "the items drawn, marked first, then largest first"}`, columns3(data, prepared), rowsOf(prepared, tableRows).map((r, k) => r.map((cell2, c2) => c2 === pathColumn(prepared) ? linked(escapeHtml(cell2), tableItems(prepared, tableRows)[k]?.href) : escapeHtml(cell2))), { rowHeaders: true, rowHeaderColumn: pathColumn(prepared) }),
     notes: notes4
   });
 }
@@ -7028,7 +7100,7 @@ function treemapMd(data) {
   return [
     `**${escapeMd(data.title)}** (the items by ${data.sizeLabel}, marked first, then largest first; band is ${data.colourLabel}, ${bandLegend(prepared.bands)}; ${bands})`,
     "",
-    mdTable(columns2(data, prepared), rowsOf(prepared, tableRows)),
+    mdTable(columns3(data, prepared), rowsOf(prepared, tableRows)),
     ...left.length === 0 ? [] : ["", `${left.join("; ")}.`]
   ].join("\n");
 }
@@ -7041,8 +7113,8 @@ function prepare2(data) {
   return { drawn, unsized, beyondLimit, categoryOf: (item) => item.category === null ? null : byId.get(item.category) ?? null };
 }
 var tableItems2 = (prepared, limit) => tableOrder(prepared.drawn).slice(0, limit);
-var rows2 = (prepared, limit) => tableItems2(prepared, limit).map((item) => [item.path, formatNumber(item.size), prepared.categoryOf(item)?.label ?? "none"]);
-var columns3 = (data) => [{ label: "Path" }, { label: `Size (${data.sizeLabel})`, align: "right" }, { label: data.categoryLabel }];
+var rows3 = (prepared, limit) => tableItems2(prepared, limit).map((item) => [item.path, formatNumber(item.size), prepared.categoryOf(item)?.label ?? "none"]);
+var columns4 = (data) => [{ label: "Path" }, { label: `Size (${data.sizeLabel})`, align: "right" }, { label: data.categoryLabel }];
 function drawnPerCategory(prepared) {
   const totals = /* @__PURE__ */ new Map();
   for (const item of prepared.drawn) {
@@ -7069,13 +7141,13 @@ function categoryTreemapHtml(data) {
   );
   const per = drawnPerCategory(prepared);
   const kind = data.categoryLabel.toLowerCase();
-  const legend2 = data.categories.map((c2) => `<li><strong>${escapeHtml(c2.mark)}</strong> ${escapeHtml(c2.label)}: ${escapeHtml(totalText(data, per.get(c2.id)))}</li>`);
-  if (per.has("")) legend2.push(`<li>grey, no ${escapeHtml(kind)}: ${escapeHtml(totalText(data, per.get("")))}</li>`);
+  const legend3 = data.categories.map((c2) => `<li><strong>${escapeHtml(c2.mark)}</strong> ${escapeHtml(c2.label)}: ${escapeHtml(totalText(data, per.get(c2.id)))}</li>`);
+  if (per.has("")) legend3.push(`<li>grey, no ${escapeHtml(kind)}: ${escapeHtml(totalText(data, per.get("")))}</li>`);
   const tableRows = data.tableRows ?? DEFAULT_TABLE_ROWS2;
   const left = mapOmissions({ beyondLimit: prepared.beyondLimit, unsized: prepared.unsized, tableRows: Math.min(tableRows, prepared.drawn.length), tableTotal: prepared.drawn.length, bare: map.bare, sizeLabel: data.sizeLabel });
   const notes4 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Every tile is filled by its ${escapeHtml(kind)}, and a tile large enough prints its name and the mark of its ${escapeHtml(kind)}; grey tiles have none. The marks, with the tiles and ${escapeHtml(data.sizeLabel)} of each:</p>
 <ul class="legend">
-${legend2.join("\n")}
+${legend3.join("\n")}
 </ul>
 ${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>
 `}`;
@@ -7086,7 +7158,7 @@ ${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</
     width: map.width,
     height: map.height,
     drawing: map.drawing,
-    table: htmlTable(`${data.title}: ${prepared.drawn.length > tableRows ? "the largest items" : "the items drawn, largest first"}`, columns3(data), rows2(prepared, tableRows).map((r, k) => r.map((cell, c2) => c2 === 0 ? linked(escapeHtml(cell), tableItems2(prepared, tableRows)[k]?.href) : escapeHtml(cell))), { rowHeaders: true }),
+    table: htmlTable(`${data.title}: ${prepared.drawn.length > tableRows ? "the largest items" : "the items drawn, largest first"}`, columns4(data), rows3(prepared, tableRows).map((r, k) => r.map((cell2, c2) => c2 === 0 ? linked(escapeHtml(cell2), tableItems2(prepared, tableRows)[k]?.href) : escapeHtml(cell2))), { rowHeaders: true }),
     notes: notes4
   });
 }
@@ -7099,7 +7171,7 @@ function categoryTreemapMd(data) {
   return [
     `**${escapeMd(data.title)}** (the items by ${data.sizeLabel}, largest first; marks: ${key})`,
     "",
-    mdTable(columns3(data), rows2(prepared, tableRows)),
+    mdTable(columns4(data), rows3(prepared, tableRows)),
     ...left.length === 0 ? [] : ["", `${left.join("; ")}.`]
   ].join("\n");
 }
@@ -7124,18 +7196,18 @@ function evidenceListMd(data) {
 }
 
 // packages/report/src/components/facts.ts
-var columns4 = [{ label: "Measure" }, { label: "Value" }];
+var columns5 = [{ label: "Measure" }, { label: "Value" }];
 function factsHtml(data) {
-  return htmlTable(data.caption, columns4, data.facts.map((f) => [escapeHtml(f.label), escapeHtml(f.value)]), { rowHeaders: true, className: "facts" });
+  return htmlTable(data.caption, columns5, data.facts.map((f) => [escapeHtml(f.label), escapeHtml(f.value)]), { rowHeaders: true, className: "facts" });
 }
 function factsMd(data) {
-  return [`**${escapeMd(data.caption)}**`, "", mdTable(columns4, data.facts.map((f) => [f.label, f.value]))].join("\n");
+  return [`**${escapeMd(data.caption)}**`, "", mdTable(columns5, data.facts.map((f) => [f.label, f.value]))].join("\n");
 }
 
 // packages/report/src/components/function-bars.ts
-var WIDTH3 = 760;
+var WIDTH4 = 760;
 var HEADER2 = 22;
-var ROW = 26;
+var ROW2 = 26;
 var LABEL = 250;
 var BAR_MAX = 260;
 var REVISIONS_X = 660;
@@ -7144,7 +7216,7 @@ var LABEL_CHARS = 36;
 var shorten = (text2) => text2.length <= LABEL_CHARS ? text2 : `…${text2.slice(text2.length - LABEL_CHARS + 1)}`;
 var figure = (value) => value === null ? "none" : formatNumber(value);
 var position = (bar, guideline) => bar.value > guideline ? "above guideline" : bar.value === guideline ? "at guideline" : "below guideline";
-var columns5 = (data) => [
+var columns6 = (data) => [
   { label: "Function" },
   { label: data.unit, align: "right" },
   { label: "Guideline", align: "right" },
@@ -7152,7 +7224,7 @@ var columns5 = (data) => [
   { label: "Revisions", align: "right" },
   { label: "Fixes", align: "right" }
 ];
-var rows3 = (data) => data.bars.map((b) => [b.label, formatNumber(b.value), formatNumber(data.guideline), position(b, data.guideline), figure(b.revisions), figure(b.fixes)]);
+var rows4 = (data) => data.bars.map((b) => [b.label, formatNumber(b.value), formatNumber(data.guideline), position(b, data.guideline), figure(b.revisions), figure(b.fixes)]);
 var omittedText = (data) => data.omitted === void 0 || data.omitted.count === 0 ? void 0 : `The chart omits ${count2(data.omitted.count, "function")}: ${data.omitted.reason}.`;
 function functionBarsHtml(data) {
   const greatest = Math.max(1, data.guideline, ...data.bars.map((b) => b.value));
@@ -7162,10 +7234,10 @@ function functionBarsHtml(data) {
   const drawing = [
     header2,
     ...data.bars.map((b, i) => {
-      const y2 = HEADER2 + i * ROW;
+      const y2 = HEADER2 + i * ROW2;
       const width = b.value * scale;
       const above = b.value > data.guideline;
-      return linked(`<g class="bar ${above ? "above" : "within"}"><text x="${LABEL - 6}" y="${y2 + 17}" text-anchor="end">${escapeHtml(shorten(b.label))}<title>${escapeHtml(b.label)}</title></text><rect x="${LABEL}" y="${y2 + 4}" width="${width.toFixed(1)}" height="${ROW - 8}"/><line x1="${marker.toFixed(1)}" x2="${marker.toFixed(1)}" y1="${y2 + 1}" y2="${y2 + ROW - 1}"/><text x="${(LABEL + Math.max(width, data.guideline * scale) + 8).toFixed(1)}" y="${y2 + 17}">${above ? "▲ " : ""}${formatNumber(b.value)}</text><text x="${REVISIONS_X}" y="${y2 + 17}" text-anchor="end">${figure(b.revisions)}</text><text x="${FIXES_X}" y="${y2 + 17}" text-anchor="end">${figure(b.fixes)}</text></g>`, b.href);
+      return linked(`<g class="bar ${above ? "above" : "within"}"><text x="${LABEL - 6}" y="${y2 + 17}" text-anchor="end">${escapeHtml(shorten(b.label))}<title>${escapeHtml(b.label)}</title></text><rect x="${LABEL}" y="${y2 + 4}" width="${width.toFixed(1)}" height="${ROW2 - 8}"/><line x1="${marker.toFixed(1)}" x2="${marker.toFixed(1)}" y1="${y2 + 1}" y2="${y2 + ROW2 - 1}"/><text x="${(LABEL + Math.max(width, data.guideline * scale) + 8).toFixed(1)}" y="${y2 + 17}">${above ? "▲ " : ""}${formatNumber(b.value)}</text><text x="${REVISIONS_X}" y="${y2 + 17}" text-anchor="end">${figure(b.revisions)}</text><text x="${FIXES_X}" y="${y2 + 17}" text-anchor="end">${figure(b.fixes)}</text></g>`, b.href);
     })
   ].join("\n");
   const omitted2 = omittedText(data);
@@ -7177,10 +7249,10 @@ function functionBarsHtml(data) {
     kind: "function-bars",
     title: data.title,
     description: `${count2(data.bars.length, "function")} by ${data.unit}, each with its revisions and fixes in the history window. A bar longer than the guideline marker is above guideline, shown with a triangle and the words in the table.`,
-    width: WIDTH3,
-    height: HEADER2 + Math.max(1, data.bars.length) * ROW,
+    width: WIDTH4,
+    height: HEADER2 + Math.max(1, data.bars.length) * ROW2,
     drawing,
-    table: htmlTable(`${data.title}: ${data.unit}, revisions and fixes`, columns5(data), rows3(data).map((r, k) => r.map((cell, c2) => c2 === 0 ? linked(escapeHtml(cell), data.bars[k]?.href) : escapeHtml(cell))), { rowHeaders: true }),
+    table: htmlTable(`${data.title}: ${data.unit}, revisions and fixes`, columns6(data), rows4(data).map((r, k) => r.map((cell2, c2) => c2 === 0 ? linked(escapeHtml(cell2), data.bars[k]?.href) : escapeHtml(cell2))), { rowHeaders: true }),
     notes: notes4.map((line) => `<p class="legend">${line}</p>
 `).join("")
   });
@@ -7190,14 +7262,14 @@ function functionBarsMd(data) {
   return [
     `**${escapeMd(data.title)}** (${escapeMd(data.unit)} against a guideline of ${formatNumber(data.guideline)}, with revisions and fixes${data.source === void 0 ? "" : `. ${escapeMd(data.source)}`})`,
     "",
-    mdTable(columns5(data), rows3(data)),
+    mdTable(columns6(data), rows4(data)),
     ...omitted2 === void 0 ? [] : ["", escapeMd(omitted2)]
   ].join("\n");
 }
 
 // packages/report/src/components/guideline-bar.ts
-var WIDTH4 = 720;
-var ROW2 = 28;
+var WIDTH5 = 720;
+var ROW3 = 28;
 var LABEL2 = 200;
 var BAR_MAX2 = 360;
 function positionOf2(bar) {
@@ -7210,68 +7282,68 @@ var ratioText = (bar) => {
   const ratio2 = ratioOf2(bar);
   return ratio2 === null ? "none" : `${Number(ratio2.toPrecision(2))}x`;
 };
-var columns6 = (data) => [{ label: "Item" }, { label: data.unit, align: "right" }, { label: "Guideline", align: "right" }, { label: "Ratio", align: "right" }, { label: "Position" }];
-var rows4 = (data) => data.bars.map((b) => [b.label, formatNumber(b.value), formatNumber(b.guideline), ratioText(b), positionOf2(b)]);
+var columns7 = (data) => [{ label: "Item" }, { label: data.unit, align: "right" }, { label: "Guideline", align: "right" }, { label: "Ratio", align: "right" }, { label: "Position" }];
+var rows5 = (data) => data.bars.map((b) => [b.label, formatNumber(b.value), formatNumber(b.guideline), ratioText(b), positionOf2(b)]);
 function guidelineBarsHtml(data) {
   const greatest = Math.max(1, ...data.bars.flatMap((b) => [b.value, b.guideline]));
   const scale = BAR_MAX2 / greatest;
   const drawing = data.bars.map((b, i) => {
-    const y2 = i * ROW2;
+    const y2 = i * ROW3;
     const width = b.value * scale;
     const marker = LABEL2 + b.guideline * scale;
     const above = b.value > b.guideline;
-    return `<g class="bar ${above ? "above" : "within"}"><text x="${LABEL2 - 6}" y="${y2 + 18}" text-anchor="end">${escapeHtml(b.label)}</text><rect x="${LABEL2}" y="${y2 + 5}" width="${width.toFixed(1)}" height="${ROW2 - 10}"/><line x1="${marker.toFixed(1)}" x2="${marker.toFixed(1)}" y1="${y2 + 2}" y2="${y2 + ROW2 - 2}"/><text x="${(LABEL2 + Math.max(width, b.guideline * scale) + 8).toFixed(1)}" y="${y2 + 18}">${above ? "▲ " : ""}${formatNumber(b.value)} (guideline ${formatNumber(b.guideline)})</text></g>`;
+    return `<g class="bar ${above ? "above" : "within"}"><text x="${LABEL2 - 6}" y="${y2 + 18}" text-anchor="end">${escapeHtml(b.label)}</text><rect x="${LABEL2}" y="${y2 + 5}" width="${width.toFixed(1)}" height="${ROW3 - 10}"/><line x1="${marker.toFixed(1)}" x2="${marker.toFixed(1)}" y1="${y2 + 2}" y2="${y2 + ROW3 - 2}"/><text x="${(LABEL2 + Math.max(width, b.guideline * scale) + 8).toFixed(1)}" y="${y2 + 18}">${above ? "▲ " : ""}${formatNumber(b.value)} (guideline ${formatNumber(b.guideline)})</text></g>`;
   }).join("\n");
   return figureHtml({
     kind: "guideline-bars",
     title: data.title,
     description: `${data.bars.length} values of ${data.unit}, each against its guideline. A bar longer than its marker is above guideline, shown with a triangle and the words in the table.`,
-    width: WIDTH4,
-    height: Math.max(ROW2, data.bars.length * ROW2),
+    width: WIDTH5,
+    height: Math.max(ROW3, data.bars.length * ROW3),
     drawing,
-    table: htmlTable(`${data.title}: each value against its guideline`, columns6(data), rows4(data).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    table: htmlTable(`${data.title}: each value against its guideline`, columns7(data), rows5(data).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
     notes: `<p class="legend">The vertical line marks the guideline and ▲ marks a value above it. A guideline orders and labels results; it decides nothing.${data.source === void 0 ? "" : ` ${escapeHtml(data.source)}`}</p>
 `
   });
 }
 function guidelineBarsMd(data) {
-  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, each against its guideline${data.source === void 0 ? "" : `. ${escapeMd(data.source)}`})`, "", mdTable(columns6(data), rows4(data))].join("\n");
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, each against its guideline${data.source === void 0 ? "" : `. ${escapeMd(data.source)}`})`, "", mdTable(columns7(data), rows5(data))].join("\n");
 }
 
 // packages/report/src/components/histogram.ts
-var WIDTH5 = 640;
-var ROW3 = 22;
+var WIDTH6 = 640;
+var ROW4 = 22;
 var LABEL3 = 150;
 var BAR_MAX3 = 400;
-var columns7 = (data) => [{ label: "Bin" }, { label: `Count (${data.unit})`, align: "right" }, { label: "Share", align: "right" }];
+var columns8 = (data) => [{ label: "Bin" }, { label: `Count (${data.unit})`, align: "right" }, { label: "Share", align: "right" }];
 function shares(data) {
   const total = data.bins.reduce((sum, bin) => sum + bin.count, 0);
   return data.bins.map((bin) => total === 0 ? "0%" : `${formatNumber(bin.count / total * 100)}%`);
 }
-var rows5 = (data) => {
+var rows6 = (data) => {
   const share = shares(data);
   return data.bins.map((bin, i) => [bin.label, formatNumber(bin.count), share[i]]);
 };
 function histogramHtml(data) {
   const greatest = Math.max(1, ...data.bins.map((bin) => bin.count));
   const drawing = data.bins.map((bin, i) => {
-    const y2 = i * ROW3;
+    const y2 = i * ROW4;
     const width = bin.count / greatest * BAR_MAX3;
-    return `<g class="bin"><text x="${LABEL3 - 6}" y="${y2 + 15}" text-anchor="end">${escapeHtml(bin.label)}</text><rect x="${LABEL3}" y="${y2 + 3}" width="${width.toFixed(1)}" height="${ROW3 - 6}"/><text x="${(LABEL3 + width + 6).toFixed(1)}" y="${y2 + 15}">${formatNumber(bin.count)}</text></g>`;
+    return `<g class="bin"><text x="${LABEL3 - 6}" y="${y2 + 15}" text-anchor="end">${escapeHtml(bin.label)}</text><rect x="${LABEL3}" y="${y2 + 3}" width="${width.toFixed(1)}" height="${ROW4 - 6}"/><text x="${(LABEL3 + width + 6).toFixed(1)}" y="${y2 + 15}">${formatNumber(bin.count)}</text></g>`;
   }).join("\n");
   const total = data.bins.reduce((sum, bin) => sum + bin.count, 0);
   return figureHtml({
     kind: "histogram",
     title: data.title,
     description: `${formatNumber(total)} ${data.unit} in ${data.bins.length} bins. Each bar prints its count; the table below lists the same counts.`,
-    width: WIDTH5,
-    height: Math.max(ROW3, data.bins.length * ROW3),
+    width: WIDTH6,
+    height: Math.max(ROW4, data.bins.length * ROW4),
     drawing,
-    table: htmlTable(`${data.title}: ${data.unit} per bin`, columns7(data), rows5(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
+    table: htmlTable(`${data.title}: ${data.unit} per bin`, columns8(data), rows6(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
   });
 }
 function histogramMd(data) {
-  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)} per bin)`, "", mdTable(columns7(data), rows5(data))].join("\n");
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)} per bin)`, "", mdTable(columns8(data), rows6(data))].join("\n");
 }
 
 // packages/report/src/components/judgement.ts
@@ -7378,14 +7450,14 @@ function cellList(data, spans, groups) {
   const square = isSquare(data);
   const named2 = spans.length > 0 || groups.length > 0;
   const namesOf = (i) => [spans.find((g) => i >= g.start && i <= g.end)?.label, groups.find((g) => i >= g.start && i <= g.end)?.label].filter((label) => label !== void 0).join(", ");
-  const columns10 = [
+  const columns13 = [
     { label: "Row" },
     { label: "Column" },
     { label: "Value", align: "right" },
     { label: "Mark" },
     ...named2 ? [{ label: "Row group" }, ...square ? [{ label: "Column group" }] : []] : []
   ];
-  const rows8 = [];
+  const rows11 = [];
   const at2 = [];
   const symmetric = isSymmetric(data);
   let blank = 0;
@@ -7399,10 +7471,10 @@ function cellList(data, spans, groups) {
       }
       if (symmetric && j < i) continue;
       at2.push([i, j]);
-      rows8.push([r, c2, display(value), mark?.text ?? "", ...named2 ? [namesOf(i), ...square ? [namesOf(j)] : []] : []]);
+      rows11.push([r, c2, display(value), mark?.text ?? "", ...named2 ? [namesOf(i), ...square ? [namesOf(j)] : []] : []]);
     }
   }
-  return { columns: columns10, rows: rows8, at: at2, blank, symmetric };
+  return { columns: columns13, rows: rows11, at: at2, blank, symmetric };
 }
 function isSymmetric(data) {
   if (!isSquare(data)) return false;
@@ -7418,9 +7490,9 @@ function cellSize(data) {
   return Math.min(CELL_MAX, Math.max(CELL_MIN, Math.ceil(longest * CHAR_W) + CELL_PAD));
 }
 function matrixHtml(data) {
-  const cell = cellSize(data);
-  const present = data.cells.flat().flatMap((v) => v === null ? [] : [v]);
-  const bands = makeBands(present, data.breaks);
+  const cell2 = cellSize(data);
+  const present2 = data.cells.flat().flatMap((v) => v === null ? [] : [v]);
+  const bands = makeBands(present2, data.breaks);
   const groups = usableGroups(data);
   const spans = usableSpans(data);
   const square = isSquare(data);
@@ -7437,45 +7509,45 @@ function matrixHtml(data) {
   const gridY = top + columnLabel;
   const labels = [
     ...data.columns.map((c2, j) => {
-      const x2 = gridX + j * cell + cell / 2;
+      const x2 = gridX + j * cell2 + cell2 / 2;
       const y2 = gridY - 6;
       return linked(`<text x="${x2}" y="${y2}" transform="rotate(-${LABEL_ANGLE} ${x2} ${y2})">${escapeHtml(columnText[j])}${columnText[j] === c2 ? "" : `<title>${escapeHtml(c2)}</title>`}</text>`, data.columnHrefs?.[j]);
     }),
-    ...data.rows.map((r, i) => linked(`<text x="${gridX - 6}" y="${gridY + i * cell + (cell - 2) / 2}" dominant-baseline="central" text-anchor="end">${escapeHtml(rowText[i])}${rowText[i] === r ? "" : `<title>${escapeHtml(r)}</title>`}</text>`, data.rowHrefs?.[i]))
+    ...data.rows.map((r, i) => linked(`<text x="${gridX - 6}" y="${gridY + i * cell2 + (cell2 - 2) / 2}" dominant-baseline="central" text-anchor="end">${escapeHtml(rowText[i])}${rowText[i] === r ? "" : `<title>${escapeHtml(r)}</title>`}</text>`, data.rowHrefs?.[i]))
   ];
   const cells = data.rows.flatMap(
     (_, i) => data.columns.map((_2, j) => {
       const value = data.cells[i]?.[j] ?? null;
       const name9 = data.cellMarks?.[i]?.[j] ?? null;
       const markClass = name9 !== null && data.marks?.[name9] !== void 0 ? ` mark-${name9}` : "";
-      const x2 = gridX + j * cell;
-      const y2 = gridY + i * cell;
-      return `<g class="cell band-${value === null ? "none" : bands.of(value)}${markClass}"><rect x="${x2}" y="${y2}" width="${cell - 2}" height="${cell - 2}"/>${cellText(data, i, j) === "" ? "" : `<text x="${x2 + (cell - 2) / 2}" y="${y2 + (cell - 2) / 2}" text-anchor="middle" dominant-baseline="central">${escapeHtml(cellText(data, i, j))}</text>`}</g>`;
+      const x2 = gridX + j * cell2;
+      const y2 = gridY + i * cell2;
+      return `<g class="cell band-${value === null ? "none" : bands.of(value)}${markClass}"><rect x="${x2}" y="${y2}" width="${cell2 - 2}" height="${cell2 - 2}"/>${cellText(data, i, j) === "" ? "" : `<text x="${x2 + (cell2 - 2) / 2}" y="${y2 + (cell2 - 2) / 2}" text-anchor="middle" dominant-baseline="central">${escapeHtml(cellText(data, i, j))}</text>`}</g>`;
     })
   );
   const boxes = groups.map((g) => {
-    const x2 = gridX + g.start * cell - 1;
-    const y2 = gridY + g.start * cell - 1;
+    const x2 = gridX + g.start * cell2 - 1;
+    const y2 = gridY + g.start * cell2 - 1;
     const span = g.end - g.start + 1;
-    return linked(`<g class="group"><rect x="${x2}" y="${y2}" width="${span * cell}" height="${span * cell}"><title>${escapeHtml(g.label)}</title></rect></g>`, g.href);
+    return linked(`<g class="group"><rect x="${x2}" y="${y2}" width="${span * cell2}" height="${span * cell2}"><title>${escapeHtml(g.label)}</title></rect></g>`, g.href);
   });
   const bars = spans.flatMap((g, k) => {
     const colour = `span span-${k % SPAN_COLOURS + 1}`;
-    const rows8 = g.end - g.start + 1;
-    const y2 = gridY + g.start * cell;
-    const cy = y2 + (rows8 * cell - 2) / 2;
-    const side = linked(`<g class="${colour}"><rect x="0" y="${y2}" width="${SPAN_BAR}" height="${rows8 * cell - 2}"/><text x="${SPAN_BAR / 2}" y="${cy}" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 ${SPAN_BAR / 2} ${cy})">${escapeHtml(clip(g.label, Math.floor((rows8 * cell - 6) / CHAR_W)))}</text><title>${escapeHtml(g.label)}</title></g>`, g.href);
+    const rows11 = g.end - g.start + 1;
+    const y2 = gridY + g.start * cell2;
+    const cy = y2 + (rows11 * cell2 - 2) / 2;
+    const side = linked(`<g class="${colour}"><rect x="0" y="${y2}" width="${SPAN_BAR}" height="${rows11 * cell2 - 2}"/><text x="${SPAN_BAR / 2}" y="${cy}" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 ${SPAN_BAR / 2} ${cy})">${escapeHtml(clip(g.label, Math.floor((rows11 * cell2 - 6) / CHAR_W)))}</text><title>${escapeHtml(g.label)}</title></g>`, g.href);
     if (!square) return [side];
-    const x2 = gridX + g.start * cell;
-    const w = rows8 * cell - 2;
+    const x2 = gridX + g.start * cell2;
+    const w = rows11 * cell2 - 2;
     return [side, linked(`<g class="${colour}"><rect x="${x2}" y="0" width="${w}" height="${SPAN_BAR}"/><text x="${x2 + w / 2}" y="${SPAN_BAR / 2}" text-anchor="middle" dominant-baseline="central">${escapeHtml(clip(g.label, Math.floor((w - 6) / CHAR_W)))}</text><title>${escapeHtml(g.label)}</title></g>`, g.href)];
   });
   const lines2 = spans.slice(1).flatMap((g) => {
-    const y2 = gridY + g.start * cell - 1;
-    const horizontal = `<line class="span-boundary" x1="${left}" y1="${y2}" x2="${gridX + data.columns.length * cell}" y2="${y2}"/>`;
+    const y2 = gridY + g.start * cell2 - 1;
+    const horizontal = `<line class="span-boundary" x1="${left}" y1="${y2}" x2="${gridX + data.columns.length * cell2}" y2="${y2}"/>`;
     if (!square) return [horizontal];
-    const x2 = gridX + g.start * cell - 1;
-    return [horizontal, `<line class="span-boundary" x1="${x2}" y1="${top}" x2="${x2}" y2="${gridY + data.rows.length * cell}"/>`];
+    const x2 = gridX + g.start * cell2 - 1;
+    return [horizontal, `<line class="span-boundary" x1="${x2}" y1="${top}" x2="${x2}" y2="${gridY + data.rows.length * cell2}"/>`];
   });
   const list = cellList(data, spans, groups);
   const marker = (g) => `${START}${g.label}${HREF}${g.href ?? ""}${END}`;
@@ -7496,21 +7568,21 @@ function matrixHtml(data) {
     kind: "matrix",
     title: data.title,
     description,
-    width: Math.ceil(gridX + Math.max(data.columns.length * cell + 40, (data.columns.length - 0.5) * cell + reach + 8)),
-    height: gridY + data.rows.length * cell + 4,
+    width: Math.ceil(gridX + Math.max(data.columns.length * cell2 + 40, (data.columns.length - 0.5) * cell2 + reach + 8)),
+    height: gridY + data.rows.length * cell2 + 4,
     drawing: [...bars, ...labels, ...cells, ...boxes, ...lines2].join("\n"),
     table: htmlTable(
       `${data.title}: the cells that have a value or a mark${list.symmetric ? ", each pair once" : ""}`,
       list.columns,
-      list.rows.map((row, k) => row.map((cell2, c2) => c2 === 0 ? linked(escapeHtml(cell2), data.rowHrefs?.[list.at[k][0]]) : c2 === 1 ? linked(escapeHtml(cell2), data.columnHrefs?.[list.at[k][1]]) : escapeHtml(cell2)))
+      list.rows.map((row, k) => row.map((cell3, c2) => c2 === 0 ? linked(escapeHtml(cell3), data.rowHrefs?.[list.at[k][0]]) : c2 === 1 ? linked(escapeHtml(cell3), data.columnHrefs?.[list.at[k][1]]) : escapeHtml(cell3)))
     ),
     notes: `<p class="legend">${notes4.map(linkNames).join(" ")}</p>
 `
   });
 }
 function matrixMd(data) {
-  const present = data.cells.flat().flatMap((v) => v === null ? [] : [v]);
-  const bands = makeBands(present, data.breaks);
+  const present2 = data.cells.flat().flatMap((v) => v === null ? [] : [v]);
+  const bands = makeBands(present2, data.breaks);
   const groups = usableGroups(data);
   const spans = usableSpans(data);
   const list = cellList(data, spans, groups);
@@ -7525,7 +7597,7 @@ function matrixMd(data) {
 }
 
 // packages/report/src/components/move-map.ts
-var ROW4 = 22;
+var ROW5 = 22;
 var LINE = 13;
 var INDENT = 14;
 var CHAR2 = 6.2;
@@ -7546,20 +7618,20 @@ function treeRows(folders, rootText) {
   }
   const children = /* @__PURE__ */ new Map();
   for (const path of [...nodes].filter((p) => p !== "").sort()) children.set(parentOf(path), [...children.get(parentOf(path)) ?? [], path]);
-  const rows8 = [];
+  const rows11 = [];
   const emit = (start, shownParent, depth) => {
     let path = start;
     while (!chosen.has(path) && (children.get(path) ?? []).length === 1) path = children.get(path)[0];
-    rows8.push({ path, label: shownParent === "" ? path : path.slice(shownParent.length + 1), depth });
+    rows11.push({ path, label: shownParent === "" ? path : path.slice(shownParent.length + 1), depth });
     for (const child of children.get(path) ?? []) emit(child, path, depth + 1);
   };
   if (chosen.has("")) {
-    rows8.push({ path: "", label: rootText, depth: 0 });
+    rows11.push({ path: "", label: rootText, depth: 0 });
     for (const child of children.get("") ?? []) emit(child, "", 1);
   } else {
     for (const child of children.get("") ?? []) emit(child, "", 0);
   }
-  return rows8;
+  return rows11;
 }
 function lanesFor(spans) {
   const taken = [];
@@ -7571,9 +7643,9 @@ function lanesFor(spans) {
   });
 }
 var lineText = (line) => line.map((p) => p.text).join("");
-function rowTexts(data, rows8) {
+function rowTexts(data, rows11) {
   const word = (kind) => data.kinds.find((k) => k.kind === kind)?.word ?? kind;
-  return rows8.map((row) => {
+  return rows11.map((row) => {
     const parts2 = [];
     for (const edge of data.edges.filter((e) => e.from === row.path)) {
       const value = edge.valueText ?? `${data.valueLabel} ${formatNumber(edge.value)}`;
@@ -7602,12 +7674,12 @@ function legendLines(data) {
 }
 var tableCaption = (data) => `${data.title}: each arrow and marker`;
 function moveMapHtml(data) {
-  const rows8 = treeRows([.../* @__PURE__ */ new Set([...data.folders, ...data.edges.flatMap((e) => [e.from, e.to]), ...data.marks.map((m) => m.folder)])], data.rootText);
-  const index = new Map(rows8.map((row, i) => [row.path, i]));
-  const texts = rowTexts(data, rows8);
-  const heights = texts.map((lines3) => Math.max(ROW4, lines3.length * LINE + 9));
+  const rows11 = treeRows([.../* @__PURE__ */ new Set([...data.folders, ...data.edges.flatMap((e) => [e.from, e.to]), ...data.marks.map((m) => m.folder)])], data.rootText);
+  const index = new Map(rows11.map((row, i) => [row.path, i]));
+  const texts = rowTexts(data, rows11);
+  const heights = texts.map((lines3) => Math.max(ROW5, lines3.length * LINE + 9));
   const tops = heights.map((_, i) => heights.slice(0, i).reduce((sum, h) => sum + h, 0));
-  const treeRight = Math.max(...rows8.map((row) => MARGIN + row.depth * INDENT + row.label.length * CHAR2), 0) + 10;
+  const treeRight = Math.max(...rows11.map((row) => MARGIN + row.depth * INDENT + row.label.length * CHAR2), 0) + 10;
   const edges = data.edges.flatMap((edge) => {
     const from = index.get(edge.from);
     const to = index.get(edge.to);
@@ -7628,7 +7700,7 @@ function moveMapHtml(data) {
   };
   const greatest = Math.max(1, ...edges.map(({ edge }) => edge.value));
   const kindOf2 = (kind) => data.kinds.find((k) => k.kind === kind);
-  const lines2 = rows8.map((row, i) => {
+  const lines2 = rows11.map((row, i) => {
     const y2 = tops[i] + 15;
     const x2 = MARGIN + row.depth * INDENT;
     const guide = `<line class="guide" x1="${(x2 + row.label.length * CHAR2).toFixed(1)}" y1="${y2 - 4}" x2="${treeRight.toFixed(1)}" y2="${y2 - 4}"/>`;
@@ -7650,11 +7722,11 @@ function moveMapHtml(data) {
   return figureHtml({
     kind: "move-map",
     title: data.title,
-    description: `A folder tree of ${rows8.length} rows with ${edges.length} arrows from a unit's folder to its target folder and ${data.marks.length} markers. Kinds: ${kindText}. Each arrow is numbered and its row prints its ${data.valueLabel}; the table below lists every arrow and marker.`,
+    description: `A folder tree of ${rows11.length} rows with ${edges.length} arrows from a unit's folder to its target folder and ${data.marks.length} markers. Kinds: ${kindText}. Each arrow is numbered and its row prints its ${data.valueLabel}; the table below lists every arrow and marker.`,
     width: Math.ceil(textX + widest + MARGIN),
-    height: Math.max(ROW4, heights.reduce((sum, h) => sum + h, 0)),
+    height: Math.max(ROW5, heights.reduce((sum, h) => sum + h, 0)),
     drawing: [...lines2, ...arrows].join("\n"),
-    table: htmlTable(tableCaption(data), data.table.columns, data.table.rows.map((row) => row.map((cell, c2) => c2 === 0 ? linked(escapeHtml(cell), labelHref(data, cell)) : escapeHtml(cell))), { rowHeaders: true }),
+    table: htmlTable(tableCaption(data), data.table.columns, data.table.rows.map((row) => row.map((cell2, c2) => c2 === 0 ? linked(escapeHtml(cell2), labelHref(data, cell2)) : escapeHtml(cell2))), { rowHeaders: true }),
     notes: `${notes4}
 `
   });
@@ -7669,14 +7741,14 @@ var paragraphMd = (data) => escapeMd(data.text);
 
 // packages/report/src/components/scatter.ts
 var DEFAULT_MAX_LABELS = 12;
-var WIDTH6 = 680;
+var WIDTH7 = 680;
 var HEIGHT3 = 440;
 var LEFT2 = 64;
 var RIGHT = 20;
-var TOP2 = 12;
-var BOTTOM = 56;
-var PLOT_W = WIDTH6 - LEFT2 - RIGHT;
-var PLOT_H = HEIGHT3 - TOP2 - BOTTOM;
+var TOP3 = 12;
+var BOTTOM2 = 56;
+var PLOT_W = WIDTH7 - LEFT2 - RIGHT;
+var PLOT_H = HEIGHT3 - TOP3 - BOTTOM2;
 var CHAR_W2 = 5.9;
 var LABEL_H = 11;
 var MAX_NAME = 30;
@@ -7715,7 +7787,7 @@ function axisOf(values, log, guideline) {
 var overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 function placeLabels(items) {
   const taken = items.map((i) => ({ x: i.cx - 5, y: i.cy - 5, w: 10, h: 10 }));
-  const inside = (b) => b.x >= LEFT2 && b.x + b.w <= WIDTH6 - RIGHT + 4 && b.y >= TOP2 && b.y + b.h <= TOP2 + PLOT_H;
+  const inside = (b) => b.x >= LEFT2 && b.x + b.w <= WIDTH7 - RIGHT + 4 && b.y >= TOP3 && b.y + b.h <= TOP3 + PLOT_H;
   return items.map((item) => {
     for (const [text2, byNumber] of [[item.name, false], [item.number, true]]) {
       const w = text2.length * CHAR_W2;
@@ -7757,37 +7829,37 @@ function quadrantLine(data) {
   const nm = names(data);
   return `Of ${formatNumber(data.points.length)} ${noun(data)}: ${["upperRight", "upperLeft", "lowerRight", "lowerLeft"].map((k) => `${formatNumber(q[k])} ${nm[k]}`).join(", ")}.`;
 }
-var columns8 = (data) => [
+var columns9 = (data) => [
   { label: "#", align: "right" },
   { label: "Point" },
   { label: data.xLabel, align: "right" },
   { label: data.yLabel, align: "right" },
   ...hasQuadrants(data) ? [{ label: "Quadrant" }] : []
 ];
-function rows6(data) {
+function rows7(data) {
   const nm = names(data);
   return labelled(data).map((p, i) => [String(i + 1), p.label, formatNumber(p.x), formatNumber(p.y), ...hasQuadrants(data) ? [nm[quadrantOf(data, p)]] : []]);
 }
-var emptyOf = (data) => data.points.length === 0 ? data.emptyText ?? `${data.title}: no ${noun(data)} to draw.` : void 0;
+var emptyOf2 = (data) => data.points.length === 0 ? data.emptyText ?? `${data.title}: no ${noun(data)} to draw.` : void 0;
 function scatterHtml(data) {
-  const empty = emptyOf(data);
+  const empty = emptyOf2(data);
   if (empty !== void 0) return noticeHtml({ level: "notice", text: empty });
   const ax = axisOf(data.points.map((p) => p.x), data.xLog === true, data.xGuideline?.value);
   const ay = axisOf(data.points.map((p) => p.y), data.yLog === true, data.yGuideline?.value);
   const px = (v) => LEFT2 + ax.at(v) * PLOT_W;
-  const py = (v) => TOP2 + (1 - ay.at(v)) * PLOT_H;
+  const py = (v) => TOP3 + (1 - ay.at(v)) * PLOT_H;
   const at2 = (v) => v.toFixed(1);
-  const frame = `<rect class="frame" x="${LEFT2}" y="${TOP2}" width="${PLOT_W}" height="${PLOT_H}"/>`;
+  const frame = `<rect class="frame" x="${LEFT2}" y="${TOP3}" width="${PLOT_W}" height="${PLOT_H}"/>`;
   const ticks = [
-    ...ax.ticks.map((v) => `<text class="tick" x="${at2(px(v))}" y="${TOP2 + PLOT_H + 16}" text-anchor="middle">${tickText(v)}</text>`),
+    ...ax.ticks.map((v) => `<text class="tick" x="${at2(px(v))}" y="${TOP3 + PLOT_H + 16}" text-anchor="middle">${tickText(v)}</text>`),
     ...ay.ticks.map((v) => `<text class="tick" x="${LEFT2 - 8}" y="${at2(py(v) + 4)}" text-anchor="end">${tickText(v)}</text>`)
   ];
   const axisNames = [
     `<text class="axis" x="${at2(LEFT2 + PLOT_W / 2)}" y="${HEIGHT3 - 8}" text-anchor="middle">${escapeHtml(data.xLabel)}${data.xLog === true ? " (log scale)" : ""}</text>`,
-    `<text class="axis" transform="rotate(-90 14 ${at2(TOP2 + PLOT_H / 2)})" x="14" y="${at2(TOP2 + PLOT_H / 2)}" text-anchor="middle">${escapeHtml(data.yLabel)}${data.yLog === true ? " (log scale)" : ""}</text>`
+    `<text class="axis" transform="rotate(-90 14 ${at2(TOP3 + PLOT_H / 2)})" x="14" y="${at2(TOP3 + PLOT_H / 2)}" text-anchor="middle">${escapeHtml(data.yLabel)}${data.yLog === true ? " (log scale)" : ""}</text>`
   ];
   const lines2 = [
-    ...data.xGuideline === void 0 ? [] : [`<g class="guideline"><line x1="${at2(px(data.xGuideline.value))}" y1="${TOP2}" x2="${at2(px(data.xGuideline.value))}" y2="${TOP2 + PLOT_H}"><title>${escapeHtml(data.xGuideline.name)}</title></line><text x="${at2(px(data.xGuideline.value) + 3)}" y="${TOP2 + PLOT_H - 4}">${formatNumber(data.xGuideline.value)}</text></g>`],
+    ...data.xGuideline === void 0 ? [] : [`<g class="guideline"><line x1="${at2(px(data.xGuideline.value))}" y1="${TOP3}" x2="${at2(px(data.xGuideline.value))}" y2="${TOP3 + PLOT_H}"><title>${escapeHtml(data.xGuideline.name)}</title></line><text x="${at2(px(data.xGuideline.value) + 3)}" y="${TOP3 + PLOT_H - 4}">${formatNumber(data.xGuideline.value)}</text></g>`],
     ...data.yGuideline === void 0 ? [] : [`<g class="guideline"><line x1="${LEFT2}" y1="${at2(py(data.yGuideline.value))}" x2="${LEFT2 + PLOT_W}" y2="${at2(py(data.yGuideline.value))}"><title>${escapeHtml(data.yGuideline.name)}</title></line><text x="${LEFT2 + PLOT_W - 3}" y="${at2(py(data.yGuideline.value) - 3)}" text-anchor="end">${formatNumber(data.yGuideline.value)}</text></g>`]
   ];
   const named2 = labelled(data);
@@ -7809,39 +7881,39 @@ function scatterHtml(data) {
     kind: "scatter",
     title: data.title,
     description,
-    width: WIDTH6,
+    width: WIDTH7,
     height: HEIGHT3,
     drawing: [frame, ...lines2, ...ticks, ...axisNames, ...dots, ...marks].join("\n"),
-    table: htmlTable(`${data.title}: the named points`, columns8(data), rows6(data).map((r, k) => r.map((cell, c2) => c2 === 1 ? linked(escapeHtml(cell), labelled(data)[k]?.href) : escapeHtml(cell))), { rowHeaders: false }),
+    table: htmlTable(`${data.title}: the named points`, columns9(data), rows7(data).map((r, k) => r.map((cell2, c2) => c2 === 1 ? linked(escapeHtml(cell2), labelled(data)[k]?.href) : escapeHtml(cell2))), { rowHeaders: false }),
     notes: [...notes3(data), ...extra].map((n) => `<p class="legend">${escapeHtml(n)}</p>
 `).join("")
   });
 }
 function scatterMd(data) {
-  const empty = emptyOf(data);
+  const empty = emptyOf2(data);
   if (empty !== void 0) return noticeMd({ level: "notice", text: empty });
-  const body = rows6(data);
+  const body = rows7(data);
   return [
     `**${escapeMd(data.title)}** (${escapeMd(data.xLabel)} against ${escapeMd(data.yLabel)})`,
     "",
-    ...body.length === 0 ? [] : [mdTable(columns8(data), body.map((r) => r.map((cell, i) => i === 1 ? clip(cell, 80) : cell))), ""],
+    ...body.length === 0 ? [] : [mdTable(columns9(data), body.map((r) => r.map((cell2, i) => i === 1 ? clip(cell2, 80) : cell2))), ""],
     notes3(data).map((n) => `_${escapeMd(n)}_`).join("\n\n")
   ].join("\n");
 }
 
 // packages/report/src/components/sparkline.ts
-var WIDTH7 = 240;
+var WIDTH8 = 240;
 var HEIGHT4 = 48;
 var MARGIN2 = 6;
-var columns9 = (data) => [{ label: "Period" }, { label: data.unit, align: "right" }];
-var rows7 = (data) => data.points.map((p) => [p.label, formatNumber(p.value)]);
+var columns10 = (data) => [{ label: "Period" }, { label: data.unit, align: "right" }];
+var rows8 = (data) => data.points.map((p) => [p.label, formatNumber(p.value)]);
 function sparklineCoordinates(points) {
   const values = points.map((p) => p.value);
   const least = Math.min(...values);
   const greatest = Math.max(...values);
   const span = greatest - least;
   return points.map((p, i) => [
-    points.length === 1 ? WIDTH7 / 2 : MARGIN2 + i * (WIDTH7 - 2 * MARGIN2) / (points.length - 1),
+    points.length === 1 ? WIDTH8 / 2 : MARGIN2 + i * (WIDTH8 - 2 * MARGIN2) / (points.length - 1),
     span === 0 ? HEIGHT4 / 2 : HEIGHT4 - MARGIN2 - (p.value - least) * (HEIGHT4 - 2 * MARGIN2) / span
   ]);
 }
@@ -7856,14 +7928,121 @@ function sparklineHtml(data) {
     kind: "sparkline",
     title: data.title,
     description: `${data.unit} over ${data.points.length} periods, ${range}. The table below lists every value.`,
-    width: WIDTH7,
+    width: WIDTH8,
     height: HEIGHT4,
     drawing: `${line}${end}`,
-    table: htmlTable(`${data.title}: ${data.unit} by period`, columns9(data), rows7(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
+    table: htmlTable(`${data.title}: ${data.unit} by period`, columns10(data), rows8(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
   });
 }
 function sparklineMd(data) {
-  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, oldest first)`, "", mdTable(columns9(data), rows7(data))].join("\n");
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, oldest first)`, "", mdTable(columns10(data), rows8(data))].join("\n");
+}
+
+// packages/report/src/components/trend-chart.ts
+var MAX_SERIES = 6;
+var WIDTH9 = 760;
+var HEIGHT5 = 320;
+var LEFT3 = 60;
+var RIGHT2 = 190;
+var TOP4 = 14;
+var BOTTOM3 = 44;
+var PLOT_W2 = WIDTH9 - LEFT3 - RIGHT2;
+var PLOT_H2 = HEIGHT5 - TOP4 - BOTTOM3;
+var MAX_NAME2 = 28;
+var LABEL_GAP = 13;
+var X_TICKS = 6;
+var CHAR_W3 = 6;
+function niceCeiling(value) {
+  if (value <= 0) return 1;
+  const power = 10 ** Math.floor(Math.log10(value));
+  const step = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find((s) => s * power >= value) ?? 10;
+  return Number((step * power).toPrecision(12));
+}
+var emptyOf3 = (data) => data.labels.length < 2 || data.series.length === 0 ? data.emptyText ?? `${data.title}: fewer than two samples, so there is no trend to draw.` : void 0;
+var cell = (value) => value === null ? "none" : formatNumber(value);
+var columns11 = (data) => [{ label: "Sample" }, ...data.series.map((s) => ({ label: s.name, align: "right" }))];
+var rows9 = (data) => data.labels.map((label, i) => [label, ...data.series.map((s) => cell(s.values[i] ?? null))]);
+var present = (values) => values.filter((v) => v !== null);
+function rangeText(data, series) {
+  const first = series.values.findIndex((v) => v !== null);
+  const last = series.values.findLastIndex((v) => v !== null);
+  if (first === -1) return `${series.name} has no value`;
+  return `${series.name} goes from ${formatNumber(series.values[first])} (${data.labels[first]}) to ${formatNumber(series.values[last])} (${data.labels[last]})`;
+}
+function tickIndexes(count3, most = X_TICKS) {
+  if (most < 2) return count3 === 0 ? [] : [0, count3 - 1].slice(0, count3);
+  if (count3 <= most) return Array.from({ length: count3 }, (_, i) => i);
+  return [...new Set(Array.from({ length: most }, (_, i) => Math.round(i * (count3 - 1) / (most - 1))))];
+}
+function spreadLabels(ys, gap = LABEL_GAP, top = TOP4 + 4, bottom = TOP4 + PLOT_H2) {
+  const order = ys.map((y2, i) => ({ y: y2, i })).sort((a, b) => a.y - b.y);
+  let floor = top;
+  for (const item of order) {
+    item.y = Math.max(item.y, floor);
+    floor = item.y + gap;
+  }
+  let ceiling = bottom;
+  for (const item of [...order].reverse()) {
+    item.y = Math.min(item.y, ceiling);
+    ceiling = item.y - gap;
+  }
+  const out = new Array(ys.length);
+  for (const item of order) out[item.i] = item.y;
+  return out;
+}
+function trendChartHtml(data) {
+  const empty = emptyOf3(data);
+  if (empty !== void 0) return noticeHtml({ level: "notice", text: empty });
+  const drawn = data.series.slice(0, MAX_SERIES);
+  const top = niceCeiling(Math.max(0, ...drawn.flatMap((s) => present(s.values))));
+  const at2 = (v) => v.toFixed(1);
+  const px = (i) => LEFT3 + i * PLOT_W2 / (data.labels.length - 1);
+  const py = (v) => TOP4 + (1 - Math.max(0, v) / top) * PLOT_H2;
+  const yTicks = [0, 1, 2, 3, 4].map((i) => top * i / 4);
+  const grid = yTicks.map((v) => `<line class="grid" x1="${LEFT3}" y1="${at2(py(v))}" x2="${LEFT3 + PLOT_W2}" y2="${at2(py(v))}"/><text class="tick" x="${LEFT3 - 8}" y="${at2(py(v) + 4)}" text-anchor="end">${formatNumber(Number(v.toPrecision(6)))}</text>`);
+  const widest = Math.max(...data.labels.map((label) => label.length)) * CHAR_W3 + 14;
+  const xTicks = tickIndexes(data.labels.length, Math.min(X_TICKS, Math.floor(PLOT_W2 / widest))).map((i) => `<text class="tick" x="${at2(px(i))}" y="${TOP4 + PLOT_H2 + 16}" text-anchor="${i === 0 ? "start" : i === data.labels.length - 1 ? "end" : "middle"}">${escapeHtml(data.labels[i])}</text>`);
+  const axisName = `<text class="axis" transform="rotate(-90 14 ${at2(TOP4 + PLOT_H2 / 2)})" x="14" y="${at2(TOP4 + PLOT_H2 / 2)}" text-anchor="middle">${escapeHtml(data.unit)}</text>`;
+  const ends = drawn.map((s) => {
+    const last = s.values.findLastIndex((v) => v !== null);
+    return last === -1 ? null : { x: px(last), y: py(s.values[last]) };
+  });
+  const labelYs = spreadLabels(ends.map((e) => e === null ? TOP4 + PLOT_H2 : e.y + 4));
+  const lines2 = drawn.map((s, k) => {
+    const segments = [[]];
+    s.values.forEach((v, i) => {
+      if (v === null) segments.push([]);
+      else segments.at(-1).push(`${at2(px(i))},${at2(py(v))}`);
+    });
+    const paths = segments.filter((seg) => seg.length > 1).map((seg) => `<polyline points="${seg.join(" ")}"/>`);
+    const dots = s.values.map((v, i) => v === null ? "" : `<circle cx="${at2(px(i))}" cy="${at2(py(v))}" r="2.5"><title>${escapeHtml(`${s.name}, ${data.labels[i]}: ${formatNumber(v)}`)}</title></circle>`);
+    const end = ends[k];
+    const name9 = end === null || end === void 0 ? "" : `<text class="name" x="${at2(LEFT3 + PLOT_W2 + 10)}" y="${at2(labelYs[k])}">${escapeHtml(clip(s.name, MAX_NAME2))} ${formatNumber(s.values.findLast((v) => v !== null))}</text>`;
+    return `<g class="series cat-${k + 1}">${paths.join("")}${dots.join("")}${name9}</g>`;
+  });
+  const left = data.series.length - drawn.length;
+  const notes4 = [
+    `The vertical axis starts at 0. Each line ends with its name and its last value.`,
+    ...left > 0 ? [`${formatNumber(left)} more series are in the table and are not drawn: the chart draws the first ${MAX_SERIES}.`] : [],
+    ...data.note === void 0 ? [] : [data.note]
+  ];
+  return figureHtml({
+    kind: "trend-chart",
+    title: data.title,
+    description: `${data.unit} over ${data.labels.length} samples, from ${data.labels[0]} to ${data.labels.at(-1)}. ${drawn.map((s) => rangeText(data, s)).join("; ")}. The table below lists every value.`,
+    width: WIDTH9,
+    height: HEIGHT5,
+    drawing: [`<rect class="frame" x="${LEFT3}" y="${TOP4}" width="${PLOT_W2}" height="${PLOT_H2}"/>`, ...grid, ...xTicks, axisName, ...lines2].join("\n"),
+    table: htmlTable(`${data.title}: ${data.unit} by sample`, columns11(data), rows9(data).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    fold: `Table of the ${formatNumber(data.labels.length)} samples`,
+    notes: notes4.map((n) => `<p class="legend">${escapeHtml(n)}</p>
+`).join("")
+  });
+}
+function trendChartMd(data) {
+  const empty = emptyOf3(data);
+  if (empty !== void 0) return noticeMd({ level: "notice", text: empty });
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, oldest first)`, "", mdTable(columns11(data), rows9(data)), ...data.note === void 0 ? [] : ["", `_${escapeMd(data.note)}_`]].join("\n");
 }
 
 // packages/report/src/components/trend-marker.ts
@@ -7875,17 +8054,120 @@ function trendOf(earlier, later, tolerance = 0.2) {
   if (Math.abs(later - earlier) <= tolerance * base) return "stable";
   return later > earlier ? "stronger" : "weaker";
 }
-function words(data) {
+function words2(data) {
   const trend = data.trend ?? trendOf(data.earlier, data.later, data.tolerance);
   return { trend, word: data.wording?.[trend] ?? trend, detail: `${data.label}: ${formatNumber(data.earlier)} in ${data.windows[0]}, ${formatNumber(data.later)} in ${data.windows[1]}` };
 }
 function trendMarkerHtml(data) {
-  const { trend, word, detail } = words(data);
+  const { trend, word, detail } = words2(data);
   return `<span class="trend ${trend}"><span aria-hidden="true">${ARROW[trend]}</span> ${escapeHtml(word)} <span class="trend-detail">(${escapeHtml(detail)})</span></span>`;
 }
 function trendMarkerMd(data) {
-  const { trend, word, detail } = words(data);
+  const { trend, word, detail } = words2(data);
   return `${ARROW[trend]} ${escapeMd(word)} (${escapeMd(detail)})`;
+}
+
+// packages/report/src/components/trend-grid.ts
+var COLUMNS = 4;
+var CELL_W = 190;
+var CELL_H = 96;
+var PAD2 = 10;
+var LINE_TOP = 22;
+var LINE_H = 40;
+var MAX_NAME3 = 28;
+function readTrend(labels, values, tolerance) {
+  const from = values.findIndex((v) => v !== null);
+  const to = values.findLastIndex((v) => v !== null);
+  if (from === -1) return { first: null, last: null, ended: true, trend: null };
+  const first = { label: labels[from], value: values[from] };
+  const last = { label: labels[to], value: values[to] };
+  return { first, last, ended: to !== values.length - 1, trend: from === to ? null : trendOf(first.value, last.value, tolerance) };
+}
+var emptyOf4 = (data) => data.labels.length < 2 || data.items.length === 0 ? data.emptyText ?? `${data.title}: fewer than two samples, so there is no trend to draw.` : void 0;
+function wordOf2(data, reading) {
+  if (reading.first === null) return "no value";
+  if (reading.ended) return `no value after ${reading.last.label}`;
+  if (reading.trend === null) return `first seen ${reading.first.label}`;
+  return data.wording?.[reading.trend] ?? reading.trend;
+}
+var columns12 = (data) => [
+  { label: "Item" },
+  { label: "First sample" },
+  { label: `First ${data.unit}`, align: "right" },
+  { label: `Last ${data.unit}`, align: "right" },
+  { label: "Change", align: "right" },
+  { label: "Trend" }
+];
+function rows10(data) {
+  return data.items.map((item) => {
+    const reading = readTrend(data.labels, item.values, data.tolerance);
+    const change3 = reading.first === null || reading.last === null ? "" : formatNumber(reading.last.value - reading.first.value);
+    return [item.name, reading.first?.label ?? "none", reading.first === null ? "none" : formatNumber(reading.first.value), reading.last === null ? "none" : formatNumber(reading.last.value), change3, wordOf2(data, reading)];
+  });
+}
+var legend2 = (data) => [
+  `Every panel has the same vertical scale, from 0 to the greatest value in the grid, so the heights compare between panels.`,
+  `A trend compares an item's first value with its last: a change within ${formatNumber((data.tolerance ?? 0.2) * 100)} percent of the first value is ${data.wording?.stable ?? "stable"}. The tolerance is a guideline that labels the change; the table gives the values.`,
+  ...data.note === void 0 ? [] : [data.note]
+];
+function trendGridHtml(data) {
+  const empty = emptyOf4(data);
+  if (empty !== void 0) return noticeHtml({ level: "notice", text: empty });
+  const top = Math.max(1e-9, ...data.items.flatMap((item) => item.values.filter((v) => v !== null)));
+  const width = COLUMNS * CELL_W;
+  const height = Math.ceil(data.items.length / COLUMNS) * CELL_H;
+  const at2 = (v) => v.toFixed(1);
+  const panels = data.items.map((item, k) => {
+    const x0 = k % COLUMNS * CELL_W;
+    const y0 = Math.floor(k / COLUMNS) * CELL_H;
+    const px = (i) => x0 + PAD2 + i * (CELL_W - 2 * PAD2) / (data.labels.length - 1);
+    const py = (v) => y0 + LINE_TOP + (1 - Math.max(0, v) / top) * LINE_H;
+    const reading = readTrend(data.labels, item.values, data.tolerance);
+    const segments = [[]];
+    item.values.forEach((v, i) => {
+      if (v === null) segments.push([]);
+      else segments.at(-1).push(`${at2(px(i))},${at2(py(v))}`);
+    });
+    const line = segments.filter((seg) => seg.length > 1).map((seg) => `<polyline points="${seg.join(" ")}"/>`).join("");
+    const lastIndex = item.values.findLastIndex((v) => v !== null);
+    const dot = lastIndex === -1 ? "" : `<circle cx="${at2(px(lastIndex))}" cy="${at2(py(item.values[lastIndex]))}" r="3"/>`;
+    const values = reading.first === null ? "no value" : `${formatNumber(reading.first.value)} to ${formatNumber(reading.last.value)}`;
+    const arrow = reading.trend === null || reading.ended ? "" : `<tspan aria-hidden="true">${ARROW[reading.trend]} </tspan>`;
+    const name9 = linked(`<text class="name" x="${x0 + PAD2}" y="${y0 + 14}">${escapeHtml(clip(item.name, MAX_NAME3))}</text>`, item.href);
+    return [
+      `<g class="panel${reading.trend === null ? "" : ` ${reading.trend}`}"><title>${escapeHtml(`${item.name}: ${values}, ${wordOf2(data, reading)}`)}</title>`,
+      `<rect class="frame" x="${x0 + 2}" y="${y0 + 2}" width="${CELL_W - 4}" height="${CELL_H - 4}"/>`,
+      `<line class="grid" x1="${x0 + PAD2}" y1="${at2(y0 + LINE_TOP + LINE_H)}" x2="${x0 + CELL_W - PAD2}" y2="${at2(y0 + LINE_TOP + LINE_H)}"/>`,
+      name9,
+      line,
+      dot,
+      `<text class="reading" x="${x0 + PAD2}" y="${y0 + CELL_H - 22}">${escapeHtml(values)}</text>`,
+      `<text class="word" x="${x0 + PAD2}" y="${y0 + CELL_H - 9}">${arrow}${escapeHtml(wordOf2(data, reading))}</text>`,
+      `</g>`
+    ].join("");
+  });
+  const counts = /* @__PURE__ */ new Map();
+  for (const item of data.items) {
+    const word = wordOf2(data, readTrend(data.labels, item.values, data.tolerance));
+    counts.set(word, (counts.get(word) ?? 0) + 1);
+  }
+  return figureHtml({
+    kind: "trend-grid",
+    title: data.title,
+    description: `${formatNumber(data.items.length)} small line charts of ${data.unit}, one per item, over ${data.labels.length} samples from ${data.labels[0]} to ${data.labels.at(-1)}, all on one vertical scale. ${[...counts].map(([word, n]) => `${formatNumber(n)} ${word}`).join(", ")}. The table below lists each item's first and last values.`,
+    width,
+    height,
+    drawing: panels.join("\n"),
+    table: htmlTable(`${data.title}: first and last ${data.unit} of each item`, columns12(data), rows10(data).map((r, k) => r.map((c2, i) => i === 0 ? linked(escapeHtml(c2), data.items[k]?.href) : escapeHtml(c2))), { rowHeaders: true }),
+    fold: `Table of the ${formatNumber(data.items.length)} items`,
+    notes: legend2(data).map((n) => `<p class="legend">${escapeHtml(n)}</p>
+`).join("")
+  });
+}
+function trendGridMd(data) {
+  const empty = emptyOf4(data);
+  if (empty !== void 0) return noticeMd({ level: "notice", text: empty });
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, ${escapeMd(data.labels[0])} to ${escapeMd(data.labels.at(-1))})`, "", mdTable(columns12(data), rows10(data)), "", legend2(data).slice(1).map((n) => `_${escapeMd(n)}_`).join("\n\n")].join("\n");
 }
 
 // packages/report/src/block.ts
@@ -7950,6 +8232,12 @@ function renderResolved(block, format2, context) {
       return format2 === "html" ? stabilityChartHtml(block) : stabilityChartMd(block);
     case "trend-marker":
       return format2 === "html" ? `<p>${trendMarkerHtml(block)}</p>` : trendMarkerMd(block);
+    case "trend-chart":
+      return format2 === "html" ? trendChartHtml(block) : trendChartMd(block);
+    case "trend-grid":
+      return format2 === "html" ? trendGridHtml(block) : trendGridMd(block);
+    case "change-bars":
+      return format2 === "html" ? changeBarsHtml(block) : changeBarsMd(block);
     case "evidence-list":
       return format2 === "html" ? evidenceListHtml(block) : evidenceListMd(block);
     case "notice":
@@ -9149,6 +9437,20 @@ svg a > text, svg a > tspan { fill: var(--link); text-decoration: underline; }
 svg a:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 svg a .tile rect, svg a .tile.marked rect { stroke: var(--link); stroke-width: 2; }
 svg polyline { fill: none; stroke: var(--bar-above); stroke-width: 2; } svg circle { fill: var(--bar-above); }
+svg .grid { stroke: var(--rule); stroke-width: 1; } svg .zero { stroke: var(--marker); stroke-width: 1.5; }
+svg .series.cat-1 polyline { stroke: var(--cat-1); } svg .series.cat-1 circle { fill: var(--cat-1); }
+svg .series.cat-2 polyline { stroke: var(--cat-2); } svg .series.cat-2 circle { fill: var(--cat-2); }
+svg .series.cat-3 polyline { stroke: var(--cat-3); } svg .series.cat-3 circle { fill: var(--cat-3); }
+svg .series.cat-4 polyline { stroke: var(--cat-4); } svg .series.cat-4 circle { fill: var(--cat-4); }
+svg .series.cat-5 polyline { stroke: var(--cat-5); } svg .series.cat-5 circle { fill: var(--cat-5); }
+svg .series.cat-6 polyline { stroke: var(--cat-6); } svg .series.cat-6 circle { fill: var(--cat-6); }
+svg .series text { fill: var(--text); }
+svg .series .name, svg .panel .name, svg .change .name { font-weight: 600; }
+figure.chart details { margin: .25rem 0 .5rem; } figure.chart summary { cursor: pointer; color: var(--muted); font-size: .9rem; }
+svg .panel polyline { stroke: var(--bar); } svg .panel circle { fill: var(--bar); }
+svg .panel.stronger polyline { stroke: var(--bar-above); } svg .panel.stronger circle { fill: var(--bar-above); }
+svg .panel .reading, svg .panel .word { fill: var(--muted); } svg .panel.stronger .word { fill: var(--text); font-weight: 600; }
+svg .change rect { fill: var(--bar); } svg .change.rise rect { fill: var(--bar-above); }
 .notice { border-left: 4px solid var(--notice-rule); background: var(--notice-bg); padding: .5rem .75rem; margin: .75rem 0; }
 .judgement { border: 1px solid var(--rule); border-left: 4px solid var(--link); background: var(--panel); padding: .25rem 1rem .5rem; margin: 1rem 0; }
 .judgement ol { margin: 0; padding-left: 1.25rem; }
@@ -9171,7 +9473,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 function headerFacts(report) {
   const { header: header2 } = report;
   const excluded = header2.excluded.length === 0 ? "nothing" : `<ul>${header2.excluded.map((e) => `<li>${escapeHtml(e.what)}: ${formatNumber(e.count)}</li>`).join("")}</ul>`;
-  const rows8 = [
+  const rows11 = [
     ["Repository", escapeHtml(header2.repo)],
     ["Analysed commit", `<code>${escapeHtml(header2.commit)}</code>`],
     ["Date", escapeHtml(header2.date)],
@@ -9181,7 +9483,7 @@ function headerFacts(report) {
     ["Excluded", excluded]
   ];
   return `<dl class="header">
-${rows8.map(([term, value]) => `<dt>${term}</dt><dd>${value}</dd>`).join("\n")}
+${rows11.map(([term, value]) => `<dt>${term}</dt><dd>${value}</dd>`).join("\n")}
 </dl>`;
 }
 function section(s, report, notes4, siblings) {
@@ -9626,7 +9928,7 @@ function capRows(table, max, command9) {
 }
 
 // packages/locality/src/reports/locality.ts
-var TOP3 = 15;
+var TOP5 = 15;
 var PLANNED = 10;
 var TOP_REVIEW = 10;
 var TOP_SCRUTINISE = 10;
@@ -9689,7 +9991,7 @@ var moveId = (c2) => targetId("move", c2.path);
 var reviewId = (c2) => targetId("review", c2.path);
 var blockedId = (c2) => targetId("blocked", c2.path);
 var candidateSectionId = (rank) => `candidate-${rank}`;
-var planLinks = (rows8, planned) => rows8.map((c2) => {
+var planLinks = (rows11, planned) => rows11.map((c2) => {
   const at2 = planned.indexOf(c2);
   return at2 === -1 ? {} : { path: pageHref(candidateSectionId(at2 + 1)) };
 });
@@ -9731,7 +10033,7 @@ var gainRow = (c2) => ({
   distance: c2.distance,
   confidence: confidenceOf(c2)
 });
-function moveTable(rows8, settings, planned) {
+function moveTable(rows11, settings, planned) {
   return {
     type: "ranked-table",
     ...capRows(
@@ -9739,17 +10041,17 @@ function moveTable(rows8, settings, planned) {
         caption: "Moves the planner can plan without --reason (kind move), ordered by gain over the locality.minDistance guideline",
         noun: "moves",
         emptyText: "No candidate has kind move, so no unit can be planned without --reason.",
-        rowIds: rows8.map(moveId),
-        cellHrefs: planLinks(rows8, planned),
+        rowIds: rows11.map(moveId),
+        cellHrefs: planLinks(rows11, planned),
         columns: gainColumns(settings),
-        rows: rows8.map(gainRow)
+        rows: rows11.map(gainRow)
       },
-      TOP3,
+      TOP5,
       "locality analyse --recommendation move"
     )
   };
 }
-function reviewTable(rows8, settings, planned) {
+function reviewTable(rows11, settings, planned) {
   return {
     type: "ranked-table",
     ...capRows(
@@ -9757,17 +10059,17 @@ function reviewTable(rows8, settings, planned) {
         caption: "Reviews, splits and inlines (the planner needs --reason for these), ordered by gain over the locality.minDistance guideline",
         noun: "candidates",
         emptyText: "No candidate has kind review, split or inline.",
-        rowIds: rows8.map(reviewId),
-        cellHrefs: planLinks(rows8, planned),
+        rowIds: rows11.map(reviewId),
+        cellHrefs: planLinks(rows11, planned),
         columns: gainColumns(settings),
-        rows: rows8.map(gainRow)
+        rows: rows11.map(gainRow)
       },
       TOP_REVIEW,
       "locality analyse --recommendation review"
     )
   };
 }
-function scrutiniseTable(rows8, settings) {
+function scrutiniseTable(rows11, settings) {
   return {
     type: "ranked-table",
     ...capRows(
@@ -9782,7 +10084,7 @@ function scrutiniseTable(rows8, settings) {
           { key: "folders", label: "Consumer folders", align: "right" },
           { key: "confidence", label: "Confidence" }
         ],
-        rows: rows8.map((c2) => ({
+        rows: rows11.map((c2) => ({
           path: c2.path,
           fanIn: c2.fanIn,
           ratio: c2.guidelines.fanIn.ratio,
@@ -9915,7 +10217,7 @@ function moveMap(moves, blocked, reviews, settings, planned) {
   };
   const hrefOf = (c2, label) => {
     if (label.startsWith("B")) return Number(label.slice(1)) <= TOP_BLOCKED ? pageHref(blockedId(c2)) : void 0;
-    return planOrRow(c2, Number(label) <= TOP3 ? pageHref(moveId(c2)) : void 0);
+    return planOrRow(c2, Number(label) <= TOP5 ? pageHref(moveId(c2)) : void 0);
   };
   const arrowed = entries.filter(({ c: c2 }) => c2.target !== c2.location);
   const stuck = entries.filter(({ c: c2, held }) => held && c2.target === c2.location);
@@ -9937,7 +10239,7 @@ function moveMap(moves, blocked, reviews, settings, planned) {
   ];
   const folders = [.../* @__PURE__ */ new Set([...edges.flatMap((e) => [e.from, e.to]), ...marks.map((m) => m.folder)])].sort();
   const blockers = (c2) => nameList(c2.blockers.map((b) => b.path), BLOCKERS_PER_UNIT);
-  const rows8 = [
+  const rows11 = [
     ...arrowed.map(({ c: c2, label, held }) => [label, c2.path, folderText(c2.location), folderText(c2.target), String(held ? c2.unblockedGain : c2.gain), held ? `blocked move, dashed arrow; gain if unblocked; blocked by ${blockers(c2)}` : "move: the planner can plan it"]),
     ...stuck.map(({ c: c2, label }) => [label, c2.path, folderText(c2.location), "none: its own folder is its best until the blockers are resolved", String(c2.unblockedGain), `blocked unit, marker on its folder; gain if unblocked; blocked by ${blockers(c2)}`]),
     ...drawnReviews.map((c2, i) => [`R${i + 1}`, c2.path, folderText(c2.location), "no single target", String(c2.gain), `${c2.recommendation}: marker on its folder, no arrow`])
@@ -9966,7 +10268,7 @@ function moveMap(moves, blocked, reviews, settings, planned) {
     ],
     table: {
       columns: [{ label: "#" }, { label: "Unit" }, { label: "From folder" }, { label: "To folder" }, { label: "Gain", align: "right" }, { label: "Status" }],
-      rows: rows8
+      rows: rows11
     },
     omitted: `Not drawn: ${notDrawn.join(", ")} (the map draws the top ${MAP_MOVES} moves, ${MAP_BLOCKED} blocked units and ${MAP_REVIEWS} reviews, splits and inlines). ${stays === 0 ? "" : `${stays} drawn ${stays === 1 ? "unit already sits" : "units already sit"} in the target folder and ${stays === 1 ? "has" : "have"} no arrow. `}Scrutinise units propose no move and are not drawn. Gain is net distance removed, against the locality.minDistance guideline of ${settings.minDistance}.`
   };
@@ -10021,7 +10323,7 @@ var localityReport = {
     const reviews = ofKind.filter((c2) => c2.recommendation === "review" || c2.recommendation === "split" || c2.recommendation === "inline");
     const scrutinise = ofKind.filter((c2) => c2.recommendation === "scrutinise").sort((a, b) => b.fanIn - a.fanIn || (a.path < b.path ? -1 : 1));
     const planned = [...moves, ...reviews].slice(0, PLANNED);
-    const shownCount = Math.min(moves.length, TOP3) + Math.min(reviews.length, TOP_REVIEW) + Math.min(scrutinise.length, TOP_SCRUTINISE);
+    const shownCount = Math.min(moves.length, TOP5) + Math.min(reviews.length, TOP_REVIEW) + Math.min(scrutinise.length, TOP_SCRUTINISE);
     const go = goPackagesOf(await loadProject(context.repo.root, "HEAD", settings));
     const plans = [];
     for (const candidate of planned) plans.push(await dryRun(context, candidate, settings, files, go));
@@ -10108,7 +10410,7 @@ var localityReport = {
       sections,
       limits: [
         "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-        `Three tables list candidates by kind: moves (top ${TOP3}), reviews, splits and inlines (top ${TOP_REVIEW}) and scrutinise (top ${TOP_SCRUTINISE}). Each says how many rows it leaves out. Move plans and judgements cover the first ${PLANNED} of the moves, then the reviews and splits. A unit of kind blocked, and a unit of kind move that has blockers, is listed only in the blocked table.`,
+        `Three tables list candidates by kind: moves (top ${TOP5}), reviews, splits and inlines (top ${TOP_REVIEW}) and scrutinise (top ${TOP_SCRUTINISE}). Each says how many rows it leaves out. Move plans and judgements cover the first ${PLANNED} of the moves, then the reviews and splits. A unit of kind blocked, and a unit of kind move that has blockers, is listed only in the blocked table.`,
         "A move plan is a dry run of the proposed move. The report never applies one.",
         "Gain is the net distance a move removes, against the locality.minDistance guideline. It does not say the move is worth its churn.",
         ...lowConfidence > 0 ? [`${plural2(lowConfidence, "candidate")} rest on includes that found no file, so a consumer may be missing and the result is a lower bound.`] : [],
@@ -10119,9 +10421,289 @@ var localityReport = {
   }
 };
 
+// packages/locality/src/folder-trends.ts
+function withAncestors(folder) {
+  if (folder === "") return [""];
+  const parts2 = folder.split("/");
+  return ["", ...parts2.map((_, i) => parts2.slice(0, i + 1).join("/"))];
+}
+function folderFigures2(production, edges) {
+  const figures = /* @__PURE__ */ new Map();
+  const at2 = (folder) => {
+    let found = figures.get(folder);
+    if (found === void 0) {
+      found = { files: 0, edges: 0, uses: 0, totalUseDistance: 0, meanDistancePerUse: null };
+      figures.set(folder, found);
+    }
+    return found;
+  };
+  at2("");
+  for (const file of production) for (const folder of withAncestors(folderOf(file))) at2(folder).files++;
+  for (const edge of edges) {
+    if (!edge.counted) continue;
+    const distance = edge.weight * treeDistance(edge.from, edge.to);
+    for (const folder of withAncestors(folderOf(edge.from))) {
+      const figure2 = at2(folder);
+      figure2.edges++;
+      figure2.uses += edge.weight;
+      figure2.totalUseDistance += distance;
+    }
+  }
+  for (const figure2 of figures.values()) figure2.meanDistancePerUse = figure2.uses === 0 ? null : figure2.totalUseDistance / figure2.uses;
+  return figures;
+}
+function commonRoot(figures) {
+  const total = figures.get("")?.files ?? 0;
+  let root = "";
+  for (; ; ) {
+    const depth = depthOf(root) + 1;
+    const next = [...figures].find(([folder, figure2]) => depthOf(folder) === depth && (root === "" || folder.startsWith(`${root}/`)) && figure2.files === total);
+    if (next === void 0 || total === 0) return root;
+    root = next[0];
+  }
+}
+function foldersBelow(figures, root, levels) {
+  const base = depthOf(root);
+  return [...figures.keys()].filter((folder) => folder !== root && (root === "" || folder.startsWith(`${root}/`)) && depthOf(folder) <= base + levels).sort(compareIds);
+}
+
+// packages/locality/src/trend-samples.ts
+async function firstParentLine(root, ref) {
+  const out = await runGit(root, ["log", "--first-parent", "--format=%H %ct", ref]);
+  return out.split("\n").filter((line) => line !== "").map((line) => ({ sha: line.slice(0, line.indexOf(" ")), date: Number(line.slice(line.indexOf(" ") + 1)) })).reverse();
+}
+function sampleByTime(line, count3, since) {
+  const last = line.at(-1);
+  if (last === void 0) return [];
+  const within = line.filter((commit) => commit.date >= since);
+  const start = within[0]?.date ?? last.date;
+  const picked = /* @__PURE__ */ new Map();
+  for (let i = 0; i < count3; i++) {
+    const instant = count3 === 1 ? last.date : start + (last.date - start) * i / (count3 - 1);
+    const commit = i === count3 - 1 ? last : line.findLast((candidate) => candidate.date <= instant && candidate.date >= start);
+    if (commit !== void 0) picked.set(commit.sha, commit);
+  }
+  return line.filter((commit) => picked.has(commit.sha));
+}
+var iso = (date) => new Date(date * 1e3).toISOString();
+function sampleLabels(samples) {
+  const distinct = (labels) => new Set(labels).size === labels.length;
+  const days = samples.map((sample) => iso(sample.date).slice(0, 10));
+  if (distinct(days)) return days;
+  const minutes = samples.map((sample) => iso(sample.date).slice(0, 16).replace("T", " "));
+  if (distinct(minutes)) return minutes;
+  return samples.map((sample, i) => `${minutes[i]} ${sample.sha.slice(0, 7)}`);
+}
+
+// packages/locality/src/reports/trends.ts
+var DEFAULT_SAMPLES = 12;
+var MAX_SAMPLES = 60;
+var TREND_TOLERANCE = 0.05;
+var LEVELS = 2;
+var CHART_FOLDERS = 6;
+var GRID_FOLDERS = 12;
+var BAR_FOLDERS = 15;
+var TABLE_FOLDERS = 40;
+var WORDING = { stronger: "further apart", stable: "no clear change", weaker: "closer" };
+var VERDICTS2 = ["closer", "no-clear-change", "further-apart"];
+var ROOT_TEXT2 = "the repository (/)";
+var folderText2 = (folder) => folder === "" ? ROOT_TEXT2 : folder;
+var round2 = (value) => value === null ? null : Number(value.toFixed(3));
+var valueText = (value) => value === null ? "none" : formatNumber(value);
+function samplesOption(context) {
+  const value = context.values.samples;
+  if (value === void 0) return DEFAULT_SAMPLES;
+  if (typeof value !== "string" || !/^[1-9]\d*$/.test(value) || Number(value) < 2 || Number(value) > MAX_SAMPLES) {
+    throw usageError(`--samples must be a whole number from 2 to ${MAX_SAMPLES}`);
+  }
+  return Number(value);
+}
+async function measure(root, sha, label, settings) {
+  const project = await loadProject(root, sha, settings);
+  const model = buildModel(project, settings);
+  return { sha, label, folders: folderFigures2(project.production, revisionEdges(model)), structure: structureMetricsOf(project, model) };
+}
+var seriesOf = (samples, folder, value) => samples.map((sample) => round2(sample.folders.has(folder) ? value(sample.folders.get(folder)) : null));
+var meanOf = (figures) => figures.meanDistancePerUse;
+var totalOf = (figures) => figures.totalUseDistance;
+function indexed(values) {
+  const base = values.find((v) => v !== null && v > 0);
+  return values.map((v) => v === null || base === void 0 || base === null ? null : round2(v / base * 100));
+}
+function slotsFor2(folders) {
+  const about = { kind: "report", ref: "trends", label: "the import distance trend" };
+  return [
+    {
+      id: "trend",
+      title: "Judgement: the trend",
+      about,
+      task: "Say whether code is moving closer to its uses or further apart over the samples. Cite the mean distance per use at the first and last sample, and say whether total import distance grew faster than the number of uses. Say so when the samples are few, the span is short, or the change is within the tolerance. This is a leading indicator: do not write that changes got cheaper or dearer.",
+      verdicts: VERDICTS2,
+      maxChars: 600
+    },
+    ...folders.length === 0 ? [] : [
+      {
+        id: "folders",
+        title: "Judgement: folders to look at",
+        about,
+        task: "Choose the folders whose change in import distance most deserves a look, and say for each what the figures show and what to check next (for example `locality analyse <folder>`). A folder that grew because code was added to it is expected growth, not a problem.",
+        verdicts: ["look", "expected-growth"],
+        maxChars: 300,
+        choose: { max: 3, candidates: folders.map((folder) => ({ ref: folder, label: folder })) }
+      }
+    ]
+  ];
+}
+var trendsReport = {
+  summary: "Import distance over time: the repository and its folders at revisions sampled along the first-parent line, with charts of whether code is moving closer to its uses or further apart",
+  options: { samples: { type: "string" } },
+  optionHelp: { samples: `trends: how many revisions to sample, 2 to ${MAX_SAMPLES} (default ${DEFAULT_SAMPLES})` },
+  async build(context) {
+    if (context.positionals.length > 0) throw usageError("report trends takes no arguments");
+    const settings = readSettings(context.config);
+    const wanted = samplesOption(context);
+    const { root, head } = context.repo;
+    const line = await firstParentLine(root, head);
+    const headDate = line.at(-1).date;
+    const commits = sampleByTime(line, wanted, monthsBefore(headDate, settings.windowMonths));
+    const allLabels = sampleLabels(commits);
+    const measured = [];
+    for (const [i, commit] of commits.entries()) measured.push(await measure(root, commit.sha, allLabels[i], settings));
+    const start = Math.min(Math.max(0, measured.findIndex((sample) => sample.folders.get("").files > 0)), measured.length - 1);
+    const samples = measured.slice(start);
+    const labels = allLabels.slice(start);
+    const first = samples[0];
+    const last = samples.at(-1);
+    const repoFirst = first.folders.get("");
+    const repoLast = last.folders.get("");
+    const top = commonRoot(last.folders);
+    const listed = foldersBelow(last.folders, top, LEVELS);
+    const byUses = (a, b) => last.folders.get(b).uses - last.folders.get(a).uses || (a < b ? -1 : 1);
+    const children = foldersBelow(last.folders, top, 1).filter((folder) => last.folders.get(folder).uses > 0).sort(byUses);
+    const grid = listed.filter((folder) => last.folders.get(folder).uses > 0).sort(byUses).slice(0, GRID_FOLDERS);
+    const totalAt = (sample, folder) => sample.folders.get(folder)?.totalUseDistance ?? 0;
+    const changed = listed.map((folder) => ({ folder, from: totalAt(first, folder), to: totalAt(last, folder) })).filter((row) => row.from !== row.to).sort((a, b) => Math.abs(b.to - b.from) - Math.abs(a.to - a.from) || (a.folder < b.folder ? -1 : 1));
+    const repoMean = seriesOf(samples, "", meanOf);
+    const reading = readTrend(labels, repoMean, TREND_TOLERANCE);
+    const tableFolders = ["", ...top === "" ? [] : [top], ...listed];
+    const rows11 = tableFolders.map((folder) => {
+      const mean3 = seriesOf(samples, folder, meanOf);
+      const own = readTrend(labels, mean3, TREND_TOLERANCE);
+      const now = last.folders.get(folder);
+      return {
+        folder: folderText2(folder),
+        files: now.files,
+        uses: now.uses,
+        totalFirst: first.folders.get(folder)?.totalUseDistance ?? null,
+        totalLast: now.totalUseDistance,
+        meanFirst: own.first?.value ?? null,
+        meanLast: round2(now.meanDistancePerUse),
+        trend: own.first === null ? "no uses" : own.trend === null ? `first seen ${own.first.label}` : WORDING[own.trend]
+      };
+    });
+    const gaming = gamingCheck(first.structure, last.structure);
+    const enough = samples.length >= 2;
+    const where = top === "" ? "the repository root" : `\`${top}\`, the deepest folder that holds every production file`;
+    const sections = [
+      {
+        id: "repository",
+        heading: "Repository",
+        blocks: [
+          { type: "judgement", slot: "trend" },
+          ...enough ? [] : [{ type: "notice", level: "limit", text: `Only ${samples.length} revision was sampled, so there is no trend: the first-parent line has one commit in the window` }],
+          {
+            type: "facts",
+            caption: "Import distance of the repository at the first and last sample",
+            facts: [
+              { label: "Samples", value: `${samples.length}, from ${first.label} to ${last.label}` },
+              { label: "Mean distance per use", value: `${valueText(round2(repoFirst.meanDistancePerUse))} at the first sample, ${valueText(round2(repoLast.meanDistancePerUse))} at the last` },
+              { label: "Total import distance", value: `${formatNumber(repoFirst.totalUseDistance)} at the first sample, ${formatNumber(repoLast.totalUseDistance)} at the last` },
+              { label: "Uses", value: `${formatNumber(repoFirst.uses)} at the first sample, ${formatNumber(repoLast.uses)} at the last` },
+              { label: "Production files", value: `${formatNumber(repoFirst.files)} at the first sample, ${formatNumber(repoLast.files)} at the last` }
+            ]
+          },
+          ...reading.first === null || reading.last === null || reading.trend === null ? [] : [{ type: "trend-marker", label: "mean distance per use", earlier: reading.first.value, later: reading.last.value, windows: [reading.first.label, reading.last.label], tolerance: TREND_TOLERANCE, wording: WORDING }],
+          { type: "trend-chart", title: "Mean distance per use of the repository", unit: "mean distance per use", labels, series: [{ name: "repository", values: repoMean }], note: "Mean distance per use is total import distance divided by the number of uses: how many folder hops lie between a use and what it uses, on average. Lower is closer." },
+          {
+            type: "trend-chart",
+            title: "Growth of import distance against uses and files",
+            unit: "percent of the first sample",
+            labels,
+            series: [
+              { name: "total import distance", values: indexed(seriesOf(samples, "", totalOf)) },
+              { name: "uses", values: indexed(seriesOf(samples, "", (figures) => figures.uses)) },
+              { name: "production files", values: indexed(seriesOf(samples, "", (figures) => figures.files)) }
+            ],
+            note: "Each line is a percent of its own first value above 0. Total import distance above the uses line means distance grew faster than the number of uses, so uses are further apart on average."
+          }
+        ]
+      },
+      {
+        id: "folders",
+        heading: "Folders",
+        blocks: [
+          { type: "paragraph", text: `Folders are those of the last sample, listed ${LEVELS} levels below ${where}. A folder's figures cover every file under it, its subfolders included, so the figures of the folders at one level add up to those of the folder that holds them.` },
+          { type: "trend-chart", title: "Mean distance per use of the largest folders", unit: "mean distance per use", labels, series: children.slice(0, CHART_FOLDERS).map((folder) => ({ name: folder, values: seriesOf(samples, folder, meanOf) })), emptyText: "Mean distance per use of the largest folders: there are fewer than two samples, or no folder below the common root has a use.", ...children.length > CHART_FOLDERS ? { note: `The ${CHART_FOLDERS} folders one level down with the most uses at the last sample are drawn, of ${children.length}.` } : {} },
+          { type: "trend-grid", title: "Folders by mean distance per use", unit: "mean distance per use", labels, items: grid.map((folder) => ({ name: folder, values: seriesOf(samples, folder, meanOf) })), tolerance: TREND_TOLERANCE, wording: WORDING, note: `The ${GRID_FOLDERS} folders with the most uses at the last sample are drawn, most uses first. A folder with no line before a sample did not exist then, or had no use.`, emptyText: "Folders by mean distance per use: there are fewer than two samples, or no folder below the common root has a use." },
+          { type: "change-bars", title: "Change in total import distance by folder", unit: "total import distance", samples: [first.label, last.label], bars: changed.slice(0, BAR_FOLDERS).map((row) => ({ label: row.folder, from: row.from, to: row.to })), wording: { rise: "more distance", fall: "less distance" }, note: `${changed.length > BAR_FOLDERS ? `The ${BAR_FOLDERS} largest changes are drawn, of ${changed.length}. ` : ""}A folder's total rises when code is added to it, so read the bar beside the folder's mean distance per use. A folder nested in another is counted in both bars.`, emptyText: "Change in total import distance by folder: no folder's total differs between the first and last sample." },
+          ...grid.length === 0 ? [] : [{ type: "judgement", slot: "folders" }],
+          {
+            type: "ranked-table",
+            caption: "Folders, each after the folder that holds it",
+            numbered: false,
+            noun: "folders",
+            total: rows11.length,
+            columns: [
+              { key: "folder", label: "Folder" },
+              { key: "files", label: "Files", align: "right" },
+              { key: "uses", label: "Uses", align: "right" },
+              { key: "totalFirst", label: `Total distance, ${first.label}`, align: "right" },
+              { key: "totalLast", label: `Total distance, ${last.label}`, align: "right" },
+              { key: "meanFirst", label: "Mean per use, first value", align: "right" },
+              { key: "meanLast", label: `Mean per use, ${last.label}`, align: "right" },
+              { key: "trend", label: "Trend of mean per use" }
+            ],
+            rows: rows11.slice(0, TABLE_FOLDERS)
+          }
+        ]
+      },
+      {
+        id: "gaming",
+        heading: "Gaming check",
+        blocks: [
+          { type: "paragraph", text: "Import distance can fall because files were buried in new folders, not because code moved beside its uses. These two figures show that: the number of folders that hold a single production file, and the depth of the deepest folder that holds one." },
+          ...gaming.flagged ? [{ type: "notice", level: "warning", text: `Between the first and last sample, ${gaming.reasons.join("; ")}` }] : [],
+          { type: "sparkline", title: "Folders holding a single production file", unit: "single-file folders", points: samples.map((sample) => ({ label: sample.label, value: sample.structure.singleFileFolders })) },
+          { type: "sparkline", title: "Maximum folder depth", unit: "folder depth", points: samples.map((sample) => ({ label: sample.label, value: sample.structure.maxDepth })) }
+        ]
+      }
+    ];
+    return {
+      title: "Import distance trends",
+      inputs: { samples: wanted, revisions: samples.map((sample) => sample.sha) },
+      header: {
+        evidenceGrade: "not applicable",
+        historyWindow: `${samples.length} of ${line.length} commits on the first-parent line were sampled, evenly over time from ${first.label} to ${last.label}, within the ${settings.windowMonths} months before HEAD's commit date.`,
+        excluded: start === 0 ? [] : [{ what: "sampled revisions from before the first production file", count: start }]
+      },
+      sections,
+      limits: [
+        "This is a leading indicator. It shows where code sits against its uses at each sample and says nothing about whether changes cost less or more: `locality measure compare` measures that.",
+        `Closer, further apart and no clear change are labels from a guideline: the last mean distance per use differs from the first by more than ${formatNumber(TREND_TOLERANCE * 100)} percent of it. The guideline labels the change and decides nothing.`,
+        "An edge weighs its use count alone, without the co-change weighting that `locality analyse` adds, so the totals here are equal to `metrics.totalWeightedDistance` of `analyse` only with `locality.useHistory` off.",
+        "Every sample is read with the config of the checkout (entry points, excludes) and the parsers of this version, not those of the time.",
+        "Folders are named by their path at the last sample. A folder that was renamed has no values before its rename, and its earlier figures are under its old path, which is not listed.",
+        "Total import distance grows whenever code is added. Mean distance per use, and total distance set against the number of uses, are the figures that say where the code was placed.",
+        "The samples are points in time. What happened between two samples is not shown, and a short span or few commits gives few samples."
+      ],
+      slots: slotsFor2(grid)
+    };
+  }
+};
+
 // packages/locality/src/commands/report.ts
 var name5 = "report";
-var command5 = reportCommand({ locality: localityReport });
+var command5 = reportCommand({ locality: localityReport, trends: trendsReport });
 
 // packages/locality/src/commands/scrutinise.ts
 var scrutinise_exports = {};
