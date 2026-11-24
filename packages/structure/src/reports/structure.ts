@@ -233,7 +233,7 @@ function stabilityBlocks(packageRows: readonly PackageRow[], allAgainst: readonl
     ...(unplaced === 0 ? [] : [{ type: "notice" as const, level: "notice" as const, text: `${plural(unplaced, "package")} ${unplaced === 1 ? "has" : "have"} too few exported types to place (fewer than ${floor}, structure.packages.minExportedTypes, a judgement call); abstractness is not measured for ${unplaced === 1 ? "it" : "them"}. ${unplaced === 1 ? "It is" : "They are"} left out of the chart, its table and its zone counts.` }]),
     {
       type: "paragraph",
-      text: "A dependency should point towards the more stable side. Structural stability is Martin's instability I = Ce / (Ca + Ce) over distinct outside files. Change stability is revisions per file in the window, and it decides when the depended-on side has at least structure.minRevisions revisions. Rows above a guideline are listed first, and no row is hidden for being below one.",
+      text: "A dependency should point towards the more stable side. Structural stability is Martin's instability I = Ce / (Ca + Ce) over distinct outside files. Change stability is revisions per file in the window, and it decides when the depended-on side has at least structure.minRevisions revisions. The table is sorted by, in order: rows at or above a guideline first; rows decided by change before rows decided by structure; the larger margin, which for change is the depended-on side's revisions per file minus the dependant's (both shown) and for structure is the instability gap; file imports; path. A row decided by change can have a negative instability gap: it is listed because the depended-on folder has more revisions per file, even when it is structurally more stable. No row is hidden for being below a guideline.",
     },
     {
       type: "ranked-table",
@@ -245,6 +245,8 @@ function stabilityBlocks(packageRows: readonly PackageRow[], allAgainst: readonl
         { key: "from", label: "From (depends)" },
         { key: "to", label: "To (depended on)" },
         { key: "basis", label: "Decided by" },
+        { key: "fromRpf", label: "Revisions per file, from", align: "right" },
+        { key: "toRpf", label: "Revisions per file, to", align: "right" },
         { key: "ratio", label: "Revisions per file, to over from", align: "right", guideline: { value: settings.minVolatilityRatio, note: "structure.minVolatilityRatio" } },
         { key: "gap", label: "Instability gap in points", align: "right", guideline: { value: settings.minInstabilityGap, note: "structure.minInstabilityGap" } },
         { key: "imports", label: "File imports", align: "right" },
@@ -252,7 +254,7 @@ function stabilityBlocks(packageRows: readonly PackageRow[], allAgainst: readonl
       ],
       rows: shown.map((row): Record<string, Cell> => {
         const gap = row.stability.from.structural.instability === null || row.stability.to.structural.instability === null ? null : round3((row.stability.to.structural.instability - row.stability.from.structural.instability) * 100);
-        return { from: row.from, to: row.to, basis: row.basis, ratio: row.volatilityRatio, gap, imports: row.fileEdges, disagree: yesNo(row.disagree) };
+        return { from: row.from, to: row.to, basis: row.basis, fromRpf: round3(row.stability.from.change.revisionsPerFile), toRpf: round3(row.stability.to.change.revisionsPerFile), ratio: row.volatilityRatio, gap, imports: row.fileEdges, disagree: yesNo(row.disagree) };
       }),
     },
   ];

@@ -84,13 +84,13 @@ _The table lists 3 of 3 packages, furthest from the main sequence first; 0 not l
 
 > **Notice:** 2 packages have too few exported types to place (fewer than 3, structure.packages.minExportedTypes, a judgement call); abstractness is not measured for them. They are left out of the chart, its table and its zone counts.
 
-A dependency should point towards the more stable side. Structural stability is Martin's instability I = Ce / (Ca + Ce) over distinct outside files. Change stability is revisions per file in the window, and it decides when the depended-on side has at least structure.minRevisions revisions. Rows above a guideline are listed first, and no row is hidden for being below one.
+A dependency should point towards the more stable side. Structural stability is Martin's instability I = Ce / (Ca + Ce) over distinct outside files. Change stability is revisions per file in the window, and it decides when the depended-on side has at least structure.minRevisions revisions. The table is sorted by, in order: rows at or above a guideline first; rows decided by change before rows decided by structure; the larger margin, which for change is the depended-on side's revisions per file minus the dependant's (both shown) and for structure is the instability gap; file imports; path. A row decided by change can have a negative instability gap: it is listed because the depended-on folder has more revisions per file, even when it is structurally more stable. No row is hidden for being below a guideline.
 
 **Dependencies pointing towards less stable folders**
 
-| # | From (depends) | To (depended on) | Decided by | Revisions per file, to over from | Instability gap in points | File imports | Measures disagree |
-| ---: | --- | --- | --- | ---: | ---: | ---: | --- |
-| 1 | packages/p2/src | packages/p1/src | structure | – | 25 ▲ | 1 | no |
+| # | From (depends) | To (depended on) | Decided by | Revisions per file, from | Revisions per file, to | Revisions per file, to over from | Instability gap in points | File imports | Measures disagree |
+| ---: | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| 1 | packages/p2/src | packages/p1/src | structure | 0 | 0.33 | – | 25 ▲ | 1 | no |
 
 _Guidelines order and label the rows and decide nothing. Revisions per file, to over from 2 (structure.minVolatilityRatio), ▲ marks a value above it; Instability gap in points 20 (structure.minInstabilityGap), ▲ marks a value above it._
 
