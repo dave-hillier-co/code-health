@@ -6515,7 +6515,9 @@ function emptyNotice(block) {
 function emptySection(section2) {
   const lines2 = section2.blocks.map((b) => b.type === "notice" ? b.text : emptyNotice(b));
   if (lines2.some((l) => l === void 0) || !section2.blocks.some((b) => b.type !== "notice")) return void 0;
-  return lines2.join(" ");
+  const line = lines2.join(" ");
+  const own = `${section2.heading}: `;
+  return line.startsWith(own) ? line.slice(own.length) : line;
 }
 function dropEmptySlots(build) {
   const dropped = /* @__PURE__ */ new Set();
@@ -6552,6 +6554,13 @@ function makeBands(values, breaks) {
       of: (value) => 1 + edges.filter((edge) => edge <= value).length
     };
   }
+  const distinct = [...new Set(values)].sort((a, b) => a - b);
+  if (distinct.length > 0 && distinct.length < BAND_COUNT) {
+    return {
+      ranges: distinct.map((value, i) => ({ band: i + 1, from: value, to: value })),
+      of: (value) => 1 + Math.max(0, distinct.indexOf(value))
+    };
+  }
   const least = values.length === 0 ? 0 : Math.min(...values);
   const greatest = values.length === 0 ? 0 : Math.max(...values);
   const step = (greatest - least) / BAND_COUNT;
@@ -6561,7 +6570,11 @@ function makeBands(values, breaks) {
   };
 }
 function bandLegend(bands) {
-  return bands.ranges.map((r) => `band ${r.band}: ${formatNumber(r.from)} to ${formatNumber(r.to)}`).join(", ");
+  return bands.ranges.map((r) => r.from === r.to ? `band ${r.band}: ${formatNumber(r.from)}` : `band ${r.band}: ${formatNumber(r.from)} to ${formatNumber(r.to)}`).join(", ");
+}
+function bandCountText(bands) {
+  const words2 = ["no bands", "one band", "two bands", "three bands", "four bands", "five bands"];
+  return words2[bands.ranges.length] ?? `${bands.ranges.length} bands`;
 }
 
 // packages/report/src/components/treemap.ts
@@ -6703,7 +6716,7 @@ function treemapHtml(data) {
     })
   ].join("\n");
   const left = omissions(prepared);
-  const notes3 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in five bands, and each tile prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.</p>
+  const notes3 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in ${bandCountText(prepared.bands)}, and each tile prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.</p>
 ${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>
 `}`;
   return figureHtml({
@@ -6990,7 +7003,7 @@ function matrixHtml(data) {
     height: COLUMN_LABEL + data.rows.length * CELL_H + 4,
     drawing: [...labels, ...cells].join("\n"),
     table: htmlTable(`${data.title}: ${data.valueLabel}`, [{ label: "" }, ...data.columns.map((c) => ({ label: c, align: "right" }))], data.rows.map((r, i) => [escapeHtml(r), ...data.columns.map((_, j) => escapeHtml(display(data.cells[i]?.[j] ?? null)))]), { rowHeaders: true }),
-    notes: `<p class="legend">Colour is ${escapeHtml(data.valueLabel)} in five bands, and each cell prints its value: ${escapeHtml(bandLegend(bands))}. Hatched cells have no value.</p>
+    notes: `<p class="legend">Colour is ${escapeHtml(data.valueLabel)} in ${bandCountText(bands)}, and each cell prints its value: ${escapeHtml(bandLegend(bands))}. Hatched cells have no value.</p>
 `
   });
 }
@@ -7635,23 +7648,25 @@ function refusalLine(refusals) {
 async function dryRun(context, candidate, settings, files, go) {
   const plan = planMove(candidate, settings, files, {}, go);
   const base = { destination: plan.destination, filesMoved: plan.operations.length, refusal: plan.refusals.length === 0 ? null : refusalLine(plan.refusals) };
-  if (plan.refusals.length > 0) return { ...base, rewrites: 0, filesRewritten: 0, failure: null, warnings: [] };
+  if (plan.refusals.length > 0) return { ...base, rewrites: 0, filesRewritten: 0, filesEdited: 0, failure: null, warnings: [] };
   try {
     const { performMove } = await import("./chunk-FIFNIFUE.mjs");
     const tree = await treeFromRef(context.repo.root, "HEAD");
     const moved = await performMove(tree, plan.operations);
     if ((moved.breaks ?? []).length > 0) {
-      return { ...base, refusal: refusalLine((moved.breaks ?? []).map((detail) => ({ code: "does-not-compile", detail }))), rewrites: 0, filesRewritten: 0, failure: null, warnings: [] };
+      return { ...base, refusal: refusalLine((moved.breaks ?? []).map((detail) => ({ code: "does-not-compile", detail }))), rewrites: 0, filesRewritten: 0, filesEdited: 0, failure: null, warnings: [] };
     }
-    return { ...base, rewrites: moved.rewrites.length, filesRewritten: new Set(moved.rewrites.map((r) => r.path)).size, failure: null, warnings: moved.warnings };
+    const landed = new Set(plan.operations.map((operation) => operation.to));
+    const edited = [...moved.texts.keys()].filter((path) => !landed.has(path));
+    return { ...base, rewrites: moved.rewrites.length, filesRewritten: new Set(moved.rewrites.map((r) => r.path)).size, filesEdited: edited.length, failure: null, warnings: moved.warnings };
   } catch (error) {
-    return { ...base, rewrites: 0, filesRewritten: 0, failure: error instanceof Error ? error.message : String(error), warnings: [] };
+    return { ...base, rewrites: 0, filesRewritten: 0, filesEdited: 0, failure: error instanceof Error ? error.message : String(error), warnings: [] };
   }
 }
 function planText(plan) {
   if (plan.refusal !== null) return `no plan: ${plan.refusal}`;
   if (plan.failure !== null) return `the dry run failed: ${plan.failure}`;
-  const moved = `${plural2(plan.filesMoved, "file")} moved to ${folderText(plan.destination)}, ${plural2(plan.rewrites, "import")} rewritten in ${plural2(plan.filesRewritten, "file")}`;
+  const moved = `${plural2(plan.filesMoved, "file")} moved to ${folderText(plan.destination)}, ${plural2(plan.rewrites, "import")} rewritten in ${plural2(plan.filesRewritten, "file")}; ${plural2(plan.filesEdited, "file")} outside the move edited to follow it`;
   if (plan.warnings.length === 0) return moved;
   const shown2 = plan.warnings.slice(0, WARNINGS_SHOWN).map((warning) => clip(warning, WARNING_CHARS));
   const rest = plan.warnings.length > shown2.length ? `; and ${plan.warnings.length - shown2.length} more` : "";

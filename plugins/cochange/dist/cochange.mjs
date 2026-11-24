@@ -10143,7 +10143,9 @@ function emptyNotice(block) {
 function emptySection(section2) {
   const lines2 = section2.blocks.map((b) => b.type === "notice" ? b.text : emptyNotice(b));
   if (lines2.some((l) => l === void 0) || !section2.blocks.some((b) => b.type !== "notice")) return void 0;
-  return lines2.join(" ");
+  const line = lines2.join(" ");
+  const own = `${section2.heading}: `;
+  return line.startsWith(own) ? line.slice(own.length) : line;
 }
 function dropEmptySlots(build) {
   const dropped = /* @__PURE__ */ new Set();
@@ -10180,6 +10182,13 @@ function makeBands(values, breaks) {
       of: (value) => 1 + edges.filter((edge) => edge <= value).length
     };
   }
+  const distinct = [...new Set(values)].sort((a, b) => a - b);
+  if (distinct.length > 0 && distinct.length < BAND_COUNT) {
+    return {
+      ranges: distinct.map((value, i) => ({ band: i + 1, from: value, to: value })),
+      of: (value) => 1 + Math.max(0, distinct.indexOf(value))
+    };
+  }
   const least = values.length === 0 ? 0 : Math.min(...values);
   const greatest = values.length === 0 ? 0 : Math.max(...values);
   const step = (greatest - least) / BAND_COUNT;
@@ -10189,7 +10198,11 @@ function makeBands(values, breaks) {
   };
 }
 function bandLegend(bands) {
-  return bands.ranges.map((r) => `band ${r.band}: ${formatNumber(r.from)} to ${formatNumber(r.to)}`).join(", ");
+  return bands.ranges.map((r) => r.from === r.to ? `band ${r.band}: ${formatNumber(r.from)}` : `band ${r.band}: ${formatNumber(r.from)} to ${formatNumber(r.to)}`).join(", ");
+}
+function bandCountText(bands) {
+  const words2 = ["no bands", "one band", "two bands", "three bands", "four bands", "five bands"];
+  return words2[bands.ranges.length] ?? `${bands.ranges.length} bands`;
 }
 
 // packages/report/src/components/treemap.ts
@@ -10331,7 +10344,7 @@ function treemapHtml(data) {
     })
   ].join("\n");
   const left = omissions(prepared);
-  const notes3 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in five bands, and each tile prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.</p>
+  const notes3 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in ${bandCountText(prepared.bands)}, and each tile prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.</p>
 ${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>
 `}`;
   return figureHtml({
@@ -10618,7 +10631,7 @@ function matrixHtml(data) {
     height: COLUMN_LABEL + data.rows.length * CELL_H + 4,
     drawing: [...labels, ...cells].join("\n"),
     table: htmlTable(`${data.title}: ${data.valueLabel}`, [{ label: "" }, ...data.columns.map((c) => ({ label: c, align: "right" }))], data.rows.map((r, i) => [escapeHtml(r), ...data.columns.map((_, j) => escapeHtml(display(data.cells[i]?.[j] ?? null)))]), { rowHeaders: true }),
-    notes: `<p class="legend">Colour is ${escapeHtml(data.valueLabel)} in five bands, and each cell prints its value: ${escapeHtml(bandLegend(bands))}. Hatched cells have no value.</p>
+    notes: `<p class="legend">Colour is ${escapeHtml(data.valueLabel)} in ${bandCountText(bands)}, and each cell prints its value: ${escapeHtml(bandLegend(bands))}. Hatched cells have no value.</p>
 `
   });
 }
@@ -11908,9 +11921,10 @@ var EXPECTED_LABEL = {
   "fixture-or-golden": "a fixture or golden file and what it checks",
   "header-and-source": "a C or C++ header and its source file",
   "build-manifests": "two build or packaging manifests of one toolchain",
-  "same-format-data": "two data or configuration files of one format"
+  "same-format-data": "two data or configuration files of one format",
+  "non-code-file": "a file that is not code, such as documentation or configuration, and another file"
 };
-var EXPECTED_REASONS = ["test", "two-tests", "fixture-or-golden", "header-and-source", "build-manifests", "same-format-data"];
+var EXPECTED_REASONS = ["test", "two-tests", "fixture-or-golden", "header-and-source", "build-manifests", "same-format-data", "non-code-file"];
 var FIXTURE_FOLDER = /(^|\/)(testdata|test-data|fixtures?|__fixtures__|__snapshots__|__mocks__|snapshots?|goldens?|golden-files)\//i;
 var FIXTURE_NAME = /[._-](golden|snap|approved|received)(\.[^/.]+)?$/i;
 function isFixturePath(path) {
@@ -11956,6 +11970,7 @@ function expectedReason(a, b, isTest) {
   const family = manifestFamily(a.path);
   if (family !== null && family === manifestFamily(b.path)) return "build-manifests";
   if (!a.code && !b.code && extension(a.path) === extension(b.path)) return "same-format-data";
+  if (!a.code || !b.code) return "non-code-file";
   return null;
 }
 var SOURCE_LIST_NAME = /^(CMakeLists\.txt|.*\.cmake|Makefile|GNUmakefile|.*\.mk|meson\.build|BUILD|BUILD\.bazel|Android\.bp|SConscript|SConstruct|.*\.(vcxproj|pro|pri))$/;
@@ -12698,6 +12713,7 @@ function make(id, factor, summary, evidence, fromPlacement = false) {
     step: entry.step,
     summary,
     evidence,
+    ...factor?.evidenceTotal === void 0 || evidence !== factor.evidence ? {} : { evidenceTotal: factor.evidenceTotal },
     response: entry.response,
     redFlag: entry.redFlag,
     fromPlacement
@@ -12946,7 +12962,7 @@ function evidenceItems(records, total = records.length) {
 function findingItem(finding) {
   const files = finding.evidence.flatMap((record2) => text3(record2.file) ?? text3(record2.path) ?? []);
   const label = clip2(files.length === 0 ? finding.summary : `${finding.summary}: ${files.slice(0, 3).join(", ")}${files.length > 3 ? ", ..." : ""}`, 220);
-  const { items, omitted: omitted2 } = evidenceItems(finding.evidence);
+  const { items, omitted: omitted2 } = evidenceItems(finding.evidence, finding.evidenceTotal);
   return {
     slot: itemSlot(
       `finding-${finding.id}`,
@@ -13073,7 +13089,7 @@ function factorBlocks(assessed, compact) {
         { key: "guideline", label: "Guideline" },
         { key: "evidence", label: "Evidence items", align: "right" }
       ],
-      rows: factors.map((f) => ({ factor: f.name, band: bandText(f), value: valueText(f), guideline: guidelineText(f), evidence: f.evidence.length }))
+      rows: factors.map((f) => ({ factor: f.name, band: bandText(f), value: valueText(f), guideline: guidelineText(f), evidence: f.evidenceTotal ?? f.evidence.length }))
     }
   ];
   const unavailable3 = factors.filter((f) => f.status !== "ok");
@@ -13249,7 +13265,7 @@ function hotspotBlocks(assessed) {
   ];
   blocks.push({
     type: "ranked-table",
-    caption: "Hot files the change touches, by revisions in the window",
+    caption: "Hot files the change touches, by revisions in the window ending at the base commit (the change itself is not counted)",
     noun: "files",
     total: factor.evidenceTotal ?? factor.evidence.length,
     emptyText: "The change touches no hot file.",
@@ -13550,7 +13566,7 @@ function expectedSection(expected, settings) {
   const counts = EXPECTED_REASONS.map((reason) => ({ reason, count: expected.filter((e) => e.reason === reason).length })).filter((c) => c.count > 0);
   const table = cappedTable(
     {
-      caption: `Expected pairs, listed apart and not judged: two test files, a test, fixture or golden file with what it checks, a C or C++ header with its source file, two build manifests of one toolchain, or two data files of one format. ${PAIR_ORDER}`,
+      caption: `Expected pairs, listed apart and not judged: two test files, a test, fixture or golden file with what it checks, a C or C++ header with its source file, two build manifests of one toolchain, two data files of one format, or a file that is not code (documentation, configuration) with any other file. ${PAIR_ORDER}`,
       noun: "pairs",
       total: expected.length,
       emptyText: "No pair is an expected pair: every pair that reaches the support floor is a pair of production files.",
@@ -14173,15 +14189,15 @@ function historyBlocks(trends, paths, omitted2) {
   const blocks = [
     {
       type: "ranked-table",
-      caption: "Complexity and size of the first friction files across their history (cochange trend)",
+      caption: "Complexity and size of the first friction files across their history (cochange trend). The direction compares the first sample with the last sample only: worsening is a rise of at least the guideline, improving a fall of at least the guideline, and a fall in the last step does not change it",
       noun: "friction files",
       total: paths.length + omitted2,
       emptyText: "No friction file has a history to sample.",
       columns: [
         { key: "path", label: "File" },
         { key: "revisions", label: "Revisions in history", align: "right" },
-        { key: "direction", label: "Direction" },
-        { key: "change", label: "Change in complexity (%)", align: "right", guideline: { value: TREND_GUIDELINE * 100, note: "the trend guideline for worsening" } },
+        { key: "direction", label: "Direction, first sample to last sample" },
+        { key: "change", label: "Change in complexity, first sample to last sample (%)", align: "right", guideline: { value: TREND_GUIDELINE * 100, note: "the trend guideline for worsening" } },
         { key: "peak", label: "Peak complexity", align: "right" },
         { key: "linesFirst", label: "Lines at first sample", align: "right" },
         { key: "linesLast", label: "Lines at last sample", align: "right" }

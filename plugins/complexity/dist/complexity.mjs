@@ -21698,7 +21698,9 @@ function emptyNotice(block) {
 function emptySection(section2) {
   const lines2 = section2.blocks.map((b) => b.type === "notice" ? b.text : emptyNotice(b));
   if (lines2.some((l) => l === void 0) || !section2.blocks.some((b) => b.type !== "notice")) return void 0;
-  return lines2.join(" ");
+  const line = lines2.join(" ");
+  const own = `${section2.heading}: `;
+  return line.startsWith(own) ? line.slice(own.length) : line;
 }
 
 // packages/report/src/components/bands.ts
@@ -21715,6 +21717,13 @@ function makeBands(values, breaks) {
       of: (value) => 1 + edges.filter((edge) => edge <= value).length
     };
   }
+  const distinct = [...new Set(values)].sort((a, b) => a - b);
+  if (distinct.length > 0 && distinct.length < BAND_COUNT) {
+    return {
+      ranges: distinct.map((value, i2) => ({ band: i2 + 1, from: value, to: value })),
+      of: (value) => 1 + Math.max(0, distinct.indexOf(value))
+    };
+  }
   const least = values.length === 0 ? 0 : Math.min(...values);
   const greatest = values.length === 0 ? 0 : Math.max(...values);
   const step = (greatest - least) / BAND_COUNT;
@@ -21724,7 +21733,11 @@ function makeBands(values, breaks) {
   };
 }
 function bandLegend(bands) {
-  return bands.ranges.map((r) => `band ${r.band}: ${formatNumber(r.from)} to ${formatNumber(r.to)}`).join(", ");
+  return bands.ranges.map((r) => r.from === r.to ? `band ${r.band}: ${formatNumber(r.from)}` : `band ${r.band}: ${formatNumber(r.from)} to ${formatNumber(r.to)}`).join(", ");
+}
+function bandCountText(bands) {
+  const words2 = ["no bands", "one band", "two bands", "three bands", "four bands", "five bands"];
+  return words2[bands.ranges.length] ?? `${bands.ranges.length} bands`;
 }
 
 // packages/report/src/components/treemap.ts
@@ -21866,7 +21879,7 @@ function treemapHtml(data) {
     })
   ].join("\n");
   const left = omissions(prepared);
-  const notes3 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in five bands, and each tile prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.</p>
+  const notes3 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in ${bandCountText(prepared.bands)}, and each tile prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.</p>
 ${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>
 `}`;
   return figureHtml({
@@ -22153,7 +22166,7 @@ function matrixHtml(data) {
     height: COLUMN_LABEL + data.rows.length * CELL_H + 4,
     drawing: [...labels, ...cells].join("\n"),
     table: htmlTable(`${data.title}: ${data.valueLabel}`, [{ label: "" }, ...data.columns.map((c) => ({ label: c, align: "right" }))], data.rows.map((r, i2) => [escapeHtml(r), ...data.columns.map((_, j) => escapeHtml(display(data.cells[i2]?.[j] ?? null)))]), { rowHeaders: true }),
-    notes: `<p class="legend">Colour is ${escapeHtml(data.valueLabel)} in five bands, and each cell prints its value: ${escapeHtml(bandLegend(bands))}. Hatched cells have no value.</p>
+    notes: `<p class="legend">Colour is ${escapeHtml(data.valueLabel)} in ${bandCountText(bands)}, and each cell prints its value: ${escapeHtml(bandLegend(bands))}. Hatched cells have no value.</p>
 `
   });
 }

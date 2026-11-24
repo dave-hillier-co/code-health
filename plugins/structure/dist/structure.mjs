@@ -21257,7 +21257,7 @@ var command7 = analysisCommand(name8, {
       results: rows7,
       columns: ["id", "featureCount", "revisions", "signals"],
       notices: [
-        `Omitted ${omitted3.files} of ${omitted3.considered} files with at least ${settings.minRevisions} changes: each reached fewer than ${omitted3.minSignals} of the 4 signals (${omitted3.withoutDiffs} of them without reading their diffs, because the other three signals left them unable to reach ${omitted3.minSignals}). ${omitted3.belowMinRevisions} more files have fewer than ${settings.minRevisions} changes`
+        `${rows7.length === 0 ? `No file is listed as a hub: ${omitted3.files === omitted3.considered ? "each of" : `${omitted3.files} of`} the ${omitted3.considered} files with at least ${settings.minRevisions} changes` : `Omitted ${omitted3.files} of ${omitted3.considered} files with at least ${settings.minRevisions} changes: each`} reached fewer than ${omitted3.minSignals} of the 4 signals (${omitted3.withoutDiffs} of them without reading their diffs, because the other three signals left them unable to reach ${omitted3.minSignals}). ${omitted3.belowMinRevisions} more files have fewer than ${settings.minRevisions} changes.`
       ],
       extra: { omitted: omitted3, population: { modules: model.graph.filesOf.size, eligibleChanges: model.activity.eligibleChanges } }
     };
@@ -25111,7 +25111,9 @@ function emptyNotice(block) {
 function emptySection(section2) {
   const lines = section2.blocks.map((b) => b.type === "notice" ? b.text : emptyNotice(b));
   if (lines.some((l) => l === void 0) || !section2.blocks.some((b) => b.type !== "notice")) return void 0;
-  return lines.join(" ");
+  const line = lines.join(" ");
+  const own = `${section2.heading}: `;
+  return line.startsWith(own) ? line.slice(own.length) : line;
 }
 function dropEmptySlots(build) {
   const dropped2 = /* @__PURE__ */ new Set();
@@ -25148,6 +25150,13 @@ function makeBands(values, breaks) {
       of: (value) => 1 + edges.filter((edge) => edge <= value).length
     };
   }
+  const distinct = [...new Set(values)].sort((a, b) => a - b);
+  if (distinct.length > 0 && distinct.length < BAND_COUNT) {
+    return {
+      ranges: distinct.map((value, i2) => ({ band: i2 + 1, from: value, to: value })),
+      of: (value) => 1 + Math.max(0, distinct.indexOf(value))
+    };
+  }
   const least = values.length === 0 ? 0 : Math.min(...values);
   const greatest = values.length === 0 ? 0 : Math.max(...values);
   const step = (greatest - least) / BAND_COUNT;
@@ -25157,7 +25166,11 @@ function makeBands(values, breaks) {
   };
 }
 function bandLegend(bands) {
-  return bands.ranges.map((r) => `band ${r.band}: ${formatNumber(r.from)} to ${formatNumber(r.to)}`).join(", ");
+  return bands.ranges.map((r) => r.from === r.to ? `band ${r.band}: ${formatNumber(r.from)}` : `band ${r.band}: ${formatNumber(r.from)} to ${formatNumber(r.to)}`).join(", ");
+}
+function bandCountText(bands) {
+  const words2 = ["no bands", "one band", "two bands", "three bands", "four bands", "five bands"];
+  return words2[bands.ranges.length] ?? `${bands.ranges.length} bands`;
 }
 
 // packages/report/src/components/treemap.ts
@@ -25299,7 +25312,7 @@ function treemapHtml(data) {
     })
   ].join("\n");
   const left = omissions(prepared);
-  const notes3 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in five bands, and each tile prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.</p>
+  const notes3 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in ${bandCountText(prepared.bands)}, and each tile prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.</p>
 ${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>
 `}`;
   return figureHtml({
@@ -25586,7 +25599,7 @@ function matrixHtml(data) {
     height: COLUMN_LABEL + data.rows.length * CELL_H + 4,
     drawing: [...labels, ...cells].join("\n"),
     table: htmlTable(`${data.title}: ${data.valueLabel}`, [{ label: "" }, ...data.columns.map((c) => ({ label: c, align: "right" }))], data.rows.map((r, i2) => [escapeHtml(r), ...data.columns.map((_, j) => escapeHtml(display(data.cells[i2]?.[j] ?? null)))]), { rowHeaders: true }),
-    notes: `<p class="legend">Colour is ${escapeHtml(data.valueLabel)} in five bands, and each cell prints its value: ${escapeHtml(bandLegend(bands))}. Hatched cells have no value.</p>
+    notes: `<p class="legend">Colour is ${escapeHtml(data.valueLabel)} in ${bandCountText(bands)}, and each cell prints its value: ${escapeHtml(bandLegend(bands))}. Hatched cells have no value.</p>
 `
   });
 }
@@ -26335,6 +26348,7 @@ function cycleBlocks(rows7, projectFolderCycles) {
       caption: "Import cycles, largest first",
       noun: "cycles",
       total: rows7.length,
+      emptyText: "No import cycle at the default level.",
       columns: [
         { key: "modules", label: "Modules in the cycle" },
         { key: "size", label: "Size", align: "right" },
@@ -26387,7 +26401,6 @@ function cycleBlocks(rows7, projectFolderCycles) {
       maxChars: 400
     });
   });
-  if (rows7.length === 0) blocks.push({ type: "notice", level: "notice", text: "No import cycle at the default level." });
   if (projectFolderCycles !== void 0) blocks.push({ type: "notice", level: "notice", text: projectFolderCyclesText(projectFolderCycles) });
   return { blocks, slots };
 }
@@ -26521,6 +26534,7 @@ function hubBlocks(rows7, notices) {
       caption: "Registration hubs: files every feature edits",
       noun: "hubs",
       total: rows7.length,
+      emptyText: notices.join(" "),
       columns: [
         { key: "file", label: "File" },
         { key: "reached", label: "Signals reached of 4", align: "right" },
@@ -26536,7 +26550,7 @@ function hubBlocks(rows7, notices) {
         revisions: hub.revisions
       }))
     },
-    ...notices.map((text3) => ({ type: "notice", level: "notice", text: text3 }))
+    ...rows7.length === 0 ? [] : notices.map((text3) => ({ type: "notice", level: "notice", text: text3 }))
   ];
 }
 function includeBlocks(include) {
