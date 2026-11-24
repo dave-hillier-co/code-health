@@ -497,8 +497,8 @@ function shapeResults(results, options) {
 function ratioOf(row) {
   const ranking = row.ranking;
   if (typeof ranking !== "object" || ranking === null) return 0;
-  const ratio = ranking.ratio;
-  return typeof ratio === "number" ? ratio : 0;
+  const ratio2 = ranking.ratio;
+  return typeof ratio2 === "number" ? ratio2 : 0;
 }
 function byScoreThenPath(a, b) {
   const ratioA = ratioOf(a);
@@ -1425,9 +1425,9 @@ function detectImportedHistory(view, treeFiles, options = {}) {
     const kept = new Set(
       commit.changes.filter((c2) => c2.status === "A" && current.has(c2.fileId)).map((c2) => c2.fileId)
     );
-    const ratio = kept.size / treeFiles.length;
-    if (ratio >= share) {
-      found.push({ sha: commit.sha, files: kept.size, share: ratio, committerDate: commit.committerDate });
+    const ratio2 = kept.size / treeFiles.length;
+    if (ratio2 >= share) {
+      found.push({ sha: commit.sha, files: kept.size, share: ratio2, committerDate: commit.committerDate });
     }
   }
   return found;
@@ -1553,22 +1553,22 @@ async function filterHistory(repoPath, view, options = {}) {
   for (const commit of view.commits) {
     if (commitDropped(commit)) continue;
     const files = [];
-    for (const change2 of commit.changes) {
-      if (isPureRename(change2)) {
+    for (const change3 of commit.changes) {
+      if (isPureRename(change3)) {
         dropped.pureRenames++;
-      } else if (builtinExcluded(change2.path)) {
-      } else if (excluded(change2.path)) {
+      } else if (builtinExcluded(change3.path)) {
+      } else if (excluded(change3.path)) {
         dropped.excludedByGlob++;
-      } else if (lockfileSet.has(change2.path.slice(change2.path.lastIndexOf("/") + 1))) {
+      } else if (lockfileSet.has(change3.path.slice(change3.path.lastIndexOf("/") + 1))) {
         dropped.lockfiles++;
-      } else if (attributes.generated.has(change2.path)) {
+      } else if (attributes.generated.has(change3.path)) {
         dropped.generated++;
-        recordDropped("generated", change2.path);
-      } else if (attributes.vendored.has(change2.path)) {
+        recordDropped("generated", change3.path);
+      } else if (attributes.vendored.has(change3.path)) {
         dropped.vendored++;
-        recordDropped("vendored", change2.path);
+        recordDropped("vendored", change3.path);
       } else {
-        files.push(change2);
+        files.push(change3);
       }
     }
     if (files.length === 0) {
@@ -2360,17 +2360,17 @@ async function readHistory3(context, settings) {
     const churn = /* @__PURE__ */ new Map();
     const changes = [];
     const changesOf = /* @__PURE__ */ new Map();
-    for (const change2 of analysis.filtered.changes) {
-      const inWindow2 = change2.committerDate >= since && change2.committerDate <= until;
-      for (const file of change2.files) {
+    for (const change3 of analysis.filtered.changes) {
+      const inWindow2 = change3.committerDate >= since && change3.committerDate <= until;
+      for (const file of change3.files) {
         const first = firstSeen.get(file.fileId);
-        if (first === void 0 || change2.committerDate < first) firstSeen.set(file.fileId, change2.committerDate);
+        if (first === void 0 || change3.committerDate < first) firstSeen.set(file.fileId, change3.committerDate);
         const last = lastChanged.get(file.fileId);
-        if (last === void 0 || change2.committerDate > last) lastChanged.set(file.fileId, change2.committerDate);
+        if (last === void 0 || change3.committerDate > last) lastChanged.set(file.fileId, change3.committerDate);
         if (inWindow2) churn.set(file.fileId, (churn.get(file.fileId) ?? 0) + (file.added ?? 0) + (file.deleted ?? 0));
       }
-      if (inWindow2 && !change2.oversized) {
-        const files = new Set(change2.files.map((file) => file.fileId));
+      if (inWindow2 && !change3.oversized) {
+        const files = new Set(change3.files.map((file) => file.fileId));
         for (const file of files) changesOf.set(file, [...changesOf.get(file) ?? [], changes.length]);
         changes.push(files);
       }
@@ -2729,6 +2729,28 @@ function vagueSegment(path, vagueNames) {
   const last = segments.pop();
   const stem = last.slice(0, last.indexOf(".") === -1 ? void 0 : last.indexOf("."));
   return [...segments, stem].find((segment3) => vagueNames.includes(segment3));
+}
+
+// packages/locality/src/structure-metrics.ts
+function structureMetricsOf(project, model) {
+  const folders = /* @__PURE__ */ new Map();
+  for (const file of project.production) folders.set(folderOf(file), (folders.get(folderOf(file)) ?? 0) + 1);
+  return {
+    totalWeightedDistance: model.edges.filter((edge) => model.reachable.has(edge.from)).reduce((sum, edge) => sum + edge.weight * treeDistance(edge.from, edge.to), 0),
+    singleFileFolders: [...folders.values()].filter((count3) => count3 === 1).length,
+    maxDepth: Math.max(0, ...[...folders.keys()].map(depthOf))
+  };
+}
+function gamingCheck(before, after) {
+  if (before === null || after.totalWeightedDistance >= before.totalWeightedDistance) return { flagged: false, reasons: [] };
+  const reasons = [];
+  if (after.singleFileFolders > before.singleFileFolders) {
+    reasons.push(`single-file folders rose from ${before.singleFileFolders} to ${after.singleFileFolders} while weighted import distance fell`);
+  }
+  if (after.maxDepth > before.maxDepth) {
+    reasons.push(`maximum folder depth rose from ${before.maxDepth} to ${after.maxDepth} while weighted import distance fell`);
+  }
+  return { flagged: reasons.length > 0, reasons };
 }
 
 // packages/locality/src/candidates.ts
@@ -3182,19 +3204,13 @@ function analyseProject(project, model, settings, history) {
   for (const candidate of all) candidate.fanInPercentile = percentileRank(candidate.fanIn, fanIns);
   const byRecommendation = {};
   for (const candidate of reported) byRecommendation[candidate.recommendation] = (byRecommendation[candidate.recommendation] ?? 0) + 1;
-  const folders = /* @__PURE__ */ new Map();
-  for (const file of project.production) folders.set(folderOf(file), (folders.get(folderOf(file)) ?? 0) + 1);
   return {
     candidates: reported,
     omitted: omitted2,
     unproposed,
     placed,
     summary: { files: project.production.length, units: outcomes.length, placed: placed.length, omitted: omittedByReason, byRecommendation },
-    metrics: {
-      totalWeightedDistance: model.edges.filter((edge) => model.reachable.has(edge.from)).reduce((sum, edge) => sum + edge.weight * treeDistance(edge.from, edge.to), 0),
-      singleFileFolders: [...folders.values()].filter((count3) => count3 === 1).length,
-      maxDepth: Math.max(0, ...[...folders.keys()].map(depthOf))
-    }
+    metrics: structureMetricsOf(project, model)
   };
 }
 
@@ -5263,7 +5279,7 @@ async function identitiesAt(root, view, commit, paths) {
   const latest2 = /* @__PURE__ */ new Map();
   for (const candidate of view.commits) {
     if (!ancestors.has(candidate.sha)) continue;
-    for (const change2 of candidate.changes) latest2.set(change2.path, change2.fileId);
+    for (const change3 of candidate.changes) latest2.set(change3.path, change3.fileId);
   }
   return new Map([...paths].map((path) => [path, latest2.get(path) ?? path]));
 }
@@ -5298,7 +5314,7 @@ function percentile(values, p) {
 
 // packages/locality/src/measure-spread.ts
 function summariseSpread(changes) {
-  const spreads = changes.filter((change2) => !change2.oversized).map((change2) => changeSpread(change2.files.map((file) => file.path)));
+  const spreads = changes.filter((change3) => !change3.oversized).map((change3) => changeSpread(change3.files.map((file) => file.path)));
   return {
     changes: changes.length,
     measured: spreads.length,
@@ -5308,10 +5324,10 @@ function summariseSpread(changes) {
   };
 }
 function changesTouching(changes, fileIds) {
-  return changes.filter((change2) => change2.files.some((file) => fileIds.has(file.fileId)));
+  return changes.filter((change3) => change3.files.some((file) => fileIds.has(file.fileId)));
 }
 function changesBetween(changes, since, until) {
-  return changes.filter((change2) => change2.committerDate >= since && change2.committerDate < until);
+  return changes.filter((change3) => change3.committerDate >= since && change3.committerDate < until);
 }
 
 // packages/locality/src/measure-window.ts
@@ -5355,18 +5371,18 @@ async function actionsSince(root, view, baseline2, plugin) {
     if (!later.has(commit.sha)) continue;
     const trailers = codeHealthTrailers(commit.message).filter((trailer) => trailer.plugin === plugin);
     if (trailers.length === 0) {
-      for (const change2 of commit.changes) {
-        if (change2.status === "R" && change2.oldPath !== null) untrailered.push({ sha: commit.sha, rule: "", from: change2.oldPath, to: change2.path, date: commit.committerDate });
-        else if (change2.status === "D") untrailered.push({ sha: commit.sha, rule: "", from: change2.path, to: null, date: commit.committerDate });
+      for (const change3 of commit.changes) {
+        if (change3.status === "R" && change3.oldPath !== null) untrailered.push({ sha: commit.sha, rule: "", from: change3.oldPath, to: change3.path, date: commit.committerDate });
+        else if (change3.status === "D") untrailered.push({ sha: commit.sha, rule: "", from: change3.path, to: null, date: commit.committerDate });
       }
       continue;
     }
     commits++;
     latest2 = latest2 === null ? commit.committerDate : Math.max(latest2, commit.committerDate);
     const rule = trailers[0].rule;
-    for (const change2 of commit.changes) {
-      if (change2.status === "R" && change2.oldPath !== null) actions.push({ sha: commit.sha, rule, from: change2.oldPath, to: change2.path, date: commit.committerDate });
-      else if (change2.status === "D") actions.push({ sha: commit.sha, rule, from: change2.path, to: null, date: commit.committerDate });
+    for (const change3 of commit.changes) {
+      if (change3.status === "R" && change3.oldPath !== null) actions.push({ sha: commit.sha, rule, from: change3.oldPath, to: change3.path, date: commit.committerDate });
+      else if (change3.status === "D") actions.push({ sha: commit.sha, rule, from: change3.path, to: null, date: commit.committerDate });
     }
   }
   return { actions, untrailered, commits, latest: latest2 };
@@ -5375,17 +5391,132 @@ function countSuiteCommits(view, plugin) {
   return view.commits.filter((commit) => codeHealthTrailers(commit.message).some((trailer) => trailer.plugin === plugin)).length;
 }
 
-// packages/locality/src/structure-metrics.ts
-function gamingCheck(before, after) {
-  if (before === null || after.totalWeightedDistance >= before.totalWeightedDistance) return { flagged: false, reasons: [] };
-  const reasons = [];
-  if (after.singleFileFolders > before.singleFileFolders) {
-    reasons.push(`single-file folders rose from ${before.singleFileFolders} to ${after.singleFileFolders} while weighted import distance fell`);
+// packages/locality/src/change-distance.ts
+function revisionEdges(model) {
+  return model.edges.map((edge) => ({ from: edge.from, to: edge.to, weight: edge.weight, counted: model.reachable.has(edge.from) }));
+}
+var keyOf = (from, to) => `${from}\0${to}`;
+var ratio = (numerator, denominator) => denominator === 0 ? null : numerator / denominator;
+function summarise(edges) {
+  const counted = edges.filter((edge) => edge.counted);
+  const total = counted.reduce((sum, edge) => sum + edge.weight * treeDistance(edge.from, edge.to), 0);
+  const uses = counted.reduce((sum, edge) => sum + edge.weight, 0);
+  return { totalUseDistance: total, edges: counted.length, uses, meanDistancePerUse: ratio(total, uses) };
+}
+function changeDistance(before, after, renames) {
+  const later = (path) => renames.get(path) ?? path;
+  const earlier = new Map(before.map((edge) => [keyOf(later(edge.from), later(edge.to)), edge]));
+  const seen = /* @__PURE__ */ new Set();
+  const parts2 = {
+    added: { edges: 0, uses: 0, distance: 0, meanDistancePerUse: null, ratioToCodebaseMean: null },
+    removed: { edges: 0, uses: 0, distance: 0, meanDistancePerUse: null },
+    moved: { edges: 0, distance: 0 },
+    reweighted: { edges: 0, uses: 0, distance: 0 },
+    reachability: { edges: 0, distance: 0 }
+  };
+  const rows8 = [];
+  for (const edge of after) {
+    const key = keyOf(edge.from, edge.to);
+    const was = earlier.get(key);
+    seen.add(key);
+    const distance = treeDistance(edge.from, edge.to);
+    if (was === void 0) {
+      if (!edge.counted) continue;
+      parts2.added.edges++;
+      parts2.added.uses += edge.weight;
+      parts2.added.distance += edge.weight * distance;
+      rows8.push({ from: edge.from, to: edge.to, kind: "added", before: null, after: { weight: edge.weight, distance }, change: edge.weight * distance });
+      continue;
+    }
+    const wasDistance = treeDistance(was.from, was.to);
+    const sides = { before: { weight: was.weight, distance: wasDistance }, after: { weight: edge.weight, distance } };
+    if (was.counted !== edge.counted) {
+      const change3 = edge.counted ? edge.weight * distance : -was.weight * wasDistance;
+      parts2.reachability.edges++;
+      parts2.reachability.distance += change3;
+      rows8.push({ from: edge.from, to: edge.to, kind: "reachability", ...sides, change: change3 });
+      continue;
+    }
+    if (!edge.counted) continue;
+    const byMove = was.weight * (distance - wasDistance);
+    const byWeight = (edge.weight - was.weight) * distance;
+    if (distance !== wasDistance) {
+      parts2.moved.edges++;
+      parts2.moved.distance += byMove;
+    }
+    if (edge.weight !== was.weight) {
+      parts2.reweighted.edges++;
+      parts2.reweighted.uses += edge.weight - was.weight;
+      parts2.reweighted.distance += byWeight;
+    }
+    if (distance !== wasDistance || edge.weight !== was.weight) {
+      rows8.push({ from: edge.from, to: edge.to, kind: distance !== wasDistance ? "moved" : "reweighted", ...sides, change: byMove + byWeight });
+    }
   }
-  if (after.maxDepth > before.maxDepth) {
-    reasons.push(`maximum folder depth rose from ${before.maxDepth} to ${after.maxDepth} while weighted import distance fell`);
+  for (const [key, edge] of earlier) {
+    if (seen.has(key) || !edge.counted) continue;
+    const distance = treeDistance(edge.from, edge.to);
+    parts2.removed.edges++;
+    parts2.removed.uses += edge.weight;
+    parts2.removed.distance += edge.weight * distance;
+    rows8.push({ from: edge.from, to: edge.to, kind: "removed", before: { weight: edge.weight, distance }, after: null, change: -edge.weight * distance });
   }
-  return { flagged: reasons.length > 0, reasons };
+  const start = summarise(before);
+  const end = summarise(after);
+  parts2.added.meanDistancePerUse = ratio(parts2.added.distance, parts2.added.uses);
+  parts2.removed.meanDistancePerUse = ratio(parts2.removed.distance, parts2.removed.uses);
+  parts2.added.ratioToCodebaseMean = parts2.added.meanDistancePerUse === null || start.meanDistancePerUse === null ? null : ratio(parts2.added.meanDistancePerUse, start.meanDistancePerUse);
+  rows8.sort((a, b) => Math.abs(b.change) - Math.abs(a.change) || compareIds(a.from, b.from) || compareIds(a.to, b.to));
+  return { before: start, after: end, delta: end.totalUseDistance - start.totalUseDistance, parts: parts2, edges: rows8 };
+}
+
+// packages/locality/src/change-range.ts
+var git2 = async (root, args) => (await runGit(root, args)).trim();
+async function exists(root, ref) {
+  try {
+    await runGit(root, ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function mainBranch(root) {
+  try {
+    const remote = await git2(root, ["symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"]);
+    if (remote !== "" && await exists(root, remote)) return remote.replace(/^refs\/remotes\//, "");
+  } catch {
+  }
+  for (const candidate of ["main", "master"]) if (await exists(root, candidate)) return candidate;
+  return null;
+}
+var FIRST_PARENT = "the first parent of HEAD";
+async function resolveChangeRange(root, range) {
+  const parts2 = range === void 0 ? null : /^(.*?)(\.\.\.?)(.*)$/.exec(range);
+  const named2 = parts2 === null ? range : parts2[1] || void 0;
+  const tip = parts2 === null ? "HEAD" : parts2[3] || "HEAD";
+  if (!await exists(root, tip)) throw usageError(`"${tip}" is not a commit in this repository`);
+  const head = await git2(root, ["rev-parse", `${tip}^{commit}`]);
+  const against = named2 ?? await mainBranch(root);
+  if (against === null) throw usageError("there is no main branch to take the base from: name one with measure change BASE");
+  if (!await exists(root, against)) throw usageError(`"${against}" is not a commit in this repository`);
+  let base;
+  try {
+    base = await git2(root, ["merge-base", against, head]);
+  } catch {
+    throw usageError(`"${against}" and "${tip}" have no common ancestor`);
+  }
+  if (base === head) {
+    if (named2 !== void 0) throw usageError(`"${against}" contains "${tip}", so there is no change between them`);
+    if (!await exists(root, `${head}^1`)) throw usageError("HEAD is the first commit, so there is no earlier revision to compare with");
+    return { base: await git2(root, ["rev-parse", `${head}^1`]), head, against: FIRST_PARENT };
+  }
+  return { base, head, against };
+}
+async function renamesBetween(root, base, head) {
+  const fields = (await runGit(root, ["diff", "-z", "-M", "--no-ext-diff", "--name-status", "--diff-filter=R", base, head])).split("\0");
+  const renames = /* @__PURE__ */ new Map();
+  for (let i = 0; i + 2 < fields.length; i += 3) renames.set(fields[i + 1], fields[i + 2]);
+  return renames;
 }
 
 // packages/locality/src/premise.ts
@@ -5549,9 +5680,10 @@ var DEFAULT_NAME = "default";
 var DEFAULT_CANDIDATES = 200;
 var HEAT_FILES = 50;
 var TOOL_PLUGIN = "locality";
+var DEFAULT_EDGES = 20;
 var command3 = {
-  summary: "Record the baseline before a tidy-up (measure baseline), then compare against it afterwards (measure compare)",
-  usage: "baseline | compare",
+  summary: "Record the baseline before a tidy-up (measure baseline), compare against it afterwards (measure compare), or print how a branch changes the total import distance (measure change)",
+  usage: "baseline | compare | change [BASE[..HEAD]]",
   hiddenOptions: ["until"],
   optionHelp: {
     name: "the name of the baseline to record or compare against (default: default)",
@@ -5560,7 +5692,8 @@ var command3 = {
     since: "baseline and compare: start the after window on this date, YYYY-MM-DD (default: the day after the last suite commit)",
     source: "baseline: which tasks are read, main (main sessions), subagent (subagent transcripts) or all (default all); compare uses the baseline's",
     effort: "baseline: which calls count toward effort, tools (Read, Grep, Glob, Edit, Write and NotebookEdit calls only) or all (those and the files named in Bash commands) (default all); compare uses the baseline's",
-    force: "replace a baseline of the same name"
+    force: "replace a baseline of the same name",
+    edges: "change: how many changed edges are listed, a number or all (default 20)"
   },
   options: {
     name: { type: "string" },
@@ -5570,12 +5703,17 @@ var command3 = {
     until: { type: "string" },
     source: { type: "string" },
     effort: { type: "string" },
-    force: { type: "boolean" }
+    force: { type: "boolean" },
+    edges: { type: "string" }
   },
   async run(context) {
     const [subcommand] = context.positionals;
-    if (subcommand !== "baseline" && subcommand !== "compare" && subcommand !== "premise") {
-      throw usageError("measure takes one subcommand: baseline or compare");
+    if (subcommand !== "baseline" && subcommand !== "compare" && subcommand !== "premise" && subcommand !== "change") {
+      throw usageError("measure takes one subcommand: baseline, compare or change");
+    }
+    if (subcommand === "change") {
+      if (context.positionals.length > 2) throw usageError("usage: measure change [BASE[..HEAD]]");
+      return change2(context, readSettings(context.config), context.positionals[1]);
     }
     if (context.positionals.length > 1) {
       throw usageError(`measure ${subcommand} takes no arguments after the subcommand, got "${context.positionals[1]}"`);
@@ -5825,6 +5963,48 @@ async function compare(context, settings) {
     }
   };
 }
+async function structureAt(root, ref, settings) {
+  const project = await loadProject(root, ref, settings);
+  const model = buildModel(project, settings);
+  return { metrics: structureMetricsOf(project, model), edges: revisionEdges(model) };
+}
+var folderFigures = ({ singleFileFolders, maxDepth }) => ({ singleFileFolders, maxDepth });
+async function change2(context, settings, requested) {
+  const { root } = context.repo;
+  const listed = stringOption(context, "edges") ?? String(DEFAULT_EDGES);
+  if (listed !== "all" && !/^[1-9]\d*$/.test(listed)) throw usageError("--edges must be a positive integer or all");
+  const range = await resolveChangeRange(root, requested);
+  const before = await structureAt(root, range.base, settings);
+  const after = await structureAt(root, range.head, settings);
+  const renames = await renamesBetween(root, range.base, range.head);
+  const difference = changeDistance(before.edges, after.edges, renames);
+  const renamed = (path) => renames.get(path) ?? path;
+  const importers = (edges2, counted, path) => new Set(edges2.filter((edge) => edge.counted === counted).map((edge) => path(edge.from)));
+  const reachableBefore = importers(before.edges, true, renamed);
+  const reachableAfter = importers(after.edges, true, (from) => from);
+  const gained = [...importers(before.edges, false, renamed)].filter((path) => reachableAfter.has(path)).sort(compareIds);
+  const lost = [...importers(after.edges, false, (from) => from)].filter((path) => reachableBefore.has(path)).sort(compareIds);
+  const edges = listed === "all" ? difference.edges : difference.edges.slice(0, Number(listed));
+  return {
+    inputs: { range: requested ?? null, edges: listed === "all" ? "all" : Number(listed) },
+    results: {
+      status: "change",
+      base: range.base,
+      head: range.head,
+      against: range.against,
+      role: "leading indicator",
+      before: difference.before,
+      after: difference.after,
+      delta: difference.delta,
+      parts: difference.parts,
+      renamedFiles: renames.size,
+      reachability: { gained, lost },
+      structure: { before: folderFigures(before.metrics), after: folderFigures(after.metrics), gaming: gamingCheck(before.metrics, after.metrics) },
+      edges,
+      edgesOmitted: difference.edges.length - edges.length
+    }
+  };
+}
 function noticeShell(context, shell) {
   if (shell.parsedShare === null) return;
   (context.stderrNotices ??= []).push(`Shell: ${shell.calls} Bash calls in these tasks, ${shell.unparsed} not parsed, parsed share ${(shell.parsedShare * 100).toFixed(1)}%.`);
@@ -5915,7 +6095,7 @@ import { mkdirSync as mkdirSync4, writeFileSync as writeFileSync5 } from "node:f
 import { dirname as dirname3, join as join11 } from "node:path";
 import { promisify } from "node:util";
 var execFileAsync = promisify(execFile);
-async function git2(root, args, env = {}) {
+async function git3(root, args, env = {}) {
   const { stdout } = await execFileAsync("git", args, {
     cwd: root,
     env: { ...process.env, ...env },
@@ -5924,14 +6104,14 @@ async function git2(root, args, env = {}) {
   return stdout;
 }
 async function isClean(root) {
-  return (await git2(root, ["status", "--porcelain"])).trim() === "";
+  return (await git3(root, ["status", "--porcelain"])).trim() === "";
 }
 async function textMentions(root, plan, sourceLike) {
   const found = /* @__PURE__ */ new Map();
   for (const operation of plan.operations) {
     let out = "";
     try {
-      out = await git2(root, ["grep", "-l", "-I", "-F", "-e", operation.from, "--", "."]);
+      out = await git3(root, ["grep", "-l", "-I", "-F", "-e", operation.from, "--", "."]);
     } catch {
       continue;
     }
@@ -5958,7 +6138,7 @@ function moveMessage(candidate, plan, reason) {
 }
 async function hasIdentity(root) {
   try {
-    return (await git2(root, ["config", "user.email"])).trim() !== "" && (await git2(root, ["config", "user.name"])).trim() !== "";
+    return (await git3(root, ["config", "user.email"])).trim() !== "" && (await git3(root, ["config", "user.name"])).trim() !== "";
   } catch {
     return false;
   }
@@ -5966,17 +6146,17 @@ async function hasIdentity(root) {
 async function applyMove(root, plan, result, message, commit) {
   for (const operation of plan.operations) {
     mkdirSync4(dirname3(join11(root, operation.to)), { recursive: true });
-    await git2(root, ["mv", operation.from, operation.to]);
+    await git3(root, ["mv", operation.from, operation.to]);
   }
   return commitTexts(root, result.texts, message, commit);
 }
 async function commitTexts(root, texts, message, commit) {
   for (const [path, text2] of texts) writeFileSync5(join11(root, path), text2);
-  if (texts.size > 0) await git2(root, ["add", "--", ...texts.keys()]);
+  if (texts.size > 0) await git3(root, ["add", "--", ...texts.keys()]);
   if (!commit) return null;
   const identity2 = await hasIdentity(root) ? {} : { GIT_AUTHOR_NAME: "code-health", GIT_AUTHOR_EMAIL: "code-health@localhost", GIT_COMMITTER_NAME: "code-health", GIT_COMMITTER_EMAIL: "code-health@localhost" };
-  await git2(root, ["commit", "--quiet", "-m", message], identity2);
-  return (await git2(root, ["rev-parse", "HEAD"])).trim();
+  await git3(root, ["commit", "--quiet", "-m", message], identity2);
+  return (await git3(root, ["rev-parse", "HEAD"])).trim();
 }
 
 // packages/locality/src/move-plan.ts
@@ -7027,8 +7207,8 @@ function ratioOf2(bar) {
   return bar.guideline === 0 ? null : bar.value / bar.guideline;
 }
 var ratioText = (bar) => {
-  const ratio = ratioOf2(bar);
-  return ratio === null ? "none" : `${Number(ratio.toPrecision(2))}x`;
+  const ratio2 = ratioOf2(bar);
+  return ratio2 === null ? "none" : `${Number(ratio2.toPrecision(2))}x`;
 };
 var columns6 = (data) => [{ label: "Item" }, { label: data.unit, align: "right" }, { label: "Guideline", align: "right" }, { label: "Ratio", align: "right" }, { label: "Position" }];
 var rows4 = (data) => data.bars.map((b) => [b.label, formatNumber(b.value), formatNumber(b.guideline), ratioText(b), positionOf2(b)]);
@@ -9181,7 +9361,7 @@ function codeIdentity() {
 var FORMAT2 = 1;
 var OUTPUT_KEYS = ["slots", "notes", "format", "out", "no-cache"];
 var WATCHED = [".mailmap", ".code-health/identity-decisions.json", ".code-health/local/mailmap", ".code-health/local/identity-decisions.json", ".gitattributes"];
-function git3(cwd, ...args) {
+function git4(cwd, ...args) {
   return execFileSync2("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
 }
 function stat(file) {
@@ -9197,7 +9377,7 @@ function statDirectory(dir, accept) {
   return readdirSync4(dir).filter(accept).sort().map((name9) => `${name9}=${stat(join13(dir, name9))}`);
 }
 function dependencyState(root) {
-  const common = git3(root, "rev-parse", "--path-format=absolute", "--git-common-dir");
+  const common = git4(root, "rev-parse", "--path-format=absolute", "--git-common-dir");
   const written = statDirectory(join13(root, ".cache", "code-health", "reports"), (name9) => name9.endsWith(".json")).map((s) => `reports/${s}`);
   const other = [...WATCHED.map((file) => `${file}=${stat(join13(root, file))}`), `shallow=${stat(join13(common, "shallow"))}`];
   return { written: written.join("\n"), other: other.join("\n") };
