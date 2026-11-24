@@ -31,6 +31,294 @@
           {
             "slot": "summary",
             "type": "judgement"
+          },
+          {
+            "edges": [
+              {
+                "from": "src/shared/pair",
+                "kind": "move",
+                "label": "1",
+                "to": "src/reports",
+                "value": 6
+              },
+              {
+                "from": "src/shared/utils",
+                "kind": "move",
+                "label": "2",
+                "to": "src",
+                "value": 4
+              },
+              {
+                "from": "src/shared/cycle",
+                "kind": "move",
+                "label": "3",
+                "to": "src/orders",
+                "value": 3
+              },
+              {
+                "from": "src/shared/utils",
+                "kind": "move",
+                "label": "4",
+                "to": "src/billing",
+                "value": 3
+              },
+              {
+                "from": "src/shared",
+                "kind": "move",
+                "label": "5",
+                "to": "src",
+                "value": 2
+              }
+            ],
+            "folders": [
+              "src",
+              "src/billing",
+              "src/lib/kernel",
+              "src/orders",
+              "src/reports",
+              "src/shared",
+              "src/shared/cycle",
+              "src/shared/helpers",
+              "src/shared/pair",
+              "src/shared/utils"
+            ],
+            "kinds": [
+              {
+                "kind": "move",
+                "meaning": "a unit of kind move with no blockers, which the planner can plan without --reason. Its number is its row in the moves table.",
+                "word": "move"
+              },
+              {
+                "dashed": true,
+                "kind": "blocked",
+                "meaning": "a unit of kind move held back by blockers, drawn to its target folder with the gain it would have if they were resolved. B numbers are rows of the blocked table.",
+                "word": "blocked move"
+              },
+              {
+                "kind": "blocked-unit",
+                "meaning": "a unit held back by blockers whose own folder is its best folder now, so there is no target to draw: a marker on its folder, with its first blocker. B numbers are rows of the blocked table.",
+                "word": "blocked unit"
+              },
+              {
+                "kind": "review",
+                "meaning": "a unit of kind review: no single target, so a marker on its folder and no arrow. R numbers are rows of the reviews, splits and inlines table.",
+                "word": "review"
+              },
+              {
+                "kind": "split",
+                "meaning": "a unit of kind split: no single target, so a marker on its folder and no arrow.",
+                "word": "split"
+              },
+              {
+                "kind": "inline",
+                "meaning": "a unit of kind inline: no single target, so a marker on its folder and no arrow.",
+                "word": "inline"
+              },
+              {
+                "kind": "consumer",
+                "meaning": "a folder with a file that uses the unit with that number",
+                "word": "consumers of"
+              }
+            ],
+            "marks": [
+              {
+                "folder": "src/shared/helpers",
+                "kind": "split",
+                "label": "R1"
+              },
+              {
+                "folder": "src/shared/utils",
+                "kind": "inline",
+                "label": "R2"
+              },
+              {
+                "folder": "src",
+                "kind": "review",
+                "label": "R3"
+              },
+              {
+                "folder": "src/billing",
+                "kind": "inline",
+                "label": "R4"
+              },
+              {
+                "folder": "src/orders",
+                "kind": "inline",
+                "label": "R5"
+              },
+              {
+                "folder": "src/lib/kernel",
+                "kind": "blocked-unit",
+                "label": "B1",
+                "note": "blocked by core.ts"
+              },
+              {
+                "folder": "src/shared/pair",
+                "kind": "blocked-unit",
+                "label": "B2",
+                "note": "blocked by core.ts"
+              },
+              {
+                "folder": "src/shared/pair",
+                "kind": "blocked-unit",
+                "label": "B3",
+                "note": "blocked by core.ts"
+              },
+              {
+                "folder": "src/billing",
+                "kind": "consumer",
+                "label": "2"
+              },
+              {
+                "folder": "src/orders",
+                "kind": "consumer",
+                "label": "2"
+              },
+              {
+                "folder": "src/billing",
+                "kind": "consumer",
+                "label": "5"
+              },
+              {
+                "folder": "src/orders",
+                "kind": "consumer",
+                "label": "5"
+              }
+            ],
+            "omitted": "Not drawn: 0 of 5 moves, 0 of 3 blocked units, 0 of 5 reviews, splits and inlines (the map draws the top 10 moves, 5 blocked units and 5 reviews, splits and inlines). Scrutinise units propose no move and are not drawn. Gain is net distance removed, against the locality.minDistance guideline of 2.",
+            "rootText": "the repository root (/)",
+            "table": {
+              "columns": [
+                {
+                  "label": "#"
+                },
+                {
+                  "label": "Unit"
+                },
+                {
+                  "label": "From folder"
+                },
+                {
+                  "label": "To folder"
+                },
+                {
+                  "align": "right",
+                  "label": "Gain"
+                },
+                {
+                  "label": "Status"
+                }
+              ],
+              "rows": [
+                [
+                  "1",
+                  "src/shared/pair",
+                  "src/shared/pair",
+                  "src/reports",
+                  "6",
+                  "move: the planner can plan it"
+                ],
+                [
+                  "2",
+                  "src/shared/utils/money.ts",
+                  "src/shared/utils",
+                  "src",
+                  "4",
+                  "move: the planner can plan it"
+                ],
+                [
+                  "3",
+                  "src/shared/cycle/a.ts",
+                  "src/shared/cycle",
+                  "src/orders",
+                  "3",
+                  "move: the planner can plan it"
+                ],
+                [
+                  "4",
+                  "src/shared/utils/invoice.ts",
+                  "src/shared/utils",
+                  "src/billing",
+                  "3",
+                  "move: the planner can plan it"
+                ],
+                [
+                  "5",
+                  "src/shared/log.ts",
+                  "src/shared",
+                  "src",
+                  "2",
+                  "move: the planner can plan it"
+                ],
+                [
+                  "B1",
+                  "src/lib/kernel/tool.ts",
+                  "src/lib/kernel",
+                  "none: its own folder is its best until the blockers are resolved",
+                  "4",
+                  "blocked unit, marker on its folder; gain if unblocked; blocked by src/lib/kernel/core.ts"
+                ],
+                [
+                  "B2",
+                  "src/shared/pair/a.ts",
+                  "src/shared/pair",
+                  "none: its own folder is its best until the blockers are resolved",
+                  "3",
+                  "blocked unit, marker on its folder; gain if unblocked; blocked by src/shared/pair/core.ts"
+                ],
+                [
+                  "B3",
+                  "src/shared/pair/b.ts",
+                  "src/shared/pair",
+                  "none: its own folder is its best until the blockers are resolved",
+                  "3",
+                  "blocked unit, marker on its folder; gain if unblocked; blocked by src/shared/pair/core.ts"
+                ],
+                [
+                  "R1",
+                  "src/shared/helpers/mixed.ts",
+                  "src/shared/helpers",
+                  "no single target",
+                  "4",
+                  "split: marker on its folder, no arrow"
+                ],
+                [
+                  "R2",
+                  "src/shared/utils/slug.ts",
+                  "src/shared/utils",
+                  "no single target",
+                  "3",
+                  "inline: marker on its folder, no arrow"
+                ],
+                [
+                  "R3",
+                  "src/orders/place.ts",
+                  "src",
+                  "no single target",
+                  "2",
+                  "review: marker on its folder, no arrow"
+                ],
+                [
+                  "R4",
+                  "src/billing/index.ts",
+                  "src/billing",
+                  "no single target",
+                  "0",
+                  "inline: marker on its folder, no arrow"
+                ],
+                [
+                  "R5",
+                  "src/orders/audit.ts",
+                  "src/orders",
+                  "no single target",
+                  "0",
+                  "inline: marker on its folder, no arrow"
+                ]
+              ]
+            },
+            "title": "Where the top candidates would move",
+            "type": "move-map",
+            "valueLabel": "gain"
           }
         ],
         "heading": "Summary",
