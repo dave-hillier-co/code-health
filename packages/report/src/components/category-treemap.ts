@@ -3,7 +3,7 @@ import { htmlTable, mdTable } from "../tables.ts";
 import { figureHtml } from "./figure.ts";
 import { drawMap, mapOmissions, selectMapItems, tableOrder } from "./treemap.ts";
 
-/** One kind of item. Its `band` (1 to 5) picks the fill from the page's five band colours, and the label is printed in each tile. */
+/** One kind of item. Its `band` (1 to 6) picks the fill from the page's categorical colours, and the label is printed in each tile. */
 export interface Category {
   id: string;
   /** The words the legend, the tiles' titles and the table use. */
@@ -18,7 +18,7 @@ export interface CategoryTreemapItem {
   path: string;
   /** Decides the tile's area. Items of no size are not drawn. */
   size: number;
-  /** A category id, or null for an item of no category: it is drawn hatched and marked "none". */
+  /** A category id, or null for an item of no category: it is drawn grey and marked "none". */
   category: string | null;
 }
 
@@ -77,8 +77,8 @@ export function categoryTreemapHtml(data: CategoryTreemapData): string {
       return {
         path: item.path,
         size: item.size,
-        band: category === null ? "none" : String(category.band),
-        value: category?.mark ?? "none",
+        band: category === null ? "band-none" : `cat-${category.band}`,
+        value: category?.mark ?? "",
         title: `${item.path}: ${formatNumber(item.size)} ${data.sizeLabel}, ${category === null ? `no ${data.categoryLabel}` : `${data.categoryLabel} ${category.label}`}`,
       };
     }),
@@ -86,10 +86,10 @@ export function categoryTreemapHtml(data: CategoryTreemapData): string {
   const per = drawnPerCategory(prepared);
   const kind = data.categoryLabel.toLowerCase();
   const legend = data.categories.map((c) => `<li><strong>${escapeHtml(c.mark)}</strong> ${escapeHtml(c.label)}: ${escapeHtml(totalText(data, per.get(c.id)))}</li>`);
-  if (per.has("")) legend.push(`<li>hatched, no ${escapeHtml(kind)}: ${escapeHtml(totalText(data, per.get("")))}</li>`);
+  if (per.has("")) legend.push(`<li>grey, no ${escapeHtml(kind)}: ${escapeHtml(totalText(data, per.get("")))}</li>`);
   const tableRows = data.tableRows ?? DEFAULT_TABLE_ROWS;
   const left = mapOmissions({ beyondLimit: prepared.beyondLimit, unsized: prepared.unsized, tableRows: Math.min(tableRows, prepared.drawn.length), tableTotal: prepared.drawn.length, bare: map.bare, sizeLabel: data.sizeLabel });
-  const notes = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Every tile is filled by its ${escapeHtml(kind)}, and a tile large enough prints its name and the mark of its ${escapeHtml(kind)}; hatched tiles have none. The marks, with the tiles and ${escapeHtml(data.sizeLabel)} of each:</p>\n<ul class="legend">\n${legend.join("\n")}\n</ul>\n${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>\n`}`;
+  const notes = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Every tile is filled by its ${escapeHtml(kind)}, and a tile large enough prints its name and the mark of its ${escapeHtml(kind)}; grey tiles have none. The marks, with the tiles and ${escapeHtml(data.sizeLabel)} of each:</p>\n<ul class="legend">\n${legend.join("\n")}\n</ul>\n${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>\n`}`;
   return figureHtml({
     kind: "treemap category-treemap",
     title: data.title,

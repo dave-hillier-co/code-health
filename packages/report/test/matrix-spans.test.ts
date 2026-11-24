@@ -28,7 +28,8 @@ test("a line crosses the grid at each span boundary, and none at the edges", () 
 test("the span label is printed in the table row header, the legend and the markdown", () => {
   const html = matrixHtml(square);
   expect(html).toContain("<td>src</td><td>src</td>");
-  expect(html).toContain("<td>test</td><td>src</td>");
+  expect(html).toContain("<td>src</td><td>test</td>");
+  expect(html).not.toContain("<td>test</td><td>src</td>");
   expect(html).toContain("Bars above the columns and left of the rows mark 2 spans: src (3 rows), test (2 rows).");
   const md = matrixMd(square);
   expect(md).toContain("| a | b | 10 |  | src | src |");
@@ -82,9 +83,9 @@ test("a label longer than the limit is cut with an ellipsis in the drawing and k
   expect(html).toContain(`<td>${long}</td>`);
 });
 
-test("the theme defines six span colours for light and dark", () => {
+test("the theme gives the six spans the categorical colours", () => {
   for (let i = 1; i <= 6; i++) {
-    expect(themeCss.match(new RegExp(`--span-${i}:`, "g"))?.length).toBe(2);
+    expect(themeCss).toContain(`--cat-${i}:`);
     expect(themeCss).toContain(`svg .span-${i} rect`);
   }
 });

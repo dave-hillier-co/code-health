@@ -43,7 +43,7 @@ test("cells are square, empty cells print no text, and the table lists only cell
   // 5 cells hold a value or a mark: 60 e, 10, 60 e, ?, 10.
   expect(html.match(/<tr><td>/g)?.length).toBe(5);
   expect(html).toContain("<td>a.ts</td><td>b.ts</td><td class=\"number\">60</td><td>an expected pair</td>");
-  expect(html).toContain("Hatched blank cells have no value (4 cells of 9 cells).");
+  expect(html).toContain("Grey blank cells have no value (4 cells of 9 cells).");
   const md = matrixMd(square);
   expect(md).toContain("| Row | Column | Value | Mark | Row group | Column group |");
   expect(md).toContain("| a.ts | b.ts | 60 | an expected pair | cluster 1 | cluster 1 |");

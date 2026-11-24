@@ -131,15 +131,31 @@ function cellList(data: MatrixData, spans: readonly MatrixSpan[], groups: readon
     ...(named ? [{ label: "Row group" }, ...(square ? [{ label: "Column group" }] : [])] : []),
   ];
   const rows: string[][] = [];
+  const symmetric = isSymmetric(data);
+  let blank = 0;
   for (const [i, r] of data.rows.entries()) {
     for (const [j, c] of data.columns.entries()) {
       const value = data.cells[i]?.[j] ?? null;
       const mark = markOf(data, i, j);
-      if (value === null && mark === undefined) continue;
+      if (value === null && mark === undefined) {
+        blank++;
+        continue;
+      }
+      if (symmetric && j < i) continue;
       rows.push([r, c, display(value), mark?.text ?? "", ...(named ? [namesOf(i), ...(square ? [namesOf(j)] : [])] : [])]);
     }
   }
-  return { columns, rows, blank: data.rows.length * data.columns.length - rows.length };
+  return { columns, rows, blank, symmetric };
+}
+
+/** A square matrix whose cell [i][j] holds the same value and mark as [j][i], such as co-change, lists each pair once. */
+function isSymmetric(data: MatrixData): boolean {
+  if (!isSquare(data)) return false;
+  for (const i of data.rows.keys()) for (const j of data.rows.keys()) {
+    if ((data.cells[i]?.[j] ?? null) !== (data.cells[j]?.[i] ?? null)) return false;
+    if ((data.cellMarks?.[i]?.[j] ?? null) !== (data.cellMarks?.[j]?.[i] ?? null)) return false;
+  }
+  return true;
 }
 
 /** The side of a cell: wide enough for the longest value and mark printed in any cell. */
@@ -212,7 +228,7 @@ export function matrixHtml(data: MatrixData): string {
   });
   const list = cellList(data, spans, groups);
   const notes = [
-    `Colour is ${data.valueLabel} in ${bandCountText(bands)}, and each cell prints its value: ${bandLegend(bands)}. Hatched blank cells have no value (${count(list.blank, "cell")} of ${count(data.rows.length * data.columns.length, "cell")}).`,
+    `Colour is ${data.valueLabel} in ${bandCountText(bands)}, and each cell prints its value: ${bandLegend(bands)}. Grey blank cells have no value (${count(list.blank, "cell")} of ${count(data.rows.length * data.columns.length, "cell")}).`,
     markLegend(data),
     spanLegend(spans, square),
     groupLegend(groups),
@@ -231,7 +247,7 @@ export function matrixHtml(data: MatrixData): string {
     width: Math.ceil(gridX + Math.max(data.columns.length * cell + 40, (data.columns.length - 0.5) * cell + reach + 8)),
     height: gridY + data.rows.length * cell + 4,
     drawing: [...bars, ...labels, ...cells, ...boxes, ...lines].join("\n"),
-    table: htmlTable(`${data.title}: ${data.valueLabel}, the cells that have a value or a mark`, list.columns, list.rows.map((row) => row.map(escapeHtml))),
+    table: htmlTable(`${data.title}: the cells that have a value or a mark${list.symmetric ? ", each pair once" : ""}`, list.columns, list.rows.map((row) => row.map(escapeHtml))),
     notes: `<p class="legend">${notes.map(escapeHtml).join(" ")}</p>\n`,
   });
 }
@@ -242,7 +258,7 @@ export function matrixMd(data: MatrixData): string {
   const groups = usableGroups(data);
   const spans = usableSpans(data);
   const list = cellList(data, spans, groups);
-  const extra = [`The table lists the cells that have a value or a mark, in row order then column order. Blank cells have no value (${count(list.blank, "cell")} of ${count(data.rows.length * data.columns.length, "cell")}).`, markLegend(data), spanLegend(spans, isSquare(data)), groupLegend(groups), data.orderText].filter((line): line is string => line !== undefined);
+  const extra = [`The table lists the cells that have a value or a mark, in row order then column order${list.symmetric ? ", each pair once because the matrix is symmetric" : ""}. Blank cells have no value (${count(list.blank, "cell")} of ${count(data.rows.length * data.columns.length, "cell")}).`, markLegend(data), spanLegend(spans, isSquare(data)), groupLegend(groups), data.orderText].filter((line): line is string => line !== undefined);
   return [
     `**${escapeMd(data.title)}** (${escapeMd(data.valueLabel)}; ${bandLegend(bands)})`,
     "",

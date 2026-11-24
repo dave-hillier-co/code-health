@@ -8,7 +8,7 @@ export interface TreemapItem {
   path: string;
   /** Decides the tile's area. Items of no size are not drawn. */
   size: number;
-  /** Decides the tile's band. null draws the tile hatched and marks it "none". */
+  /** Decides the tile's band. null draws the tile grey and marks it "none". */
   colour: number | null;
   /** A short mark, such as a rank. A marked tile is outlined and prints the mark before its name, and the table lists it first. */
   mark?: string;
@@ -182,7 +182,7 @@ export function layoutTreemap(items: readonly TreemapItem[], width = WIDTH, heig
 export interface MapItem {
   path: string;
   size: number;
-  /** The class suffix of its fill: a band number from 1 to 5, or "none". */
+  /** The class of its fill: `band-1` to `band-5` for a value, `cat-1` to `cat-6` for a kind, or `band-none`. */
   band: string;
   /** The second line of a tile large enough for two. */
   value: string;
@@ -237,10 +237,10 @@ export function drawMap(items: readonly MapItem[]): MapDrawing {
     const markText = item.mark === undefined ? "" : `${item.mark} `;
     const first = t.w >= 36 && t.h >= 16 ? clip(`${markText}${t.name}`, room) : item.mark !== undefined && t.w >= 14 && t.h >= 14 ? clip(item.mark, Math.floor((t.w - 4) / CHAR)) : "";
     const labels = first === "" ? [] : [`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 12)}">${escapeHtml(first)}</text>`];
-    if (t.w >= 36 && t.h >= 30) labels.push(`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 25)}">${escapeHtml(clip(item.value, room))}</text>`);
-    out.push(`<g class="tile band-${item.band}${item.mark === undefined ? "" : " marked"}"><title>${escapeHtml(item.title)}</title>${rect}${labels.join("")}</g>`);
+    if (t.w >= 36 && t.h >= 30 && item.value !== "") labels.push(`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 25)}">${escapeHtml(clip(item.value, room))}</text>`);
+    out.push(`<g class="tile ${item.band}${item.mark === undefined ? "" : " marked"}"><title>${escapeHtml(item.title)}</title>${rect}${labels.join("")}</g>`);
   }
-  for (const band of [...bare.keys()].sort()) out.push(`<g class="tile bare band-${band}">${bare.get(band)!.join("")}</g>`);
+  for (const band of [...bare.keys()].sort()) out.push(`<g class="tile bare ${band}">${bare.get(band)!.join("")}</g>`);
   return { drawing: out.join("\n"), bare: { tiles: bareTiles, size: bareSize }, width: WIDTH, height: HEIGHT };
 }
 
@@ -308,17 +308,17 @@ export function treemapHtml(data: TreemapData): string {
     prepared.drawn.map((item) => ({
       path: item.path,
       size: item.size,
-      band: bandName(item, prepared.bands),
-      value: item.colour === null ? "none" : formatNumber(item.colour),
+      band: `band-${bandName(item, prepared.bands)}`,
+      value: item.colour === null ? "" : formatNumber(item.colour),
       title: `${item.mark === undefined ? "" : `${item.mark} `}${item.path}: ${formatNumber(item.size)} ${data.sizeLabel}, ${item.colour === null ? "no" : formatNumber(item.colour)} ${data.colourLabel}`,
       ...(item.mark === undefined ? {} : { mark: item.mark }),
     })),
   );
   const tableRows = data.tableRows ?? DEFAULT_TABLE_ROWS;
   const left = mapOmissions({ ...prepared.notDrawn, tableRows: Math.min(tableRows, prepared.drawn.length), tableTotal: prepared.drawn.length, bare: map.bare, sizeLabel: data.sizeLabel });
-  const bands = perBand(prepared).map((b) => `<li>${b.band === "none" ? "hatched, no value" : `band ${escapeHtml(b.band)}`}: ${count(b.items, "item")}, ${formatNumber(b.size)} ${escapeHtml(data.sizeLabel)}</li>`).join("\n");
+  const bands = perBand(prepared).map((b) => `<li>${b.band === "none" ? "grey, no value" : `band ${escapeHtml(b.band)}`}: ${count(b.items, "item")}, ${formatNumber(b.size)} ${escapeHtml(data.sizeLabel)}</li>`).join("\n");
   const markNote = marked === 0 ? "" : ` Outlined tiles are ${escapeHtml(data.markLabel ?? "marked items")} (${marked}), and each prints its mark.`;
-  const notes = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in ${bandCountText(prepared.bands)}, and a tile large enough prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.${markNote} The items and ${escapeHtml(data.sizeLabel)} in each band:</p>\n<ul class="legend">\n${bands}\n</ul>\n${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>\n`}`;
+  const notes = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in ${bandCountText(prepared.bands)}, and a tile large enough prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Grey tiles have no value.${markNote} The items and ${escapeHtml(data.sizeLabel)} in each band:</p>\n<ul class="legend">\n${bands}\n</ul>\n${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>\n`}`;
   return figureHtml({
     kind: "treemap",
     title: data.title,

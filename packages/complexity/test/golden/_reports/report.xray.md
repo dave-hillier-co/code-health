@@ -31,9 +31,8 @@
 | Row | Column | Value | Mark |
 | --- | --- | ---: | --- |
 | priceOrder | describe | 1 |  |
-| describe | priceOrder | 1 |  |
 
-The table lists the cells that have a value or a mark, in row order then column order. Blank cells have no value (2 cells of 4 cells). Rows and columns are the 2 functions with the most revisions (at least 2), most first. A cell is the number of landed changes in the window that touched both functions; the diagonal is empty.
+The table lists the cells that have a value or a mark, in row order then column order, each pair once because the matrix is symmetric. Blank cells have no value (2 cells of 4 cells). Rows and columns are the 2 functions with the most revisions (at least 2), most first. A cell is the number of landed changes in the window that touched both functions; the diagonal is empty.
 
 **Judgement: the file as a whole**
 

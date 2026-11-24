@@ -1,45 +1,60 @@
+import { schemeTableau10, schemeYlOrBr } from "d3-scale-chromatic";
+
+/** The ink of body text and of text on a light fill. */
+const INK = "#1c1c1c";
+const WHITE = "#ffffff";
+
+/** The five value bands, least to most: d3-scale-chromatic's YlOrBr, five steps of one ramp from yellow to brown. */
+const SEQUENTIAL = schemeYlOrBr[5] as readonly string[];
 /**
- * The page's CSS: one block, inline, with no external request. Colours are variables, redefined for dark
- * through prefers-color-scheme. Text and tile colours meet WCAG AA contrast in both themes: body text is at
- * least 7:1 on its background, and each band pairs its fill with a text colour of at least 4.5:1. Print drops
- * the navigation, uses black on white and keeps charts and tables whole across pages.
+ * The kinds (knowledge patterns, groups of components) in a fixed order: six of d3-scale-chromatic's Tableau10 (blue,
+ * teal, green, purple, red, pink). Its orange and yellow are left out, because they read as steps of the value ramp.
+ */
+const CATEGORICAL = [0, 3, 4, 6, 2, 7].map((i) => schemeTableau10[i] as string);
+
+function luminance(hex: string): number {
+  const channel = (i: number) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
+}
+
+const contrast = (a: string, b: string) => {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
+  return (hi + 0.05) / (lo + 0.05);
+};
+
+/** The text colour for a fill: ink or white, whichever contrasts more. */
+export const textOn = (fill: string): string => (contrast(fill, INK) >= contrast(fill, WHITE) ? INK : WHITE);
+
+/** Custom properties for a list of fills: `--band-1` and `--on-band-1`, and so on. */
+const fills = (name: string, colours: readonly string[], indent = "  ") => colours.map((c, i) => `--${name}-${i + 1}: ${c}; --on-${name}-${i + 1}: ${textOn(c)};`).join(`\n${indent}`);
+
+/**
+ * The page's CSS: one block, inline, with no external request. Colours are variables, redefined for dark through
+ * prefers-color-scheme. Surfaces and ink are neutral. Every magnitude uses the one value ramp (in dark, the same ramp
+ * reversed, so the least value recedes towards the dark surface); kinds use the categorical colours. Each fill has a
+ * text colour chosen for the higher contrast of ink and white. Empty cells and tiles are grey. Print drops the
+ * navigation, uses black on white and keeps charts and tables whole across pages.
  */
 export const themeCss = `
 :root {
   color-scheme: light dark;
-  --bg: #ffffff; --text: #16181d; --muted: #4a4f5c; --rule: #c9ced8; --panel: #f4f6fa;
-  --link: #0b4fb3; --focus: #0b4fb3;
-  --band-1: #eef3fb; --on-band-1: #12233f;
-  --band-2: #cfdff5; --on-band-2: #12233f;
-  --band-3: #9fbfe8; --on-band-3: #0d1f3a;
-  --band-4: #3f78c4; --on-band-4: #ffffff;
-  --band-5: #1c4587; --on-band-5: #ffffff;
-  --span-1: #f4c7c3; --on-span-1: #3b0d0a;
-  --span-2: #fbe0a6; --on-span-2: #3b2a00;
-  --span-3: #c9e7c2; --on-span-3: #0f2f0a;
-  --span-4: #bfe3ea; --on-span-4: #0a2f38;
-  --span-5: #d8cbf0; --on-span-5: #25104a;
-  --span-6: #f3cbe3; --on-span-6: #3f0d2b;
-  --bar: #3f78c4; --bar-above: #1c4587; --marker: #16181d;
-  --notice-bg: #fff8e1; --notice-rule: #8a6100;
+  --bg: #ffffff; --text: ${INK}; --muted: #575757; --rule: #d6d6d3; --panel: #f3f3f1; --empty: #ececea;
+  --link: #1a5fb4; --focus: #1a5fb4;
+  ${fills("band", SEQUENTIAL)}
+  ${fills("cat", CATEGORICAL)}
+  --bar: #6b6b68; --bar-above: ${SEQUENTIAL[3]}; --marker: ${INK}; --point: #6b6b68;
+  --notice-bg: #f3f3f1; --notice-rule: #b07800;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #12151b; --text: #e8eaf0; --muted: #b4bac8; --rule: #3a4150; --panel: #1b2029;
-    --link: #8db8ff; --focus: #8db8ff;
-    --band-1: #1b2535; --on-band-1: #dbe6f7;
-    --band-2: #25406a; --on-band-2: #e8f0fc;
-    --band-3: #3566a8; --on-band-3: #ffffff;
-    --band-4: #7ba6e0; --on-band-4: #0b1830;
-    --band-5: #b9d3f5; --on-band-5: #0b1830;
-    --span-1: #6b2a27; --on-span-1: #ffe3e0;
-    --span-2: #6a4d0a; --on-span-2: #fff0cc;
-    --span-3: #2b5a24; --on-span-3: #e0f6dc;
-    --span-4: #1f5662; --on-span-4: #d7f2f8;
-    --span-5: #4a3a7a; --on-span-5: #ece4ff;
-    --span-6: #703055; --on-span-6: #ffe3f2;
-    --bar: #7ba6e0; --bar-above: #b9d3f5; --marker: #e8eaf0;
-    --notice-bg: #2a2310; --notice-rule: #e0b84a;
+    --bg: #1e1e1e; --text: #e9e9e6; --muted: #ababa6; --rule: #42423f; --panel: #282826; --empty: #2f2f2d;
+    --link: #8cb8f5; --focus: #8cb8f5;
+    ${fills("band", [...SEQUENTIAL].reverse(), "    ")}
+    --bar: #9a9a96; --bar-above: ${SEQUENTIAL[2]}; --marker: #e9e9e6; --point: #9a9a96;
+    --notice-bg: #282826; --notice-rule: #e0b84a;
   }
 }
 * { box-sizing: border-box; }
@@ -62,20 +77,21 @@ nav { padding-top: .75rem; padding-bottom: .75rem; }
 nav ul { display: flex; flex-wrap: wrap; gap: .25rem 1rem; list-style: none; margin: 0; padding: 0; }
 main { overflow-wrap: anywhere; padding-bottom: 2rem; }
 table { border-collapse: collapse; margin: .5rem 0; max-width: 100%; }
-caption { text-align: left; font-weight: 600; padding: .25rem 0; }
-th, td { border: 1px solid var(--rule); padding: .25rem .6rem; text-align: left; vertical-align: top; }
-thead th { background: var(--panel); }
-th[scope="row"] { font-weight: 600; background: var(--panel); }
+caption { text-align: left; font-weight: 600; padding: .25rem 0 .4rem; }
+th, td { border-bottom: 1px solid var(--rule); padding: .3rem .75rem .3rem 0; text-align: left; vertical-align: top; }
+th:last-child, td:last-child { padding-right: 0; }
+thead th { border-bottom: 2px solid var(--text); font-weight: 600; vertical-align: bottom; }
+th[scope="row"] { font-weight: 600; }
 .number { text-align: right; font-variant-numeric: tabular-nums; }
 .legend, .omitted { color: var(--muted); font-size: .9rem; margin: .25rem 0 1rem; }
 .empty { color: var(--muted); font-style: italic; }
 .marker { white-space: nowrap; }
 figure.chart { margin: 1rem 0; }
 figure.chart figcaption { font-weight: 600; margin-bottom: .25rem; }
-figure.chart svg { display: block; width: 100%; height: auto; max-width: 60rem; font: 11px system-ui, sans-serif; }
+figure.chart svg { display: block; max-width: 100%; height: auto; font: 11px system-ui, sans-serif; }
 figure.sparkline svg { max-width: 16rem; }
-figure.chart svg text { fill: var(--text); }
-svg .folder rect { fill: none; stroke: var(--rule); }
+svg text { fill: var(--text); }
+svg .folder rect { fill: none; stroke: var(--muted); stroke-width: .75; }
 svg .folder text { fill: var(--muted); }
 svg .tile rect, svg .cell rect { stroke: var(--bg); stroke-width: 1; }
 svg .tile.marked rect { stroke: var(--text); stroke-width: 2; }
@@ -84,13 +100,13 @@ svg .band-2 rect { fill: var(--band-2); } svg .band-2 text { fill: var(--on-band
 svg .band-3 rect { fill: var(--band-3); } svg .band-3 text { fill: var(--on-band-3); }
 svg .band-4 rect { fill: var(--band-4); } svg .band-4 text { fill: var(--on-band-4); }
 svg .band-5 rect { fill: var(--band-5); } svg .band-5 text { fill: var(--on-band-5); }
-svg .band-none rect { fill: var(--panel); stroke: var(--muted); stroke-dasharray: 3 2; }
-svg .span-1 rect { fill: var(--span-1); } svg .span-1 text { fill: var(--on-span-1); }
-svg .span-2 rect { fill: var(--span-2); } svg .span-2 text { fill: var(--on-span-2); }
-svg .span-3 rect { fill: var(--span-3); } svg .span-3 text { fill: var(--on-span-3); }
-svg .span-4 rect { fill: var(--span-4); } svg .span-4 text { fill: var(--on-span-4); }
-svg .span-5 rect { fill: var(--span-5); } svg .span-5 text { fill: var(--on-span-5); }
-svg .span-6 rect { fill: var(--span-6); } svg .span-6 text { fill: var(--on-span-6); }
+svg .band-none rect { fill: var(--empty); stroke: var(--bg); } svg .band-none text { fill: var(--muted); }
+svg .span-1 rect, svg .cat-1 rect { fill: var(--cat-1); } svg .span-1 text, svg .cat-1 text { fill: var(--on-cat-1); }
+svg .span-2 rect, svg .cat-2 rect { fill: var(--cat-2); } svg .span-2 text, svg .cat-2 text { fill: var(--on-cat-2); }
+svg .span-3 rect, svg .cat-3 rect { fill: var(--cat-3); } svg .span-3 text, svg .cat-3 text { fill: var(--on-cat-3); }
+svg .span-4 rect, svg .cat-4 rect { fill: var(--cat-4); } svg .span-4 text, svg .cat-4 text { fill: var(--on-cat-4); }
+svg .span-5 rect, svg .cat-5 rect { fill: var(--cat-5); } svg .span-5 text, svg .cat-5 text { fill: var(--on-cat-5); }
+svg .span-6 rect, svg .cat-6 rect { fill: var(--cat-6); } svg .span-6 text, svg .cat-6 text { fill: var(--on-cat-6); }
 svg .span text { font-weight: 600; }
 svg .span-boundary { stroke: var(--marker); stroke-width: 1; }
 svg .group rect { fill: none; stroke: var(--marker); stroke-width: 2; }
@@ -104,7 +120,7 @@ svg .bar rect { fill: var(--bar); } svg .bar.above rect { fill: var(--bar-above)
 svg .bar line { stroke: var(--marker); stroke-width: 2; }
 svg .frame { fill: none; stroke: var(--rule); }
 svg .guideline line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 6 4; } svg .guideline text, svg .tick { fill: var(--muted); }
-svg circle.point { fill: var(--bar); fill-opacity: .4; }
+svg circle.point { fill: var(--point); fill-opacity: .45; }
 svg rect.point, svg .point.named rect { fill: var(--bar-above); stroke: var(--bg); stroke-width: 1; }
 svg .point.named text { paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
 svg polyline { fill: none; stroke: var(--bar-above); stroke-width: 2; } svg circle { fill: var(--bar-above); }
