@@ -1,4 +1,4 @@
-import { componentOf as componentNameOf, type Component } from "../components.ts";
+import { componentOf as componentNameOf, type ComponentMatcher } from "../components.ts";
 import { goneLinesOf, reachesGuideline, type KnowledgeModel } from "./knowledge-model.ts";
 
 /**
@@ -26,7 +26,7 @@ export interface SimulationOptions {
   alphas: readonly number[];
   /** Percentage of a file's lines held by people who have left at which it is abandoned. */
   guidelinePercent: number;
-  components?: readonly Component[];
+  components?: readonly ComponentMatcher[];
 }
 
 /** The loss in one measure across trials. */
@@ -157,7 +157,7 @@ interface Compiled {
   componentBaselineLines: number[];
 }
 
-function compile(model: KnowledgeModel, guidelinePercent: number, components: readonly Component[]): Compiled {
+function compile(model: KnowledgeModel, guidelinePercent: number, components: readonly ComponentMatcher[]): Compiled {
   const pool: number[] = [];
   const poolIndex = new Map<number, number>();
   model.developers.forEach((d, i) => {

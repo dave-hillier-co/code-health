@@ -46,7 +46,45 @@
     },
     "components": {
       "type": "object",
-      "description": "Named groups of paths: component name to globs."
+      "description": "Named groups of paths: component name to a glob, an array of globs, or an object { paths, group } whose group names the independent tree the component belongs to (src, test, samples, a product area). When not configured, `cochange components` infers a map from folders and `cochange components --propose` prints it for review.",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          {
+            "type": "object",
+            "properties": {
+              "paths": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                ]
+              },
+              "group": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "paths"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
     },
     "vagueNames": {
       "type": "array",

@@ -14,6 +14,12 @@ export const themeCss = `
   --band-3: #9fbfe8; --on-band-3: #0d1f3a;
   --band-4: #3f78c4; --on-band-4: #ffffff;
   --band-5: #1c4587; --on-band-5: #ffffff;
+  --span-1: #f4c7c3; --on-span-1: #3b0d0a;
+  --span-2: #fbe0a6; --on-span-2: #3b2a00;
+  --span-3: #c9e7c2; --on-span-3: #0f2f0a;
+  --span-4: #bfe3ea; --on-span-4: #0a2f38;
+  --span-5: #d8cbf0; --on-span-5: #25104a;
+  --span-6: #f3cbe3; --on-span-6: #3f0d2b;
   --bar: #3f78c4; --bar-above: #1c4587; --marker: #16181d;
   --notice-bg: #fff8e1; --notice-rule: #8a6100;
 }
@@ -26,6 +32,12 @@ export const themeCss = `
     --band-3: #3566a8; --on-band-3: #ffffff;
     --band-4: #7ba6e0; --on-band-4: #0b1830;
     --band-5: #b9d3f5; --on-band-5: #0b1830;
+    --span-1: #6b2a27; --on-span-1: #ffe3e0;
+    --span-2: #6a4d0a; --on-span-2: #fff0cc;
+    --span-3: #2b5a24; --on-span-3: #e0f6dc;
+    --span-4: #1f5662; --on-span-4: #d7f2f8;
+    --span-5: #4a3a7a; --on-span-5: #ece4ff;
+    --span-6: #703055; --on-span-6: #ffe3f2;
     --bar: #7ba6e0; --bar-above: #b9d3f5; --marker: #e8eaf0;
     --notice-bg: #2a2310; --notice-rule: #e0b84a;
   }
@@ -72,6 +84,14 @@ svg .band-3 rect { fill: var(--band-3); } svg .band-3 text { fill: var(--on-band
 svg .band-4 rect { fill: var(--band-4); } svg .band-4 text { fill: var(--on-band-4); }
 svg .band-5 rect { fill: var(--band-5); } svg .band-5 text { fill: var(--on-band-5); }
 svg .band-none rect { fill: var(--panel); stroke: var(--muted); stroke-dasharray: 3 2; }
+svg .span-1 rect { fill: var(--span-1); } svg .span-1 text { fill: var(--on-span-1); }
+svg .span-2 rect { fill: var(--span-2); } svg .span-2 text { fill: var(--on-span-2); }
+svg .span-3 rect { fill: var(--span-3); } svg .span-3 text { fill: var(--on-span-3); }
+svg .span-4 rect { fill: var(--span-4); } svg .span-4 text { fill: var(--on-span-4); }
+svg .span-5 rect { fill: var(--span-5); } svg .span-5 text { fill: var(--on-span-5); }
+svg .span-6 rect { fill: var(--span-6); } svg .span-6 text { fill: var(--on-span-6); }
+svg .span text { font-weight: 600; }
+svg .span-boundary { stroke: var(--marker); stroke-width: 1; }
 svg .group rect { fill: none; stroke: var(--marker); stroke-width: 2; }
 svg .cell[class*="mark-"] text { font-weight: 700; }
 svg .bin rect { fill: var(--bar); }

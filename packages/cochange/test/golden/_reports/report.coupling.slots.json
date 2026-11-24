@@ -39,6 +39,113 @@
               60,
               80
             ],
+            "cells": [
+              [
+                null,
+                null,
+                null,
+                null,
+                80,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                50,
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                50,
+                null,
+                null,
+                null,
+                null
+              ],
+              [
+                80,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            ],
+            "columns": [
+              "api",
+              "billing",
+              "config",
+              "runtime",
+              "web",
+              "search",
+              "docs"
+            ],
+            "orderText": "The component map is inferred from folders (no `components` are configured; `cochange components --propose` prints it for review), with 7 components in 2 groups. Rows and columns are components, ordered by group (the group with the most changes first) and within a group by change count, then name. Draws 7 of the 7 components with a change, at most 20, the ones with the most changes; omits 0 components. 0 production code files are in no component. `cochange components` lists the map. A cell is the degree between two components: the changes that touched both, over the mean of the changes that touched each, counted over the same eligible changes and with the same formula as a pair of files; a change counts once for each component it touches. A pair that shares fewer than 5 changes (the support floor) has no value. Production code files only.",
+            "rows": [
+              "api",
+              "billing",
+              "config",
+              "runtime",
+              "web",
+              "search",
+              "docs"
+            ],
+            "spans": [
+              {
+                "end": 5,
+                "label": "src",
+                "start": 0
+              },
+              {
+                "end": 6,
+                "label": "top level",
+                "start": 6
+              }
+            ],
+            "title": "Co-change between the 7 components with the most changes, degree in percent",
+            "type": "matrix",
+            "valueLabel": "coupling degree in percent"
+          },
+          {
+            "breaks": [
+              20,
+              40,
+              60,
+              80
+            ],
             "cellMarks": [
               [
                 null,
@@ -823,6 +930,7 @@
     "config": "0000000000000000",
     "head": "8f8f40240b6e83b43f5b0513636448cf4ee76478",
     "inputs": {
+      "componentMap": "inferred",
       "degreeGuideline": 30,
       "minSupport": 5,
       "since": null,

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "components.schema.json",
+  "title": "cochange components [--propose] --json",
+  "description": "The component map: the configured `components`, or the map inferred from folders when none is configured (`--propose` always prints the inferred map). It reads the tree at the analysed ref and no history.",
+  "allOf": [{ "$ref": "common.schema.json#/$defs/envelope" }],
+  "type": "object",
+  "properties": {
+    "command": { "const": "components" },
+    "inputs": {
+      "type": "object",
+      "properties": { "propose": { "type": "boolean" } },
+      "required": ["propose"],
+      "additionalProperties": false
+    },
+    "source": { "enum": ["configured", "inferred"], "description": "Whether the map is the `components` of code-health.json or was inferred from folders." },
+    "productionFiles": { "$ref": "common.schema.json#/$defs/count", "description": "Production code files at the analysed ref: code, not tests, not excluded, not generated, not vendored." },
+    "filesInNoComponent": { "$ref": "common.schema.json#/$defs/count", "description": "Production code files that match no component." },
+    "proposal": {
+      "description": "Only with `--propose`: the inferred map as a `components` block to paste into code-health.json after review.",
+      "type": "object",
+      "properties": {
+        "components": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "paths": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+              "group": { "type": "string", "minLength": 1 }
+            },
+            "required": ["paths", "group"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["components"],
+      "additionalProperties": false
+    },
+    "results": {
+      "type": "array",
+      "description": "One row per component, ordered by group (components with no group last) and then name.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "component": { "type": "string" },
+          "group": { "type": ["string", "null"], "description": "The independent tree the component belongs to, such as `src` or `test`; null when the config states none." },
+          "globs": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+          "files": { "$ref": "common.schema.json#/$defs/count", "description": "Production code files in the component." },
+          "source": { "enum": ["configured", "inferred"] }
+        },
+        "required": ["component", "group", "globs", "files", "source"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["source", "productionFiles", "filesInNoComponent"],
+  "unevaluatedProperties": false
+}

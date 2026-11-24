@@ -17,9 +17,11 @@ import type { RankedTableData } from "@code-health/report/components/ranked-tabl
 import { testClassifier } from "@code-health/parse/test-files";
 import { command as clustersCommand } from "../commands/clusters.ts";
 import { command as couplingCommand } from "../commands/coupling.ts";
+import { componentCoupling } from "../component-coupling.ts";
 import { readSettings } from "../config.ts";
 import { EXPECTED_LABEL, EXPECTED_REASONS, expectedReason, type ExpectedReason } from "../expected-pair.ts";
 import type { CouplingTrend } from "../coupling-trend.ts";
+import { componentMatrixBlocks } from "./component-matrix.ts";
 import { readSiblingResult, type SiblingResult } from "../sibling-reports.ts";
 import { windowOptions } from "../window-options.ts";
 
@@ -523,7 +525,7 @@ function limitsOf(evidence: Evidence, settings: { minSupport: number; tolerance:
 }
 
 export const coupling: ReportKind = {
-  summary: "Coupled pairs with their trend, sum of coupling per file, a matrix of the clustered files, clusters and hidden coupling, with a judgement of each top pair",
+  summary: "A matrix of the co-change between components, grouped by tree, then a matrix of the clustered files, coupled pairs with their trend, sum of coupling per file, clusters and hidden coupling, with a judgement of each top pair",
   options: { ...windowOptions, "no-refresh": { type: "boolean" }, ...noCacheOption },
   optionHelp: {
     since: "analyse history from this date (ISO 8601); needed on a shallow clone",
@@ -554,6 +556,7 @@ export const coupling: ReportKind = {
     const inputs = pairOutput.inputs as { minSupport: number };
     const withTrend = trendOf(previous);
     const thin = rows.length < FEW_PAIRS;
+    const components = await componentCoupling(context, inputs.minSupport);
     const below = thin ? await pairsBelowFloor(context, inputs.minSupport) : [];
 
     const tie = tieNotice(production, JUDGED_PAIRS);
@@ -579,6 +582,7 @@ export const coupling: ReportKind = {
         minSupport: inputs.minSupport,
         degreeGuideline: settings.minDegree,
         trendTolerance: settings.couplingTrendTolerance,
+        componentMap: components.map.source,
         storedResultsRead: hidden.read === null ? [] : [hidden.read],
       },
       header: {
@@ -587,7 +591,7 @@ export const coupling: ReportKind = {
         excluded: excluded.filter((e) => e.count > 0),
       },
       sections: [
-        { id: "summary", heading: "What the coupling says", blocks: [{ type: "judgement", slot: "summary" }, ...matrixSection(classified, clusters, sums, { minSupport: inputs.minSupport, minDegree: settings.minDegree })] },
+        { id: "summary", heading: "What the coupling says", blocks: [{ type: "judgement", slot: "summary" }, ...componentMatrixBlocks(components, inputs.minSupport), ...matrixSection(classified, clusters, sums, { minSupport: inputs.minSupport, minDegree: settings.minDegree })] },
         { id: "pairs", heading: "Coupled pairs", blocks: pairsHeading },
         { id: "sums", heading: "Sum of coupling per file", blocks: sumSection(sums) },
         { id: "clusters", heading: "Clusters", blocks: clustersSection(clusters) },

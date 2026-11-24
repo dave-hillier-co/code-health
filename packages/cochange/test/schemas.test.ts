@@ -26,6 +26,7 @@ ajv.addSchema(load("hotspots.schema.json"));
 ajv.addSchema(load("age.schema.json"));
 ajv.addSchema(load("coupling.schema.json"));
 ajv.addSchema(load("identities.schema.json"));
+ajv.addSchema(load("components.schema.json"));
 // How a command schema for an analysis command is composed. The probe stands in for a real one.
 ajv.addSchema({
   $id: "probe.schema.json",
@@ -73,6 +74,16 @@ test("the spread output, as printed with meta, matches its schema, and a stray f
   const stray = JSON.parse(stdout);
   stray.results.overall.surprise = 1;
   expect(validates("spread.schema.json", JSON.stringify(stray))).not.toEqual([]);
+});
+
+test("components output, as printed with meta, matches its schema, with and without --propose, and a stray field does not", async () => {
+  for (const args of [[], ["--propose"]]) {
+    const { stdout } = await runCochange(repo.path, ["components", ...args, "--limit", "all"]);
+    expect(validates("components.schema.json", stdout)).toEqual([]);
+  }
+  const document = JSON.parse((await runCochange(repo.path, ["components"])).stdout);
+  document.results[0].surprise = 1;
+  expect(validates("components.schema.json", JSON.stringify(document))).not.toEqual([]);
 });
 
 test("hotspots and age output, as printed with meta, matches its schema in both views", async () => {

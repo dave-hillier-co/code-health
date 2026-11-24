@@ -4,8 +4,26 @@ import { isTestPath } from "./languages.ts";
 /** What a file is for. A file is a test by its language's naming conventions, or by the config's `testPatterns`. */
 export type Role = "production" | "test";
 
-const SUPPORT_FOLDER =
-  /(^|\/)(tests?|__tests__|__mocks__|mocks|testing|testutils?|testhelpers?|testsupport|testfixtures?|integrationtesting|e2e)\//i;
+/** The folder names that hold test code, each a whole folder name. Matched case-insensitively. */
+export const TEST_FOLDER_NAMES: readonly string[] = [
+  "test",
+  "tests",
+  "__tests__",
+  "__mocks__",
+  "mocks",
+  "testing",
+  "testutil",
+  "testutils",
+  "testhelper",
+  "testhelpers",
+  "testsupport",
+  "testfixture",
+  "testfixtures",
+  "integrationtesting",
+  "e2e",
+];
+
+const SUPPORT_FOLDER = new RegExp(`(^|/)(${TEST_FOLDER_NAMES.join("|")})/`, "i");
 
 /**
  * Test-support code by folder, whatever the language: a folder named `test`, `tests`, `__tests__`, `__mocks__`, `mocks`,

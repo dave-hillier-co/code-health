@@ -14,8 +14,8 @@ test("when several components match, the first by name wins, whatever the key or
 });
 
 test.each([
-  [{ billing: 3 }, "billing must be a glob or an array of globs"],
-  [{ billing: [1] }, "billing must be a glob or an array of globs"],
+  [{ billing: 3 }, "billing must be a glob, an array of globs, or an object with \"paths\""],
+  [{ billing: [1] }, "billing must be a glob, an array of globs, or an object with \"paths\""],
   [{ billing: [] }, "billing must list at least one glob"],
   [{ "(unassigned)": ["x"] }, "reserved"],
 ])("invalid components %j are config errors", (value, message) => {

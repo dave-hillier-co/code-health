@@ -156,9 +156,23 @@ test("the matrix opens the page, is ordered by cluster, boxes each cluster and m
   expect(stdout).toContain("e is an expected pair");
   const clusters = document.data.sections.find((s: { id: string }) => s.id === "clusters").blocks[0];
   expect(clusters.total).toBe(4);
-  const matrix = document.data.sections.find((s: { id: string }) => s.id === "summary").blocks.find((b: { type: string }) => b.type === "matrix");
+  const matrices = document.data.sections.find((s: { id: string }) => s.id === "summary").blocks.filter((b: { type: string }) => b.type === "matrix");
+  const matrix = matrices[1];
   expect(document.data.sections.find((s: { id: string }) => s.id === "sums").blocks.some((b: { type: string }) => b.type === "matrix")).toBe(false);
   expect(matrix.groups).toHaveLength(4);
+});
+
+test("the first figure is the co-change matrix of components, grouped by tree, and says the map is inferred", async () => {
+  const document = await slots();
+  const { stdout } = await run("--notes", writeNotes("notes-components.json", fullNotes(document)), "--format", "md");
+  expect(stdout.indexOf("**Co-change between the 7 components")).toBeLessThan(stdout.indexOf("**Co-change between the 8 files"));
+  expect(stdout).toContain("| api (src) | none | none | none | none | 80 |");
+  expect(stdout).toContain("Bars above the columns and left of the rows mark 2 spans: src (6 rows), top level (1 row).");
+  expect(stdout).toContain("The component map is inferred from folders");
+  expect(stdout).toContain("0 production code files are in no component");
+  expect(document.stamp.inputs.componentMap).toBe("inferred");
+  const [first] = document.data.sections.find((s: { id: string }) => s.id === "summary").blocks.filter((b: { type: string }) => b.type === "matrix");
+  expect(first.spans.map((s: { label: string }) => s.label)).toEqual(["src", "top level"]);
 });
 
 test("every number on the page is the CLI's: pairs beyond the top are counted, none is hidden silently", async () => {

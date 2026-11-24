@@ -1,4 +1,4 @@
-import { count, escapeHtml, escapeMd, formatNumber } from "../text.ts";
+import { clip, count, escapeHtml, escapeMd, formatNumber } from "../text.ts";
 import { htmlTable, mdTable } from "../tables.ts";
 import { bandCountText, bandLegend, makeBands } from "./bands.ts";
 import { figureHtml } from "./figure.ts";
@@ -19,6 +19,15 @@ export interface MatrixGroup {
   end: number;
 }
 
+/** Consecutive rows (and, for a square matrix, the same columns) that belong together, such as the components of one tree. */
+export interface MatrixSpan {
+  label: string;
+  /** Index of the first row in the span. */
+  start: number;
+  /** Index of the last row in the span, inclusive. */
+  end: number;
+}
+
 export interface MatrixData {
   title: string;
   /** What each cell holds, such as "shared changes". */
@@ -35,14 +44,30 @@ export interface MatrixData {
   cellMarks?: (string | null)[][];
   /** Rows that belong together, drawn as a box along the diagonal. Only for a square matrix whose rows and columns are the same list in the same order. */
   groups?: MatrixGroup[];
+  /**
+   * Consecutive rows that belong together, each drawn as a labelled bar to the left of the row labels, and for a square matrix
+   * above the column labels too, with a thin line across the grid at each boundary. Each span has its own colour class
+   * (`span-1` to `span-6`, repeating), and its label is printed, so colour is not the only signal.
+   */
+  spans?: MatrixSpan[];
   /** How the rows are ordered, printed under the chart, such as "Rows are ordered by cluster, then by sum of coupling". */
   orderText?: string;
 }
 
 const CELL_W = 64;
 const CELL_H = 26;
+/** Least space for the row labels and the rotated column labels; both grow to fit the longest label. */
 const ROW_LABEL = 180;
 const COLUMN_LABEL = 90;
+/** Labels longer than this are cut with an ellipsis in the drawing; the table and the hover title keep the whole text. */
+const LABEL_CHARS = 32;
+/** Width of a character of the 11px label font, with room for wide letters. */
+const CHAR_W = 6.4;
+const LABEL_ANGLE = 35;
+/** Thickness of a span bar, and the gap between it and the labels. */
+const SPAN_BAR = 18;
+const SPAN_GAP = 4;
+const SPAN_COLOURS = 6;
 
 const display = (value: number | null) => (value === null ? "none" : formatNumber(value));
 
@@ -73,6 +98,15 @@ function markLegend(data: MatrixData): string | undefined {
   return parts.length === 0 ? undefined : `${parts.join("; ")}.`;
 }
 
+const usableSpans = (data: MatrixData): MatrixSpan[] =>
+  (data.spans ?? []).filter((g) => g.start >= 0 && g.end >= g.start && g.end < data.rows.length).sort((a, b) => a.start - b.start);
+
+function spanLegend(spans: readonly MatrixSpan[], square: boolean): string | undefined {
+  if (spans.length === 0) return undefined;
+  const where = square ? "above the columns and left of the rows" : "left of the rows";
+  return `Bars ${where} mark ${count(spans.length, "span")}: ${spans.map((g) => `${g.label} (${count(g.end - g.start + 1, "row")})`).join(", ")}.`;
+}
+
 function groupLegend(groups: readonly MatrixGroup[]): string | undefined {
   if (groups.length === 0) return undefined;
   return `Boxes along the diagonal mark ${count(groups.length, "group")}: ${groups.map((g) => `${g.label} (${count(g.end - g.start + 1, "row")})`).join(", ")}.`;
@@ -82,50 +116,88 @@ export function matrixHtml(data: MatrixData): string {
   const present = data.cells.flat().flatMap((v) => (v === null ? [] : [v]));
   const bands = makeBands(present, data.breaks);
   const groups = usableGroups(data);
+  const spans = usableSpans(data);
+  const square = isSquare(data);
+  const rowText = data.rows.map((r) => clip(r, LABEL_CHARS));
+  const columnText = data.columns.map((c) => clip(c, LABEL_CHARS));
+  const longest = (labels: readonly string[]) => Math.max(0, ...labels.map((l) => l.length));
+  const rowLabel = Math.max(ROW_LABEL, Math.ceil(longest(rowText) * CHAR_W) + 12);
+  // A label rotated by LABEL_ANGLE rises by its length times sin(angle) and runs right by its length times cos(angle).
+  const rise = longest(columnText) * CHAR_W * Math.sin((LABEL_ANGLE * Math.PI) / 180);
+  const columnLabel = Math.max(COLUMN_LABEL, Math.ceil(rise) + 16);
+  const reach = longest(columnText) * CHAR_W * Math.cos((LABEL_ANGLE * Math.PI) / 180);
+  const left = spans.length > 0 ? SPAN_BAR + SPAN_GAP : 0;
+  const top = spans.length > 0 && square ? SPAN_BAR + SPAN_GAP : 0;
+  const gridX = left + rowLabel;
+  const gridY = top + columnLabel;
   const labels = [
-    ...data.columns.map((c, j) => `<text x="${ROW_LABEL + j * CELL_W + CELL_W / 2}" y="${COLUMN_LABEL - 6}" transform="rotate(-35 ${ROW_LABEL + j * CELL_W + CELL_W / 2} ${COLUMN_LABEL - 6})">${escapeHtml(c)}</text>`),
-    ...data.rows.map((r, i) => `<text x="${ROW_LABEL - 6}" y="${COLUMN_LABEL + i * CELL_H + 17}" text-anchor="end">${escapeHtml(r)}</text>`),
+    ...data.columns.map((c, j) => {
+      const x = gridX + j * CELL_W + CELL_W / 2;
+      const y = gridY - 6;
+      return `<text x="${x}" y="${y}" transform="rotate(-${LABEL_ANGLE} ${x} ${y})">${escapeHtml(columnText[j]!)}${columnText[j] === c ? "" : `<title>${escapeHtml(c)}</title>`}</text>`;
+    }),
+    ...data.rows.map((r, i) => `<text x="${gridX - 6}" y="${gridY + i * CELL_H + 17}" text-anchor="end">${escapeHtml(rowText[i]!)}${rowText[i] === r ? "" : `<title>${escapeHtml(r)}</title>`}</text>`),
   ];
   const cells = data.rows.flatMap((_, i) =>
     data.columns.map((_, j) => {
       const value = data.cells[i]?.[j] ?? null;
       const name = data.cellMarks?.[i]?.[j] ?? null;
       const markClass = name !== null && data.marks?.[name] !== undefined ? ` mark-${name}` : "";
-      const x = ROW_LABEL + j * CELL_W;
-      const y = COLUMN_LABEL + i * CELL_H;
+      const x = gridX + j * CELL_W;
+      const y = gridY + i * CELL_H;
       return `<g class="cell band-${value === null ? "none" : bands.of(value)}${markClass}"><rect x="${x}" y="${y}" width="${CELL_W - 2}" height="${CELL_H - 2}"/><text x="${x + CELL_W / 2 - 1}" y="${y + 16}" text-anchor="middle">${escapeHtml(cellText(data, i, j))}</text></g>`;
     }),
   );
   const boxes = groups.map((g) => {
-    const x = ROW_LABEL + g.start * CELL_W - 1;
-    const y = COLUMN_LABEL + g.start * CELL_H - 1;
+    const x = gridX + g.start * CELL_W - 1;
+    const y = gridY + g.start * CELL_H - 1;
     const span = g.end - g.start + 1;
     return `<g class="group"><rect x="${x}" y="${y}" width="${span * CELL_W}" height="${span * CELL_H}"><title>${escapeHtml(g.label)}</title></rect></g>`;
+  });
+  const bars = spans.flatMap((g, k) => {
+    const colour = `span span-${(k % SPAN_COLOURS) + 1}`;
+    const rows = g.end - g.start + 1;
+    const y = gridY + g.start * CELL_H;
+    const cy = y + (rows * CELL_H - 2) / 2;
+    const side = `<g class="${colour}"><rect x="0" y="${y}" width="${SPAN_BAR}" height="${rows * CELL_H - 2}"/><text x="${SPAN_BAR / 2}" y="${cy}" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 ${SPAN_BAR / 2} ${cy})">${escapeHtml(clip(g.label, Math.floor((rows * CELL_H - 6) / CHAR_W)))}</text><title>${escapeHtml(g.label)}</title></g>`;
+    if (!square) return [side];
+    const x = gridX + g.start * CELL_W;
+    const w = rows * CELL_W - 2;
+    return [side, `<g class="${colour}"><rect x="${x}" y="0" width="${w}" height="${SPAN_BAR}"/><text x="${x + w / 2}" y="${SPAN_BAR / 2}" text-anchor="middle" dominant-baseline="central">${escapeHtml(clip(g.label, Math.floor((w - 6) / CHAR_W)))}</text><title>${escapeHtml(g.label)}</title></g>`];
+  });
+  const lines = spans.slice(1).flatMap((g) => {
+    const y = gridY + g.start * CELL_H - 1;
+    const horizontal = `<line class="span-boundary" x1="${left}" y1="${y}" x2="${gridX + data.columns.length * CELL_W}" y2="${y}"/>`;
+    if (!square) return [horizontal];
+    const x = gridX + g.start * CELL_W - 1;
+    return [horizontal, `<line class="span-boundary" x1="${x}" y1="${top}" x2="${x}" y2="${gridY + data.rows.length * CELL_H}"/>`];
   });
   const notes = [
     `Colour is ${data.valueLabel} in ${bandCountText(bands)}, and each cell prints its value: ${bandLegend(bands)}. Hatched cells have no value.`,
     markLegend(data),
+    spanLegend(spans, square),
     groupLegend(groups),
     data.orderText,
   ].filter((line): line is string => line !== undefined);
   const description = [
     `A grid of ${data.rows.length} rows by ${data.columns.length} columns holding ${data.valueLabel}.`,
+    spans.length > 0 ? `${count(spans.length, "bar")} mark ${spans.length === 1 ? "a span" : "spans"} of consecutive rows: ${spans.map((g) => g.label).join(", ")}.` : undefined,
     groups.length > 0 ? `${count(groups.length, "box", "boxes")} along the diagonal mark groups of rows.` : undefined,
     "Each cell prints its value; the table below lists the same values.",
   ].filter((line): line is string => line !== undefined).join(" ");
-  const groupOf = (i: number) => groups.find((g) => i >= g.start && i <= g.end)?.label;
-  const rowLabel = (r: string, i: number) => {
-    const group = groupOf(i);
-    return group === undefined ? r : `${r} (${group})`;
+  const nameOf = (i: number) => [spans.find((g) => i >= g.start && i <= g.end)?.label, groups.find((g) => i >= g.start && i <= g.end)?.label].filter((label): label is string => label !== undefined);
+  const rowHeader = (r: string, i: number) => {
+    const names = nameOf(i);
+    return names.length === 0 ? r : `${r} (${names.join(", ")})`;
   };
   return figureHtml({
     kind: "matrix",
     title: data.title,
     description,
-    width: ROW_LABEL + data.columns.length * CELL_W + 40,
-    height: COLUMN_LABEL + data.rows.length * CELL_H + 4,
-    drawing: [...labels, ...cells, ...boxes].join("\n"),
-    table: htmlTable(`${data.title}: ${data.valueLabel}`, [{ label: "" }, ...data.columns.map((c) => ({ label: c, align: "right" as const }))], data.rows.map((r, i) => [escapeHtml(rowLabel(r, i)), ...data.columns.map((_, j) => escapeHtml(cellText(data, i, j)))]), { rowHeaders: true }),
+    width: Math.ceil(gridX + Math.max(data.columns.length * CELL_W + 40, (data.columns.length - 0.5) * CELL_W + reach + 8)),
+    height: gridY + data.rows.length * CELL_H + 4,
+    drawing: [...bars, ...labels, ...cells, ...boxes, ...lines].join("\n"),
+    table: htmlTable(`${data.title}: ${data.valueLabel}`, [{ label: "" }, ...data.columns.map((c) => ({ label: c, align: "right" as const }))], data.rows.map((r, i) => [escapeHtml(rowHeader(r, i)), ...data.columns.map((_, j) => escapeHtml(cellText(data, i, j)))]), { rowHeaders: true }),
     notes: `<p class="legend">${notes.map(escapeHtml).join(" ")}</p>\n`,
   });
 }
@@ -134,14 +206,15 @@ export function matrixMd(data: MatrixData): string {
   const present = data.cells.flat().flatMap((v) => (v === null ? [] : [v]));
   const bands = makeBands(present, data.breaks);
   const groups = usableGroups(data);
-  const groupOf = (i: number) => groups.find((g) => i >= g.start && i <= g.end)?.label;
-  const extra = [markLegend(data), groupLegend(groups), data.orderText].filter((line): line is string => line !== undefined);
+  const spans = usableSpans(data);
+  const nameOf = (i: number) => [spans.find((g) => i >= g.start && i <= g.end)?.label, groups.find((g) => i >= g.start && i <= g.end)?.label].filter((label): label is string => label !== undefined);
+  const extra = [markLegend(data), spanLegend(spans, isSquare(data)), groupLegend(groups), data.orderText].filter((line): line is string => line !== undefined);
   return [
     `**${escapeMd(data.title)}** (${escapeMd(data.valueLabel)}; ${bandLegend(bands)})`,
     "",
     mdTable([{ label: "" }, ...data.columns.map((c) => ({ label: c, align: "right" as const }))], data.rows.map((r, i) => {
-      const group = groupOf(i);
-      return [group === undefined ? r : `${r} (${group})`, ...data.columns.map((_, j) => cellText(data, i, j))];
+      const names = nameOf(i);
+      return [names.length === 0 ? r : `${r} (${names.join(", ")})`, ...data.columns.map((_, j) => cellText(data, i, j))];
     })),
     ...(extra.length === 0 ? [] : ["", escapeMd(extra.join(" "))]),
   ].join("\n");

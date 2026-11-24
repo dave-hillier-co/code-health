@@ -1,0 +1,41 @@
+{
+  "command": "components",
+  "config": "0000000000000000",
+  "filesInNoComponent": 0,
+  "inputs": {
+    "propose": false
+  },
+  "productionFiles": 2,
+  "repo": {
+    "dirty": false,
+    "head": "9f65c10e2680360c26e94d73aa12fc4b81bdd0dc"
+  },
+  "results": [
+    {
+      "component": "billing",
+      "files": 1,
+      "globs": [
+        "src/billing/**"
+      ],
+      "group": "src",
+      "source": "inferred"
+    },
+    {
+      "component": "reporting",
+      "files": 1,
+      "globs": [
+        "src/reporting/**"
+      ],
+      "group": "src",
+      "source": "inferred"
+    }
+  ],
+  "schemaVersion": 1,
+  "source": "inferred",
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": 2
+  }
+}

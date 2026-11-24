@@ -15,6 +15,20 @@
 
 Four pairs only, from a history with two authors, so the trends are tentative.
 
+**Co-change between the 7 components with the most changes, degree in percent** (coupling degree in percent; band 1: 20, band 2: 20 to 40, band 3: 40 to 60, band 4: 60 to 80, band 5: 80)
+
+|  | api | billing | config | runtime | web | search | docs |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| api (src) | none | none | none | none | 80 | none | none |
+| billing (src) | none | none | none | none | none | none | none |
+| config (src) | none | none | none | 50 | none | none | none |
+| runtime (src) | none | none | 50 | none | none | none | none |
+| web (src) | 80 | none | none | none | none | none | none |
+| search (src) | none | none | none | none | none | none | none |
+| docs (top level) | none | none | none | none | none | none | none |
+
+Bars above the columns and left of the rows mark 2 spans: src (6 rows), top level (1 row). The component map is inferred from folders (no `components` are configured; `cochange components --propose` prints it for review), with 7 components in 2 groups. Rows and columns are components, ordered by group (the group with the most changes first) and within a group by change count, then name. Draws 7 of the 7 components with a change, at most 20, the ones with the most changes; omits 0 components. 0 production code files are in no component. `cochange components` lists the map. A cell is the degree between two components: the changes that touched both, over the mean of the changes that touched each, counted over the same eligible changes and with the same formula as a pair of files; a change counts once for each component it touches. A pair that shares fewer than 5 changes (the support floor) has no value. Production code files only.
+
 **Co-change between the 8 files of the strongest clusters, degree in percent** (coupling degree in percent; band 1: 20, band 2: 20 to 40, band 3: 40 to 60, band 4: 60 to 80, band 5: 80 to 100)
 
 |  | src/api/orders.ts | src/web/orders-view.ts | src/config/flags.ts | src/runtime/flags.ts | src/billing/ledger.test.ts | src/billing/ledger.ts | src/search/index.ts | src/search/ranking.ts |

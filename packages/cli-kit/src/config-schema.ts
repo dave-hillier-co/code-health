@@ -26,7 +26,23 @@ function sharedProperties(): Record<string, JsonSchema> {
     includeRoots: stringList(
       "Directories, relative to the repository root, that C and C++ `#include` paths are written against (for `#include \"stage/Terrain.h\"` with the file at `src/stage/Terrain.h`, `src`). They are tried after the include directories of a compile_commands.json and before CMake's target include directories. With neither a compile_commands.json nor includeRoots, the directories are inferred from where the included files are.",
     ),
-    components: { type: "object", description: "Named groups of paths: component name to globs." },
+    components: {
+      type: "object",
+      description:
+        "Named groups of paths: component name to a glob, an array of globs, or an object { paths, group } whose group names the independent tree the component belongs to (src, test, samples, a product area). When not configured, `cochange components` infers a map from folders and `cochange components --propose` prints it for review.",
+      additionalProperties: {
+        oneOf: [
+          { type: "string" },
+          { type: "array", items: { type: "string" } },
+          {
+            type: "object",
+            properties: { paths: { oneOf: [{ type: "string" }, { type: "array", items: { type: "string" } }] }, group: { type: "string" } },
+            required: ["paths"],
+            additionalProperties: false,
+          },
+        ],
+      },
+    },
     vagueNames: stringList("Folder and file names that say nothing about their content."),
     history: {
       ...sectionSchema(historyDefaults),
