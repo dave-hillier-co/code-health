@@ -87,6 +87,8 @@ export interface FixStatistics {
   cache: { parsed: number; cached: number };
   /** Units that still exist and were touched in the window, by current id. */
   units: Map<string, UnitFixes>;
+  /** The landed changes of the window that touched each unit that still exists, by current id. The size of the intersection of two sets is the changes the two functions shared. */
+  changes: Map<string, ReadonlySet<string>>;
   /** Units no longer in the current revision that the window touched. */
   deleted: UnitFixes[];
   /** `fixCommits` is the distinct fix changes with a changed line outside every function, so it never exceeds the fixes of the window. `fixFileChanges` is the sum of the files' counts, where a change touching three files counts three times. */
@@ -382,11 +384,14 @@ export async function measureFixes(
     };
   };
   const units = new Map<string, UnitFixes>();
+  const changes = new Map<string, ReadonlySet<string>>();
   const deleted: UnitFixes[] = [];
   for (const [key, entry] of aggregates) {
     const row = build(key, entry);
-    if (key.startsWith("c:")) units.set(row.id, row);
-    else deleted.push(row);
+    if (key.startsWith("c:")) {
+      units.set(row.id, row);
+      changes.set(row.id, entry.changes);
+    } else deleted.push(row);
   }
   deleted.sort(byFixes(settings.fixes.minRevisions));
 
@@ -413,6 +418,7 @@ export async function measureFixes(
     files: { analysed: analysedFiles, skipped },
     cache: cacheStats,
     units,
+    changes,
     deleted,
     outside: {
       fixCommits: new Set(outsideTouches.filter((touch) => touch.fix).map((touch) => touch.changeId)).size,

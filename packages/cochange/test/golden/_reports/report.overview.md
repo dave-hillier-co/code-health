@@ -17,6 +17,14 @@
 1. **src/billing/invoice.ts (hotspot ranking)** (verdict: investigate-first): It tops the ranking, and it is the file the fixes touched.
 2. **src/reporting/summary.ts (hotspot ranking)** (verdict: worth-a-look): It tops the ranking, and it is the file the fixes touched.
 
+**Revisions against complexity, 2 production code files** (Revisions in the window against Complexity)
+
+_Log scale on Revisions in the window (horizontal) and Complexity (vertical): each tick is ten times the one before, because the values have a long tail._
+
+_2 files have a value below 1 on a log axis and are drawn on the axis minimum, 1._
+
+Both lines are at the 90th percentile (cochange.hotspotPercentile), a rank among the files shown, so they move when files are added. This is the split the hotspots friction list uses when no stored complexity analyse result covers the commit; with one, `cochange report hotspots` calls a file complex when it has a function above the cognitive guideline instead, so its list can differ from the upper right here.
+
 ## Evidence
 
 **Evidence behind the history-based results**
@@ -86,21 +94,6 @@
 | ---: | --- | ---: | ---: | ---: | ---: | --- |
 | 1 | src/billing/invoice.ts | 0.38 | 4 | 0 | 0 | hotspot |
 | 2 | src/reporting/summary.ts | 0.13 | 3 | 0 | 0 | – |
-
-**Distribution of hotspot scores** (files per bin)
-
-| Bin | Count (files) | Share |
-| --- | ---: | ---: |
-| 0.0 to 0.1 | 0 | 0% |
-| 0.1 to 0.2 | 1 | 50% |
-| 0.2 to 0.3 | 0 | 0% |
-| 0.3 to 0.4 | 1 | 50% |
-| 0.4 to 0.5 | 0 | 0% |
-| 0.5 to 0.6 | 0 | 0% |
-| 0.6 to 0.7 | 0 | 0% |
-| 0.7 to 0.8 | 0 | 0% |
-| 0.8 to 0.9 | 0 | 0% |
-| 0.9 to 1.0 | 0 | 0% |
 
 > **Notice:** No stored complexity analyse result for this commit. Run `complexity analyse` to store it, then run the overview again.
 

@@ -31,6 +31,234 @@
           {
             "slot": "summary",
             "type": "judgement"
+          },
+          {
+            "breaks": [
+              20,
+              40,
+              60,
+              80
+            ],
+            "cellMarks": [
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                "expected",
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                "expected",
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            ],
+            "cells": [
+              [
+                null,
+                80,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              [
+                80,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                50,
+                null,
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                50,
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                70,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                70,
+                null,
+                null,
+                null
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                100
+              ],
+              [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                100,
+                null
+              ]
+            ],
+            "columns": [
+              "src/api/orders.ts",
+              "src/web/orders-view.ts",
+              "src/config/flags.ts",
+              "src/runtime/flags.ts",
+              "src/billing/ledger.test.ts",
+              "src/billing/ledger.ts",
+              "src/search/index.ts",
+              "src/search/ranking.ts"
+            ],
+            "groups": [
+              {
+                "end": 1,
+                "label": "cluster 1",
+                "start": 0
+              },
+              {
+                "end": 3,
+                "label": "cluster 2",
+                "start": 2
+              },
+              {
+                "end": 5,
+                "label": "cluster 3",
+                "start": 4
+              },
+              {
+                "end": 7,
+                "label": "cluster 4",
+                "start": 6
+              }
+            ],
+            "marks": {
+              "across": {
+                "symbol": "!",
+                "text": "a pair outside every box: files in different clusters, or a file in no cluster, that reach the support floor"
+              },
+              "expected": {
+                "symbol": "e",
+                "text": "an expected pair (a test and its code, a header and its source, or another pair listed in the table of expected pairs)"
+              }
+            },
+            "orderText": "Rows and columns are ordered by cluster (the numbers of the table of clusters), and within a cluster by sum of coupling over production pairs, then coupled files, then path. Draws 8 files and 4 of 4 clusters, at most 18 files; omits 0 files and 0 clusters (clusters are drawn in the order of the table of clusters, then the files in no cluster with the greatest sum).  `cochange clusters` lists every cluster. A cell is the degree of the pair, which is also its colour; shared changes are in the tables of pairs, and a pair that shares fewer than 5 changes (the support floor) has no cell value. Expected pairs are drawn and marked, not left out (1 of 1 expected pair falls within the drawn files). Cluster edges are pairs at or above the degree guideline of 30 percent, so a marked cell outside the boxes is a pair under the guideline.",
+            "rows": [
+              "src/api/orders.ts",
+              "src/web/orders-view.ts",
+              "src/config/flags.ts",
+              "src/runtime/flags.ts",
+              "src/billing/ledger.test.ts",
+              "src/billing/ledger.ts",
+              "src/search/index.ts",
+              "src/search/ranking.ts"
+            ],
+            "title": "Co-change between the 8 files of the strongest clusters, degree in percent",
+            "type": "matrix",
+            "valueLabel": "coupling degree in percent"
           }
         ],
         "heading": "What the coupling says",
@@ -334,77 +562,6 @@
             ],
             "total": 6,
             "type": "ranked-table"
-          },
-          {
-            "cells": [
-              [
-                null,
-                8,
-                null,
-                null,
-                null,
-                null
-              ],
-              [
-                8,
-                null,
-                null,
-                null,
-                null,
-                null
-              ],
-              [
-                null,
-                null,
-                null,
-                5,
-                null,
-                null
-              ],
-              [
-                null,
-                null,
-                5,
-                null,
-                null,
-                null
-              ],
-              [
-                null,
-                null,
-                null,
-                null,
-                null,
-                5
-              ],
-              [
-                null,
-                null,
-                null,
-                null,
-                5,
-                null
-              ]
-            ],
-            "columns": [
-              "src/api/orders.ts",
-              "src/web/orders-view.ts",
-              "src/config/flags.ts",
-              "src/runtime/flags.ts",
-              "src/search/index.ts",
-              "src/search/ranking.ts"
-            ],
-            "rows": [
-              "src/api/orders.ts",
-              "src/web/orders-view.ts",
-              "src/config/flags.ts",
-              "src/runtime/flags.ts",
-              "src/search/index.ts",
-              "src/search/ranking.ts"
-            ],
-            "title": "Shared changes between the top 6 files by sum of coupling",
-            "type": "matrix",
-            "valueLabel": "shared changes (none where the pair shares fewer than 5, the support floor)"
           }
         ],
         "heading": "Sum of coupling per file",

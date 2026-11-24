@@ -74,9 +74,16 @@ svg .band-3 rect { fill: var(--band-3); } svg .band-3 text { fill: var(--on-band
 svg .band-4 rect { fill: var(--band-4); } svg .band-4 text { fill: var(--on-band-4); }
 svg .band-5 rect { fill: var(--band-5); } svg .band-5 text { fill: var(--on-band-5); }
 svg .band-none rect { fill: var(--panel); stroke: var(--muted); stroke-dasharray: 3 2; }
+svg .group rect { fill: none; stroke: var(--marker); stroke-width: 2; }
+svg .cell[class*="mark-"] text { font-weight: 700; }
 svg .bin rect { fill: var(--bar); }
 svg .bar rect { fill: var(--bar); } svg .bar.above rect { fill: var(--bar-above); }
 svg .bar line { stroke: var(--marker); stroke-width: 2; }
+svg .frame { fill: none; stroke: var(--rule); }
+svg .guideline line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 6 4; } svg .guideline text, svg .tick { fill: var(--muted); }
+svg circle.point { fill: var(--bar); fill-opacity: .4; }
+svg rect.point, svg .point.named rect { fill: var(--bar-above); stroke: var(--bg); stroke-width: 1; }
+svg .point.named text { paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
 svg polyline { fill: none; stroke: var(--bar-above); stroke-width: 2; } svg circle { fill: var(--bar-above); }
 .notice { border-left: 4px solid var(--notice-rule); background: var(--notice-bg); padding: .5rem .75rem; margin: .75rem 0; }
 .judgement { border: 1px solid var(--rule); border-left: 4px solid var(--link); background: var(--panel); padding: .25rem 1rem .5rem; margin: 1rem 0; }
@@ -212,6 +219,45 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </tbody>
 </table>
 </figure>
+<figure class="chart scatter">
+<figcaption>Revisions against complexity</figcaption>
+<svg role="img" aria-labelledby="revisions-against-complexity-d229d6-title revisions-against-complexity-d229d6-desc" viewBox="0 0 680 440" preserveAspectRatio="xMinYMin meet">
+<title id="revisions-against-complexity-d229d6-title">Revisions against complexity</title>
+<desc id="revisions-against-complexity-d229d6-desc">A scatter of 7 files: Revisions horizontal, Complexity vertical, on log scales, split into four quadrants by dashed guideline lines. Of 7 files: 3 look first, 1 complex, stable, 1 busy, simple, 2 quiet. The table below lists the 2 named points with their values.</desc>
+<rect class="frame" x="64" y="12" width="596" height="372"/>
+<g class="guideline"><line x1="333.1" y1="12" x2="333.1" y2="384"><title>the 75th percentile of revisions</title></line><text x="336.1" y="380">8</text></g>
+<g class="guideline"><line x1="64" y1="185.3" x2="660" y2="185.3"><title>the 75th percentile of complexity</title></line><text x="657" y="182.3" text-anchor="end">40</text></g>
+<text class="tick" x="64.0" y="400" text-anchor="middle">1</text>
+<text class="tick" x="362.0" y="400" text-anchor="middle">10</text>
+<text class="tick" x="660.0" y="400" text-anchor="middle">100</text>
+<text class="tick" x="56" y="388.0" text-anchor="end">1</text>
+<text class="tick" x="56" y="264.0" text-anchor="end">10</text>
+<text class="tick" x="56" y="140.0" text-anchor="end">100</text>
+<text class="tick" x="56" y="16.0" text-anchor="end">1000</text>
+<text class="axis" x="362.0" y="432" text-anchor="middle">Revisions (log scale)</text>
+<text class="axis" transform="rotate(-90 14 198.0)" x="14" y="198.0" text-anchor="middle">Complexity (log scale)</text>
+<rect class="point highlight" x="345.9" y="170.8" width="5" height="5"/>
+<circle class="point" cx="153.7" cy="297.3" r="2.2"/>
+<circle class="point" cx="64.0" cy="384.0" r="2.2"/>
+<circle class="point" cx="206.2" cy="126.2" r="2.2"/>
+<circle class="point" cx="451.7" cy="260.0" r="2.2"/>
+<g class="point named"><title>1. src/core/engine.ts: 40 Revisions, 300 Complexity</title><rect x="537.4" y="72.8" width="8" height="8"/><text class="name" x="548.4" y="72.8" text-anchor="start">engine.ts</text></g>
+<g class="point named"><title>2. src/ui/page.ts: 12 Revisions, 90 Complexity</title><rect x="381.6" y="137.7" width="8" height="8"/><text class="name" x="392.6" y="137.7" text-anchor="start">page.ts</text></g>
+</svg>
+<table>
+<caption>Revisions against complexity: the named points</caption>
+<thead><tr><th scope="col" class="number">#</th><th scope="col">Point</th><th scope="col" class="number">Revisions</th><th scope="col" class="number">Complexity</th><th scope="col">Quadrant</th></tr></thead>
+<tbody>
+<tr><td class="number">1</td><td>src/core/engine.ts</td><td class="number">40</td><td class="number">300</td><td>look first</td></tr>
+<tr><td class="number">2</td><td>src/ui/page.ts</td><td class="number">12</td><td class="number">90</td><td>look first</td></tr>
+</tbody>
+</table>
+<p class="legend">Log scale on Revisions (horizontal) and Complexity (vertical): each tick is ten times the one before, because the values have a long tail.</p>
+<p class="legend">1 files have a value below 1 on a log axis and are drawn on the axis minimum, 1.</p>
+<p class="legend">Guidelines: vertical dashed line at 8: the 75th percentile of revisions; horizontal dashed line at 40: the 75th percentile of complexity. A guideline orders and labels results; it decides nothing.</p>
+<p class="legend">Of 7 files: 3 look first, 1 complex, stable, 1 busy, simple, 2 quiet.</p>
+<p class="legend">Squares are highlighted files. The table lists 2 of 3 highlighted files, in the order given, and the drawing names them; 1 are not listed and are drawn as squares without a name.</p>
+</figure>
 <figure class="chart matrix">
 <figcaption>Shared changes</figcaption>
 <svg role="img" aria-labelledby="shared-changes-4d76fd-title shared-changes-4d76fd-desc" viewBox="0 0 412 146" preserveAspectRatio="xMinYMin meet">
@@ -238,6 +284,28 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </tbody>
 </table>
 <p class="legend">Colour is shared changes in three bands, and each cell prints its value: band 1: 1, band 2: 5, band 3: 9. Hatched cells have no value.</p>
+</figure>
+<figure class="chart function-bars">
+<figcaption>Functions by cognitive complexity</figcaption>
+<svg role="img" aria-labelledby="functions-by-cognitive-complexity-27a062-title functions-by-cognitive-complexity-27a062-desc" viewBox="0 0 760 100" preserveAspectRatio="xMinYMin meet">
+<title id="functions-by-cognitive-complexity-27a062-title">Functions by cognitive complexity</title>
+<desc id="functions-by-cognitive-complexity-27a062-desc">3 functions by cognitive complexity, each with its revisions and fixes in the history window. A bar longer than the guideline marker is above guideline, shown with a triangle and the words in the table.</desc>
+<g class="column-heads"><text x="244" y="14" text-anchor="end">Function</text><text x="250" y="14">cognitive complexity</text><text x="660" y="14" text-anchor="end">Revisions</text><text x="740" y="14" text-anchor="end">Fixes</text></g>
+<g class="bar above"><text x="244" y="39" text-anchor="end">parse<title>parse</title></text><rect x="250" y="26" width="260.0" height="18"/><line x1="380.0" x2="380.0" y1="23" y2="47"/><text x="518.0" y="39">▲ 30</text><text x="660" y="39" text-anchor="end">12</text><text x="740" y="39" text-anchor="end">4</text></g>
+<g class="bar within"><text x="244" y="65" text-anchor="end">format<title>format</title></text><rect x="250" y="52" width="86.7" height="18"/><line x1="380.0" x2="380.0" y1="49" y2="73"/><text x="388.0" y="65">10</text><text x="660" y="65" text-anchor="end">3</text><text x="740" y="65" text-anchor="end">0</text></g>
+<g class="bar within"><text x="244" y="91" text-anchor="end">plain<title>plain</title></text><rect x="250" y="78" width="43.3" height="18"/><line x1="380.0" x2="380.0" y1="75" y2="99"/><text x="388.0" y="91">5</text><text x="660" y="91" text-anchor="end">none</text><text x="740" y="91" text-anchor="end">none</text></g>
+</svg>
+<table>
+<caption>Functions by cognitive complexity: cognitive complexity, revisions and fixes</caption>
+<thead><tr><th scope="col">Function</th><th scope="col" class="number">cognitive complexity</th><th scope="col" class="number">Guideline</th><th scope="col">Position</th><th scope="col" class="number">Revisions</th><th scope="col" class="number">Fixes</th></tr></thead>
+<tbody>
+<tr><th scope="row">parse</th><td class="number">30</td><td class="number">15</td><td>above guideline</td><td class="number">12</td><td class="number">4</td></tr>
+<tr><th scope="row">format</th><td class="number">10</td><td class="number">15</td><td>below guideline</td><td class="number">3</td><td class="number">0</td></tr>
+<tr><th scope="row">plain</th><td class="number">5</td><td class="number">15</td><td>below guideline</td><td class="number">none</td><td class="number">none</td></tr>
+</tbody>
+</table>
+<p class="legend">The vertical line marks the guideline of 15 and ▲ marks a function above it. A guideline orders and labels results; it decides nothing. Guideline from a judgement call.</p>
+<p class="legend">The chart omits 2 functions: the least complex of the file.</p>
 </figure>
 <figure class="chart guideline-bars">
 <figcaption>Against guidelines</figcaption>

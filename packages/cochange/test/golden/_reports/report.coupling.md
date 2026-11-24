@@ -15,6 +15,21 @@
 
 Four pairs only, from a history with two authors, so the trends are tentative.
 
+**Co-change between the 8 files of the strongest clusters, degree in percent** (coupling degree in percent; band 1: 20, band 2: 20 to 40, band 3: 40 to 60, band 4: 60 to 80, band 5: 80 to 100)
+
+|  | src/api/orders.ts | src/web/orders-view.ts | src/config/flags.ts | src/runtime/flags.ts | src/billing/ledger.test.ts | src/billing/ledger.ts | src/search/index.ts | src/search/ranking.ts |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| src/api/orders.ts (cluster 1) | none | 80 | none | none | none | none | none | none |
+| src/web/orders-view.ts (cluster 1) | 80 | none | none | none | none | none | none | none |
+| src/config/flags.ts (cluster 2) | none | none | none | 50 | none | none | none | none |
+| src/runtime/flags.ts (cluster 2) | none | none | 50 | none | none | none | none | none |
+| src/billing/ledger.test.ts (cluster 3) | none | none | none | none | none | 70 e | none | none |
+| src/billing/ledger.ts (cluster 3) | none | none | none | none | 70 e | none | none | none |
+| src/search/index.ts (cluster 4) | none | none | none | none | none | none | none | 100 |
+| src/search/ranking.ts (cluster 4) | none | none | none | none | none | none | 100 | none |
+
+e is an expected pair (a test and its code, a header and its source, or another pair listed in the table of expected pairs) (2 cells). Boxes along the diagonal mark 4 groups: cluster 1 (2 rows), cluster 2 (2 rows), cluster 3 (2 rows), cluster 4 (2 rows). Rows and columns are ordered by cluster (the numbers of the table of clusters), and within a cluster by sum of coupling over production pairs, then coupled files, then path. Draws 8 files and 4 of 4 clusters, at most 18 files; omits 0 files and 0 clusters (clusters are drawn in the order of the table of clusters, then the files in no cluster with the greatest sum). `cochange clusters` lists every cluster. A cell is the degree of the pair, which is also its colour; shared changes are in the tables of pairs, and a pair that shares fewer than 5 changes (the support floor) has no cell value. Expected pairs are drawn and marked, not left out (1 of 1 expected pair falls within the drawn files). Cluster edges are pairs at or above the degree guideline of 30 percent, so a marked cell outside the boxes is a pair under the guideline.
+
 ## Coupled pairs
 
 > **Notice:** 4 pairs reach the support floor of 5 shared changes (cochange.minSupport), which is too few to rank. The floor was not lowered. No other pair shares 3 to 4 changes.
@@ -89,17 +104,6 @@ _Guidelines order and label the rows and decide nothing. Degree (%) 30 (cochange
 | 4 | src/runtime/flags.ts | 5 | 1 | 50 |
 | 5 | src/search/index.ts | 5 | 1 | 100 |
 | 6 | src/search/ranking.ts | 5 | 1 | 100 |
-
-**Shared changes between the top 6 files by sum of coupling** (shared changes (none where the pair shares fewer than 5, the support floor); band 1: 5, band 2: 8)
-
-|  | src/api/orders.ts | src/web/orders-view.ts | src/config/flags.ts | src/runtime/flags.ts | src/search/index.ts | src/search/ranking.ts |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| src/api/orders.ts | none | 8 | none | none | none | none |
-| src/web/orders-view.ts | 8 | none | none | none | none | none |
-| src/config/flags.ts | none | none | none | 5 | none | none |
-| src/runtime/flags.ts | none | none | 5 | none | none | none |
-| src/search/index.ts | none | none | none | none | none | 5 |
-| src/search/ranking.ts | none | none | none | none | 5 | none |
 
 ## Clusters
 

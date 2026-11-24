@@ -136,10 +136,29 @@ test("the page shows the pairs with their trend, the sums, the matrix, the clust
   expect(stdout).toContain("↓ weaker (-40 points)");
   expect(stdout).toContain("↑ stronger (+100 points, shared no change before)");
   expect(stdout).toContain("## Sum of coupling per file");
-  expect(stdout).toContain("Shared changes between the top");
+  expect(stdout).toContain("Co-change between the 8 files of the strongest clusters");
   expect(stdout).toContain("## Clusters");
   expect(stdout).toContain("Degree (%) 30 (cochange.minDegree), ▲ marks a value above it");
   expect(stdout).not.toContain("not shown");
+});
+
+test("the matrix opens the page, is ordered by cluster, boxes each cluster and marks the expected pair", async () => {
+  const document = await slots();
+  const { stdout } = await run("--notes", writeNotes("notes-matrix.json", fullNotes(document)), "--format", "md");
+  expect(stdout.indexOf("**Co-change between")).toBeGreaterThan(stdout.indexOf("## What the coupling says"));
+  expect(stdout.indexOf("**Co-change between")).toBeLessThan(stdout.indexOf("## Coupled pairs"));
+  expect(stdout).toContain("(cluster 1)");
+  expect(stdout).toContain("Boxes along the diagonal mark 4 groups: cluster 1 (2 rows)");
+  expect(stdout).toContain("Rows and columns are ordered by cluster");
+  expect(stdout).toContain("Draws 8 files and 4 of 4 clusters");
+  expect(stdout).toContain("src/billing/ledger.test.ts (cluster ");
+  expect(stdout).toMatch(/\| [0-9.]+ e \|/);
+  expect(stdout).toContain("e is an expected pair");
+  const clusters = document.data.sections.find((s: { id: string }) => s.id === "clusters").blocks[0];
+  expect(clusters.total).toBe(4);
+  const matrix = document.data.sections.find((s: { id: string }) => s.id === "summary").blocks.find((b: { type: string }) => b.type === "matrix");
+  expect(document.data.sections.find((s: { id: string }) => s.id === "sums").blocks.some((b: { type: string }) => b.type === "matrix")).toBe(false);
+  expect(matrix.groups).toHaveLength(4);
 });
 
 test("every number on the page is the CLI's: pairs beyond the top are counted, none is hidden silently", async () => {

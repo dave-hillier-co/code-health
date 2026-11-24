@@ -48,6 +48,44 @@
               }
             ],
             "type": "facts"
+          },
+          {
+            "cellMarks": [
+              [
+                null,
+                "missing",
+                "missing"
+              ]
+            ],
+            "cells": [
+              [
+                null,
+                6,
+                6
+              ]
+            ],
+            "columns": [
+              "...illing/invoice.ts",
+              "...g/invoice.test.ts",
+              "src/billing/tax.ts"
+            ],
+            "marks": {
+              "in-change": {
+                "symbol": "+",
+                "text": "a usual partner of the row file that the change also changed (at least 5 shared changes and 80% of the row file's revisions)"
+              },
+              "missing": {
+                "symbol": "!",
+                "text": "a usual partner of the row file that the change left out, as listed under Missing co-change partners"
+              }
+            },
+            "orderText": "Columns are the changed files, then the missing partners. Rows are ordered by missing partners, then by partners in the change, then by path. Missing columns follow the order of the Missing co-change partners section, and each is marked at the file it usually changes with.",
+            "rows": [
+              "...illing/invoice.ts"
+            ],
+            "title": "Change footprint: 1 changed file against 3 files",
+            "type": "matrix",
+            "valueLabel": "shared changes of the row file and the column file in the analysis window"
           }
         ],
         "heading": "The change",

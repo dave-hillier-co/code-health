@@ -1,5 +1,6 @@
 import { contributorsText, type Contributors } from "../contributors.ts";
 import { percentText } from "../percent-text.ts";
+import { midRankPercentiles } from "@code-health/cli-kit/ranking";
 import { builtinOmissions } from "@code-health/cli-kit/builtin-excludes";
 import { droppedCounts } from "@code-health/cli-kit/dropped-files";
 import type { CommandContext } from "@code-health/cli-kit/run-cli";
@@ -15,11 +16,14 @@ import type { Evidence } from "@code-health/history/evidence";
 import type { FiltersApplied } from "@code-health/history/noise";
 import { noCacheOption } from "@code-health/history/results-cache";
 import { command as hotspotsCommand } from "../commands/hotspots.ts";
+import { readSettings } from "../config.ts";
 import { orderedHotspots, type HotspotRow } from "../hotspot-ranking.ts";
 import { readSiblingResult, type SiblingResult } from "../sibling-reports.ts";
 import { windowOptions } from "../window-options.ts";
 
 const TOP = 5;
+/** Highlighted files named in the scatter and listed in its table. */
+const SCATTER_LABELS = 12;
 const FIRST_LOOK_MAX = 3;
 
 /** The fix convention check as hotspots and the other commands print it. */
@@ -306,15 +310,65 @@ function hotspotResult(rows: readonly HotspotRow[]): Result {
         ],
         rows: shown.map((row): Record<string, Cell> => ({ path: row.path, score: row.score, frequency: row.frequency, complexity: row.complexity, fixes: row.fixes, recommendation: row.recommendation })),
       }, "cochange hotspots"),
-      scoreHistogram(rows),
     ],
   };
 }
 
-function scoreHistogram(rows: readonly HotspotRow[]): Block {
-  const bins = Array.from({ length: 10 }, (_, i) => ({ label: `${(i / 10).toFixed(1)} to ${((i + 1) / 10).toFixed(1)}`, count: 0 }));
-  for (const row of rows) if (row.score !== null) bins[Math.min(9, Math.floor(row.score * 10))]!.count++;
-  return { type: "histogram", title: "Distribution of hotspot scores", unit: "files", bins };
+
+/** The smallest value whose mid-rank percentile among `values` is at or above `percentile`, the line the hotspots friction list draws at that percentile; undefined when no value reaches it. */
+function valueAtPercentile(values: readonly number[], percentile: number): number | undefined {
+  const ranks = midRankPercentiles(values);
+  const reached = values.filter((_, i) => ranks[i]! >= percentile / 100);
+  return reached.length === 0 ? undefined : Math.min(...reached);
+}
+
+/**
+ * Revisions against complexity, one dot per production code file that has a complexity. The lines are the
+ * `cochange.hotspotPercentile` of each axis, the same split the hotspots friction list uses for a file when no
+ * stored `complexity analyse` result covers the commit. The files in the upper right are highlighted, in the
+ * hotspot ranking order, and the top ones are named.
+ */
+export function scatterBlocks(rows: readonly HotspotRow[], percentile: number, complexitySource: unknown): Block[] {
+  const production = rows.filter((row) => row.role !== "test");
+  const unmeasured = production.filter((row) => row.complexity === null).length;
+  return [
+    churnComplexityScatter(rows, percentile, complexitySource),
+    {
+      type: "paragraph",
+      text: `Both lines are at the ${percentile}th percentile (cochange.hotspotPercentile), a rank among the files shown, so they move when files are added. This is the split the hotspots friction list uses when no stored complexity analyse result covers the commit; with one, \`cochange report hotspots\` calls a file complex when it has a function above the cognitive guideline instead, so its list can differ from the upper right here.${unmeasured > 0 ? ` ${unmeasured} of ${production.length} production code files have no complexity and are not drawn.` : ""}`,
+    },
+  ];
+}
+
+function churnComplexityScatter(rows: readonly HotspotRow[], percentile: number, complexitySource: unknown): Block {
+  const production = rows.filter((row) => row.role !== "test");
+  const measured = production.flatMap((row) => (row.complexity === null ? [] : [{ row, complexity: row.complexity }]));
+  const unmeasured = production.length - measured.length;
+  const xLine = valueAtPercentile(production.map((row) => row.frequency), percentile);
+  const yLine = valueAtPercentile(measured.map((m) => m.complexity), percentile);
+  const measure = complexitySource === "complexity-report" ? "the `complexity files` complexity" : "the indentation complexity";
+  const points = measured.map(({ row, complexity }) => ({
+    label: row.path,
+    short: row.path.split("/").at(-1) ?? row.path,
+    x: row.frequency,
+    y: complexity,
+    highlight: xLine !== undefined && yLine !== undefined && row.frequency >= xLine && complexity >= yLine,
+  }));
+  return {
+    type: "scatter",
+    title: `Revisions against complexity, ${points.length} production code files`,
+    xLabel: "Revisions in the window",
+    yLabel: "Complexity",
+    noun: "files",
+    xLog: true,
+    yLog: true,
+    ...(xLine === undefined ? {} : { xGuideline: { value: xLine, name: `the ${percentile}th percentile of revisions among the ${production.length} files (cochange.hotspotPercentile)` } }),
+    ...(yLine === undefined ? {} : { yGuideline: { value: yLine, name: `the ${percentile}th percentile of ${measure} among the ${measured.length} files that have one (cochange.hotspotPercentile)` } }),
+    quadrantNames: { upperRight: "changed often and complex (look here first)", upperLeft: "complex, changed less often", lowerRight: "changed often, less complex", lowerLeft: "changed less often and less complex" },
+    maxLabels: SCATTER_LABELS,
+    points: [...points].sort((a, b) => Number(b.highlight) - Number(a.highlight)),
+    emptyText: `No production code file has both revisions and a complexity, so there is no scatter.${unmeasured > 0 ? ` ${unmeasured} files have no complexity.` : ""}`,
+  };
 }
 
 function slots(candidates: Candidate[]): Slot[] {
@@ -393,7 +447,7 @@ export const overview: ReportKind = {
         excluded: excluded.filter((e) => e.count > 0),
       },
       sections: [
-        { id: "first-look", heading: "What to look at first", blocks: [{ type: "judgement", slot: "first-look" }] },
+        { id: "first-look", heading: "What to look at first", blocks: [{ type: "judgement", slot: "first-look" }, ...scatterBlocks(rows, readSettings(context.config).hotspotPercentile, extra.complexitySource)] },
         { id: "evidence", heading: "Evidence", blocks: evidenceBlocks(evidence, contributors) },
         { id: "fix-convention", heading: "Fix convention", blocks: fixBlocks(extra.fixConvention) },
         { id: "excluded", heading: "What was excluded", blocks: excludedBlocks(excluded) },
