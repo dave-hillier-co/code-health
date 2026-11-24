@@ -10421,36 +10421,11 @@ var localityReport = {
   }
 };
 
-// packages/locality/src/folder-trends.ts
+// packages/graph/src/folders.ts
 function withAncestors(folder) {
   if (folder === "") return [""];
   const parts2 = folder.split("/");
   return ["", ...parts2.map((_, i) => parts2.slice(0, i + 1).join("/"))];
-}
-function folderFigures2(production, edges) {
-  const figures = /* @__PURE__ */ new Map();
-  const at2 = (folder) => {
-    let found = figures.get(folder);
-    if (found === void 0) {
-      found = { files: 0, edges: 0, uses: 0, totalUseDistance: 0, meanDistancePerUse: null };
-      figures.set(folder, found);
-    }
-    return found;
-  };
-  at2("");
-  for (const file of production) for (const folder of withAncestors(folderOf(file))) at2(folder).files++;
-  for (const edge of edges) {
-    if (!edge.counted) continue;
-    const distance = edge.weight * treeDistance(edge.from, edge.to);
-    for (const folder of withAncestors(folderOf(edge.from))) {
-      const figure2 = at2(folder);
-      figure2.edges++;
-      figure2.uses += edge.weight;
-      figure2.totalUseDistance += distance;
-    }
-  }
-  for (const figure2 of figures.values()) figure2.meanDistancePerUse = figure2.uses === 0 ? null : figure2.totalUseDistance / figure2.uses;
-  return figures;
 }
 function commonRoot(figures) {
   const total = figures.get("")?.files ?? 0;
@@ -10467,7 +10442,7 @@ function foldersBelow(figures, root, levels) {
   return [...figures.keys()].filter((folder) => folder !== root && (root === "" || folder.startsWith(`${root}/`)) && depthOf(folder) <= base + levels).sort(compareIds);
 }
 
-// packages/locality/src/trend-samples.ts
+// packages/history/src/trend-samples.ts
 async function firstParentLine(root, ref) {
   const out = await runGit(root, ["log", "--first-parent", "--format=%H %ct", ref]);
   return out.split("\n").filter((line) => line !== "").map((line) => ({ sha: line.slice(0, line.indexOf(" ")), date: Number(line.slice(line.indexOf(" ") + 1)) })).reverse();
@@ -10493,6 +10468,33 @@ function sampleLabels(samples) {
   const minutes = samples.map((sample) => iso(sample.date).slice(0, 16).replace("T", " "));
   if (distinct(minutes)) return minutes;
   return samples.map((sample, i) => `${minutes[i]} ${sample.sha.slice(0, 7)}`);
+}
+
+// packages/locality/src/folder-trends.ts
+function folderFigures2(production, edges) {
+  const figures = /* @__PURE__ */ new Map();
+  const at2 = (folder) => {
+    let found = figures.get(folder);
+    if (found === void 0) {
+      found = { files: 0, edges: 0, uses: 0, totalUseDistance: 0, meanDistancePerUse: null };
+      figures.set(folder, found);
+    }
+    return found;
+  };
+  at2("");
+  for (const file of production) for (const folder of withAncestors(folderOf(file))) at2(folder).files++;
+  for (const edge of edges) {
+    if (!edge.counted) continue;
+    const distance = edge.weight * treeDistance(edge.from, edge.to);
+    for (const folder of withAncestors(folderOf(edge.from))) {
+      const figure2 = at2(folder);
+      figure2.edges++;
+      figure2.uses += edge.weight;
+      figure2.totalUseDistance += distance;
+    }
+  }
+  for (const figure2 of figures.values()) figure2.meanDistancePerUse = figure2.uses === 0 ? null : figure2.totalUseDistance / figure2.uses;
+  return figures;
 }
 
 // packages/locality/src/reports/trends.ts

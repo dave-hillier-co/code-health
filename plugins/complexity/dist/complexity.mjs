@@ -19985,6 +19985,9 @@ function folderOf(path) {
   const slash = path.lastIndexOf("/");
   return slash === -1 ? "" : path.slice(0, slash);
 }
+function depthOf(folder) {
+  return folder === "" ? 0 : folder.split("/").length;
+}
 
 // packages/transcripts/src/shell-command.ts
 import { posix as posix17 } from "node:path";
@@ -21639,8 +21642,8 @@ function omitted2(data) {
   return `Showing ${formatNumber(data.rows.length)} of ${formatNumber(data.total)}${data.noun === void 0 ? "" : ` ${data.noun}`}; ${formatNumber(left)} not shown.`;
 }
 function rankedTableHtml(data) {
-  const empty = rankedTableEmpty(data);
-  if (empty !== void 0) return noticeHtml({ level: "notice", text: empty });
+  const empty2 = rankedTableEmpty(data);
+  if (empty2 !== void 0) return noticeHtml({ level: "notice", text: empty2 });
   const cell2 = (column, value, href) => {
     const shown2 = linked(escapeHtml(text2(value)), href);
     if (!marked(column, value)) return shown2;
@@ -21655,8 +21658,8 @@ function rankedTableHtml(data) {
   return [table3, ...notes4].join("\n");
 }
 function rankedTableMd(data) {
-  const empty = rankedTableEmpty(data);
-  if (empty !== void 0) return noticeMd({ level: "notice", text: empty });
+  const empty2 = rankedTableEmpty(data);
+  if (empty2 !== void 0) return noticeMd({ level: "notice", text: empty2 });
   const columns13 = [...rankColumn(data), ...data.columns.map((c2) => ({ label: c2.label, align: c2.align }))];
   const rows11 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c2) => `${text2(row[c2.key] ?? null)}${marked(c2, row[c2.key] ?? null) ? ` ${MARK[c2.guideline?.direction === "below" ? "below" : "above"]}` : ""}`)]);
   return [
@@ -21752,8 +21755,8 @@ function notes2(data) {
   ];
 }
 function stabilityChartHtml(data) {
-  const empty = stabilityChartEmpty(data);
-  if (empty !== void 0) return noticeHtml({ level: "notice", text: empty });
+  const empty2 = stabilityChartEmpty(data);
+  if (empty2 !== void 0) return noticeHtml({ level: "notice", text: empty2 });
   const d = data.zoneDistance;
   const points = data.points;
   const limit = shown(data).length;
@@ -21796,8 +21799,8 @@ function stabilityChartHtml(data) {
   });
 }
 function stabilityChartMd(data) {
-  const empty = stabilityChartEmpty(data);
-  if (empty !== void 0) return noticeMd({ level: "notice", text: empty });
+  const empty2 = stabilityChartEmpty(data);
+  if (empty2 !== void 0) return noticeMd({ level: "notice", text: empty2 });
   return [`**${escapeMd(data.title)}** (instability I against abstractness A)`, "", mdTable(columns, rows(data).map((r) => r.map((cell2, i2) => i2 === 1 ? clip(cell2, 80) : cell2))), "", notes2(data).map((n) => `_${escapeMd(n)}_`).join("\n\n")].join("\n");
 }
 
@@ -21842,8 +21845,8 @@ var columns2 = (data) => [
 ];
 var rows2 = (data) => data.bars.map((bar) => [bar.label, formatNumber(bar.from), formatNumber(bar.to), signed(changeOf(bar)), wordOf(data, bar)]);
 function changeBarsHtml(data) {
-  const empty = emptyOf(data);
-  if (empty !== void 0) return noticeHtml({ level: "notice", text: empty });
+  const empty2 = emptyOf(data);
+  if (empty2 !== void 0) return noticeHtml({ level: "notice", text: empty2 });
   const greatestFall = Math.max(0, ...data.bars.map((bar) => -changeOf(bar)));
   const greatestRise = Math.max(0, ...data.bars.map((bar) => changeOf(bar)));
   const fallen = greatestFall > 0;
@@ -21884,8 +21887,8 @@ function changeBarsHtml(data) {
   });
 }
 function changeBarsMd(data) {
-  const empty = emptyOf(data);
-  if (empty !== void 0) return noticeMd({ level: "notice", text: empty });
+  const empty2 = emptyOf(data);
+  if (empty2 !== void 0) return noticeMd({ level: "notice", text: empty2 });
   return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, ${escapeMd(data.samples[0])} to ${escapeMd(data.samples[1])})`, "", mdTable(columns2(data), rows2(data)), ...data.note === void 0 ? [] : ["", `_${escapeMd(data.note)}_`]].join("\n");
 }
 
@@ -22898,8 +22901,8 @@ function rows7(data) {
 }
 var emptyOf2 = (data) => data.points.length === 0 ? data.emptyText ?? `${data.title}: no ${noun(data)} to draw.` : void 0;
 function scatterHtml(data) {
-  const empty = emptyOf2(data);
-  if (empty !== void 0) return noticeHtml({ level: "notice", text: empty });
+  const empty2 = emptyOf2(data);
+  if (empty2 !== void 0) return noticeHtml({ level: "notice", text: empty2 });
   const ax = axisOf(data.points.map((p) => p.x), data.xLog === true, data.xGuideline?.value);
   const ay = axisOf(data.points.map((p) => p.y), data.yLog === true, data.yGuideline?.value);
   const px = (v) => LEFT2 + ax.at(v) * PLOT_W;
@@ -22946,8 +22949,8 @@ function scatterHtml(data) {
   });
 }
 function scatterMd(data) {
-  const empty = emptyOf2(data);
-  if (empty !== void 0) return noticeMd({ level: "notice", text: empty });
+  const empty2 = emptyOf2(data);
+  if (empty2 !== void 0) return noticeMd({ level: "notice", text: empty2 });
   const body2 = rows7(data);
   return [
     `**${escapeMd(data.title)}** (${escapeMd(data.xLabel)} against ${escapeMd(data.yLabel)})`,
@@ -23047,8 +23050,8 @@ function spreadLabels(ys, gap2 = LABEL_GAP, top = TOP4 + 4, bottom = TOP4 + PLOT
   return out2;
 }
 function trendChartHtml(data) {
-  const empty = emptyOf3(data);
-  if (empty !== void 0) return noticeHtml({ level: "notice", text: empty });
+  const empty2 = emptyOf3(data);
+  if (empty2 !== void 0) return noticeHtml({ level: "notice", text: empty2 });
   const drawn = data.series.slice(0, MAX_SERIES);
   const top = niceCeiling(Math.max(0, ...drawn.flatMap((s) => present(s.values))));
   const at2 = (v) => v.toFixed(1);
@@ -23096,8 +23099,8 @@ function trendChartHtml(data) {
   });
 }
 function trendChartMd(data) {
-  const empty = emptyOf3(data);
-  if (empty !== void 0) return noticeMd({ level: "notice", text: empty });
+  const empty2 = emptyOf3(data);
+  if (empty2 !== void 0) return noticeMd({ level: "notice", text: empty2 });
   return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, oldest first)`, "", mdTable(columns11(data), rows9(data)), ...data.note === void 0 ? [] : ["", `_${escapeMd(data.note)}_`]].join("\n");
 }
 
@@ -23167,8 +23170,8 @@ var legend2 = (data) => [
   ...data.note === void 0 ? [] : [data.note]
 ];
 function trendGridHtml(data) {
-  const empty = emptyOf4(data);
-  if (empty !== void 0) return noticeHtml({ level: "notice", text: empty });
+  const empty2 = emptyOf4(data);
+  if (empty2 !== void 0) return noticeHtml({ level: "notice", text: empty2 });
   const top = Math.max(1e-9, ...data.items.flatMap((item) => item.values.filter((v) => v !== null)));
   const width = COLUMNS * CELL_W;
   const height = Math.ceil(data.items.length / COLUMNS) * CELL_H;
@@ -23221,8 +23224,8 @@ function trendGridHtml(data) {
   });
 }
 function trendGridMd(data) {
-  const empty = emptyOf4(data);
-  if (empty !== void 0) return noticeMd({ level: "notice", text: empty });
+  const empty2 = emptyOf4(data);
+  if (empty2 !== void 0) return noticeMd({ level: "notice", text: empty2 });
   return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, ${escapeMd(data.labels[0])} to ${escapeMd(data.labels.at(-1))})`, "", mdTable(columns12(data), rows10(data)), "", legend2(data).slice(1).map((n) => `_${escapeMd(n)}_`).join("\n\n")].join("\n");
 }
 
@@ -24543,9 +24546,9 @@ ${rows11.map(([term, value]) => `<dt>${term}</dt><dd>${value}</dd>`).join("\n")}
 </dl>`;
 }
 function section(s, report, notes4, siblings) {
-  const empty = emptySection(s);
-  if (empty !== void 0) return `<section id="${escapeHtml(s.id)}" aria-labelledby="${escapeHtml(s.id)}-heading">
-<p class="empty"><strong id="${escapeHtml(s.id)}-heading">${escapeHtml(s.heading)}:</strong> ${inlineHtml(empty)}</p>
+  const empty2 = emptySection(s);
+  if (empty2 !== void 0) return `<section id="${escapeHtml(s.id)}" aria-labelledby="${escapeHtml(s.id)}-heading">
+<p class="empty"><strong id="${escapeHtml(s.id)}-heading">${escapeHtml(s.heading)}:</strong> ${inlineHtml(empty2)}</p>
 </section>`;
   const body2 = s.blocks.map((block) => renderBlock(block, "html", { slots: report.slots, notes: notes4, ...siblings === void 0 ? {} : { siblings } })).join("\n");
   return `<section id="${escapeHtml(s.id)}" aria-labelledby="${escapeHtml(s.id)}-heading">
@@ -24633,8 +24636,8 @@ function markdownPage(report, notes4, options = {}) {
     `# ${escapeMd(report.title)}`,
     header(report, options.compact === true).join("\n"),
     ...report.sections.map((s) => {
-      const empty = emptySection(s);
-      return empty === void 0 ? [`## ${escapeMd(s.heading)}`, ...s.blocks.map((b) => renderBlock(b, "md", context))].join("\n\n") : `**${escapeMd(s.heading)}:** ${escapeMd(empty)}`;
+      const empty2 = emptySection(s);
+      return empty2 === void 0 ? [`## ${escapeMd(s.heading)}`, ...s.blocks.map((b) => renderBlock(b, "md", context))].join("\n\n") : `**${escapeMd(s.heading)}:** ${escapeMd(empty2)}`;
     }),
     ["## Limits", ...limits.length === 0 ? [] : [limits.join("\n")], ...judged].join("\n\n")
   ].join("\n\n") + "\n";
@@ -24904,6 +24907,350 @@ function produce(report, request, cwd) {
 function repoName(root) {
   return root.split(/[\\/]/).filter(Boolean).pop() ?? root;
 }
+
+// packages/graph/src/graph.ts
+function compareIds(a, b) {
+  if (a === b) return 0;
+  return Buffer.compare(Buffer.from(a), Buffer.from(b));
+}
+
+// packages/graph/src/folders.ts
+function withAncestors(folder) {
+  if (folder === "") return [""];
+  const parts3 = folder.split("/");
+  return ["", ...parts3.map((_, i2) => parts3.slice(0, i2 + 1).join("/"))];
+}
+function commonRoot(figures) {
+  const total = figures.get("")?.files ?? 0;
+  let root = "";
+  for (; ; ) {
+    const depth = depthOf(root) + 1;
+    const next = [...figures].find(([folder, figure2]) => depthOf(folder) === depth && (root === "" || folder.startsWith(`${root}/`)) && figure2.files === total);
+    if (next === void 0 || total === 0) return root;
+    root = next[0];
+  }
+}
+function foldersBelow(figures, root, levels) {
+  const base = depthOf(root);
+  return [...figures.keys()].filter((folder) => folder !== root && (root === "" || folder.startsWith(`${root}/`)) && depthOf(folder) <= base + levels).sort(compareIds);
+}
+
+// packages/history/src/trend-samples.ts
+async function firstParentLine(root, ref) {
+  const out2 = await runGit(root, ["log", "--first-parent", "--format=%H %ct", ref]);
+  return out2.split("\n").filter((line) => line !== "").map((line) => ({ sha: line.slice(0, line.indexOf(" ")), date: Number(line.slice(line.indexOf(" ") + 1)) })).reverse();
+}
+function sampleByTime(line, count4, since) {
+  const last = line.at(-1);
+  if (last === void 0) return [];
+  const within = line.filter((commit) => commit.date >= since);
+  const start2 = within[0]?.date ?? last.date;
+  const picked = /* @__PURE__ */ new Map();
+  for (let i2 = 0; i2 < count4; i2++) {
+    const instant = count4 === 1 ? last.date : start2 + (last.date - start2) * i2 / (count4 - 1);
+    const commit = i2 === count4 - 1 ? last : line.findLast((candidate) => candidate.date <= instant && candidate.date >= start2);
+    if (commit !== void 0) picked.set(commit.sha, commit);
+  }
+  return line.filter((commit) => picked.has(commit.sha));
+}
+var iso3 = (date) => new Date(date * 1e3).toISOString();
+function sampleLabels(samples) {
+  const distinct = (labels) => new Set(labels).size === labels.length;
+  const days = samples.map((sample) => iso3(sample.date).slice(0, 10));
+  if (distinct(days)) return days;
+  const minutes = samples.map((sample) => iso3(sample.date).slice(0, 16).replace("T", " "));
+  if (distinct(minutes)) return minutes;
+  return samples.map((sample, i2) => `${minutes[i2]} ${sample.sha.slice(0, 7)}`);
+}
+
+// packages/complexity/src/folder-measures.ts
+function weightOf(cyclomatic, codeLines) {
+  return cyclomatic * Math.sqrt(Math.max(codeLines, 1));
+}
+function empty() {
+  return { files: 0, codeLines: 0, functions: 0, cyclomatic: 0, maxCyclomatic: null, aboveGuideline: 0, weight: 0, weightAbove: 0, meanCyclomatic: null, shareAbove: null };
+}
+function productionCode(files, settings) {
+  return files.filter((file) => !file.test && isCodePath(file.path, settings.languageProfiles));
+}
+function folderMeasures(files, settings) {
+  const measures = /* @__PURE__ */ new Map();
+  const at2 = (folder) => {
+    let found = measures.get(folder);
+    if (found === void 0) {
+      found = empty();
+      measures.set(folder, found);
+    }
+    return found;
+  };
+  at2("");
+  for (const file of productionCode(files, settings)) {
+    const limit = guidelinesFor(settings, file.path).cyclomatic.warn;
+    const functions = topLevelUnits(file.units).flatMap((unit) => unit.test || unit.values.cyclomatic === void 0 ? [] : [{ cyclomatic: unit.values.cyclomatic, weight: weightOf(unit.values.cyclomatic, unit.values.length ?? 1) }]);
+    for (const folder of withAncestors(folderOf(file.path))) {
+      const measure = at2(folder);
+      measure.files++;
+      measure.codeLines += file.lines.codeLines;
+      for (const fn of functions) {
+        measure.functions++;
+        measure.cyclomatic += fn.cyclomatic;
+        measure.maxCyclomatic = Math.max(measure.maxCyclomatic ?? 0, fn.cyclomatic);
+        measure.weight += fn.weight;
+        if (fn.cyclomatic > limit) {
+          measure.aboveGuideline++;
+          measure.weightAbove += fn.weight;
+        }
+      }
+    }
+  }
+  for (const measure of measures.values()) {
+    measure.meanCyclomatic = measure.functions === 0 ? null : measure.cyclomatic / measure.functions;
+    measure.shareAbove = measure.weight === 0 ? null : measure.weightAbove / measure.weight;
+  }
+  return measures;
+}
+function meanInterfaceDepth(files, settings) {
+  const depths = productionCode(files, settings).flatMap((file) => {
+    const depth = meanDepth(file);
+    return depth === null ? [] : [depth];
+  });
+  return depths.length === 0 ? null : depths.reduce((sum, depth) => sum + depth, 0) / depths.length;
+}
+function splitCheck(before, after) {
+  const [was, now] = [before.measures.meanCyclomatic, after.measures.meanCyclomatic];
+  if (was === null || now === null || now >= was) return { flagged: false, reasons: [] };
+  if (after.measures.functions <= before.measures.functions || before.depth === null || after.depth === null || after.depth >= before.depth) return { flagged: false, reasons: [] };
+  return {
+    flagged: true,
+    reasons: [`the number of functions rose from ${before.measures.functions} to ${after.measures.functions} and mean interface depth fell from ${before.depth.toFixed(2)} to ${after.depth.toFixed(2)} while mean cyclomatic complexity fell`]
+  };
+}
+
+// packages/complexity/src/reports/trends.ts
+var DEFAULT_SAMPLES = 12;
+var MAX_SAMPLES = 60;
+var TREND_TOLERANCE = 0.05;
+var LEVELS = 2;
+var CHART_FOLDERS = 6;
+var GRID_FOLDERS = 12;
+var BAR_FOLDERS = 15;
+var TABLE_FOLDERS = 40;
+var WORDING = { stronger: "more concentrated", stable: "no clear change", weaker: "less concentrated" };
+var VERDICTS = ["less-concentrated", "no-clear-change", "more-concentrated"];
+var ROOT_TEXT = "the repository (/)";
+var SHARE = "percent of weighted complexity in functions above the guideline";
+var folderText = (folder) => folder === "" ? ROOT_TEXT : folder;
+var round4 = (value, places = 2) => value === null ? null : Number(value.toFixed(places));
+var valueText = (value) => value === null ? "none" : formatNumber(value);
+var firstAndLast = (first, last) => `${valueText(first)} at the first sample, ${valueText(last)} at the last`;
+function samplesOption(context) {
+  const value = context.values.samples;
+  if (value === void 0) return DEFAULT_SAMPLES;
+  if (typeof value !== "string" || !/^[1-9]\d*$/.test(value) || Number(value) < 2 || Number(value) > MAX_SAMPLES) {
+    throw usageError(`--samples must be a whole number from 2 to ${MAX_SAMPLES}`);
+  }
+  return Number(value);
+}
+var meanOf = (m) => round4(m.meanCyclomatic);
+var maxOf = (m) => m.maxCyclomatic;
+var shareOf = (m) => m.shareAbove === null ? null : round4(m.shareAbove * 100, 1);
+var seriesOf = (samples, folder, value) => samples.map((sample) => sample.folders.has(folder) ? value(sample.folders.get(folder)) : null);
+function indexed(values) {
+  const base = values.find((v) => v !== null && v > 0);
+  return values.map((v) => v === null || base === void 0 || base === null ? null : round4(v / base * 100, 1));
+}
+function slotsFor(folders) {
+  const about = { kind: "report", ref: "trends", label: "the size and complexity trend" };
+  return [
+    {
+      id: "trend",
+      title: "Judgement: the trend",
+      about,
+      task: "Say whether complexity is collecting in functions above the guideline or spreading out over the samples. Cite the percent of weighted complexity in functions above the guideline at the first and last sample, and say whether total cyclomatic complexity grew faster than code lines. Say so when the samples are few, the span is short, or the change is within the tolerance. This is a leading indicator: do not write that changes got cheaper or dearer.",
+      verdicts: VERDICTS,
+      maxChars: 600
+    },
+    ...folders.length === 0 ? [] : [
+      {
+        id: "folders",
+        title: "Judgement: folders to look at",
+        about,
+        task: "Choose the folders whose change in size or complexity most deserves a look, and say for each what the figures show and what to check next (for example `complexity analyse <folder>`). A folder that grew because code was added to it, with its mean and its percent above the guideline steady, is expected growth, not a problem.",
+        verdicts: ["look", "expected-growth"],
+        maxChars: 300,
+        choose: { max: 3, candidates: folders.map((folder) => ({ ref: folder, label: folder })) }
+      }
+    ]
+  ];
+}
+var trendsReport = {
+  summary: "Size and cyclomatic complexity over time: code lines, mean and largest complexity, and how much of the complexity sits in functions above the guideline, for the repository and its folders at revisions sampled along the first-parent line",
+  options: { samples: { type: "string" } },
+  optionHelp: { samples: `trends: how many revisions to sample, 2 to ${MAX_SAMPLES} (default ${DEFAULT_SAMPLES})` },
+  async build(context) {
+    if (context.positionals.length > 0) throw usageError("report trends takes no arguments");
+    const settings = readSettings(context.config);
+    const wanted = samplesOption(context);
+    const { root, head } = context.repo;
+    const line = await firstParentLine(root, head);
+    const headDate = line.at(-1).date;
+    const commits = sampleByTime(line, wanted, monthsBefore(headDate, settings.windowMonths));
+    const allLabels = sampleLabels(commits);
+    const cache = await ParseCache.forRepository(root);
+    const grammars = new GrammarSet();
+    const measured = [];
+    for (const [i2, commit] of commits.entries()) {
+      const { files } = await measureTree(await treeFromRef(root, commit.sha), { settings, layer: "auto", cache, grammars });
+      measured.push({ sha: commit.sha, label: allLabels[i2], folders: folderMeasures(files, settings), depth: meanInterfaceDepth(files, settings) });
+    }
+    const start2 = Math.min(Math.max(0, measured.findIndex((sample) => sample.folders.get("").files > 0)), measured.length - 1);
+    const samples = measured.slice(start2);
+    const labels = allLabels.slice(start2);
+    const first = samples[0];
+    const last = samples.at(-1);
+    const repoFirst = first.folders.get("");
+    const repoLast = last.folders.get("");
+    const top = commonRoot(last.folders);
+    const listed = foldersBelow(last.folders, top, LEVELS);
+    const bySize = (a, b) => last.folders.get(b).codeLines - last.folders.get(a).codeLines || (a < b ? -1 : 1);
+    const withFunctions = (folder) => last.folders.get(folder).functions > 0;
+    const children = foldersBelow(last.folders, top, 1).filter(withFunctions).sort(bySize);
+    const grid = listed.filter(withFunctions).sort(bySize).slice(0, GRID_FOLDERS);
+    const linesAt = (sample, folder) => sample.folders.get(folder)?.codeLines ?? 0;
+    const changed = listed.map((folder) => ({ folder, from: linesAt(first, folder), to: linesAt(last, folder) })).filter((row) => row.from !== row.to).sort((a, b) => Math.abs(b.to - b.from) - Math.abs(a.to - a.from) || (a.folder < b.folder ? -1 : 1));
+    const repoShare = seriesOf(samples, "", shareOf);
+    const reading = readTrend(labels, repoShare, TREND_TOLERANCE);
+    const tableFolders = ["", ...top === "" ? [] : [top], ...listed];
+    const rows11 = tableFolders.map((folder) => {
+      const own = readTrend(labels, seriesOf(samples, folder, shareOf), TREND_TOLERANCE);
+      const mean2 = readTrend(labels, seriesOf(samples, folder, meanOf), TREND_TOLERANCE);
+      const now = last.folders.get(folder);
+      return {
+        folder: folderText(folder),
+        files: now.files,
+        linesFirst: first.folders.get(folder)?.codeLines ?? null,
+        linesLast: now.codeLines,
+        functions: now.functions,
+        meanFirst: mean2.first?.value ?? null,
+        meanLast: meanOf(now),
+        maxLast: now.maxCyclomatic,
+        above: now.aboveGuideline,
+        shareFirst: own.first?.value ?? null,
+        shareLast: shareOf(now),
+        trend: own.first === null ? "no functions" : own.trend === null ? `first seen ${own.first.label}` : WORDING[own.trend]
+      };
+    });
+    const split = splitCheck({ measures: repoFirst, depth: first.depth }, { measures: repoLast, depth: last.depth });
+    const enough = samples.length >= 2;
+    const where = top === "" ? "the repository root" : `\`${top}\`, the deepest folder that holds every production code file`;
+    const guideline = settings.guidelines.cyclomatic.warn;
+    const shareNote = `A function's weight is its cyclomatic complexity times the square root of its code lines. The percent is the weight of the functions above the cyclomatic guideline (${guideline}, or the override for their path) out of the weight of all functions: 0 means no function is above it, 100 means every function is.`;
+    const sections = [
+      {
+        id: "repository",
+        heading: "Repository",
+        blocks: [
+          { type: "judgement", slot: "trend" },
+          ...enough ? [] : [{ type: "notice", level: "limit", text: `Only ${samples.length} revision was sampled, so there is no trend: the first-parent line has one commit in the window` }],
+          {
+            type: "facts",
+            caption: "Size and cyclomatic complexity of the production code at the first and last sample",
+            facts: [
+              { label: "Samples", value: `${samples.length}, from ${first.label} to ${last.label}` },
+              { label: "Code lines", value: firstAndLast(repoFirst.codeLines, repoLast.codeLines) },
+              { label: "Production code files", value: firstAndLast(repoFirst.files, repoLast.files) },
+              { label: "Functions measured", value: firstAndLast(repoFirst.functions, repoLast.functions) },
+              { label: "Mean cyclomatic complexity", value: firstAndLast(meanOf(repoFirst), meanOf(repoLast)) },
+              { label: "Largest cyclomatic complexity", value: firstAndLast(repoFirst.maxCyclomatic, repoLast.maxCyclomatic) },
+              { label: `Functions above the guideline (${guideline})`, value: firstAndLast(repoFirst.aboveGuideline, repoLast.aboveGuideline) },
+              { label: "Percent of weighted complexity in them", value: firstAndLast(shareOf(repoFirst), shareOf(repoLast)) }
+            ]
+          },
+          ...reading.first === null || reading.last === null || reading.trend === null ? [] : [{ type: "trend-marker", label: SHARE, earlier: reading.first.value, later: reading.last.value, windows: [reading.first.label, reading.last.label], tolerance: TREND_TOLERANCE, wording: WORDING }],
+          {
+            type: "trend-chart",
+            title: "Growth of complexity against code lines and functions",
+            unit: "percent of the first sample",
+            labels,
+            series: [
+              { name: "total cyclomatic complexity", values: indexed(seriesOf(samples, "", (m) => m.cyclomatic)) },
+              { name: "code lines", values: indexed(seriesOf(samples, "", (m) => m.codeLines)) },
+              { name: "functions", values: indexed(seriesOf(samples, "", (m) => m.functions)) }
+            ],
+            note: "Each line is a percent of its own first value above 0. Total cyclomatic complexity above the code lines line means the code gained branches faster than it gained lines."
+          },
+          { type: "trend-chart", title: "Weighted complexity in functions above the guideline, for the repository", unit: SHARE, labels, series: [{ name: "repository", values: repoShare }], note: shareNote },
+          { type: "trend-chart", title: "Mean cyclomatic complexity of the repository", unit: "mean cyclomatic complexity per function", labels, series: [{ name: "repository", values: seriesOf(samples, "", meanOf) }], note: "Total cyclomatic complexity divided by the number of functions measured. The mean falls when simple functions are added, whether or not any complex function changed." },
+          { type: "trend-chart", title: "Largest cyclomatic complexity of one function", unit: "cyclomatic complexity", labels, series: [{ name: "repository", values: seriesOf(samples, "", maxOf) }], note: "The value of the most complex function at each sample, which is not always the same function." }
+        ]
+      },
+      {
+        id: "folders",
+        heading: "Folders",
+        blocks: [
+          { type: "paragraph", text: `Folders are those of the last sample, listed ${LEVELS} levels below ${where}. A folder's figures cover every production code file under it, its subfolders included, so the counts of the folders at one level add up to those of the folder that holds them.` },
+          { type: "trend-chart", title: "Weighted complexity in functions above the guideline, for the largest folders", unit: SHARE, labels, series: children.slice(0, CHART_FOLDERS).map((folder) => ({ name: folder, values: seriesOf(samples, folder, shareOf) })), emptyText: "Weighted complexity in functions above the guideline, for the largest folders: there are fewer than two samples, or no folder below the common root has a measured function.", ...children.length > CHART_FOLDERS ? { note: `The ${CHART_FOLDERS} folders one level down with the most code lines at the last sample are drawn, of ${children.length}.` } : {} },
+          { type: "trend-grid", title: "Folders by weighted complexity in functions above the guideline", unit: SHARE, labels, items: grid.map((folder) => ({ name: folder, values: seriesOf(samples, folder, shareOf) })), tolerance: TREND_TOLERANCE, wording: WORDING, note: `The ${GRID_FOLDERS} folders with the most code lines at the last sample are drawn, most code lines first. A folder with no line before a sample did not exist then, or had no measured function.`, emptyText: "Folders by weighted complexity in functions above the guideline: there are fewer than two samples, or no folder below the common root has a measured function." },
+          { type: "change-bars", title: "Change in code lines by folder", unit: "code lines", samples: [first.label, last.label], bars: changed.slice(0, BAR_FOLDERS).map((row) => ({ label: row.folder, from: row.from, to: row.to })), wording: { rise: "more code", fall: "less code" }, note: `${changed.length > BAR_FOLDERS ? `The ${BAR_FOLDERS} largest changes are drawn, of ${changed.length}. ` : ""}A folder nested in another is counted in both bars.`, emptyText: "Change in code lines by folder: no folder's code lines differ between the first and last sample." },
+          ...grid.length === 0 ? [] : [{ type: "judgement", slot: "folders" }],
+          {
+            type: "ranked-table",
+            caption: "Folders, each after the folder that holds it",
+            numbered: false,
+            noun: "folders",
+            total: rows11.length,
+            columns: [
+              { key: "folder", label: "Folder" },
+              { key: "files", label: "Files", align: "right" },
+              { key: "linesFirst", label: `Code lines, ${first.label}`, align: "right" },
+              { key: "linesLast", label: `Code lines, ${last.label}`, align: "right" },
+              { key: "functions", label: "Functions", align: "right" },
+              { key: "meanFirst", label: "Mean cyclomatic, first value", align: "right" },
+              { key: "meanLast", label: `Mean cyclomatic, ${last.label}`, align: "right" },
+              { key: "maxLast", label: `Largest cyclomatic, ${last.label}`, align: "right" },
+              { key: "above", label: "Functions above the guideline", align: "right" },
+              { key: "shareFirst", label: "Percent above, first value", align: "right" },
+              { key: "shareLast", label: `Percent above, ${last.label}`, align: "right" },
+              { key: "trend", label: "Trend of percent above" }
+            ],
+            rows: rows11.slice(0, TABLE_FOLDERS)
+          }
+        ]
+      },
+      {
+        id: "gaming",
+        heading: "Gaming check",
+        blocks: [
+          { type: "paragraph", text: "Mean cyclomatic complexity and the percent above the guideline fall when functions are split into small helpers that each do little, without the code getting easier to follow. These two figures show that: the number of functions, and mean interface depth, which is how much an exported function or class does per element of its interface." },
+          ...split.flagged ? [{ type: "notice", level: "warning", text: `Between the first and last sample, ${split.reasons.join("; ")}` }] : [],
+          { type: "sparkline", title: "Functions measured", unit: "functions", points: samples.map((sample) => ({ label: sample.label, value: sample.folders.get("").functions })) },
+          { type: "sparkline", title: "Mean interface depth", unit: "mean interface depth", points: samples.flatMap((sample) => sample.depth === null ? [] : [{ label: sample.label, value: round4(sample.depth) }]) }
+        ]
+      }
+    ];
+    return {
+      title: "Size and complexity trends",
+      inputs: { samples: wanted, revisions: samples.map((sample) => sample.sha) },
+      header: {
+        evidenceGrade: "not applicable",
+        historyWindow: `${samples.length} of ${line.length} commits on the first-parent line were sampled, evenly over time from ${first.label} to ${last.label}, within the ${settings.windowMonths} months before HEAD's commit date.`,
+        excluded: start2 === 0 ? [] : [{ what: "sampled revisions from before the first production code file", count: start2 }]
+      },
+      sections,
+      limits: [
+        "This is a leading indicator. It shows the size and shape of the code at each sample and says nothing about whether changes cost less or more: `complexity outcome` measures that.",
+        "These are the measures the SlopCodeBench paper set against the cost of an agent's next change. Code lines had the strongest link there, the largest and mean cyclomatic complexity a weaker one, and the weighted percent above a cutoff the weakest. That was measured on small programs written by one agent, not on this repository.",
+        `More concentrated, less concentrated and no clear change are labels from a guideline: the last value differs from the first by more than ${formatNumber(TREND_TOLERANCE * 100)} percent of it. The guideline labels the change and decides nothing.`,
+        "The function figures cover the functions a grammar measured, with a nested function counted in the function that holds it. A file read by the lexical layer alone adds its code lines and no function. Test code is left out.",
+        "Every sample is read with the config of the checkout (excludes, test patterns, guidelines) and the parsers of this version, not those of the time.",
+        "Folders are named by their path at the last sample. A folder that was renamed has no values before its rename, and its earlier figures are under its old path, which is not listed.",
+        "Code lines and total cyclomatic complexity grow whenever code is added. The mean, and the total set against code lines, are the figures that say whether the code added was more complex than the code already there.",
+        "The samples are points in time. What happened between two samples is not shown, and a short span or few commits gives few samples."
+      ],
+      slots: slotsFor(grid)
+    };
+  }
+};
 
 // packages/report/src/table-cap.ts
 function capRows(table3, max, command10) {
@@ -25192,7 +25539,7 @@ var xray = {
 
 // packages/complexity/src/commands/report.ts
 var name10 = "report";
-var command9 = reportCommand({ xray });
+var command9 = reportCommand({ xray, trends: trendsReport });
 
 // packages/complexity/src/commands.ts
 var commandModules = [

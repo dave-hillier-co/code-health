@@ -9,6 +9,7 @@
   "dependencies": {
     "@code-health/cli-kit": "^0.0.0",
     "@code-health/cochange": "^0.0.0",
+    "@code-health/graph": "^0.0.0",
     "@code-health/history": "^0.0.0",
     "@code-health/lexical": "^0.0.0",
     "@code-health/parse": "^0.0.0",

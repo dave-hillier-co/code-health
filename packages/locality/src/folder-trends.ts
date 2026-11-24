@@ -1,5 +1,5 @@
-import { compareIds } from "@code-health/graph/graph";
-import { depthOf, folderOf, treeDistance } from "@code-health/graph/tree-distance";
+import { withAncestors } from "@code-health/graph/folders";
+import { folderOf, treeDistance } from "@code-health/graph/tree-distance";
 import type { RevisionEdge } from "./change-distance.ts";
 
 /** The import distance of the files under one folder, the folder's subfolders included. The repository is the folder `""`. */
@@ -14,13 +14,6 @@ export interface FolderFigures {
   totalUseDistance: number;
   /** Total divided by uses, or null with no uses. */
   meanDistancePerUse: number | null;
-}
-
-/** A folder and every folder above it, the repository root `""` first. */
-export function withAncestors(folder: string): string[] {
-  if (folder === "") return [""];
-  const parts = folder.split("/");
-  return ["", ...parts.map((_, i) => parts.slice(0, i + 1).join("/"))];
 }
 
 /**
@@ -52,27 +45,4 @@ export function folderFigures(production: readonly string[], edges: readonly Rev
   }
   for (const figure of figures.values()) figure.meanDistancePerUse = figure.uses === 0 ? null : figure.totalUseDistance / figure.uses;
   return figures;
-}
-
-/**
- * The folder the listing starts under: the deepest folder that holds every production file, so a repository whose
- * code is all under `src` or `packages` lists the folders inside it and not that one folder alone.
- */
-export function commonRoot(figures: ReadonlyMap<string, FolderFigures>): string {
-  const total = figures.get("")?.files ?? 0;
-  let root = "";
-  for (;;) {
-    const depth = depthOf(root) + 1;
-    const next = [...figures].find(([folder, figure]) => depthOf(folder) === depth && (root === "" || folder.startsWith(`${root}/`)) && figure.files === total);
-    if (next === undefined || total === 0) return root;
-    root = next[0];
-  }
-}
-
-/** The folders at most `levels` below `root`, in path order, so each folder follows the one that holds it. */
-export function foldersBelow(figures: ReadonlyMap<string, FolderFigures>, root: string, levels: number): string[] {
-  const base = depthOf(root);
-  return [...figures.keys()]
-    .filter((folder) => folder !== root && (root === "" || folder.startsWith(`${root}/`)) && depthOf(folder) <= base + levels)
-    .sort(compareIds);
 }

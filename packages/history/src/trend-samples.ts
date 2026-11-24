@@ -1,4 +1,4 @@
-import { runGit } from "@code-health/history/git";
+import { runGit } from "./git.ts";
 
 export interface Commit {
   sha: string;

@@ -96,10 +96,10 @@ Erosion rises in 77% of agent trajectories and in 53% of the human repositories.
 |---|---|---|
 | Cyclomatic complexity per function | Yes | `complexity analyse`, metric `cyclomatic`. The default `warn` guideline is 10, the same value as the erosion cutoff |
 | Lines of code per function | Yes | `complexity analyse`, metric `length`: lines of code with blank and comment lines excluded |
-| Lines of code per file | Yes | `complexity files`, column `codeLines` |
-| Max CC | Yes, per file | `complexity files` holds the sum and the maximum of each metric over a file's top-level functions |
-| Mean CC | Derivable | The per-file sum divided by the function count, or from the `analyse` rows |
-| Erosion | Derivable, not computed | Every input is in the `analyse --json` rows: `cyclomatic` and `length` per function |
+| Lines of code per file | Yes | `complexity files`, column `codeLines`, and per folder over time in `complexity report trends` |
+| Max CC | Yes | `complexity files` holds the sum and the maximum of each metric over a file's top-level functions, and `complexity report trends` the largest value per folder over time |
+| Mean CC | Yes | `complexity report trends`, per folder over time |
+| Erosion | Yes, with the suite's guideline as the cutoff | `complexity report trends`: the percent of weighted complexity in functions above the cyclomatic guideline, for the repository and each folder at sampled revisions |
 | Clone ratio | No | The suite has no duplication detection |
 | ast-grep hits per LOC | No | A lint measure, outside the suite's scope |
 
@@ -109,5 +109,5 @@ The paper considered cognitive complexity and did not use it, so the table has n
 
 - **The harness is an independent outcome measure.** Hidden tests, regression tests that accumulate, and dollars per checkpoint measure whether a later change succeeded and what it cost, without reference to any static score. An agent run with and without the plugins could be compared on solve rate and cost at the later checkpoints.
 - **The fit is partial.** A trajectory has at most 8 commits, so history-based findings would be graded weak. The workspaces are far smaller than the repositories the suite is built for.
-- **Neither metric is worth adopting.** Verbosity is lint. Erosion is one structural score with a fixed cutoff, and the paper's own table shows it predicts cost less well than line count.
+- **Neither metric is a score to act on.** Verbosity is lint. Erosion is one structural score with a fixed cutoff, and the paper's own table shows it predicts cost less well than line count. `complexity report trends` draws it beside code lines and the mean and largest cyclomatic complexity so that the measures can be compared on a repository's own history, not because any of them is a target.
 - **Cost is the outcome to measure.** Static measures relate to what the next change costs far more than to whether it passes, which matches the suite's outcomes of change cost and agent effort.
