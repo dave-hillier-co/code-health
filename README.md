@@ -45,6 +45,25 @@ The history layer works for every file. Indentation-based metrics work for any t
 
 Requires Node 22.13 or later (for unflagged `node:sqlite`) and git, with a full clone: a shallow clone has truncated history. The plugins have no other dependencies and need no `npm install`. The external tools that confirm a move (a language server, rope) are used when installed and never required.
 
+### Codex
+
+All eight skills can be packaged for Codex: `cochange`, `change-risk`, `abandonment`, `identities`, `complexity`, `locality`, `structure` and `packaging`. Each installs independently with its own runtime. Codex session effort and coupled-change completeness are unavailable: the transcript reader currently understands Claude Code sessions only. Git-based outcomes, static analyses and reports remain available; locality uses `measure change` and `report trends` as leading indicators rather than claiming an effort improvement.
+
+From a checkout with development dependencies installed, generate the standalone skills from the current committed CLI bundles and shared instructions:
+
+```sh
+npm run package:codex
+npm run check:codex
+```
+
+The output is `.cache/codex/skills/`, with one directory per skill. Copy the desired **whole skill directories** to `<target-repository>/.agents/skills/` for repository-local discovery, then invoke `$cochange`, `$locality`, or another installed skill in Codex. Keep installation changes separate from code being analysed; each skill includes its runtime, grammar files, references, schemas and licence notices and needs no `npm install` after copying. Node 22.13 or later and git must be available on the machine running Codex. Skills that share a plugin include separate runtime copies so they can be installed individually.
+
+Packaging refuses to overwrite an existing directory. For a new build, provide a fresh output path with `npm run package:codex -- /absolute/new/path/skills`. To package just one skill, use `npm run package:codex -- --skill locality /absolute/new/path/locality` (without an output path, this uses `.cache/codex/skills/locality`). After changing CLI source, run `npm run build` before packaging; the existing `check:dist` check verifies that bundles match source. Generated skills use absolute executable paths while running in the target repository and follow Codex's sandbox permissions. Analyses write caches; worktrees share the main checkout's history cache.
+
+The generated instructions preserve the abandonment opt-in and identity review safeguards. Refactoring follows the user's requested scope; commit guidance applies when commits are requested. Locality apply examples use `--no-commit` to leave edits staged by default. Commit-based verification is deferred until a requested commit exists.
+
+The packaging tests relocate each skill outside the checkout and run its CLI against isolated Git repositories without installing dependencies there. They cover report generation, the complete runtime and reference links, abandonment opt-in, read-only analyses, and a locality move that leaves changes staged without a commit. This verifies packaging and execution, not model-level skill selection or judgement.
+
 ## Use
 
 Ask Claude in the terms of the problem, and the matching skill runs the CLI:
