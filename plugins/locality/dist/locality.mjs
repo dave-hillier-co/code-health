@@ -830,6 +830,7 @@ async function writeReport(context, identity, command9, output, analysedHead, op
     inputs: output.inputs,
     extra: {
       ...output.extra,
+      ...options.codeIdentity === void 0 ? {} : { codeIdentity: options.codeIdentity },
       ...Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin },
       ...Object.keys(dropped).length === 0 ? {} : { dropped }
     },
@@ -6118,8 +6119,8 @@ __export(report_exports, {
 });
 
 // packages/cli-kit/src/report-command.ts
-import { mkdirSync as mkdirSync6, readFileSync as readFileSync9, writeFileSync as writeFileSync7 } from "node:fs";
-import { dirname as dirname5, resolve as resolve2 } from "node:path";
+import { mkdirSync as mkdirSync6, readFileSync as readFileSync10, writeFileSync as writeFileSync7 } from "node:fs";
+import { dirname as dirname6, resolve as resolve2 } from "node:path";
 
 // packages/report/src/json.ts
 var FLOAT_PRECISION2 = 6;
@@ -7375,10 +7376,60 @@ function slotsDocument(report) {
 }
 
 // packages/cli-kit/src/report-build-cache.ts
-import { createHash as createHash5, randomUUID as randomUUID4 } from "node:crypto";
+import { createHash as createHash6, randomUUID as randomUUID4 } from "node:crypto";
 import { execFileSync as execFileSync2 } from "node:child_process";
-import { existsSync as existsSync10, mkdirSync as mkdirSync5, readdirSync as readdirSync3, readFileSync as readFileSync8, realpathSync, renameSync as renameSync5, rmSync as rmSync4, statSync as statSync3, writeFileSync as writeFileSync6 } from "node:fs";
-import { basename as basename2, dirname as dirname4, join as join12, resolve } from "node:path";
+import { existsSync as existsSync10, mkdirSync as mkdirSync5, readdirSync as readdirSync4, readFileSync as readFileSync9, realpathSync, renameSync as renameSync5, rmSync as rmSync4, statSync as statSync4, writeFileSync as writeFileSync6 } from "node:fs";
+import { basename as basename2, dirname as dirname5, join as join13, resolve } from "node:path";
+
+// packages/cli-kit/src/code-identity.ts
+import { createHash as createHash5 } from "node:crypto";
+import { readdirSync as readdirSync3, readFileSync as readFileSync8, statSync as statSync3 } from "node:fs";
+import { dirname as dirname4, join as join12 } from "node:path";
+import { fileURLToPath } from "node:url";
+var cached;
+function bundleIdentity(dir) {
+  const hash = createHash5("sha256");
+  for (const name9 of readdirSync3(dir).filter((file) => file.endsWith(".mjs")).sort()) {
+    hash.update(name9).update("\0").update(readFileSync8(join12(dir, name9))).update("\0");
+  }
+  return hash.digest("hex").slice(0, 16);
+}
+function sourceFiles(dir) {
+  return readdirSync3(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join12(dir, entry.name);
+    if (entry.isDirectory()) return entry.name === "node_modules" ? [] : sourceFiles(path);
+    return entry.name.endsWith(".ts") ? [path] : [];
+  });
+}
+function sourceIdentity(packages) {
+  const hash = createHash5("sha256");
+  for (const name9 of readdirSync3(packages).sort()) {
+    let files;
+    try {
+      files = sourceFiles(join12(packages, name9, "src")).sort();
+    } catch {
+      continue;
+    }
+    for (const file of files) {
+      const s = statSync3(file);
+      hash.update(`${file}:${s.size}:${s.mtimeMs}
+`);
+    }
+  }
+  return hash.digest("hex").slice(0, 16);
+}
+function codeIdentity() {
+  if (cached !== void 0) return cached;
+  const here = fileURLToPath(import.meta.url);
+  try {
+    cached = here.endsWith(".ts") ? sourceIdentity(join12(dirname4(here), "..", "..")) : bundleIdentity(dirname4(here));
+  } catch {
+    cached = "unknown";
+  }
+  return cached;
+}
+
+// packages/cli-kit/src/report-build-cache.ts
 var FORMAT2 = 1;
 var OUTPUT_KEYS = ["slots", "notes", "format", "out", "no-cache"];
 var WATCHED = [".mailmap", ".code-health/identity-decisions.json", ".code-health/local/mailmap", ".code-health/local/identity-decisions.json", ".gitattributes"];
@@ -7387,7 +7438,7 @@ function git3(cwd, ...args) {
 }
 function stat(file) {
   try {
-    const s = statSync3(file);
+    const s = statSync4(file);
     return `${s.size}:${s.mtimeMs}`;
   } catch {
     return "-";
@@ -7395,19 +7446,16 @@ function stat(file) {
 }
 function statDirectory(dir, accept) {
   if (!existsSync10(dir)) return [];
-  return readdirSync3(dir).filter(accept).sort().map((name9) => `${name9}=${stat(join12(dir, name9))}`);
+  return readdirSync4(dir).filter(accept).sort().map((name9) => `${name9}=${stat(join13(dir, name9))}`);
 }
 function dependencyState(root) {
   const common = git3(root, "rev-parse", "--path-format=absolute", "--git-common-dir");
-  const written = statDirectory(join12(root, ".cache", "code-health", "reports"), (name9) => name9.endsWith(".json")).map((s) => `reports/${s}`);
-  const other = [...WATCHED.map((file) => `${file}=${stat(join12(root, file))}`), `shallow=${stat(join12(common, "shallow"))}`];
+  const written = statDirectory(join13(root, ".cache", "code-health", "reports"), (name9) => name9.endsWith(".json")).map((s) => `reports/${s}`);
+  const other = [...WATCHED.map((file) => `${file}=${stat(join13(root, file))}`), `shallow=${stat(join13(common, "shallow"))}`];
   return { written: written.join("\n"), other: other.join("\n") };
 }
-var digest = (value) => createHash5("sha256").update(value).digest("hex");
-function programId() {
-  const script = process.argv[1];
-  return script === void 0 ? "-" : stat(script);
-}
+var digest = (value) => createHash6("sha256").update(value).digest("hex");
+var programId = codeIdentity;
 function canonical2(value) {
   if (Array.isArray(value)) return `[${value.map(canonical2).join(",")}]`;
   if (value !== null && typeof value === "object") {
@@ -7418,7 +7466,7 @@ function canonical2(value) {
 }
 function real(path) {
   try {
-    return join12(realpathSync(dirname4(path)), basename2(path));
+    return join13(realpathSync(dirname5(path)), basename2(path));
   } catch {
     return path;
   }
@@ -7436,20 +7484,20 @@ function isClean2(context) {
 function entryFile(context, kind, dependsOn) {
   const values = Object.fromEntries(Object.entries(context.values).filter(([key2]) => !OUTPUT_KEYS.includes(key2)));
   const key = digest(canonical2({ positionals: context.positionals, values, cwd: context.cwd, dependsOn })).slice(0, 16);
-  return join12(context.repo.root, ".cache", "code-health", "report-builds", `${kind}.${key}.json`);
+  return join13(context.repo.root, ".cache", "code-health", "report-builds", `${kind}.${key}.json`);
 }
 function read(file) {
   try {
-    const entry = JSON.parse(readFileSync8(file, "utf8"));
+    const entry = JSON.parse(readFileSync9(file, "utf8"));
     return entry.format === FORMAT2 ? entry : void 0;
   } catch {
     return void 0;
   }
 }
 function write(file, entry) {
-  const dir = dirname4(file);
+  const dir = dirname5(file);
   mkdirSync5(dir, { recursive: true });
-  const ignore = join12(dir, ".gitignore");
+  const ignore = join13(dir, ".gitignore");
   if (!existsSync10(ignore)) writeFileSync6(ignore, "*\n");
   const temporary = `${file}.${randomUUID4()}.tmp`;
   try {
@@ -7548,7 +7596,7 @@ function reportCommand(kinds) {
         const text2 = request.slots ? serialise(slotsDocument(report)) : produce(report, request, context.cwd);
         if (request.out === void 0) return { results: [], text: text2 };
         const file = resolve2(context.cwd, request.out);
-        mkdirSync6(dirname5(file), { recursive: true });
+        mkdirSync6(dirname6(file), { recursive: true });
         writeFileSync7(file, text2);
         return { results: [], text: `wrote ${request.out}
 ` };
@@ -7584,7 +7632,7 @@ function produce(report, request, cwd) {
   if (request.notes === void 0) return renderReport(report, format2, void 0, { compact: request.compact });
   let document;
   try {
-    document = JSON.parse(readFileSync9(resolve2(cwd, request.notes), "utf8"));
+    document = JSON.parse(readFileSync10(resolve2(cwd, request.notes), "utf8"));
   } catch (error) {
     throw new ReportError(`cannot read the notes file ${request.notes}: ${error instanceof Error ? error.message : String(error)}`);
   }

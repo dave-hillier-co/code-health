@@ -1254,11 +1254,11 @@ async function classifyFiles(repoPath, ref, entries, treeFiles, options2 = {}) {
 var DEFAULT_ISSUE_PATTERN = "[A-Z][A-Z0-9]+-\\d+";
 var NOT_ISSUE_PREFIXES = /* @__PURE__ */ new Set(["UTF", "SHA", "MD", "ISO", "RFC", "TLS", "SSL", "AES", "RSA", "CVE", "PEP", "WCAG", "IPV", "ES", "HTTP", "TCP", "UDP"]);
 var ISSUE_KEY_WINDOW_SECONDS = 90 * 86400;
-function groupCommits(items, grouping, compilePattern) {
+function groupCommits(items, grouping, compilePattern2) {
   if (grouping.mode === "off") return items.map((_, index) => [index]);
   const groups = [];
   if (grouping.mode === "issue-key") {
-    const pattern = compilePattern(grouping.pattern);
+    const pattern = compilePattern2(grouping.pattern);
     const open = /* @__PURE__ */ new Map();
     items.forEach((item, index) => {
       const match = pattern.exec(item.message);
@@ -5697,10 +5697,10 @@ function parseAnyPredicate(steps, index, operator, textPredicates) {
         if (c.name === captureName1) nodes1.push(c.node);
         if (c.name === captureName2) nodes2.push(c.node);
       }
-      const compare3 = /* @__PURE__ */ __name((n1, n2, positive) => {
+      const compare4 = /* @__PURE__ */ __name((n1, n2, positive) => {
         return positive ? n1.text === n2.text : n1.text !== n2.text;
       }, "compare");
-      return matchAll ? nodes1.every((n1) => nodes2.some((n2) => compare3(n1, n2, isPositive))) : nodes1.some((n1) => nodes2.some((n2) => compare3(n1, n2, isPositive)));
+      return matchAll ? nodes1.every((n1) => nodes2.some((n2) => compare4(n1, n2, isPositive))) : nodes1.some((n1) => nodes2.some((n2) => compare4(n1, n2, isPositive)));
     });
   } else {
     const captureName = steps[1].name;
@@ -16467,9 +16467,9 @@ async function analyseTree(tree, options2 = {}) {
     const found = await grammars.forPath(path);
     if (!found) continue;
     owners.set(path, found.adapter);
-    const cached = await options2.cache?.get(blob, cacheKeyOf(found.adapter, found.grammar));
-    if (cached) {
-      loaded2.set(path, cached);
+    const cached2 = await options2.cache?.get(blob, cacheKeyOf(found.adapter, found.grammar));
+    if (cached2) {
+      loaded2.set(path, cached2);
       stats.cached++;
     } else {
       pending.push(path);
@@ -18418,6 +18418,7 @@ async function writeReport(context, identity, command13, output, analysedHead, o
     inputs: output.inputs,
     extra: {
       ...output.extra,
+      ...options2.codeIdentity === void 0 ? {} : { codeIdentity: options2.codeIdentity },
       ...Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin },
       ...Object.keys(dropped2).length === 0 ? {} : { dropped: dropped2 }
     },
@@ -18751,7 +18752,225 @@ async function analyseHistory(repoPath, options2 = {}) {
   return { view, filtered, filtersApplied: filtered.filtersApplied, evidence: evidence2 };
 }
 
+// packages/history/src/identity-names.ts
+function normaliseName(name14) {
+  let text3 = name14.normalize("NFD").replace(new RegExp("\\p{M}", "gu"), "").toLowerCase().replace(/\([^)]*\)|\[[^\]]*\]/g, " ").replace(/_/g, " ");
+  const comma = text3.indexOf(",");
+  if (comma !== -1 && text3.indexOf(",", comma + 1) === -1) text3 = `${text3.slice(comma + 1)} ${text3.slice(0, comma)}`;
+  return text3.replace(/[.,]/g, " ").split(/\s+/).filter((t) => t !== "").join(" ");
+}
+
+// packages/history/src/identity-classify.ts
+var BUILTIN_BOT_PATTERNS = [
+  "\\[bot\\]",
+  "^dependabot",
+  "^renovate",
+  "^github-actions",
+  "^greenkeeper",
+  "^snyk-bot",
+  "^mergify",
+  "^imgbot",
+  "^allcontributors",
+  "^pre-commit-ci",
+  "<bot@renovateapp\\.com>"
+];
+var BUILTIN_SERVICE_NAMES = [
+  "build",
+  "builds",
+  "buildbot",
+  "jenkins",
+  "release",
+  "releases",
+  "ci",
+  "deploy",
+  "deployer",
+  "automation",
+  "teamcity",
+  "travis",
+  "circleci",
+  "gitlab ci",
+  "azure pipelines",
+  "service account"
+];
+var BUILTIN_AGENT_IDENTITY_PATTERNS = [
+  "<noreply@anthropic\\.com>",
+  "^copilot(-swe-agent)?(\\[bot\\])?\\s*<",
+  "<copilot@github\\.com>",
+  "\\+copilot(-swe-agent)?(\\[bot\\])?@users\\.noreply\\.github\\.com>",
+  "<cursoragent@cursor\\.com>",
+  "devin-ai-integration",
+  "^devin ai\\b"
+];
+var BUILTIN_AGENT_PATTERNS = [
+  "\\bclaude\\b",
+  "noreply@anthropic\\.com",
+  "copilot",
+  "\\bchatgpt\\b",
+  "\\bopenai\\b",
+  "\\bcodex\\b",
+  "\\bgemini\\b",
+  "\\bcursor\\b",
+  "\\baider\\b",
+  "\\bdevin\\b"
+];
+function compilePattern(pattern) {
+  try {
+    return new RegExp(pattern, "i");
+  } catch (error) {
+    throw new InvalidPatternError(pattern, error instanceof Error ? error.message : String(error));
+  }
+}
+var addressOf = (identity) => {
+  const open = identity.lastIndexOf("<");
+  return (open === -1 ? identity : identity.slice(open + 1, identity.lastIndexOf(">"))).trim().toLowerCase();
+};
+function createNonPersonMatcher(rules11) {
+  const decisions = new Map(rules11.decisions.map((d) => [addressOf(d.identity), d]));
+  const config = [
+    ...rules11.botPatterns.map((p) => ({ kind: "bot", pattern: p, re: compilePattern(p) })),
+    ...rules11.servicePatterns.map((p) => ({ kind: "service", pattern: p, re: compilePattern(p) }))
+  ];
+  const builtinAgents = BUILTIN_AGENT_IDENTITY_PATTERNS.map((p) => ({ kind: "agent", pattern: p, re: compilePattern(p) }));
+  const builtin = BUILTIN_BOT_PATTERNS.map((p) => ({ kind: "bot", pattern: p, re: compilePattern(p) }));
+  const serviceNames = new Set(BUILTIN_SERVICE_NAMES);
+  const trailerAgents = [...BUILTIN_AGENT_PATTERNS, ...rules11.agentPatterns].map((p) => ({ re: compilePattern(p) }));
+  const classify = (name14, email) => {
+    const decision = decisions.get(email.trim().toLowerCase());
+    if (decision) {
+      return decision.kind === "person" ? null : { kind: decision.kind, source: "decision", pattern: decision.identity };
+    }
+    const text3 = `${name14} <${email}>`;
+    const fromConfig = config.find((c) => c.re.test(text3));
+    if (fromConfig) return { kind: fromConfig.kind, source: "config", pattern: fromConfig.pattern };
+    const agent = builtinAgents.find((c) => c.re.test(text3));
+    if (agent) return { kind: "agent", source: "builtin", pattern: agent.pattern };
+    const bot = builtin.find((c) => c.re.test(text3));
+    if (bot) return { kind: "bot", source: "builtin", pattern: bot.pattern };
+    const normalised = normaliseName(name14);
+    if (serviceNames.has(normalised)) return { kind: "service", source: "builtin", pattern: normalised };
+    return null;
+  };
+  return {
+    classify,
+    isNonPerson: (name14, email) => {
+      const found = classify(name14, email);
+      return found !== null && found.kind !== "agent";
+    },
+    humanCoAuthor: (message) => {
+      for (const line of message.replace(/\r\n/g, "\n").split("\n")) {
+        const match = /^co-authored-by[ \t]*:[ \t]*(.+?)[ \t]*<([^<>]*)>[ \t]*$/i.exec(line);
+        if (!match) continue;
+        const address = { name: match[1].trim(), email: match[2].trim() };
+        if (address.name === "" || address.email === "") continue;
+        if (classify(address.name, address.email) !== null) continue;
+        if (trailerAgents.some((p) => p.re.test(line.replace(/^[^:]*:\s*/, "")))) continue;
+        return address;
+      }
+      return null;
+    },
+    applied: {
+      builtinBotPatterns: [...BUILTIN_BOT_PATTERNS],
+      builtinServiceNames: [...BUILTIN_SERVICE_NAMES],
+      servicePatterns: [...rules11.servicePatterns],
+      decisions: rules11.decisions.length
+    }
+  };
+}
+
+// packages/history/src/identity-decisions.ts
+import { existsSync as existsSync9, mkdirSync as mkdirSync3, readFileSync as readFileSync7, renameSync as renameSync3, writeFileSync as writeFileSync3 } from "node:fs";
+import { join as join12 } from "node:path";
+var emptyDecisions = () => ({ schemaVersion: 1, rejectedMerges: [], classifications: [] });
+function identityFiles(root) {
+  const localDir = join12(root, ".code-health", "local");
+  return {
+    mailmap: join12(root, ".mailmap"),
+    localMailmap: join12(localDir, "mailmap"),
+    committedDecisions: join12(root, ".code-health", "identity-decisions.json"),
+    localDecisions: join12(localDir, "identity-decisions.json"),
+    localDir
+  };
+}
+var KINDS = /* @__PURE__ */ new Set(["bot", "service", "agent", "person"]);
+function parse(text3, file) {
+  let value;
+  try {
+    value = JSON.parse(text3);
+  } catch (error) {
+    throw configError(`${file}: not valid JSON (${error instanceof Error ? error.message : String(error)})`);
+  }
+  const fail = (what) => {
+    throw configError(`${file}: ${what}`);
+  };
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return fail("must be a JSON object");
+  const document = value;
+  const unknown = Object.keys(document).filter((k) => !["schemaVersion", "rejectedMerges", "classifications"].includes(k));
+  if (unknown.length > 0) fail(`unknown key ${unknown.join(", ")}`);
+  if (document.schemaVersion !== 1) fail("schemaVersion must be 1");
+  const rejected = document.rejectedMerges ?? [];
+  const classes = document.classifications ?? [];
+  if (!Array.isArray(rejected) || !Array.isArray(classes)) return fail("rejectedMerges and classifications must be arrays");
+  const rejectedMerges = rejected.map((r, i2) => {
+    const entry = r;
+    const ids = entry?.identities;
+    if (!Array.isArray(ids) || ids.length !== 2 || ids.some((x2) => typeof x2 !== "string")) {
+      return fail(`rejectedMerges[${i2}].identities must be two "Name <email>" strings`);
+    }
+    return { identities: [ids[0], ids[1]], ...typeof entry.reason === "string" ? { reason: entry.reason } : {} };
+  });
+  const classifications = classes.map((c, i2) => {
+    const entry = c;
+    if (typeof entry?.identity !== "string") return fail(`classifications[${i2}].identity must be a "Name <email>" string`);
+    if (typeof entry.kind !== "string" || !KINDS.has(entry.kind)) {
+      return fail(`classifications[${i2}].kind must be bot, service, agent or person`);
+    }
+    return {
+      identity: entry.identity,
+      kind: entry.kind,
+      ...typeof entry.reason === "string" ? { reason: entry.reason } : {}
+    };
+  });
+  return normaliseDecisions({ schemaVersion: 1, rejectedMerges, classifications });
+}
+var emailOf = (identity) => {
+  const open = identity.lastIndexOf("<");
+  return (open === -1 ? identity : identity.slice(open + 1, identity.lastIndexOf(">"))).trim().toLowerCase();
+};
+var pairKey = (m) => m.identities.map((i2) => i2.toLowerCase()).sort().join("\0");
+var compare3 = (x2, y2) => x2 < y2 ? -1 : x2 > y2 ? 1 : 0;
+function normaliseDecisions(decisions) {
+  const rejected = /* @__PURE__ */ new Map();
+  for (const m of decisions.rejectedMerges) {
+    const ordered = [...m.identities].sort((p, q) => compare3(p.toLowerCase(), q.toLowerCase()));
+    rejected.set(pairKey(m), { ...m, identities: ordered });
+  }
+  const classes = /* @__PURE__ */ new Map();
+  for (const c of decisions.classifications) classes.set(emailOf(c.identity), c);
+  return {
+    schemaVersion: 1,
+    rejectedMerges: [...rejected.entries()].sort(([p], [q]) => compare3(p, q)).map(([, m]) => m),
+    classifications: [...classes.entries()].sort(([p], [q]) => compare3(p, q)).map(([, c]) => c)
+  };
+}
+function mergeDecisions(existing, additions) {
+  return normaliseDecisions({
+    schemaVersion: 1,
+    rejectedMerges: [...existing.rejectedMerges, ...additions.rejectedMerges],
+    classifications: [...existing.classifications, ...additions.classifications]
+  });
+}
+function readFile2(file) {
+  return existsSync9(file) ? parse(readFileSync7(file, "utf8"), file) : emptyDecisions();
+}
+function readDecisions(root, location) {
+  const files = identityFiles(root);
+  if (location === "committed") return readFile2(files.committedDecisions);
+  if (location === "local") return readFile2(files.localDecisions);
+  return mergeDecisions(readFile2(files.committedDecisions), readFile2(files.localDecisions));
+}
+
 // packages/structure/src/history-access.ts
+import { existsSync as existsSync10 } from "node:fs";
 async function refreshHistory(context, settings = readSettings(context.config)) {
   return refresh(context.repo.root, {
     ref: settings.ref,
@@ -18768,12 +18987,21 @@ async function loadHistory(context, options2 = {}) {
   const anchor = Number((await runGit(root, ["log", "-1", "--format=%ct", settings.ref])).trim());
   const since = options2.wholeHistory ? void 0 : options2.window?.since ?? monthsBefore(anchor, settings.windowMonths);
   const until = options2.window?.until ?? anchor + 1;
+  const files = identityFiles(root);
+  const nonPerson = createNonPersonMatcher({
+    botPatterns: settings.botPatterns,
+    servicePatterns: [],
+    agentPatterns: [],
+    decisions: readDecisions(root).classifications
+  });
   const analysis = await analyseHistory(root, {
     ref: settings.ref,
     firstParent: settings.firstParent,
+    mailmapFile: existsSync10(files.localMailmap) ? files.localMailmap : void 0,
     noise: {
       exclude: settings.exclude,
       botPatterns: settings.botPatterns,
+      nonPerson,
       maxChangesetSize: settings.maxChangesetSize,
       since,
       until
@@ -18885,11 +19113,11 @@ function stampOf(input) {
 }
 
 // packages/structure/src/incidental.ts
-import { existsSync as existsSync10 } from "node:fs";
+import { existsSync as existsSync12 } from "node:fs";
 
 // packages/transcripts/src/measure-repo.ts
-import { existsSync as existsSync9, readFileSync as readFileSync7, readdirSync as readdirSync3 } from "node:fs";
-import { join as join12 } from "node:path";
+import { existsSync as existsSync11, readFileSync as readFileSync8, readdirSync as readdirSync3 } from "node:fs";
+import { join as join13 } from "node:path";
 
 // packages/transcripts/src/repo-path.ts
 import { posix as posix17 } from "node:path";
@@ -19995,19 +20223,19 @@ function summariseTasks(tasks) {
 function agentFilesUnder(dir) {
   const found = [];
   for (const entry of readdirSync3(dir, { withFileTypes: true })) {
-    const path = join12(dir, entry.name);
+    const path = join13(dir, entry.name);
     if (entry.isDirectory()) found.push(...agentFilesUnder(path));
     else if (entry.isFile() && entry.name.startsWith("agent-") && entry.name.endsWith(".jsonl")) found.push(path);
   }
   return found;
 }
 function subagentFiles(projectsDir, root) {
-  const dir = join12(projectsDir, encodeProjectDir(root));
-  if (!existsSync9(dir)) return [];
+  const dir = join13(projectsDir, encodeProjectDir(root));
+  if (!existsSync11(dir)) return [];
   const files = [];
   for (const entry of readdirSync3(dir, { withFileTypes: true })) {
-    const subagents = join12(dir, entry.name, "subagents");
-    if (!entry.isDirectory() || !existsSync9(subagents)) continue;
+    const subagents = join13(dir, entry.name, "subagents");
+    if (!entry.isDirectory() || !existsSync11(subagents)) continue;
     for (const path of agentFilesUnder(subagents)) {
       const name14 = path.slice(path.lastIndexOf("/") + 1);
       files.push({ sessionId: entry.name, agentId: name14.slice("agent-".length, -".jsonl".length), path });
@@ -20020,7 +20248,7 @@ function stringField(value) {
 }
 function readMeta2(transcriptPath) {
   try {
-    const parsed = JSON.parse(readFileSync7(`${transcriptPath.slice(0, -".jsonl".length)}.meta.json`, "utf8"));
+    const parsed = JSON.parse(readFileSync8(`${transcriptPath.slice(0, -".jsonl".length)}.meta.json`, "utf8"));
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return null;
     const meta = parsed;
     return { agentType: stringField(meta["agentType"]), description: stringField(meta["description"]), worktreePath: stringField(meta["worktreePath"]) };
@@ -20029,9 +20257,9 @@ function readMeta2(transcriptPath) {
   }
 }
 function sessionFiles(projectsDir, root) {
-  const dir = join12(projectsDir, encodeProjectDir(root));
-  if (!existsSync9(dir)) return [];
-  return readdirSync3(dir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl")).map((entry) => ({ sessionId: entry.name.slice(0, -".jsonl".length), path: join12(dir, entry.name) })).sort((a, b) => compareBytes2(a.sessionId, b.sessionId));
+  const dir = join13(projectsDir, encodeProjectDir(root));
+  if (!existsSync11(dir)) return [];
+  return readdirSync3(dir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl")).map((entry) => ({ sessionId: entry.name.slice(0, -".jsonl".length), path: join13(dir, entry.name) })).sort((a, b) => compareBytes2(a.sessionId, b.sessionId));
 }
 function measureRepo(options2) {
   const { projectsDir, repoRoots, window: window2 } = options2;
@@ -20049,7 +20277,7 @@ function measureRepo(options2) {
         seen.add(file.path);
         let text3;
         try {
-          text3 = readFileSync7(file.path, "utf8");
+          text3 = readFileSync8(file.path, "utf8");
         } catch {
           continue;
         }
@@ -20072,7 +20300,7 @@ function measureRepo(options2) {
       seen.add(file.path);
       let text3;
       try {
-        text3 = readFileSync7(file.path, "utf8");
+        text3 = readFileSync8(file.path, "utf8");
       } catch {
         continue;
       }
@@ -20125,7 +20353,7 @@ function layerRuleOf(model, from, to, settings) {
 // packages/structure/src/incidental.ts
 var day = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
 function readAgentTasks(repoRoots, projectsDir, window2) {
-  if (!existsSync10(projectsDir)) throw environmentError("no-projects-dir", `${projectsDir} does not exist`);
+  if (!existsSync12(projectsDir)) throw environmentError("no-projects-dir", `${projectsDir} does not exist`);
   const parsed = parseWindow(day(window2.since), day(window2.until + 86400));
   return measureRepo({ projectsDir, repoRoots, window: parsed }).tasks;
 }
@@ -20285,7 +20513,7 @@ function judgePair(project, graph, activity, from, to, settings) {
   };
 }
 var couplingId = (level, from, to) => `coupling:${level}:${from}->${to}`;
-var pairKey = (a, b) => a < b ? `${a}\0${b}` : `${b}\0${a}`;
+var pairKey2 = (a, b) => a < b ? `${a}\0${b}` : `${b}\0${a}`;
 function orientPair(project, graph, x2, y2) {
   const forward = usage(project, graph, x2, y2).sites;
   const backward = usage(project, graph, y2, x2).sites;
@@ -20293,9 +20521,9 @@ function orientPair(project, graph, x2, y2) {
 }
 function findCoupling(model, settings) {
   const pairs = /* @__PURE__ */ new Map();
-  for (const [from, targets] of model.graph.graph) for (const to of targets) pairs.set(pairKey(from, to), [from, to]);
+  for (const [from, targets] of model.graph.graph) for (const to of targets) pairs.set(pairKey2(from, to), [from, to]);
   for (const [a, b, shared] of model.activity.sharedPairs()) {
-    if (shared >= settings.minSupport && model.graph.filesOf.has(a) && model.graph.filesOf.has(b)) pairs.set(pairKey(a, b), [a, b]);
+    if (shared >= settings.minSupport && model.graph.filesOf.has(a) && model.graph.filesOf.has(b)) pairs.set(pairKey2(a, b), [a, b]);
   }
   const level = model.graph.level;
   const rows7 = [...pairs.values()].map(([x2, y2]) => {
@@ -20310,10 +20538,10 @@ function findCoupling(model, settings) {
 }
 
 // packages/structure/src/activity.ts
-var pairKey2 = (a, b) => a < b ? `${a}\0${b}` : `${b}\0${a}`;
+var pairKey3 = (a, b) => a < b ? `${a}\0${b}` : `${b}\0${a}`;
 function measureActivity(changes, graph, wanted) {
   const wantedPairs = /* @__PURE__ */ new Set();
-  if (wanted !== "all") for (const [a, b] of wanted) wantedPairs.add(pairKey2(a, b));
+  if (wanted !== "all") for (const [a, b] of wanted) wantedPairs.add(pairKey3(a, b));
   const revisions = /* @__PURE__ */ new Map();
   const eligibleRevisions = /* @__PURE__ */ new Map();
   const churn = /* @__PURE__ */ new Map();
@@ -20336,7 +20564,7 @@ function measureActivity(changes, graph, wanted) {
     if (change.oversized) continue;
     for (let i2 = 0; i2 < modules.length; i2++) {
       for (let j = i2 + 1; j < modules.length; j++) {
-        const key = pairKey2(modules[i2], modules[j]);
+        const key = pairKey3(modules[i2], modules[j]);
         if (wanted === "all" || wantedPairs.has(key)) shared.set(key, (shared.get(key) ?? 0) + 1);
       }
     }
@@ -20345,7 +20573,7 @@ function measureActivity(changes, graph, wanted) {
     eligibleChanges,
     revisions: (module3) => revisions.get(module3) ?? 0,
     eligibleRevisions: (module3) => eligibleRevisions.get(module3) ?? 0,
-    shared: (a, b) => shared.get(pairKey2(a, b)) ?? 0,
+    shared: (a, b) => shared.get(pairKey3(a, b)) ?? 0,
     churn: (module3) => churn.get(module3) ?? 0,
     sharedPairs: () => [...shared].map(([key, count3]) => {
       const [a, b] = key.split("\0");
@@ -20360,15 +20588,15 @@ function connectedPairs(graph) {
 }
 
 // packages/structure/src/locality-report.ts
-import { existsSync as existsSync11, readFileSync as readFileSync8 } from "node:fs";
+import { existsSync as existsSync13, readFileSync as readFileSync9 } from "node:fs";
 var LOCALITY_REPORT = { tool: "locality", command: "analyse" };
 var RECOGNISED_LOCALITY_SCHEMA_VERSIONS = [1];
 function readLocalityUnblocks(context, head) {
   const file = reportPath2(context.repo.root, LOCALITY_REPORT.command, LOCALITY_REPORT.tool);
-  if (!existsSync11(file)) return void 0;
+  if (!existsSync13(file)) return void 0;
   let document;
   try {
-    document = JSON.parse(readFileSync8(file, "utf8"));
+    document = JSON.parse(readFileSync9(file, "utf8"));
   } catch {
     return void 0;
   }
@@ -21583,7 +21811,7 @@ function packageChanges(changes, ownerOf3) {
   }
   return result;
 }
-var pairKey3 = (a, b) => a < b ? `${a}\0${b}` : `${b}\0${a}`;
+var pairKey4 = (a, b) => a < b ? `${a}\0${b}` : `${b}\0${a}`;
 function measurePackages(changes) {
   const revisions = /* @__PURE__ */ new Map();
   const eligible = /* @__PURE__ */ new Map();
@@ -21603,7 +21831,7 @@ function measurePackages(changes) {
       for (let j = i2 + 1; j < change.touched.length; j++) {
         const a = change.touched[i2];
         const b = change.touched[j];
-        const key = pairKey3(a, b);
+        const key = pairKey4(a, b);
         shared.set(key, (shared.get(key) ?? 0) + 1);
         for (const [from, to] of [[a, b], [b, a]]) {
           if (!partners.has(from)) partners.set(from, /* @__PURE__ */ new Map());
@@ -21617,7 +21845,7 @@ function measurePackages(changes) {
     eligibleChanges,
     revisions: (id) => revisions.get(id) ?? 0,
     eligible: (id) => eligible.get(id) ?? 0,
-    shared: (a, b) => shared.get(pairKey3(a, b)) ?? 0,
+    shared: (a, b) => shared.get(pairKey4(a, b)) ?? 0,
     alone: (id) => alone.get(id) ?? 0,
     touchingAtLeast: (count3) => widths.filter((width) => width >= count3).length,
     crossing: (id) => (eligible.get(id) ?? 0) - (alone.get(id) ?? 0),
@@ -21655,13 +21883,13 @@ function crossingCost(changes, weightOf) {
     for (const id of change.touched) perPackage.set(id, (perPackage.get(id) ?? 0) + weight);
     for (let i2 = 0; i2 < change.touched.length; i2++) {
       for (let j = i2 + 1; j < change.touched.length; j++) {
-        const key = pairKey3(change.touched[i2], change.touched[j]);
+        const key = pairKey4(change.touched[i2], change.touched[j]);
         pairs.set(key, (pairs.get(key) ?? 0) + weight);
       }
     }
   }
   return {
-    pair: (a, b) => pairs.get(pairKey3(a, b)) ?? 0,
+    pair: (a, b) => pairs.get(pairKey4(a, b)) ?? 0,
     package: (id) => perPackage.get(id) ?? 0,
     wide: (count3) => [...wide].filter(([width]) => width >= count3).reduce((sum, [, weight]) => sum + weight, 0)
   };
@@ -24343,7 +24571,7 @@ var list2 = {
 };
 
 // packages/structure/src/packaging/outcome.ts
-import { existsSync as existsSync12 } from "node:fs";
+import { existsSync as existsSync14 } from "node:fs";
 var median2 = (values) => {
   if (values.length === 0) return null;
   const sorted = [...values].sort((a, b) => a - b);
@@ -24477,7 +24705,7 @@ async function measureOutcome2(root, settings, changes, anchor, options2) {
   const repoRoots = options2.projectsDir === void 0 ? [root] : await checkouts(root);
   const effort = () => {
     const projectsDir = options2.projectsDir;
-    if (projectsDir === void 0 || !existsSync12(projectsDir)) {
+    if (projectsDir === void 0 || !existsSync14(projectsDir)) {
       return { status: "not-measured", reason: projectsDir === void 0 ? "no --projects-dir was given" : `${projectsDir} does not exist` };
     }
     const windowOf = (from, to) => parseWindow(day2(from), day2(to));
@@ -24714,8 +24942,8 @@ __export(report_exports, {
 });
 
 // packages/cli-kit/src/report-command.ts
-import { mkdirSync as mkdirSync4, readFileSync as readFileSync10, writeFileSync as writeFileSync4 } from "node:fs";
-import { dirname as dirname4, resolve as resolve2 } from "node:path";
+import { mkdirSync as mkdirSync5, readFileSync as readFileSync12, writeFileSync as writeFileSync5 } from "node:fs";
+import { dirname as dirname5, resolve as resolve2 } from "node:path";
 
 // packages/report/src/json.ts
 var FLOAT_PRECISION2 = 6;
@@ -25971,10 +26199,60 @@ function slotsDocument(report) {
 }
 
 // packages/cli-kit/src/report-build-cache.ts
-import { createHash as createHash7, randomUUID as randomUUID4 } from "node:crypto";
+import { createHash as createHash8, randomUUID as randomUUID4 } from "node:crypto";
 import { execFileSync as execFileSync2 } from "node:child_process";
-import { existsSync as existsSync13, mkdirSync as mkdirSync3, readdirSync as readdirSync4, readFileSync as readFileSync9, realpathSync, renameSync as renameSync3, rmSync as rmSync4, statSync as statSync3, writeFileSync as writeFileSync3 } from "node:fs";
-import { basename as basename3, dirname as dirname3, join as join13, resolve } from "node:path";
+import { existsSync as existsSync15, mkdirSync as mkdirSync4, readdirSync as readdirSync5, readFileSync as readFileSync11, realpathSync, renameSync as renameSync4, rmSync as rmSync4, statSync as statSync4, writeFileSync as writeFileSync4 } from "node:fs";
+import { basename as basename3, dirname as dirname4, join as join15, resolve } from "node:path";
+
+// packages/cli-kit/src/code-identity.ts
+import { createHash as createHash7 } from "node:crypto";
+import { readdirSync as readdirSync4, readFileSync as readFileSync10, statSync as statSync3 } from "node:fs";
+import { dirname as dirname3, join as join14 } from "node:path";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
+var cached;
+function bundleIdentity(dir) {
+  const hash2 = createHash7("sha256");
+  for (const name14 of readdirSync4(dir).filter((file) => file.endsWith(".mjs")).sort()) {
+    hash2.update(name14).update("\0").update(readFileSync10(join14(dir, name14))).update("\0");
+  }
+  return hash2.digest("hex").slice(0, 16);
+}
+function sourceFiles(dir) {
+  return readdirSync4(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join14(dir, entry.name);
+    if (entry.isDirectory()) return entry.name === "node_modules" ? [] : sourceFiles(path);
+    return entry.name.endsWith(".ts") ? [path] : [];
+  });
+}
+function sourceIdentity(packages) {
+  const hash2 = createHash7("sha256");
+  for (const name14 of readdirSync4(packages).sort()) {
+    let files;
+    try {
+      files = sourceFiles(join14(packages, name14, "src")).sort();
+    } catch {
+      continue;
+    }
+    for (const file of files) {
+      const s = statSync3(file);
+      hash2.update(`${file}:${s.size}:${s.mtimeMs}
+`);
+    }
+  }
+  return hash2.digest("hex").slice(0, 16);
+}
+function codeIdentity() {
+  if (cached !== void 0) return cached;
+  const here = fileURLToPath2(import.meta.url);
+  try {
+    cached = here.endsWith(".ts") ? sourceIdentity(join14(dirname3(here), "..", "..")) : bundleIdentity(dirname3(here));
+  } catch {
+    cached = "unknown";
+  }
+  return cached;
+}
+
+// packages/cli-kit/src/report-build-cache.ts
 var FORMAT2 = 1;
 var OUTPUT_KEYS = ["slots", "notes", "format", "out", "no-cache"];
 var WATCHED = [".mailmap", ".code-health/identity-decisions.json", ".code-health/local/mailmap", ".code-health/local/identity-decisions.json", ".gitattributes"];
@@ -25983,27 +26261,24 @@ function git3(cwd, ...args2) {
 }
 function stat(file) {
   try {
-    const s = statSync3(file);
+    const s = statSync4(file);
     return `${s.size}:${s.mtimeMs}`;
   } catch {
     return "-";
   }
 }
 function statDirectory(dir, accept) {
-  if (!existsSync13(dir)) return [];
-  return readdirSync4(dir).filter(accept).sort().map((name14) => `${name14}=${stat(join13(dir, name14))}`);
+  if (!existsSync15(dir)) return [];
+  return readdirSync5(dir).filter(accept).sort().map((name14) => `${name14}=${stat(join15(dir, name14))}`);
 }
 function dependencyState(root) {
   const common = git3(root, "rev-parse", "--path-format=absolute", "--git-common-dir");
-  const written = statDirectory(join13(root, ".cache", "code-health", "reports"), (name14) => name14.endsWith(".json")).map((s) => `reports/${s}`);
-  const other = [...WATCHED.map((file) => `${file}=${stat(join13(root, file))}`), `shallow=${stat(join13(common, "shallow"))}`];
+  const written = statDirectory(join15(root, ".cache", "code-health", "reports"), (name14) => name14.endsWith(".json")).map((s) => `reports/${s}`);
+  const other = [...WATCHED.map((file) => `${file}=${stat(join15(root, file))}`), `shallow=${stat(join15(common, "shallow"))}`];
   return { written: written.join("\n"), other: other.join("\n") };
 }
-var digest = (value) => createHash7("sha256").update(value).digest("hex");
-function programId() {
-  const script = process.argv[1];
-  return script === void 0 ? "-" : stat(script);
-}
+var digest = (value) => createHash8("sha256").update(value).digest("hex");
+var programId = codeIdentity;
 function canonical2(value) {
   if (Array.isArray(value)) return `[${value.map(canonical2).join(",")}]`;
   if (value !== null && typeof value === "object") {
@@ -26014,7 +26289,7 @@ function canonical2(value) {
 }
 function real(path) {
   try {
-    return join13(realpathSync(dirname3(path)), basename3(path));
+    return join15(realpathSync(dirname4(path)), basename3(path));
   } catch {
     return path;
   }
@@ -26032,25 +26307,25 @@ function isClean(context) {
 function entryFile(context, kind, dependsOn) {
   const values = Object.fromEntries(Object.entries(context.values).filter(([key2]) => !OUTPUT_KEYS.includes(key2)));
   const key = digest(canonical2({ positionals: context.positionals, values, cwd: context.cwd, dependsOn })).slice(0, 16);
-  return join13(context.repo.root, ".cache", "code-health", "report-builds", `${kind}.${key}.json`);
+  return join15(context.repo.root, ".cache", "code-health", "report-builds", `${kind}.${key}.json`);
 }
 function read(file) {
   try {
-    const entry = JSON.parse(readFileSync9(file, "utf8"));
+    const entry = JSON.parse(readFileSync11(file, "utf8"));
     return entry.format === FORMAT2 ? entry : void 0;
   } catch {
     return void 0;
   }
 }
 function write(file, entry) {
-  const dir = dirname3(file);
-  mkdirSync3(dir, { recursive: true });
-  const ignore = join13(dir, ".gitignore");
-  if (!existsSync13(ignore)) writeFileSync3(ignore, "*\n");
+  const dir = dirname4(file);
+  mkdirSync4(dir, { recursive: true });
+  const ignore = join15(dir, ".gitignore");
+  if (!existsSync15(ignore)) writeFileSync4(ignore, "*\n");
   const temporary = `${file}.${randomUUID4()}.tmp`;
   try {
-    writeFileSync3(temporary, JSON.stringify(entry));
-    renameSync3(temporary, file);
+    writeFileSync4(temporary, JSON.stringify(entry));
+    renameSync4(temporary, file);
   } catch {
     rmSync4(temporary, { force: true });
   }
@@ -26144,8 +26419,8 @@ function reportCommand(kinds2) {
         const text3 = request.slots ? serialise(slotsDocument(report)) : produce(report, request, context.cwd);
         if (request.out === void 0) return { results: [], text: text3 };
         const file = resolve2(context.cwd, request.out);
-        mkdirSync4(dirname4(file), { recursive: true });
-        writeFileSync4(file, text3);
+        mkdirSync5(dirname5(file), { recursive: true });
+        writeFileSync5(file, text3);
         return { results: [], text: `wrote ${request.out}
 ` };
       } catch (error) {
@@ -26180,7 +26455,7 @@ function produce(report, request, cwd) {
   if (request.notes === void 0) return renderReport(report, format2, void 0, { compact: request.compact });
   let document;
   try {
-    document = JSON.parse(readFileSync10(resolve2(cwd, request.notes), "utf8"));
+    document = JSON.parse(readFileSync12(resolve2(cwd, request.notes), "utf8"));
   } catch (error) {
     throw new ReportError(`cannot read the notes file ${request.notes}: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -26451,7 +26726,7 @@ function stabilityBlocks(packageRows2, allAgainst, settings) {
     ...unplaced === 0 ? [] : [{ type: "notice", level: "notice", text: `${plural(unplaced, "package")} ${unplaced === 1 ? "has" : "have"} too few exported types to place (fewer than ${floor}, structure.packages.minExportedTypes, a judgement call); abstractness is not measured for ${unplaced === 1 ? "it" : "them"}. ${unplaced === 1 ? "It is" : "They are"} left out of the chart, its table and its zone counts.` }],
     {
       type: "paragraph",
-      text: "A dependency should point towards the more stable side. Structural stability is Martin's instability I = Ce / (Ca + Ce) over distinct outside files. Change stability is revisions per file in the window, and it decides when the depended-on side has at least structure.minRevisions revisions. Rows above a guideline are listed first, and no row is hidden for being below one."
+      text: "A dependency should point towards the more stable side. Structural stability is Martin's instability I = Ce / (Ca + Ce) over distinct outside files. Change stability is revisions per file in the window, and it decides when the depended-on side has at least structure.minRevisions revisions. The table is sorted by, in order: rows at or above a guideline first; rows decided by change before rows decided by structure; the larger margin, which for change is the depended-on side's revisions per file minus the dependant's (both shown) and for structure is the instability gap; file imports; path. A row decided by change can have a negative instability gap: it is listed because the depended-on folder has more revisions per file, even when it is structurally more stable. No row is hidden for being below a guideline."
     },
     {
       type: "ranked-table",
@@ -26463,6 +26738,8 @@ function stabilityBlocks(packageRows2, allAgainst, settings) {
         { key: "from", label: "From (depends)" },
         { key: "to", label: "To (depended on)" },
         { key: "basis", label: "Decided by" },
+        { key: "fromRpf", label: "Revisions per file, from", align: "right" },
+        { key: "toRpf", label: "Revisions per file, to", align: "right" },
         { key: "ratio", label: "Revisions per file, to over from", align: "right", guideline: { value: settings.minVolatilityRatio, note: "structure.minVolatilityRatio" } },
         { key: "gap", label: "Instability gap in points", align: "right", guideline: { value: settings.minInstabilityGap, note: "structure.minInstabilityGap" } },
         { key: "imports", label: "File imports", align: "right" },
@@ -26470,7 +26747,7 @@ function stabilityBlocks(packageRows2, allAgainst, settings) {
       ],
       rows: shown2.map((row) => {
         const gap = row.stability.from.structural.instability === null || row.stability.to.structural.instability === null ? null : round32((row.stability.to.structural.instability - row.stability.from.structural.instability) * 100);
-        return { from: row.from, to: row.to, basis: row.basis, ratio: row.volatilityRatio, gap, imports: row.fileEdges, disagree: yesNo(row.disagree) };
+        return { from: row.from, to: row.to, basis: row.basis, fromRpf: round32(row.stability.from.change.revisionsPerFile), toRpf: round32(row.stability.to.change.revisionsPerFile), ratio: row.volatilityRatio, gap, imports: row.fileEdges, disagree: yesNo(row.disagree) };
       })
     }
   ];

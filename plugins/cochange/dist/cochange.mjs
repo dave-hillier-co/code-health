@@ -1739,6 +1739,7 @@ async function writeReport(context, identity, command17, output, analysedHead, o
     inputs: output.inputs,
     extra: {
       ...output.extra,
+      ...options.codeIdentity === void 0 ? {} : { codeIdentity: options.codeIdentity },
       ...Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin },
       ...Object.keys(dropped).length === 0 ? {} : { dropped }
     },
@@ -1763,24 +1764,75 @@ async function writeReport(context, identity, command17, output, analysedHead, o
 }
 
 // packages/history/src/results-cache.ts
-import { existsSync as existsSync5, readFileSync as readFileSync4 } from "node:fs";
+import { existsSync as existsSync5, readFileSync as readFileSync5 } from "node:fs";
+
+// packages/cli-kit/src/code-identity.ts
+import { createHash as createHash3 } from "node:crypto";
+import { readdirSync, readFileSync as readFileSync4, statSync as statSync2 } from "node:fs";
+import { dirname, join as join4 } from "node:path";
+import { fileURLToPath } from "node:url";
+var cached;
+function bundleIdentity(dir) {
+  const hash = createHash3("sha256");
+  for (const name18 of readdirSync(dir).filter((file) => file.endsWith(".mjs")).sort()) {
+    hash.update(name18).update("\0").update(readFileSync4(join4(dir, name18))).update("\0");
+  }
+  return hash.digest("hex").slice(0, 16);
+}
+function sourceFiles(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join4(dir, entry.name);
+    if (entry.isDirectory()) return entry.name === "node_modules" ? [] : sourceFiles(path);
+    return entry.name.endsWith(".ts") ? [path] : [];
+  });
+}
+function sourceIdentity(packages) {
+  const hash = createHash3("sha256");
+  for (const name18 of readdirSync(packages).sort()) {
+    let files;
+    try {
+      files = sourceFiles(join4(packages, name18, "src")).sort();
+    } catch {
+      continue;
+    }
+    for (const file of files) {
+      const s = statSync2(file);
+      hash.update(`${file}:${s.size}:${s.mtimeMs}
+`);
+    }
+  }
+  return hash.digest("hex").slice(0, 16);
+}
+function codeIdentity() {
+  if (cached !== void 0) return cached;
+  const here = fileURLToPath(import.meta.url);
+  try {
+    cached = here.endsWith(".ts") ? sourceIdentity(join4(dirname(here), "..", "..")) : bundleIdentity(dirname(here));
+  } catch {
+    cached = "unknown";
+  }
+  return cached;
+}
+
+// packages/history/src/results-cache.ts
 var noCacheOption = { "no-cache": { type: "boolean" } };
 var noCacheHelp = "recompute instead of reading the stored result, and store the new one";
 var wantsNoCache = (context) => context.values["no-cache"] === true;
-var ENVELOPE = /* @__PURE__ */ new Set(["schemaVersion", "tool", "command", "repo", "config", "inputs", "results", "truncated", "meta", "dropped", "omittedByBuiltinExcludes"]);
+var ENVELOPE = /* @__PURE__ */ new Set(["schemaVersion", "codeIdentity", "tool", "command", "repo", "config", "inputs", "results", "truncated", "meta", "dropped", "omittedByBuiltinExcludes"]);
 var same = (a, b) => canonical(a ?? null) === canonical(b ?? null);
 function readStored(context, stored) {
   const file = reportPath(context.repo.root, stored.identity.tool, stored.command, variantOf(stored.stated));
   if (!existsSync5(file)) return void 0;
   let document;
   try {
-    document = JSON.parse(readFileSync4(file, "utf8"));
+    document = JSON.parse(readFileSync5(file, "utf8"));
   } catch {
     return void 0;
   }
   const repo = document.repo;
   if (document.tool !== stored.identity.tool || document.command !== stored.command) return void 0;
   if (document.schemaVersion !== stored.identity.schemaVersion) return void 0;
+  if (document.codeIdentity !== codeIdentity()) return void 0;
   if (repo?.head !== stored.head || repo?.dirty !== false) return void 0;
   if (document.config !== context.config.hash || !Array.isArray(document.results)) return void 0;
   const inputs = document.inputs ?? {};
@@ -1815,26 +1867,27 @@ function storeCached(context, stored, output) {
   return writeReport(context, stored.identity, stored.command, output, stored.head, {
     variant: variantOf(stored.stated),
     describesCommit: stored.describesCommit,
-    replayable: true
+    replayable: true,
+    codeIdentity: codeIdentity()
   });
 }
 
 // packages/cochange/src/abandonment/settings.ts
-import { existsSync as existsSync7, readFileSync as readFileSync6 } from "node:fs";
-import { join as join5 } from "node:path";
-import { createHash as createHash3 } from "node:crypto";
+import { existsSync as existsSync7, readFileSync as readFileSync7 } from "node:fs";
+import { join as join6 } from "node:path";
+import { createHash as createHash4 } from "node:crypto";
 
 // packages/history/src/identity-decisions.ts
-import { existsSync as existsSync6, mkdirSync as mkdirSync2, readFileSync as readFileSync5, renameSync as renameSync3, writeFileSync as writeFileSync2 } from "node:fs";
-import { join as join4 } from "node:path";
+import { existsSync as existsSync6, mkdirSync as mkdirSync2, readFileSync as readFileSync6, renameSync as renameSync3, writeFileSync as writeFileSync2 } from "node:fs";
+import { join as join5 } from "node:path";
 var emptyDecisions = () => ({ schemaVersion: 1, rejectedMerges: [], classifications: [] });
 function identityFiles(root) {
-  const localDir = join4(root, ".code-health", "local");
+  const localDir = join5(root, ".code-health", "local");
   return {
-    mailmap: join4(root, ".mailmap"),
-    localMailmap: join4(localDir, "mailmap"),
-    committedDecisions: join4(root, ".code-health", "identity-decisions.json"),
-    localDecisions: join4(localDir, "identity-decisions.json"),
+    mailmap: join5(root, ".mailmap"),
+    localMailmap: join5(localDir, "mailmap"),
+    committedDecisions: join5(root, ".code-health", "identity-decisions.json"),
+    localDecisions: join5(localDir, "identity-decisions.json"),
     localDir
   };
 }
@@ -1848,7 +1901,7 @@ function resolveLocation(root, configured) {
 function ensureLocalState(root) {
   const { localDir } = identityFiles(root);
   mkdirSync2(localDir, { recursive: true });
-  const ignore = join4(localDir, ".gitignore");
+  const ignore = join5(localDir, ".gitignore");
   if (!existsSync6(ignore)) writeFileSync2(ignore, "*\n");
 }
 var KINDS = /* @__PURE__ */ new Set(["bot", "service", "agent", "person"]);
@@ -1920,7 +1973,7 @@ function mergeDecisions(existing, additions) {
   });
 }
 function readFile(file) {
-  return existsSync6(file) ? parse(readFileSync5(file, "utf8"), file) : emptyDecisions();
+  return existsSync6(file) ? parse(readFileSync6(file, "utf8"), file) : emptyDecisions();
 }
 function readDecisions(root, location) {
   const files = identityFiles(root);
@@ -1935,7 +1988,7 @@ function decisionsFile(root, location) {
 function writeDecisions(root, location, decisions) {
   if (location === "local") ensureLocalState(root);
   const file = decisionsFile(root, location);
-  mkdirSync2(join4(file, ".."), { recursive: true });
+  mkdirSync2(join5(file, ".."), { recursive: true });
   const temporary = `${file}.${process.pid}.tmp`;
   writeFileSync2(temporary, serialise(normaliseDecisions(decisions)));
   renameSync3(temporary, file);
@@ -2048,12 +2101,12 @@ function requireKnowledge(context) {
 }
 var OVERRIDES_FILE = "knowledge-overrides.json";
 function overridesPath(root) {
-  return join5(identityFiles(root).localDir, OVERRIDES_FILE);
+  return join6(identityFiles(root).localDir, OVERRIDES_FILE);
 }
 function readOverrides(root) {
   const file = overridesPath(root);
   if (!existsSync7(file)) return { active: /* @__PURE__ */ new Set(), inactive: /* @__PURE__ */ new Set(), stamp: null };
-  const text6 = readFileSync6(file, "utf8");
+  const text6 = readFileSync7(file, "utf8");
   const fail = (what) => {
     throw configError(`${file}: ${what}`);
   };
@@ -2077,7 +2130,7 @@ function readOverrides(root) {
   const inactive = list("inactive");
   const both = [...active].filter((k) => inactive.has(k));
   if (both.length > 0) fail("an identity cannot be both active and inactive");
-  return { active, inactive, stamp: createHash3("sha256").update(text6).digest("hex").slice(0, 16) };
+  return { active, inactive, stamp: createHash4("sha256").update(text6).digest("hex").slice(0, 16) };
 }
 function readRank(context, settings) {
   const value = context.values.rank;
@@ -2483,8 +2536,8 @@ function readIdentities(section2, at2) {
 }
 
 // packages/cochange/src/identity-access.ts
-import { createHash as createHash4 } from "node:crypto";
-import { existsSync as existsSync8, readFileSync as readFileSync7 } from "node:fs";
+import { createHash as createHash5 } from "node:crypto";
+import { existsSync as existsSync8, readFileSync as readFileSync8 } from "node:fs";
 
 // packages/history/src/identity-names.ts
 var identityKey = (a) => `${a.name} <${a.email}>`;
@@ -2720,7 +2773,7 @@ function onlyVersionBumpsOrMerges(subjects) {
 }
 
 // packages/cochange/src/identity-access.ts
-var stamp = (file) => createHash4("sha256").update(readFileSync7(file)).digest("hex").slice(0, 16);
+var stamp = (file) => createHash5("sha256").update(readFileSync8(file)).digest("hex").slice(0, 16);
 function loadIdentityState(root, settings) {
   const files = identityFiles(root);
   const location = resolveLocation(root, settings.identities.location);
@@ -2728,7 +2781,7 @@ function loadIdentityState(root, settings) {
   const stamps = {};
   const decisionFiles = [files.committedDecisions, files.localDecisions].filter((f) => existsSync8(f));
   if (decisionFiles.length > 0) {
-    stamps.decisions = createHash4("sha256").update(decisionFiles.map(stamp).join(",")).digest("hex").slice(0, 16);
+    stamps.decisions = createHash5("sha256").update(decisionFiles.map(stamp).join(",")).digest("hex").slice(0, 16);
   }
   const localMailmap = existsSync8(files.localMailmap) ? files.localMailmap : void 0;
   if (localMailmap) stamps.localMailmap = stamp(localMailmap);
@@ -3580,7 +3633,7 @@ function counterEvidenceWithin(group) {
 }
 
 // packages/history/src/signing-keys.ts
-import { createHash as createHash5 } from "node:crypto";
+import { createHash as createHash6 } from "node:crypto";
 var PLATFORM_KEYS = /* @__PURE__ */ new Set(["gpg:B5690EEEBB952194"]);
 var isPlatformKey = (key) => PLATFORM_KEYS.has(key);
 function armoredBody(text6, kind) {
@@ -3598,7 +3651,7 @@ function sshKey(text6) {
   if (bytes === void 0 || bytes.length < 14 || bytes.subarray(0, 6).toString("latin1") !== "SSHSIG") return void 0;
   const length = bytes.readUInt32BE(10);
   if (length === 0 || 14 + length > bytes.length) return void 0;
-  const fingerprint = createHash5("sha256").update(bytes.subarray(14, 14 + length)).digest("base64").replace(/=+$/, "");
+  const fingerprint = createHash6("sha256").update(bytes.subarray(14, 14 + length)).digest("base64").replace(/=+$/, "");
   return `ssh:SHA256:${fingerprint}`;
 }
 function issuerOf(packet) {
@@ -3841,7 +3894,7 @@ function topAreas(node, limit = 3) {
 }
 
 // packages/history/src/blame-options.ts
-import { createHash as createHash6 } from "node:crypto";
+import { createHash as createHash7 } from "node:crypto";
 var DEFAULT_IGNORE_REVS_FILE = ".git-blame-ignore-revs";
 async function resolveBlameOptions(root, sha, settings = {}) {
   const copyDetection = settings.copyDetection ?? true;
@@ -3856,12 +3909,12 @@ async function resolveBlameOptions(root, sha, settings = {}) {
   }
   const sorted = [...ignoreRevs].sort();
   const canonical4 = JSON.stringify({ v: 1, w: true, M: true, C: copyDetection, ignore: sorted });
-  return { id: createHash6("sha256").update(canonical4).digest("hex").slice(0, 12), copyDetection, ignoreRevs: sorted };
+  return { id: createHash7("sha256").update(canonical4).digest("hex").slice(0, 12), copyDetection, ignoreRevs: sorted };
 }
 
 // packages/history/src/blame-lines.ts
 import { existsSync as existsSync9 } from "node:fs";
-import { join as join6 } from "node:path";
+import { join as join7 } from "node:path";
 var GREP_CHUNK = 200;
 async function textFilesAt(root, sha, paths) {
   const text6 = /* @__PURE__ */ new Set();
@@ -4140,7 +4193,7 @@ function shareHeldBy(shares2, ownerKeys) {
 
 // packages/history/src/blame-refresh.ts
 import { rmSync as rmSync5, writeFileSync as writeFileSync3 } from "node:fs";
-import { join as join7 } from "node:path";
+import { join as join8 } from "node:path";
 async function refreshBlame(repoPath, options = {}) {
   const location = await locateCache(repoPath);
   const sha = await resolveRef(location.repoRoot, options.ref ?? "HEAD");
@@ -4165,7 +4218,7 @@ async function refreshBlame(repoPath, options = {}) {
         const noText = missing.filter((f) => !text6.has(f.path));
         const description = `-w -M${settings.copyDetection ? " -C" : ""}, ${settings.ignoreRevs.length} ignored revisions`;
         putBlamedFiles(db, settings.id, description, sha, noText.map((f) => ({ path: f.path, blob: f.blob, ranges: [] })));
-        const ignoreFile = settings.ignoreRevs.length > 0 ? join7(location.cacheDir, `ignore-revs-${settings.id}.txt`) : void 0;
+        const ignoreFile = settings.ignoreRevs.length > 0 ? join8(location.cacheDir, `ignore-revs-${settings.id}.txt`) : void 0;
         if (ignoreFile) writeFileSync3(ignoreFile, settings.ignoreRevs.join("\n") + "\n");
         const args = [
           "blame",
@@ -5525,7 +5578,7 @@ function reviewFixesOf(landing, classifier, timeOf) {
 }
 
 // packages/cochange/src/complexity-source.ts
-import { existsSync as existsSync12, readFileSync as readFileSync8 } from "node:fs";
+import { existsSync as existsSync12, readFileSync as readFileSync9 } from "node:fs";
 
 // packages/lexical/src/agreement.ts
 function exactRate(counts) {
@@ -6062,8 +6115,8 @@ var COMMENT = 1;
 var STRING = 2;
 var compiledProfiles2 = /* @__PURE__ */ new WeakMap();
 function compileRules(profile) {
-  const cached = compiledProfiles2.get(profile);
-  if (cached !== void 0) return cached;
+  const cached2 = compiledProfiles2.get(profile);
+  if (cached2 !== void 0) return cached2;
   const compiled = profile.strings.map(
     (rule) => rule.kind === "delimited" ? { rule, open: new RegExp(rule.open, "y") } : { rule, pattern: new RegExp(rule.pattern, "y"), after: rule.after === void 0 ? void 0 : new RegExp(rule.after) }
   );
@@ -6270,7 +6323,7 @@ function readComplexityReport(root, head) {
   if (!existsSync12(file)) return void 0;
   let document;
   try {
-    document = JSON.parse(readFileSync8(file, "utf8"));
+    document = JSON.parse(readFileSync9(file, "utf8"));
   } catch {
     return void 0;
   }
@@ -6411,6 +6464,9 @@ async function testDrift(root, history, paths) {
 function fileFindings(unit, isHotspot, sibling, minSupport) {
   const drift = sibling !== null && sibling.together === 0 && unit.revisions >= minSupport;
   return { siblingTest: sibling?.test ?? null, findings: [...isHotspot ? ["hotspot"] : [], ...drift ? ["test-drift"] : []] };
+}
+function orderedHotspots(output) {
+  return shapeResults(output.results, { limit: Infinity, presorted: output.presorted }).results;
 }
 
 // packages/cochange/src/abandonment/ranking.ts
@@ -7265,13 +7321,13 @@ __export(brief_exports, {
 
 // packages/history/src/repo-paths.ts
 import { realpathSync } from "node:fs";
-import { basename, dirname, isAbsolute, join as join8, relative as relative2, sep } from "node:path";
+import { basename, dirname as dirname2, isAbsolute, join as join9, relative as relative2, sep } from "node:path";
 function realish(path) {
   try {
     return realpathSync(path);
   } catch {
     try {
-      return join8(realpathSync(dirname(path)), basename(path));
+      return join9(realpathSync(dirname2(path)), basename(path));
     } catch {
       return path;
     }
@@ -7964,9 +8020,9 @@ __export(identities_exports, {
 });
 
 // packages/cochange/src/identities/apply.ts
-import { createHash as createHash7 } from "node:crypto";
-import { existsSync as existsSync13, mkdirSync as mkdirSync3, readFileSync as readFileSync9, renameSync as renameSync4, writeFileSync as writeFileSync4 } from "node:fs";
-import { dirname as dirname2, isAbsolute as isAbsolute2, relative as relative3, resolve } from "node:path";
+import { createHash as createHash8 } from "node:crypto";
+import { existsSync as existsSync13, mkdirSync as mkdirSync3, readFileSync as readFileSync10, renameSync as renameSync4, writeFileSync as writeFileSync4 } from "node:fs";
+import { dirname as dirname3, isAbsolute as isAbsolute2, relative as relative3, resolve } from "node:path";
 
 // packages/history/src/identity-mailmap.ts
 var ENTRY = /^\s*(?:([^<#]*?)\s*)?<([^>]*)>(?:\s*(?:([^<#]*?)\s*)?<([^>]*)>)?\s*(?:#.*)?$/;
@@ -8160,8 +8216,8 @@ function address(value, where) {
 function readDecisionsInput(path, root) {
   const file = isAbsolute2(path) ? path : resolve(root, path);
   if (!existsSync13(file)) throw usageError(`--from: ${path} does not exist`);
-  const text6 = readFileSync9(file, "utf8");
-  const hash = createHash7("sha256").update(text6).digest("hex").slice(0, 16);
+  const text6 = readFileSync10(file, "utf8");
+  const hash = createHash8("sha256").update(text6).digest("hex").slice(0, 16);
   let value;
   try {
     value = JSON.parse(text6);
@@ -8240,7 +8296,7 @@ function planApply(root, location, input, analysis) {
     }
   }
   const mailmapPath = location === "local" ? files.localMailmap : files.mailmap;
-  const before = existsSync13(mailmapPath) ? readFileSync9(mailmapPath, "utf8") : "";
+  const before = existsSync13(mailmapPath) ? readFileSync10(mailmapPath, "utf8") : "";
   const update = addMailmapMappings(before, mappings);
   const decisions = mergeDecisions(existing, input);
   const decisionsPath = decisionsFile(root, location);
@@ -8275,7 +8331,7 @@ function writePlan(root, plan) {
   if (!plan.dirty) return;
   if (plan.location === "local") ensureLocalState(root);
   if (plan.changes.some((c) => c.target === relative3(root, plan.mailmapPath) && c.change === "add")) {
-    mkdirSync3(dirname2(plan.mailmapPath), { recursive: true });
+    mkdirSync3(dirname3(plan.mailmapPath), { recursive: true });
     const temporary = `${plan.mailmapPath}.${process.pid}.tmp`;
     writeFileSync4(temporary, plan.mailmapText);
     renameSync4(temporary, plan.mailmapPath);
@@ -8438,13 +8494,13 @@ async function checkouts(root) {
 
 // packages/transcripts/src/projects-dir.ts
 import { homedir } from "node:os";
-import { join as join9 } from "node:path";
-var defaultProjectsDirectory = () => join9(homedir(), ".claude", "projects");
+import { join as join10 } from "node:path";
+var defaultProjectsDirectory = () => join10(homedir(), ".claude", "projects");
 
 // packages/transcripts/src/stamp.ts
-import { createHash as createHash8 } from "node:crypto";
+import { createHash as createHash9 } from "node:crypto";
 function stampOf(input) {
-  return createHash8("sha256").update(JSON.stringify(input)).digest("hex").slice(0, 16);
+  return createHash9("sha256").update(JSON.stringify(input)).digest("hex").slice(0, 16);
 }
 
 // packages/transcripts/src/difference.ts
@@ -8465,7 +8521,7 @@ function differenceOf(actedOn, comparison, minSamples, noisePercent) {
 }
 
 // packages/transcripts/src/session-edits.ts
-import { existsSync as existsSync15, readFileSync as readFileSync11 } from "node:fs";
+import { existsSync as existsSync15, readFileSync as readFileSync12 } from "node:fs";
 
 // packages/transcripts/src/repo-path.ts
 import { posix } from "node:path";
@@ -8523,8 +8579,8 @@ function toRepoPath(path, roots) {
 }
 
 // packages/transcripts/src/measure-repo.ts
-import { existsSync as existsSync14, readFileSync as readFileSync10, readdirSync } from "node:fs";
-import { join as join10 } from "node:path";
+import { existsSync as existsSync14, readFileSync as readFileSync11, readdirSync as readdirSync2 } from "node:fs";
+import { join as join11 } from "node:path";
 
 // packages/transcripts/src/shell-command.ts
 import { posix as posix2 } from "node:path";
@@ -9421,9 +9477,9 @@ function compareBytes3(a, b) {
   return Buffer.compare(Buffer.from(a), Buffer.from(b));
 }
 function sessionFiles(projectsDir, root) {
-  const dir = join10(projectsDir, encodeProjectDir(root));
+  const dir = join11(projectsDir, encodeProjectDir(root));
   if (!existsSync14(dir)) return [];
-  return readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl")).map((entry) => ({ sessionId: entry.name.slice(0, -".jsonl".length), path: join10(dir, entry.name) })).sort((a, b) => compareBytes3(a.sessionId, b.sessionId));
+  return readdirSync2(dir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl")).map((entry) => ({ sessionId: entry.name.slice(0, -".jsonl".length), path: join11(dir, entry.name) })).sort((a, b) => compareBytes3(a.sessionId, b.sessionId));
 }
 
 // packages/transcripts/src/session-edits.ts
@@ -9453,7 +9509,7 @@ function readRepoSessionEdits(options) {
       seen.add(file.path);
       let text6;
       try {
-        text6 = readFileSync11(file.path, "utf8");
+        text6 = readFileSync12(file.path, "utf8");
       } catch {
         continue;
       }
@@ -9676,8 +9732,8 @@ async function completeness(context) {
     let known = 0;
     while (known < dated.length && dated[known].committerDate < session.startedAt) known++;
     const key = `${known}\0${file}`;
-    const cached = cache.get(key);
-    if (cached !== void 0) return cached;
+    const cached2 = cache.get(key);
+    if (cached2 !== void 0) return cached2;
     const { partners } = partnersOf(couplingChanges.slice(0, known), file);
     const named = partners.filter(
       (p) => p.support >= settings.minSupport && present.has(p.path) && reachesDegree({ a: file, b: p.path, support: p.support, changesA: p.changesFocus, changesB: p.changesPartner }, settings.minDegree)
@@ -9748,8 +9804,8 @@ __export(report_exports, {
 });
 
 // packages/cli-kit/src/report-command.ts
-import { mkdirSync as mkdirSync5, readFileSync as readFileSync13, writeFileSync as writeFileSync6 } from "node:fs";
-import { dirname as dirname4, resolve as resolve3 } from "node:path";
+import { mkdirSync as mkdirSync5, readFileSync as readFileSync14, writeFileSync as writeFileSync6 } from "node:fs";
+import { dirname as dirname5, resolve as resolve3 } from "node:path";
 
 // packages/report/src/json.ts
 var FLOAT_PRECISION2 = 6;
@@ -9863,7 +9919,7 @@ ${problems.map((p) => `  - ${p}`).join("\n")}`);
 }
 
 // packages/report/src/text.ts
-import { createHash as createHash9 } from "node:crypto";
+import { createHash as createHash10 } from "node:crypto";
 function escapeHtml(text6) {
   return text6.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
@@ -9886,7 +9942,7 @@ function formatNumber(value) {
   return String(Number(value.toFixed(2)));
 }
 function shortHash(content) {
-  return createHash9("sha256").update(content).digest("hex").slice(0, 6);
+  return createHash10("sha256").update(content).digest("hex").slice(0, 6);
 }
 function slug(text6) {
   return text6.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "item";
@@ -11005,10 +11061,10 @@ function slotsDocument(report) {
 }
 
 // packages/cli-kit/src/report-build-cache.ts
-import { createHash as createHash10, randomUUID as randomUUID3 } from "node:crypto";
+import { createHash as createHash11, randomUUID as randomUUID3 } from "node:crypto";
 import { execFileSync as execFileSync2 } from "node:child_process";
-import { existsSync as existsSync16, mkdirSync as mkdirSync4, readdirSync as readdirSync2, readFileSync as readFileSync12, realpathSync as realpathSync2, renameSync as renameSync5, rmSync as rmSync6, statSync as statSync2, writeFileSync as writeFileSync5 } from "node:fs";
-import { basename as basename2, dirname as dirname3, join as join11, resolve as resolve2 } from "node:path";
+import { existsSync as existsSync16, mkdirSync as mkdirSync4, readdirSync as readdirSync3, readFileSync as readFileSync13, realpathSync as realpathSync2, renameSync as renameSync5, rmSync as rmSync6, statSync as statSync3, writeFileSync as writeFileSync5 } from "node:fs";
+import { basename as basename2, dirname as dirname4, join as join12, resolve as resolve2 } from "node:path";
 var FORMAT2 = 1;
 var OUTPUT_KEYS = ["slots", "notes", "format", "out", "no-cache"];
 var WATCHED = [".mailmap", ".code-health/identity-decisions.json", ".code-health/local/mailmap", ".code-health/local/identity-decisions.json", ".gitattributes"];
@@ -11017,7 +11073,7 @@ function git2(cwd, ...args) {
 }
 function stat(file) {
   try {
-    const s = statSync2(file);
+    const s = statSync3(file);
     return `${s.size}:${s.mtimeMs}`;
   } catch {
     return "-";
@@ -11025,19 +11081,16 @@ function stat(file) {
 }
 function statDirectory(dir, accept) {
   if (!existsSync16(dir)) return [];
-  return readdirSync2(dir).filter(accept).sort().map((name18) => `${name18}=${stat(join11(dir, name18))}`);
+  return readdirSync3(dir).filter(accept).sort().map((name18) => `${name18}=${stat(join12(dir, name18))}`);
 }
 function dependencyState(root) {
   const common = git2(root, "rev-parse", "--path-format=absolute", "--git-common-dir");
-  const written = statDirectory(join11(root, ".cache", "code-health", "reports"), (name18) => name18.endsWith(".json")).map((s) => `reports/${s}`);
-  const other = [...WATCHED.map((file) => `${file}=${stat(join11(root, file))}`), `shallow=${stat(join11(common, "shallow"))}`];
+  const written = statDirectory(join12(root, ".cache", "code-health", "reports"), (name18) => name18.endsWith(".json")).map((s) => `reports/${s}`);
+  const other = [...WATCHED.map((file) => `${file}=${stat(join12(root, file))}`), `shallow=${stat(join12(common, "shallow"))}`];
   return { written: written.join("\n"), other: other.join("\n") };
 }
-var digest = (value) => createHash10("sha256").update(value).digest("hex");
-function programId() {
-  const script = process.argv[1];
-  return script === void 0 ? "-" : stat(script);
-}
+var digest = (value) => createHash11("sha256").update(value).digest("hex");
+var programId = codeIdentity;
 function canonical3(value) {
   if (Array.isArray(value)) return `[${value.map(canonical3).join(",")}]`;
   if (value !== null && typeof value === "object") {
@@ -11048,7 +11101,7 @@ function canonical3(value) {
 }
 function real(path) {
   try {
-    return join11(realpathSync2(dirname3(path)), basename2(path));
+    return join12(realpathSync2(dirname4(path)), basename2(path));
   } catch {
     return path;
   }
@@ -11066,20 +11119,20 @@ function isClean(context) {
 function entryFile(context, kind, dependsOn) {
   const values = Object.fromEntries(Object.entries(context.values).filter(([key2]) => !OUTPUT_KEYS.includes(key2)));
   const key = digest(canonical3({ positionals: context.positionals, values, cwd: context.cwd, dependsOn })).slice(0, 16);
-  return join11(context.repo.root, ".cache", "code-health", "report-builds", `${kind}.${key}.json`);
+  return join12(context.repo.root, ".cache", "code-health", "report-builds", `${kind}.${key}.json`);
 }
 function read(file) {
   try {
-    const entry = JSON.parse(readFileSync12(file, "utf8"));
+    const entry = JSON.parse(readFileSync13(file, "utf8"));
     return entry.format === FORMAT2 ? entry : void 0;
   } catch {
     return void 0;
   }
 }
 function write(file, entry) {
-  const dir = dirname3(file);
+  const dir = dirname4(file);
   mkdirSync4(dir, { recursive: true });
-  const ignore = join11(dir, ".gitignore");
+  const ignore = join12(dir, ".gitignore");
   if (!existsSync16(ignore)) writeFileSync5(ignore, "*\n");
   const temporary = `${file}.${randomUUID3()}.tmp`;
   try {
@@ -11178,7 +11231,7 @@ function reportCommand(kinds) {
         const text6 = request.slots ? serialise(slotsDocument(report)) : produce(report, request, context.cwd);
         if (request.out === void 0) return { results: [], text: text6 };
         const file = resolve3(context.cwd, request.out);
-        mkdirSync5(dirname4(file), { recursive: true });
+        mkdirSync5(dirname5(file), { recursive: true });
         writeFileSync6(file, text6);
         return { results: [], text: `wrote ${request.out}
 ` };
@@ -11214,7 +11267,7 @@ function produce(report, request, cwd) {
   if (request.notes === void 0) return renderReport(report, format2, void 0, { compact: request.compact });
   let document;
   try {
-    document = JSON.parse(readFileSync13(resolve3(cwd, request.notes), "utf8"));
+    document = JSON.parse(readFileSync14(resolve3(cwd, request.notes), "utf8"));
   } catch (error) {
     throw new ReportError(`cannot read the notes file ${request.notes}: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -11235,9 +11288,9 @@ function percentTextOfCounts(part, whole) {
 }
 
 // packages/cochange/src/reports/change.ts
-import { createHash as createHash13 } from "node:crypto";
-import { readFileSync as readFileSync19 } from "node:fs";
-import { isAbsolute as isAbsolute6, join as join15 } from "node:path";
+import { createHash as createHash14 } from "node:crypto";
+import { readFileSync as readFileSync20 } from "node:fs";
+import { isAbsolute as isAbsolute6, join as join16 } from "node:path";
 
 // packages/history/src/report-header.ts
 var COMMIT_FILTERS = [
@@ -11425,12 +11478,12 @@ async function extractChange(root, view, range2, worktree, options) {
 }
 
 // packages/cochange/src/risk/abandonment-report.ts
-import { existsSync as existsSync17, readFileSync as readFileSync14 } from "node:fs";
+import { existsSync as existsSync17, readFileSync as readFileSync15 } from "node:fs";
 function readAbandonmentReport(root, head, config, overridesStamp) {
   const file = reportPath2(root, REPORT);
   if (!existsSync17(file)) return null;
   try {
-    const document = JSON.parse(readFileSync14(file, "utf8"));
+    const document = JSON.parse(readFileSync15(file, "utf8"));
     if (document.tool !== "cochange" || document.command !== REPORT) return null;
     if (document.repo?.head !== head || document.repo?.dirty !== false || document.config !== config) return null;
     if (document.inputs?.mode !== "rate" || (document.inputs.overrides?.hash ?? null) !== overridesStamp) return null;
@@ -11544,23 +11597,23 @@ function measurement(evidence, files, unknown, baseline, margin) {
 }
 
 // packages/cochange/src/risk/composition.ts
-import { existsSync as existsSync18, readFileSync as readFileSync16 } from "node:fs";
-import { join as join13 } from "node:path";
+import { existsSync as existsSync18, readFileSync as readFileSync17 } from "node:fs";
+import { join as join14 } from "node:path";
 
 // packages/cochange/src/risk/evidence-inputs.ts
-import { createHash as createHash11 } from "node:crypto";
-import { readFileSync as readFileSync15 } from "node:fs";
-import { isAbsolute as isAbsolute4, join as join12 } from "node:path";
+import { createHash as createHash12 } from "node:crypto";
+import { readFileSync as readFileSync16 } from "node:fs";
+import { isAbsolute as isAbsolute4, join as join13 } from "node:path";
 var NO_EVIDENCE = { complexity: null, structure: null, stamps: [] };
 function readEvidence(root, files, change3) {
   let complexity = null;
   let structure = null;
   const stamps = [];
   for (const file of files) {
-    const path = isAbsolute4(file) ? file : join12(root, file);
+    const path = isAbsolute4(file) ? file : join13(root, file);
     let text6;
     try {
-      text6 = readFileSync15(path, "utf8");
+      text6 = readFileSync16(path, "utf8");
     } catch {
       throw usageError(`--evidence ${file}: cannot read it (a relative path is taken from the repository root)`);
     }
@@ -11572,7 +11625,7 @@ function readEvidence(root, files, change3) {
     }
     const tool = String(document.tool ?? "");
     const command17 = String(document.command ?? "");
-    const stamp2 = { tool, command: command17, hash: createHash11("sha256").update(text6).digest("hex").slice(0, 16) };
+    const stamp2 = { tool, command: command17, hash: createHash12("sha256").update(text6).digest("hex").slice(0, 16) };
     if (!Array.isArray(document.results)) throw usageError(`--evidence ${file}: no results list`);
     checkAgainst(file, document, change3);
     if (tool === "complexity" && command17 === "diff") {
@@ -11693,7 +11746,7 @@ async function complexityDelta(root, change3, risk, evidence, isTest) {
 }
 function readWorktree(root, path) {
   try {
-    return readFileSync16(join13(root, path), "utf8");
+    return readFileSync17(join14(root, path), "utf8");
   } catch {
     return void 0;
   }
@@ -11702,7 +11755,7 @@ function readLocalityFanIn(root, head) {
   const file = reportPath2(root, "analyse", "locality");
   if (!existsSync18(file)) return null;
   try {
-    const document = JSON.parse(readFileSync16(file, "utf8"));
+    const document = JSON.parse(readFileSync17(file, "utf8"));
     if (document.tool !== "locality" || document.command !== "analyse") return null;
     if (document.repo?.head !== head || document.repo?.dirty !== false) return null;
     if (!Array.isArray(document.results) || typeof document.config !== "string") return null;
@@ -12796,13 +12849,13 @@ function levelResult(assessed, placement, stored, behind) {
 }
 
 // packages/cochange/src/risk/stored-backtest.ts
-import { existsSync as existsSync19, readFileSync as readFileSync17 } from "node:fs";
+import { existsSync as existsSync19, readFileSync as readFileSync18 } from "node:fs";
 var BACKTEST_REPORT = "risk-backtest";
 function readStoredBacktest(root, configHash) {
   const file = reportPath2(root, BACKTEST_REPORT);
   if (!existsSync19(file)) return null;
   try {
-    const document = JSON.parse(readFileSync17(file, "utf8"));
+    const document = JSON.parse(readFileSync18(file, "utf8"));
     const results = document.results;
     if (document.tool !== TOOL2 || document.command !== BACKTEST_REPORT || document.config !== configHash) return null;
     if (typeof document.repo?.head !== "string" || results?.kind !== "backtest" || !results.separation) return null;
@@ -12820,9 +12873,9 @@ function readStoredBacktest(root, configHash) {
 }
 
 // packages/cochange/src/reports/change-evidence.ts
-import { createHash as createHash12 } from "node:crypto";
-import { readFileSync as readFileSync18 } from "node:fs";
-import { isAbsolute as isAbsolute5, join as join14 } from "node:path";
+import { createHash as createHash13 } from "node:crypto";
+import { readFileSync as readFileSync19 } from "node:fs";
+import { isAbsolute as isAbsolute5, join as join15 } from "node:path";
 var NO_CHANGE_EVIDENCE = { files: [], complexity: null, structure: null, forAssessment: [] };
 var text2 = (value) => typeof value === "string" ? value : "";
 var number = (value) => typeof value === "number" && Number.isFinite(value) ? value : null;
@@ -12833,10 +12886,10 @@ function readChangeEvidence(root, files, change3) {
   const read2 = [];
   const forAssessment = [];
   for (const file of files) {
-    const path = isAbsolute5(file) ? file : join14(root, file);
+    const path = isAbsolute5(file) ? file : join15(root, file);
     let content;
     try {
-      content = readFileSync18(path, "utf8");
+      content = readFileSync19(path, "utf8");
     } catch {
       throw usageError(`--evidence ${file}: cannot read it (a relative path is taken from the repository root)`);
     }
@@ -12863,7 +12916,7 @@ function readChangeEvidence(root, files, change3) {
     } else {
       throw usageError(`--evidence ${file}: ${tool}/${command17} is not evidence this report reads; pass \`complexity check --json\`, \`complexity diff --json\` or \`structure check --json\``);
     }
-    read2.push({ tool, command: command17, hash: createHash12("sha256").update(content).digest("hex").slice(0, 16) });
+    read2.push({ tool, command: command17, hash: createHash13("sha256").update(content).digest("hex").slice(0, 16) });
   }
   return { files: read2, complexity, structure, forAssessment };
 }
@@ -13389,7 +13442,7 @@ var change2 = {
     const resolved = await resolveRange(context.repo.root, { range: context.positionals[0], mainBranch: readRiskSettings(context.config).mainBranch, worktree: false });
     const files = evidenceFiles(context).map((file) => {
       try {
-        return createHash13("sha256").update(readFileSync19(isAbsolute6(file) ? file : join15(context.repo.root, file))).digest("hex");
+        return createHash14("sha256").update(readFileSync20(isAbsolute6(file) ? file : join16(context.repo.root, file))).digest("hex");
       } catch {
         return null;
       }
@@ -13452,14 +13505,14 @@ var change2 = {
 };
 
 // packages/cochange/src/sibling-reports.ts
-import { existsSync as existsSync20, readFileSync as readFileSync20 } from "node:fs";
+import { existsSync as existsSync20, readFileSync as readFileSync21 } from "node:fs";
 var ENVELOPE2 = /* @__PURE__ */ new Set(["schemaVersion", "tool", "command", "repo", "config", "inputs", "results", "truncated", "meta"]);
 function readSiblingResult(root, tool, command17, head) {
   const file = reportPath(root, tool, command17);
   if (!existsSync20(file)) return void 0;
   let document;
   try {
-    document = JSON.parse(readFileSync20(file, "utf8"));
+    document = JSON.parse(readFileSync21(file, "utf8"));
   } catch {
     return void 0;
   }
@@ -13892,7 +13945,7 @@ var coupling = {
 };
 
 // packages/cochange/src/reports/hotspots.ts
-import { statSync as statSync3 } from "node:fs";
+import { statSync as statSync4 } from "node:fs";
 
 // packages/report/src/xray.ts
 var XRAY_ROWS = 25;
@@ -14011,20 +14064,35 @@ var command12 = analysisCommand(name13, {
       }
     }
     if (revisions.length === 0) throw usageError(`no revisions of "${requested}" in the analysed history`);
-    const rows7 = await Promise.all(
+    const measureText = (text6, path) => {
+      const binary = text6.includes("\0");
+      return {
+        complexity: binary ? null : indentationComplexity(text6, path),
+        lines: binary ? null : text6 === "" ? 0 : text6.replace(/\n$/, "").split("\n").length
+      };
+    };
+    const sampled = await Promise.all(
       pickSamples(revisions, samples).map(async (revision) => {
         const [text6, bytes] = await Promise.all([readBlob(context.repo.root, revision.blob), blobSize(context.repo.root, revision.blob)]);
-        const binary = text6.includes("\0");
         return {
-          commit: revision.commit,
-          date: isoDate(revision.committerDate),
-          path: revision.path,
-          complexity: binary ? null : indentationComplexity(text6, revision.path),
-          lines: binary ? null : text6 === "" ? 0 : text6.replace(/\n$/, "").split("\n").length,
-          bytes
+          text: text6,
+          row: {
+            commit: revision.commit,
+            date: isoDate(revision.committerDate),
+            path: revision.path,
+            ...measureText(text6, revision.path),
+            bytes
+          }
         };
       })
     );
+    const rows7 = sampled.map((s) => s.row);
+    const headSha = history.view.headSha;
+    const headText = await readBlobAt(context.repo.root, headSha, file);
+    if (headText !== void 0 && headText !== sampled.at(-1).text) {
+      const date = (await runGit(context.repo.root, ["show", "-s", "--format=%ct", headSha])).trim();
+      rows7.push({ commit: headSha, date: isoDate(Number(date)), path: file, ...measureText(headText, file), bytes: Buffer.byteLength(headText), atHead: true });
+    }
     const first = rows7[0];
     const last = rows7.at(-1);
     const changeRatio = changeRatioOf(first.complexity, last.complexity);
@@ -14219,6 +14287,14 @@ function historyBlocks(trends, paths, omitted2) {
     const points = t.samples.flatMap((s) => s.complexity === null ? [] : [{ label: s.date.slice(0, 10), value: s.complexity }]);
     if (points.length > 0) blocks.push({ type: "sparkline", title: `${t.path}: indentation complexity across its history`, unit: "indentation complexity", points });
   }
+  const atHead = found.filter((t) => t.samples.at(-1)?.atHead === true);
+  if (atHead.length > 0) {
+    blocks.push({
+      type: "notice",
+      level: "notice",
+      text: `For ${atHead.length} of these files the last sample is the file at HEAD, added because the file at HEAD differs from the file at its last change in the analysed history, so a later change is not in the history (a noise filter or a limit left it out) (${atHead.map((t) => codeSpan(t.path)).join(", ")}).`
+    });
+  }
   const missing = paths.length - found.length;
   if (missing > 0) blocks.push({ type: "notice", level: "limit", text: `${missing} of these files have no history to sample, so they are not drawn.` });
   return blocks;
@@ -14330,7 +14406,7 @@ var hotspots = {
   dependsOn(context) {
     return ["analyse", "fixes"].map((command17) => {
       try {
-        const stat2 = statSync3(reportPath(context.repo.root, "complexity", command17));
+        const stat2 = statSync4(reportPath(context.repo.root, "complexity", command17));
         return [command17, stat2.mtimeMs, stat2.size];
       } catch {
         return [command17, null, null];
@@ -14343,7 +14419,7 @@ var hotspots = {
     const excluded = excludedCounts(output.extra.filtersApplied, droppedCounts(), builtinOmissions());
     const extra = output.extra;
     const { evidence } = extra;
-    const rows7 = [...output.results].sort(byScore);
+    const rows7 = orderedHotspots(output);
     const root = context.repo.root;
     const head = context.repo.head;
     const settings = readSettings(context.config);
@@ -14868,7 +14944,10 @@ function fixBlocks(convention) {
         { label: "Landed changes with a Conventional Commits type (feat, fix, chore and the others, so more than the fixes)", value: String(convention.forms.conventionalCommits) },
         { label: "Landed changes whose title starts with a fix verb", value: String(convention.forms.fixVerb) },
         { label: "Landed changes whose title has a closing keyword and an issue reference", value: String(convention.forms.issueReference) },
-        { label: "Convention followed", value: convention.followsConvention ? "yes" : "no" }
+        {
+          label: "Fix convention used for this repository (decided by whether at least one landed change uses a fix form, not by the share of fixes)",
+          value: `${convention.followsConvention ? "yes" : "no"}: Conventional Commits types on ${convention.forms.conventionalCommits}, fix verbs in titles on ${convention.forms.fixVerb}, issue references on ${convention.forms.issueReference} of ${convention.landedChanges} landed changes`
+        }
       ]
     },
     ...convention.note === null ? [] : [{ type: "notice", level: "notice", text: convention.note }]
@@ -15101,7 +15180,7 @@ var overview = {
     const extra = output.extra;
     const { evidence } = extra;
     const contributors = extra.contributors ?? { people: evidence.activeContributors, agents: 0 };
-    const rows7 = output.results;
+    const rows7 = orderedHotspots(output);
     const root = context.repo.root;
     const head = context.repo.head;
     const results = [
