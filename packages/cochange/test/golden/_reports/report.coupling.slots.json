@@ -143,7 +143,7 @@
             "type": "notice"
           },
           {
-            "caption": "Expected pairs, listed apart and not judged: two test files, a test, fixture or golden file with what it checks, a C or C++ header with its source file, two build manifests of one toolchain, or two data files of one format. Sorted by degree, then shared changes, then path; pairs under the degree guideline come after the others.",
+            "caption": "Expected pairs, listed apart and not judged: two test files, a test, fixture or golden file with what it checks, a C or C++ header with its source file, two build manifests of one toolchain, two data files of one format, or a file that is not code (documentation, configuration) with any other file. Sorted by degree, then shared changes, then path; pairs under the degree guideline come after the others.",
             "columns": [
               {
                 "key": "file",

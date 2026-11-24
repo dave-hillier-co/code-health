@@ -19,13 +19,15 @@ export function emptyNotice(block: Block): string | undefined {
 /**
  * The one line a section prints in place of its heading and blocks, or undefined when it has content. A section
  * is empty when at least one block is empty and every other block is a notice. The line is the empty blocks'
- * lines and the notices' texts, in order, so a notice that explains why nothing is shown stays. A judgement
+ * lines and the notices' texts, in order, without a leading copy of the section's heading (the page prints the heading before the line), so a notice that explains why nothing is shown stays. A judgement
  * block counts as content, so a section asking for judgement is never collapsed.
  */
 export function emptySection(section: Section): string | undefined {
   const lines = section.blocks.map((b) => (b.type === "notice" ? b.text : emptyNotice(b)));
   if (lines.some((l) => l === undefined) || !section.blocks.some((b) => b.type !== "notice")) return undefined;
-  return lines.join(" ");
+  const line = lines.join(" ");
+  const own = `${section.heading}: `;
+  return line.startsWith(own) ? line.slice(own.length) : line;
 }
 
 /**

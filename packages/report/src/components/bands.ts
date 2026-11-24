@@ -17,7 +17,7 @@ export interface Bands {
 /**
  * Five bands for colouring values. With `breaks` (four ascending values) band n holds the values from the
  * (n-1)th break up to the nth. Without them the range from the least value to the greatest splits into five
- * equal steps. A band is a step on a scale and says nothing about good or bad.
+ * equal steps, except that values with fewer than five distinct values get one band per value. A band is a step on a scale and says nothing about good or bad.
  */
 export function makeBands(values: readonly number[], breaks?: readonly number[]): Bands {
   if (breaks !== undefined && breaks.length === BAND_COUNT - 1) {
@@ -31,6 +31,13 @@ export function makeBands(values: readonly number[], breaks?: readonly number[])
       of: (value) => 1 + edges.filter((edge) => edge <= value).length,
     };
   }
+  const distinct = [...new Set(values)].sort((a, b) => a - b);
+  if (distinct.length > 0 && distinct.length < BAND_COUNT) {
+    return {
+      ranges: distinct.map((value, i) => ({ band: i + 1, from: value, to: value })),
+      of: (value) => 1 + Math.max(0, distinct.indexOf(value)),
+    };
+  }
   const least = values.length === 0 ? 0 : Math.min(...values);
   const greatest = values.length === 0 ? 0 : Math.max(...values);
   const step = (greatest - least) / BAND_COUNT;
@@ -40,7 +47,13 @@ export function makeBands(values: readonly number[], breaks?: readonly number[])
   };
 }
 
-/** The legend of a banded scale as plain text: `band 1 0 to 10, band 2 10 to 20`. */
+/** The legend of a banded scale as plain text: `band 1: 0 to 10, band 2: 10 to 20`, and `band 1: 5` for a band that holds one value. */
 export function bandLegend(bands: Bands): string {
-  return bands.ranges.map((r) => `band ${r.band}: ${formatNumber(r.from)} to ${formatNumber(r.to)}`).join(", ");
+  return bands.ranges.map((r) => (r.from === r.to ? `band ${r.band}: ${formatNumber(r.from)}` : `band ${r.band}: ${formatNumber(r.from)} to ${formatNumber(r.to)}`)).join(", ");
+}
+
+/** How many bands the scale has, in words: `five bands`, or `one band` when every value is the same. */
+export function bandCountText(bands: Bands): string {
+  const words = ["no bands", "one band", "two bands", "three bands", "four bands", "five bands"];
+  return words[bands.ranges.length] ?? `${bands.ranges.length} bands`;
 }

@@ -1,6 +1,6 @@
 import { clip, count, escapeHtml, escapeMd, formatNumber } from "../text.ts";
 import { htmlTable, mdTable } from "../tables.ts";
-import { bandLegend, makeBands, type Bands } from "./bands.ts";
+import { bandCountText, bandLegend, makeBands, type Bands } from "./bands.ts";
 import { figureHtml } from "./figure.ts";
 
 export interface TreemapItem {
@@ -209,7 +209,7 @@ export function treemapHtml(data: TreemapData): string {
     }),
   ].join("\n");
   const left = omissions(prepared);
-  const notes = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in five bands, and each tile prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.</p>\n${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>\n`}`;
+  const notes = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in ${bandCountText(prepared.bands)}, and each tile prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.</p>\n${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>\n`}`;
   return figureHtml({
     kind: "treemap",
     title: data.title,

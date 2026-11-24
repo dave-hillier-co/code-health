@@ -19,6 +19,8 @@ export interface Finding {
   summary: string;
   /** The files that drove it. Never a person. */
   evidence: Record<string, unknown>[];
+  /** How many evidence records the factor has before its list was cut, when it was cut. */
+  evidenceTotal?: number;
   /** What to do about it. */
   response: string;
   /** The shared red-flag it usually is, from shared/red-flags.md. */
@@ -142,6 +144,7 @@ function make(id: string, factor: Factor | null, summary: string, evidence: Reco
     step: entry.step,
     summary,
     evidence,
+    ...(factor?.evidenceTotal === undefined || evidence !== factor.evidence ? {} : { evidenceTotal: factor.evidenceTotal }),
     response: entry.response,
     redFlag: entry.redFlag,
     fromPlacement,

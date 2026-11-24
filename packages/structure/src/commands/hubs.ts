@@ -80,7 +80,7 @@ export const command = analysisCommand(name, {
       results: rows,
       columns: ["id", "featureCount", "revisions", "signals"],
       notices: [
-        `Omitted ${omitted.files} of ${omitted.considered} files with at least ${settings.minRevisions} changes: each reached fewer than ${omitted.minSignals} of the 4 signals (${omitted.withoutDiffs} of them without reading their diffs, because the other three signals left them unable to reach ${omitted.minSignals}). ${omitted.belowMinRevisions} more files have fewer than ${settings.minRevisions} changes`,
+        `${rows.length === 0 ? `No file is listed as a hub: ${omitted.files === omitted.considered ? "each of" : `${omitted.files} of`} the ${omitted.considered} files with at least ${settings.minRevisions} changes` : `Omitted ${omitted.files} of ${omitted.considered} files with at least ${settings.minRevisions} changes: each`} reached fewer than ${omitted.minSignals} of the 4 signals (${omitted.withoutDiffs} of them without reading their diffs, because the other three signals left them unable to reach ${omitted.minSignals}). ${omitted.belowMinRevisions} more files have fewer than ${settings.minRevisions} changes.`,
       ],
       extra: { omitted, population: { modules: model.graph.filesOf.size, eligibleChanges: model.activity.eligibleChanges } },
     };

@@ -531,7 +531,7 @@
             "type": "facts"
           },
           {
-            "caption": "Hot files the change touches, by revisions in the window",
+            "caption": "Hot files the change touches, by revisions in the window ending at the base commit (the change itself is not counted)",
             "columns": [
               {
                 "key": "file",

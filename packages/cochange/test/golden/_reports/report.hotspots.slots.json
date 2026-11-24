@@ -184,7 +184,7 @@
       {
         "blocks": [
           {
-            "caption": "Complexity and size of the first friction files across their history (cochange trend)",
+            "caption": "Complexity and size of the first friction files across their history (cochange trend). The direction compares the first sample with the last sample only: worsening is a rise of at least the guideline, improving a fall of at least the guideline, and a fall in the last step does not change it",
             "columns": [
               {
                 "key": "path",
@@ -197,7 +197,7 @@
               },
               {
                 "key": "direction",
-                "label": "Direction"
+                "label": "Direction, first sample to last sample"
               },
               {
                 "align": "right",
@@ -206,7 +206,7 @@
                   "value": 20
                 },
                 "key": "change",
-                "label": "Change in complexity (%)"
+                "label": "Change in complexity, first sample to last sample (%)"
               },
               {
                 "align": "right",

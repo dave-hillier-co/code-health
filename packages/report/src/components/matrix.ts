@@ -1,6 +1,6 @@
 import { escapeHtml, escapeMd, formatNumber } from "../text.ts";
 import { htmlTable, mdTable } from "../tables.ts";
-import { bandLegend, makeBands } from "./bands.ts";
+import { bandCountText, bandLegend, makeBands } from "./bands.ts";
 import { figureHtml } from "./figure.ts";
 
 export interface MatrixData {
@@ -45,7 +45,7 @@ export function matrixHtml(data: MatrixData): string {
     height: COLUMN_LABEL + data.rows.length * CELL_H + 4,
     drawing: [...labels, ...cells].join("\n"),
     table: htmlTable(`${data.title}: ${data.valueLabel}`, [{ label: "" }, ...data.columns.map((c) => ({ label: c, align: "right" as const }))], data.rows.map((r, i) => [escapeHtml(r), ...data.columns.map((_, j) => escapeHtml(display(data.cells[i]?.[j] ?? null)))]), { rowHeaders: true }),
-    notes: `<p class="legend">Colour is ${escapeHtml(data.valueLabel)} in five bands, and each cell prints its value: ${escapeHtml(bandLegend(bands))}. Hatched cells have no value.</p>\n`,
+    notes: `<p class="legend">Colour is ${escapeHtml(data.valueLabel)} in ${bandCountText(bands)}, and each cell prints its value: ${escapeHtml(bandLegend(bands))}. Hatched cells have no value.</p>\n`,
   });
 }
 

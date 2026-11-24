@@ -33,13 +33,13 @@ _Showing 3 of 40 files; 37 not shown._
 
 ## Charts
 
-**Files by lines and revisions** (the items by lines, largest first; band is revisions, band 1: 1 to 3.2, band 2: 3.2 to 5.4, band 3: 5.4 to 7.6, band 4: 7.6 to 9.8, band 5: 9.8 to 12)
+**Files by lines and revisions** (the items by lines, largest first; band is revisions, band 1: 1, band 2: 3, band 3: 7, band 4: 12)
 
 | Path | Size (lines) | Colour (revisions) | Band |
 | --- | ---: | ---: | ---: |
-| src/core/engine.ts | 400 | 12 | 5 |
+| src/core/engine.ts | 400 | 12 | 4 |
 | src/ui/page.ts | 200 | 7 | 3 |
-| src/core/util.ts | 120 | 3 | 1 |
+| src/core/util.ts | 120 | 3 | 2 |
 | src/ui/form.ts | 90 | none | none |
 | docs/guide.md | 60 | 1 | 1 |
 
@@ -61,7 +61,7 @@ _Showing 3 of 40 files; 37 not shown._
 | 10 to 19 | 8 | 20% |
 | 20 or more | 2 | 5% |
 
-**Shared changes** (shared changes; band 1: 1 to 2.6, band 2: 2.6 to 4.2, band 3: 4.2 to 5.8, band 4: 5.8 to 7.4, band 5: 7.4 to 9)
+**Shared changes** (shared changes; band 1: 1, band 2: 5, band 3: 9)
 
 |  | a.ts | b.ts | c.ts |
 | --- | ---: | ---: | ---: |

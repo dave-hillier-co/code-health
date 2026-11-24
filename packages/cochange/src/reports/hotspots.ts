@@ -215,15 +215,15 @@ function historyBlocks(trends: readonly (Trend | undefined)[], paths: readonly s
   const blocks: Block[] = [
     {
       type: "ranked-table",
-      caption: "Complexity and size of the first friction files across their history (cochange trend)",
+      caption: "Complexity and size of the first friction files across their history (cochange trend). The direction compares the first sample with the last sample only: worsening is a rise of at least the guideline, improving a fall of at least the guideline, and a fall in the last step does not change it",
       noun: "friction files",
       total: paths.length + omitted,
       emptyText: "No friction file has a history to sample.",
       columns: [
         { key: "path", label: "File" },
         { key: "revisions", label: "Revisions in history", align: "right" },
-        { key: "direction", label: "Direction" },
-        { key: "change", label: "Change in complexity (%)", align: "right", guideline: { value: TREND_GUIDELINE * 100, note: "the trend guideline for worsening" } },
+        { key: "direction", label: "Direction, first sample to last sample" },
+        { key: "change", label: "Change in complexity, first sample to last sample (%)", align: "right", guideline: { value: TREND_GUIDELINE * 100, note: "the trend guideline for worsening" } },
         { key: "peak", label: "Peak complexity", align: "right" },
         { key: "linesFirst", label: "Lines at first sample", align: "right" },
         { key: "linesLast", label: "Lines at last sample", align: "right" },

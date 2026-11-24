@@ -29,8 +29,12 @@ test("fixtures and goldens are found by folder and by name", () => {
 
 test("two non-code files of one format are expected, two of different formats are not", () => {
   expect(expectedReason(data(".github/workflows/a.yaml"), data(".github/workflows/b.yaml"), isTest)).toBe("same-format-data");
-  expect(expectedReason(data("go.mod"), data("deploy/config.toml"), isTest)).toBeNull();
-  expect(expectedReason(data("docker-compose.yaml"), code("src/a.ts"), isTest)).toBeNull();
+  expect(expectedReason(data("go.mod"), data("deploy/config.toml"), isTest)).toBe("non-code-file");
+});
+
+test("a pair with a non-code file on either side is expected, so documentation is not a production file", () => {
+  expect(expectedReason(data("docs/SCENE_SCRIPT.md"), code("src/a.cpp"), isTest)).toBe("non-code-file");
+  expect(expectedReason(code("src/a.ts"), data("docker-compose.yaml"), isTest)).toBe("non-code-file");
 });
 
 test("a pair of production code files is not expected", () => {
@@ -61,10 +65,10 @@ test("two build or packaging manifests of one toolchain are expected", () => {
   for (const [a, b] of pairs) expect(expectedReason(data(a), data(b), isTest), `${a} and ${b}`).toBe("build-manifests");
 });
 
-test("a manifest with a file of another toolchain, or with code, is not an expected pair", () => {
-  expect(expectedReason(data("go.mod"), data("package.json"), isTest)).toBeNull();
-  expect(expectedReason(data("Dockerfile"), data("go.mod"), isTest)).toBeNull();
-  expect(expectedReason(data("CMakeLists.txt"), code("src/a.cpp"), isTest)).toBeNull();
+test("a manifest with a file of another toolchain, or with code, is not an expected pair of two manifests", () => {
+  expect(expectedReason(data("go.mod"), data("package.json"), isTest)).toBe("non-code-file");
+  expect(expectedReason(data("Dockerfile"), data("go.mod"), isTest)).toBe("non-code-file");
+  expect(expectedReason(data("CMakeLists.txt"), code("src/a.cpp"), isTest)).toBe("non-code-file");
   expect(manifestFamily("src/Dockerfiles/readme.md")).toBeNull();
   expect(manifestFamily("src/gomod.go")).toBeNull();
 });

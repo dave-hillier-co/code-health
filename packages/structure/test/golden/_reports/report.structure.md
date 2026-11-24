@@ -114,7 +114,7 @@ Verdict: worth-fixing. The edge carries one call, so it is cheap to move.
 
 > **Notice:** The census describes and does not judge. A count of zero is a finding: callbacks, interfaces, dependency-injection, events, handlers, registries, ports-and-adapters are not in use here, so choosing one would introduce something new.
 
-**Hubs:** Registration hubs: files every feature edits: no rows. Omitted 2 of 2 files with at least 3 changes: each reached fewer than 2 of the 4 signals (2 of them without reading their diffs, because the other three signals left them unable to reach 2). 8 more files have fewer than 3 changes
+**Hubs:** No file is listed as a hub: each of the 2 files with at least 3 changes reached fewer than 2 of the 4 signals (2 of them without reading their diffs, because the other three signals left them unable to reach 2). 8 more files have fewer than 3 changes.
 
 ## Limits
 
