@@ -55,6 +55,8 @@ interface PlanSummary {
   filesMoved: number;
   rewrites: number;
   filesRewritten: number;
+  /** Files that stay where they are and have text changed by the move, beyond import lines (a reference renamed to follow a name that moved). */
+  filesEdited: number;
   refusal: string | null;
   failure: string | null;
   /** What the mover could not rewrite, one line each. */
@@ -86,24 +88,26 @@ function refusalLine(refusals: Refusal[]): string {
 async function dryRun(context: CommandContext, candidate: Candidate, settings: LocalitySettings, files: Set<string>, go: GoPackages): Promise<PlanSummary> {
   const plan = planMove(candidate, settings, files, {}, go);
   const base = { destination: plan.destination, filesMoved: plan.operations.length, refusal: plan.refusals.length === 0 ? null : refusalLine(plan.refusals) };
-  if (plan.refusals.length > 0) return { ...base, rewrites: 0, filesRewritten: 0, failure: null, warnings: [] };
+  if (plan.refusals.length > 0) return { ...base, rewrites: 0, filesRewritten: 0, filesEdited: 0, failure: null, warnings: [] };
   try {
     const { performMove } = await import("../move-engine.ts");
     const tree = await treeFromRef(context.repo.root, "HEAD");
     const moved = await performMove(tree, plan.operations);
     if ((moved.breaks ?? []).length > 0) {
-      return { ...base, refusal: refusalLine((moved.breaks ?? []).map((detail) => ({ code: "does-not-compile", detail }))), rewrites: 0, filesRewritten: 0, failure: null, warnings: [] };
+      return { ...base, refusal: refusalLine((moved.breaks ?? []).map((detail) => ({ code: "does-not-compile", detail }))), rewrites: 0, filesRewritten: 0, filesEdited: 0, failure: null, warnings: [] };
     }
-    return { ...base, rewrites: moved.rewrites.length, filesRewritten: new Set(moved.rewrites.map((r) => r.path)).size, failure: null, warnings: moved.warnings };
+    const landed = new Set(plan.operations.map((operation) => operation.to));
+    const edited = [...moved.texts.keys()].filter((path) => !landed.has(path));
+    return { ...base, rewrites: moved.rewrites.length, filesRewritten: new Set(moved.rewrites.map((r) => r.path)).size, filesEdited: edited.length, failure: null, warnings: moved.warnings };
   } catch (error) {
-    return { ...base, rewrites: 0, filesRewritten: 0, failure: error instanceof Error ? error.message : String(error), warnings: [] };
+    return { ...base, rewrites: 0, filesRewritten: 0, filesEdited: 0, failure: error instanceof Error ? error.message : String(error), warnings: [] };
   }
 }
 
 function planText(plan: PlanSummary): string {
   if (plan.refusal !== null) return `no plan: ${plan.refusal}`;
   if (plan.failure !== null) return `the dry run failed: ${plan.failure}`;
-  const moved = `${plural(plan.filesMoved, "file")} moved to ${folderText(plan.destination)}, ${plural(plan.rewrites, "import")} rewritten in ${plural(plan.filesRewritten, "file")}`;
+  const moved = `${plural(plan.filesMoved, "file")} moved to ${folderText(plan.destination)}, ${plural(plan.rewrites, "import")} rewritten in ${plural(plan.filesRewritten, "file")}; ${plural(plan.filesEdited, "file")} outside the move edited to follow it`;
   if (plan.warnings.length === 0) return moved;
   const shown = plan.warnings.slice(0, WARNINGS_SHOWN).map((warning) => clip(warning, WARNING_CHARS));
   const rest = plan.warnings.length > shown.length ? `; and ${plan.warnings.length - shown.length} more` : "";

@@ -407,7 +407,7 @@
               },
               {
                 "label": "Move plan (dry run)",
-                "value": "3 files moved to src/reports, 2 imports rewritten in 2 files"
+                "value": "3 files moved to src/reports, 2 imports rewritten in 2 files; 2 files outside the move edited to follow it"
               }
             ],
             "type": "facts"
@@ -459,7 +459,7 @@
               },
               {
                 "label": "Move plan (dry run)",
-                "value": "1 file moved to src, 3 imports rewritten in 3 files"
+                "value": "1 file moved to src, 3 imports rewritten in 3 files; 3 files outside the move edited to follow it"
               }
             ],
             "type": "facts"
@@ -511,7 +511,7 @@
               },
               {
                 "label": "Move plan (dry run)",
-                "value": "2 files moved to src/orders, 1 import rewritten in 1 file"
+                "value": "2 files moved to src/orders, 1 import rewritten in 1 file; 1 file outside the move edited to follow it"
               }
             ],
             "type": "facts"
@@ -563,7 +563,7 @@
               },
               {
                 "label": "Move plan (dry run)",
-                "value": "1 file moved to src/billing, 1 import rewritten in 1 file"
+                "value": "1 file moved to src/billing, 1 import rewritten in 1 file; 1 file outside the move edited to follow it"
               }
             ],
             "type": "facts"
@@ -615,7 +615,7 @@
               },
               {
                 "label": "Move plan (dry run)",
-                "value": "1 file moved to src, 2 imports rewritten in 2 files"
+                "value": "1 file moved to src, 2 imports rewritten in 2 files; 2 files outside the move edited to follow it"
               }
             ],
             "type": "facts"

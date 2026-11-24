@@ -78,7 +78,7 @@ _Guidelines order and label the rows and decide nothing. Consumer files 8 (local
 | Size | 3 files, 11 lines |
 | Confidence | normal |
 | Blockers | none |
-| Move plan (dry run) | 3 files moved to src/reports, 2 imports rewritten in 2 files |
+| Move plan (dry run) | 3 files moved to src/reports, 2 imports rewritten in 2 files; 2 files outside the move edited to follow it |
 
 **Judgement: src/shared/pair**
 
@@ -98,7 +98,7 @@ Verdict: do-it. It has few consumers and nothing blocks it. Risk: a missed consu
 | Size | 1 file, 6 lines |
 | Confidence | normal |
 | Blockers | none |
-| Move plan (dry run) | 1 file moved to src, 3 imports rewritten in 3 files |
+| Move plan (dry run) | 1 file moved to src, 3 imports rewritten in 3 files; 3 files outside the move edited to follow it |
 
 **Judgement: src/shared/utils/money.ts**
 
@@ -118,7 +118,7 @@ Verdict: do-it. It has few consumers and nothing blocks it. Risk: a missed consu
 | Size | 2 files, 8 lines |
 | Confidence | normal |
 | Blockers | none |
-| Move plan (dry run) | 2 files moved to src/orders, 1 import rewritten in 1 file |
+| Move plan (dry run) | 2 files moved to src/orders, 1 import rewritten in 1 file; 1 file outside the move edited to follow it |
 
 **Judgement: src/shared/cycle/a.ts**
 
@@ -138,7 +138,7 @@ Verdict: do-it. It has few consumers and nothing blocks it. Risk: a missed consu
 | Size | 1 file, 164 lines |
 | Confidence | normal |
 | Blockers | none |
-| Move plan (dry run) | 1 file moved to src/billing, 1 import rewritten in 1 file |
+| Move plan (dry run) | 1 file moved to src/billing, 1 import rewritten in 1 file; 1 file outside the move edited to follow it |
 
 **Judgement: src/shared/utils/invoice.ts**
 
@@ -158,7 +158,7 @@ Verdict: do-it. It has few consumers and nothing blocks it. Risk: a missed consu
 | Size | 1 file, 3 lines |
 | Confidence | normal |
 | Blockers | none |
-| Move plan (dry run) | 1 file moved to src, 2 imports rewritten in 2 files |
+| Move plan (dry run) | 1 file moved to src, 2 imports rewritten in 2 files; 2 files outside the move edited to follow it |
 
 **Judgement: src/shared/log.ts**
 
