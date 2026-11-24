@@ -10056,6 +10056,12 @@ function bandCount(count, guidelines) {
   return "low";
 }
 
+// packages/parse/src/source-tree.ts
+import { spawn as spawn3 } from "node:child_process";
+import { createHash } from "node:crypto";
+import { lstatSync, readdirSync, readFileSync } from "node:fs";
+import { join as join4 } from "node:path";
+
 // packages/cli-kit/src/dropped-files.ts
 var DROPPED_KINDS = ["generated", "vendored", "nonCode", "tests"];
 var dropped = /* @__PURE__ */ new Map();
@@ -10251,9 +10257,132 @@ async function classifyFiles(repoPath, ref, entries, treeFiles, options = {}) {
   return { generated, vendored };
 }
 
+// packages/parse/src/source-tree.ts
+function gitBlobSha(content) {
+  return createHash("sha1").update(`blob ${content.length}\0`).update(content).digest("hex");
+}
+function sortedMap(entries) {
+  return new Map(entries.sort(([a], [b]) => Buffer.compare(Buffer.from(a), Buffer.from(b))));
+}
+function git(cwd, args, input) {
+  return new Promise((resolve, reject) => {
+    const child = spawn3("git", args, {
+      cwd,
+      env: {
+        ...process.env,
+        LC_ALL: "C",
+        GIT_OPTIONAL_LOCKS: "0",
+        GIT_CONFIG_NOSYSTEM: "1",
+        GIT_CONFIG_GLOBAL: "/dev/null"
+      },
+      stdio: ["pipe", "pipe", "pipe"]
+    });
+    const out = [];
+    const err = [];
+    child.stdout.on("data", (chunk) => out.push(chunk));
+    child.stderr.on("data", (chunk) => err.push(chunk));
+    child.on("error", reject);
+    child.stdin.on("error", () => {
+    });
+    child.on("close", (code) => {
+      if (code === 0) resolve(Buffer.concat(out));
+      else reject(new Error(`git ${args.join(" ")} failed (${code}): ${Buffer.concat(err).toString("utf8").trim()}`));
+    });
+    child.stdin.end(input ?? "");
+  });
+}
+var batchSize = 256;
+async function readBlobs(cwd, shas) {
+  const out = /* @__PURE__ */ new Map();
+  for (let start = 0; start < shas.length; start += batchSize) {
+    const chunk = shas.slice(start, start + batchSize);
+    const stdout = await git(cwd, ["cat-file", "--batch"], `${chunk.join("\n")}
+`);
+    let offset = 0;
+    for (const sha of chunk) {
+      const newline = stdout.indexOf(10, offset);
+      const header = stdout.toString("utf8", offset, newline).split(" ");
+      if (header[1] !== "blob") {
+        offset = newline + 1;
+        continue;
+      }
+      const size = Number(header[2]);
+      const bodyStart = newline + 1;
+      out.set(sha, stdout.toString("utf8", bodyStart, bodyStart + size));
+      offset = bodyStart + size + 1;
+    }
+  }
+  return out;
+}
+async function withoutGeneratedAndVendored(repoPath, ref, entries) {
+  const paths = entries.map(([path]) => path);
+  const classes = await classifyFiles(
+    repoPath,
+    ref,
+    entries.map(([path, blob]) => ({ path, blob })),
+    paths,
+    ref === void 0 ? { read: (missing) => readHeadsFromDisk(repoPath, missing) } : {}
+  );
+  return entries.filter(([path]) => {
+    if (classes.generated.has(path)) {
+      recordDropped("generated", path);
+      return false;
+    }
+    if (classes.vendored.has(path)) {
+      recordDropped("vendored", path);
+      return false;
+    }
+    return true;
+  });
+}
+async function readHeadsFromDisk(repoPath, missing) {
+  const heads = /* @__PURE__ */ new Map();
+  for (const { path, blob } of missing) {
+    try {
+      heads.set(blob, readFileSync(join4(repoPath, path)).subarray(0, 4096).toString("utf8"));
+    } catch {
+    }
+  }
+  return heads;
+}
+async function treeFromRef(repoPath, ref) {
+  const listing = (await git(repoPath, ["ls-tree", "-r", "-z", "--full-tree", ref])).toString("utf8");
+  const entries = [];
+  const gitlinks = [];
+  for (const record of listing.split("\0")) {
+    if (record === "") continue;
+    const tab = record.indexOf("	");
+    const [mode, type, sha] = record.slice(0, tab).split(" ");
+    if (type === "commit") gitlinks.push(record.slice(tab + 1));
+    if (type !== "blob" || mode === "120000" || !sha) continue;
+    entries.push([record.slice(tab + 1), sha]);
+  }
+  const omitted2 = builtinExcluder(repoPath, gitlinks);
+  const kept = entries.filter(([path]) => !omitted2(path));
+  for (const path of gitlinks) omitted2(path);
+  const files = sortedMap(await withoutGeneratedAndVendored(repoPath, ref, kept));
+  const readMany = async (wanted) => {
+    const known = wanted.filter((path) => files.has(path));
+    const blobs = await readBlobs(repoPath, [...new Set(known.map((path) => files.get(path)))]);
+    const out = /* @__PURE__ */ new Map();
+    for (const path of known) {
+      const text2 = blobs.get(files.get(path));
+      if (text2 !== void 0) out.set(path, text2);
+    }
+    return out;
+  };
+  return {
+    files,
+    readMany,
+    async read(path) {
+      return (await readMany([path])).get(path);
+    }
+  };
+}
+
 // packages/history/src/cache-location.ts
 import { existsSync as existsSync2, mkdirSync, writeFileSync } from "node:fs";
-import { basename as basename2, dirname, join as join4 } from "node:path";
+import { basename as basename2, dirname, join as join5 } from "node:path";
 async function locateCache(repoPath) {
   const out = await runGit(repoPath, [
     "rev-parse",
@@ -10264,15 +10393,15 @@ async function locateCache(repoPath) {
   const [repoRoot, gitDir] = out.split("\n");
   if (!repoRoot || !gitDir) throw new Error(`Not a git working tree: ${repoPath}`);
   const cacheRoot = basename2(gitDir) === ".git" ? dirname(gitDir) : repoRoot;
-  const cacheDir = join4(cacheRoot, ".cache", "code-health");
+  const cacheDir = join5(cacheRoot, ".cache", "code-health");
   return {
     repoRoot,
     gitDir,
     cacheDir,
-    dbPath: join4(cacheDir, "history.sqlite"),
-    lockPath: join4(cacheDir, "history.lock"),
-    blamePath: join4(cacheDir, "blame.sqlite"),
-    blameLockPath: join4(cacheDir, "blame.lock")
+    dbPath: join5(cacheDir, "history.sqlite"),
+    lockPath: join5(cacheDir, "history.lock"),
+    blamePath: join5(cacheDir, "blame.sqlite"),
+    blameLockPath: join5(cacheDir, "blame.lock")
   };
 }
 function ensureCacheDir(location) {
@@ -10280,7 +10409,7 @@ function ensureCacheDir(location) {
 }
 function ensureSelfIgnoring(directory) {
   mkdirSync(directory, { recursive: true });
-  const ignore = join4(directory, ".gitignore");
+  const ignore = join5(directory, ".gitignore");
   if (!existsSync2(ignore)) writeFileSync(ignore, "*\n");
 }
 
@@ -10320,5 +10449,8 @@ export {
   raiseBand,
   cutoffsOf,
   bandAgainst,
-  bandCount
+  bandCount,
+  gitBlobSha,
+  readBlobs,
+  treeFromRef
 };

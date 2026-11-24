@@ -4,23 +4,22 @@ import {
   adapterForPath,
   bandAgainst,
   bindingForPath,
-  builtinExcluder,
-  classifyFiles,
   cutoffsOf,
   ensureCacheDir,
+  gitBlobSha,
   higherBand,
   isConfigPath,
   isTestPath,
   locateCache,
   readBlobAt,
-  recordDropped,
   resolveBySymbols,
-  supportedAdapters
-} from "./chunk-WZBMGDBT.mjs";
+  supportedAdapters,
+  treeFromRef
+} from "./chunk-YFWBKARF.mjs";
 
 // packages/cochange/src/risk/signatures.ts
-import { readFileSync as readFileSync3 } from "node:fs";
-import { join as join4 } from "node:path";
+import { readFileSync as readFileSync2 } from "node:fs";
+import { join as join3 } from "node:path";
 
 // packages/parse/src/exported-units.ts
 function exportedUnitNames(facts) {
@@ -4625,133 +4624,6 @@ var ParseCache = class _ParseCache {
   }
 };
 
-// packages/parse/src/source-tree.ts
-import { spawn } from "node:child_process";
-import { createHash as createHash2 } from "node:crypto";
-import { lstatSync, readdirSync, readFileSync as readFileSync2 } from "node:fs";
-import { join as join3 } from "node:path";
-function gitBlobSha(content) {
-  return createHash2("sha1").update(`blob ${content.length}\0`).update(content).digest("hex");
-}
-function sortedMap(entries) {
-  return new Map(entries.sort(([a], [b]) => Buffer.compare(Buffer.from(a), Buffer.from(b))));
-}
-function git(cwd, args2, input) {
-  return new Promise((resolve, reject) => {
-    const child = spawn("git", args2, {
-      cwd,
-      env: {
-        ...process.env,
-        LC_ALL: "C",
-        GIT_OPTIONAL_LOCKS: "0",
-        GIT_CONFIG_NOSYSTEM: "1",
-        GIT_CONFIG_GLOBAL: "/dev/null"
-      },
-      stdio: ["pipe", "pipe", "pipe"]
-    });
-    const out2 = [];
-    const err2 = [];
-    child.stdout.on("data", (chunk) => out2.push(chunk));
-    child.stderr.on("data", (chunk) => err2.push(chunk));
-    child.on("error", reject);
-    child.stdin.on("error", () => {
-    });
-    child.on("close", (code) => {
-      if (code === 0) resolve(Buffer.concat(out2));
-      else reject(new Error(`git ${args2.join(" ")} failed (${code}): ${Buffer.concat(err2).toString("utf8").trim()}`));
-    });
-    child.stdin.end(input ?? "");
-  });
-}
-var batchSize2 = 256;
-async function readBlobs(cwd, shas) {
-  const out2 = /* @__PURE__ */ new Map();
-  for (let start2 = 0; start2 < shas.length; start2 += batchSize2) {
-    const chunk = shas.slice(start2, start2 + batchSize2);
-    const stdout = await git(cwd, ["cat-file", "--batch"], `${chunk.join("\n")}
-`);
-    let offset = 0;
-    for (const sha of chunk) {
-      const newline = stdout.indexOf(10, offset);
-      const header = stdout.toString("utf8", offset, newline).split(" ");
-      if (header[1] !== "blob") {
-        offset = newline + 1;
-        continue;
-      }
-      const size = Number(header[2]);
-      const bodyStart = newline + 1;
-      out2.set(sha, stdout.toString("utf8", bodyStart, bodyStart + size));
-      offset = bodyStart + size + 1;
-    }
-  }
-  return out2;
-}
-async function withoutGeneratedAndVendored(repoPath, ref, entries) {
-  const paths = entries.map(([path]) => path);
-  const classes = await classifyFiles(
-    repoPath,
-    ref,
-    entries.map(([path, blob]) => ({ path, blob })),
-    paths,
-    ref === void 0 ? { read: (missing) => readHeadsFromDisk(repoPath, missing) } : {}
-  );
-  return entries.filter(([path]) => {
-    if (classes.generated.has(path)) {
-      recordDropped("generated", path);
-      return false;
-    }
-    if (classes.vendored.has(path)) {
-      recordDropped("vendored", path);
-      return false;
-    }
-    return true;
-  });
-}
-async function readHeadsFromDisk(repoPath, missing) {
-  const heads = /* @__PURE__ */ new Map();
-  for (const { path, blob } of missing) {
-    try {
-      heads.set(blob, readFileSync2(join3(repoPath, path)).subarray(0, 4096).toString("utf8"));
-    } catch {
-    }
-  }
-  return heads;
-}
-async function treeFromRef(repoPath, ref) {
-  const listing = (await git(repoPath, ["ls-tree", "-r", "-z", "--full-tree", ref])).toString("utf8");
-  const entries = [];
-  const gitlinks = [];
-  for (const record of listing.split("\0")) {
-    if (record === "") continue;
-    const tab = record.indexOf("	");
-    const [mode, type, sha] = record.slice(0, tab).split(" ");
-    if (type === "commit") gitlinks.push(record.slice(tab + 1));
-    if (type !== "blob" || mode === "120000" || !sha) continue;
-    entries.push([record.slice(tab + 1), sha]);
-  }
-  const omitted = builtinExcluder(repoPath, gitlinks);
-  const kept = entries.filter(([path]) => !omitted(path));
-  for (const path of gitlinks) omitted(path);
-  const files = sortedMap(await withoutGeneratedAndVendored(repoPath, ref, kept));
-  const readMany = async (wanted) => {
-    const known = wanted.filter((path) => files.has(path));
-    const blobs = await readBlobs(repoPath, [...new Set(known.map((path) => files.get(path)))]);
-    const out2 = /* @__PURE__ */ new Map();
-    for (const path of known) {
-      const text = blobs.get(files.get(path));
-      if (text !== void 0) out2.set(path, text);
-    }
-    return out2;
-  };
-  return {
-    files,
-    readMany,
-    async read(path) {
-      return (await readMany([path])).get(path);
-    }
-  };
-}
-
 // packages/cochange/src/risk/signatures.ts
 function fingerprint(unit) {
   return [unit.kind, unit.metrics?.parameters ?? "", unit.metrics?.optionCount ?? "", unit.shape?.interfaceSize ?? ""].join("|");
@@ -4766,7 +4638,7 @@ function exportedUnits(facts) {
 }
 function readWorktree(root, path) {
   try {
-    return readFileSync3(join4(root, path), "utf8");
+    return readFileSync2(join3(root, path), "utf8");
   } catch {
     return void 0;
   }
