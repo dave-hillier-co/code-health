@@ -198,7 +198,7 @@
         "status": "ok",
         "value": {
           "entropy": 0,
-          "files": 1
+          "filesWithLineChanges": 1
         }
       },
       {

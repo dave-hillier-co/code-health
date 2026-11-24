@@ -221,7 +221,7 @@
                 "evidence": 0,
                 "factor": "entropy",
                 "guideline": "entropy: above 1.5 is high, with no moderate band: the moderate and high cutoffs are the same value",
-                "value": "entropy 0, files 1"
+                "value": "entropy 0, filesWithLineChanges 1"
               },
               {
                 "band": "low",

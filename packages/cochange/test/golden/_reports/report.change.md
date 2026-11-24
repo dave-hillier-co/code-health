@@ -88,7 +88,7 @@ Each band compares the change with the 16 merged changes measured as of their ow
 | --- | --- | --- | --- | ---: |
 | size | low | lines 40, files 1 | lines: above 80 is high, with no moderate band: the moderate and high cutoffs are the same value | 0 |
 | spread | low | spread 0, folders 1 | spread: above 0 is high, with no moderate band: the moderate and high cutoffs are the same value | 0 |
-| entropy | low | entropy 0, files 1 | entropy: above 1.5 is high, with no moderate band: the moderate and high cutoffs are the same value | 0 |
+| entropy | low | entropy 0, filesWithLineChanges 1 | entropy: above 1.5 is high, with no moderate band: the moderate and high cutoffs are the same value | 0 |
 | mixed-purpose | low | moved 0, edited 1, editedWhileMoved 0 | count: moderate from 1, high from 3 | 0 |
 | hotspots-touched | low | share 1, hotFiles 1 | share: above 1 is high, with no moderate band: the moderate and high cutoffs are the same value | 1 |
 | defect-history | unavailable | share 0.142857, fixes 1, revisions 7 | share: no cutoff, the baseline is too small | 1 |

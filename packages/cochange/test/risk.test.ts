@@ -69,11 +69,11 @@ test("size, spread and entropy are computed from the change's own churn and path
   expect(factor(document.results, "size").value).toEqual({ lines: 360, files: 12 });
   // 12 files, two in each of six folders: 6 pairs at distance 0 and 60 at distance 2.
   expect(factor(document.results, "spread").value).toEqual({ spread: 1.818182, folders: 6, components: null });
-  expect(factor(document.results, "entropy").value).toEqual({ entropy: 3.584963, files: 12 });
+  expect(factor(document.results, "entropy").value).toEqual({ entropy: 3.584963, filesWithLineChanges: 12 });
   const complete = (await risk("main..complete")).document.results;
   expect(factor(complete, "size").value).toEqual({ lines: 80, files: 3 });
   // Churn 40, 20 and 20 over three files: 0.5, 0.25 and 0.25.
-  expect(factor(complete, "entropy").value).toEqual({ entropy: 1.5, files: 3 });
+  expect(factor(complete, "entropy").value).toEqual({ entropy: 1.5, filesWithLineChanges: 3 });
   expect(factor(complete, "entropy").band).toBe("low");
 });
 

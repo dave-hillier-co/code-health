@@ -40,7 +40,7 @@ export const FACTOR_DOCS: readonly FactorDoc[] = [
     layer: "history",
     banding: "percentile",
     signal: "How evenly the churn is distributed over the touched files",
-    definition: "Shannon entropy in bits, H = -sum(p log2 p), where p is each file's share of the change's churn (Hassan's change entropy as Kamei et al. use it). Zero for a change concentrated in one file.",
+    definition: "Shannon entropy in bits, H = -sum(p log2 p), where p is each file's share of the change's churn (Hassan's change entropy as Kamei et al. use it). Zero for a change concentrated in one file. Binary files have no line counts and so no share; they are counted apart as binaryFiles.",
     why: "A change concentrated in one file is easier to follow than the same churn smeared over twenty.",
   },
   {

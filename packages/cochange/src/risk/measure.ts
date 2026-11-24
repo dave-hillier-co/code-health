@@ -65,6 +65,8 @@ export interface Measurement {
 
 const round = (value: number, places = 6): number => Math.round(value * 10 ** places) / 10 ** places;
 const churnOf = (file: HistoryChange): number => (file.added ?? 0) + (file.deleted ?? 0);
+/** A binary file: git gives no line counts for it, so it has no churn but is still changed. */
+const isBinary = (file: HistoryChange): boolean => file.added === null && file.deleted === null;
 const FIRST_ROWS = 5;
 
 function measurement(
@@ -123,15 +125,17 @@ function entropy(facts: ChangeFacts): Measurement {
   const churn = facts.files.map(churnOf).filter((c) => c > 0);
   const total = churn.reduce((sum, c) => sum + c, 0);
   const value = total === 0 ? 0 : round(churn.reduce((sum, c) => sum - (c / total) * Math.log2(c / total), 0));
+  // A binary file has no line counts, so it has no share of the churn; it is counted apart so the file counts add up.
+  const binaryFiles = facts.files.filter(isBinary).length;
   return measurement("entropy", "size-and-diffusion", "history", "percentile", "history", {
     series: { entropy: value },
-    value: { entropy: value, files: churn.length },
+    value: { entropy: value, filesWithLineChanges: churn.length, ...(binaryFiles > 0 ? { binaryFiles } : {}) },
   });
 }
 
 function mixedPurpose(facts: ChangeFacts): Measurement {
   const moved = facts.moved;
-  const edited = facts.files.filter((file) => churnOf(file) > 0 && file.status !== "R").length;
+  const edited = facts.files.filter((file) => (churnOf(file) > 0 || isBinary(file)) && file.status !== "R").length;
   const editedWhileMoved = facts.files.filter((file) => file.status === "R" && churnOf(file) > 0).length;
   const mixed = moved > 0 && (edited > 0 || editedWhileMoved > 0);
   const count = mixed ? moved : 0;

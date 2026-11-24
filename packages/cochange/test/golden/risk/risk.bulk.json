@@ -273,7 +273,7 @@
         "status": "ok",
         "value": {
           "entropy": 3.584963,
-          "files": 12
+          "filesWithLineChanges": 12
         }
       },
       {
