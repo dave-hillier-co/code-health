@@ -3,6 +3,7 @@ import { droppedCounts } from "@code-health/cli-kit/dropped-files";
 import type { ReportKind } from "@code-health/cli-kit/report-command";
 import type { CommandContext } from "@code-health/cli-kit/run-cli";
 import type { Block } from "@code-health/report/block";
+import type { MatrixGroup } from "@code-health/report/components/matrix";
 import type { Cell } from "@code-health/report/components/ranked-table";
 import type { ExcludedCount, Slot } from "@code-health/report/protocol";
 import type { ReportBuild } from "@code-health/report/report-model";
@@ -279,20 +280,83 @@ function sumSection(sums: readonly FileSum[]): Block[] {
   ];
 }
 
-function matrixSection(rows: readonly PairRow[], sums: readonly FileSum[], minSupport: number): Block[] {
-  const files = sums.slice(0, TOP_FILES).map((s) => s.file);
-  if (files.length < 2) return [];
-  const shared = new Map(rows.map((row) => [`${row.path}\0${row.with}`, row.support]));
-  const between = (a: string, b: string) => shared.get(`${a}\0${b}`) ?? shared.get(`${b}\0${a}`) ?? null;
-  const labels = files.map(shortLabel);
+/** The most files the matrix draws; Orleans stays readable at this size. */
+const MATRIX_FILES = 18;
+/** Degree bands in percent, so a colour means the same degree on every repository. */
+const MATRIX_BREAKS = [20, 40, 60, 80];
+const MATRIX_MARKS = {
+  expected: { symbol: "e", text: "an expected pair (a test and its code, a header and its source, or another pair listed in the table of expected pairs)" },
+  across: { symbol: "!", text: "a pair outside every box: files in different clusters, or a file in no cluster, that reach the support floor" },
+};
+
+/** The files the matrix draws, in cluster order, with the cluster each belongs to (null for a file in no cluster). */
+function matrixFiles(clusters: readonly ClusterRow[], sums: readonly FileSum[]): { file: string; cluster: number | null }[] {
+  const sumOf = new Map(sums.map((s) => [s.file, s]));
+  const rank = (a: string, b: string) => (sumOf.get(b)?.shared ?? 0) - (sumOf.get(a)?.shared ?? 0) || (sumOf.get(b)?.partners ?? 0) - (sumOf.get(a)?.partners ?? 0) || byBytes(a, b);
+  const drawn: { file: string; cluster: number | null }[] = [];
+  const inCluster = new Set(clusters.flatMap((c) => c.files));
+  for (const [i, cluster] of clusters.entries()) {
+    const room = MATRIX_FILES - drawn.length;
+    if (room < 2) break;
+    const members = [...cluster.files].sort(rank).slice(0, room);
+    drawn.push(...members.map((file) => ({ file, cluster: i + 1 })));
+  }
+  for (const s of sums) {
+    if (drawn.length >= MATRIX_FILES) break;
+    if (!inCluster.has(s.file)) drawn.push({ file: s.file, cluster: null });
+  }
+  return drawn;
+}
+
+function matrixSection(classified: readonly ClassifiedPair[], clusters: readonly ClusterRow[], sums: readonly FileSum[], settings: { minSupport: number; minDegree: number }): Block[] {
+  const drawn = matrixFiles(clusters, sums);
+  if (drawn.length < 2) return [];
+  const pair = new Map<string, ClassifiedPair>();
+  for (const c of classified) {
+    pair.set(`${c.row.path}\0${c.row.with}`, c);
+    pair.set(`${c.row.with}\0${c.row.path}`, c);
+  }
+  const labels = drawn.map((d) => shortLabel(d.file));
+  const boxed = (a: number, b: number) => drawn[a]!.cluster !== null && drawn[a]!.cluster === drawn[b]!.cluster;
+  const at = (i: number, j: number) => (i === j ? undefined : pair.get(`${drawn[i]!.file}\0${drawn[j]!.file}`));
+  const groups: MatrixGroup[] = [];
+  for (const [i, d] of drawn.entries()) {
+    if (d.cluster === null) continue;
+    const last = groups[groups.length - 1];
+    if (last !== undefined && last.label === `cluster ${d.cluster}`) last.end = i;
+    else groups.push({ label: `cluster ${d.cluster}`, start: i, end: i });
+  }
+  const clustersDrawn = new Set(drawn.flatMap((d) => (d.cluster === null ? [] : [d.cluster])));
+  const trailing = drawn.filter((d) => d.cluster === null).length;
+  const inClusters = clusters.reduce((n, c) => n + c.files.length, 0);
+  const omittedFiles = Math.max(0, inClusters + sums.filter((s) => !clusters.some((c) => c.files.includes(s.file))).length - drawn.length);
+  const omittedClusters = clusters.length - clustersDrawn.size;
+  const expectedPairs = classified.filter((c) => c.reason !== null);
+  const expectedDrawn = drawn.flatMap((_, i) => drawn.slice(i + 1).flatMap((_, k) => (at(i, i + 1 + k)?.reason ? [1] : []))).length;
+  const cut = [...clustersDrawn].flatMap((n) => {
+    const shown = drawn.filter((d) => d.cluster === n).length;
+    const size = clusters[n - 1]!.files.length;
+    return shown < size ? [`cluster ${n} shows ${shown} of its ${size} files`] : [];
+  });
+  const orderText = [
+    `Rows and columns are ordered by cluster (the numbers of the table of clusters), and within a cluster by sum of coupling over production pairs, then coupled files, then path${trailing === 0 ? "" : `; the last ${trailing} ${trailing === 1 ? "file is" : "files are"} in no cluster and follow the clusters by sum of coupling`}.`,
+    `Draws ${drawn.length} files and ${clustersDrawn.size} of ${clusters.length} clusters, at most ${MATRIX_FILES} files; omits ${omittedFiles} ${omittedFiles === 1 ? "file" : "files"} and ${omittedClusters} ${omittedClusters === 1 ? "cluster" : "clusters"} (clusters are drawn in the order of the table of clusters, then the files in no cluster with the greatest sum). ${cut.length === 0 ? "" : ` ${cut.join("; ")}, the ones with the greatest sum.`} \`cochange clusters\` lists every cluster.`,
+    `A cell is the degree of the pair, which is also its colour; shared changes are in the tables of pairs, and a pair that shares fewer than ${settings.minSupport} changes (the support floor) has no cell value. Expected pairs are drawn and marked, not left out (${expectedDrawn} of ${expectedPairs.length} expected ${expectedPairs.length === 1 ? "pair falls" : "pairs fall"} within the drawn files).`,
+    `Cluster edges are pairs at or above the degree guideline of ${settings.minDegree} percent, so a marked cell outside the boxes is a pair under the guideline.`,
+  ].join(" ");
   return [
     {
       type: "matrix",
-      title: `Shared changes between the top ${files.length} files by sum of coupling`,
-      valueLabel: `shared changes (none where the pair shares fewer than ${minSupport}, the support floor)`,
+      title: `Co-change between the ${drawn.length} files of the strongest clusters, degree in percent`,
+      valueLabel: "coupling degree in percent",
       rows: labels,
       columns: labels,
-      cells: files.map((a) => files.map((b) => (a === b ? null : between(a, b)))),
+      cells: drawn.map((_, i) => drawn.map((_, j) => at(i, j)?.row.degree ?? null)),
+      breaks: MATRIX_BREAKS,
+      marks: MATRIX_MARKS,
+      cellMarks: drawn.map((_, i) => drawn.map((_, j) => { const c = at(i, j); return c === undefined ? null : c.reason !== null ? "expected" : boxed(i, j) ? null : "across"; })),
+      groups,
+      orderText,
     },
   ];
 }
@@ -459,7 +523,7 @@ function limitsOf(evidence: Evidence, settings: { minSupport: number; tolerance:
 }
 
 export const coupling: ReportKind = {
-  summary: "Coupled pairs with their trend, sum of coupling per file, a matrix of the top files, clusters and hidden coupling, with a judgement of each top pair",
+  summary: "Coupled pairs with their trend, sum of coupling per file, a matrix of the clustered files, clusters and hidden coupling, with a judgement of each top pair",
   options: { ...windowOptions, "no-refresh": { type: "boolean" }, ...noCacheOption },
   optionHelp: {
     since: "analyse history from this date (ISO 8601); needed on a shallow clone",
@@ -523,9 +587,9 @@ export const coupling: ReportKind = {
         excluded: excluded.filter((e) => e.count > 0),
       },
       sections: [
-        { id: "summary", heading: "What the coupling says", blocks: [{ type: "judgement", slot: "summary" }] },
+        { id: "summary", heading: "What the coupling says", blocks: [{ type: "judgement", slot: "summary" }, ...matrixSection(classified, clusters, sums, { minSupport: inputs.minSupport, minDegree: settings.minDegree })] },
         { id: "pairs", heading: "Coupled pairs", blocks: pairsHeading },
-        { id: "sums", heading: "Sum of coupling per file", blocks: [...sumSection(sums), ...matrixSection(rows, sums, inputs.minSupport)] },
+        { id: "sums", heading: "Sum of coupling per file", blocks: sumSection(sums) },
         { id: "clusters", heading: "Clusters", blocks: clustersSection(clusters) },
         { id: "hidden", heading: "Hidden coupling", blocks: hidden.blocks },
         { id: "excluded", heading: "What was excluded", blocks: [excludedBlock(excluded)] },
