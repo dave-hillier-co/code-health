@@ -7,7 +7,7 @@ import type { ReuseAnalysis } from "../reuse-profile.ts";
 
 /**
  * What Java and Kotlin share in packaging: Gradle and Maven modules are the packages, and what a module exposes
- * is what its code declares for other modules to use (the internals marker, packaging.md, Languages).
+ * is what its code declares for other modules to use (the internals marker, docs/languages.md, Packages).
  *
  * - Java: a declaration that is not `public` is package-private, so it is not an entry. When the module has a
  *   descriptor (`module-info.java`), a package it does not `exports` (or only exports to named modules) is

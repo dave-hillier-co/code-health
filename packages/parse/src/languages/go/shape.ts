@@ -4,7 +4,7 @@ import { nodeCount } from "../typescript/interface-shape.ts";
 import { parameterCounts } from "./metric-rules.ts";
 
 /**
- * What the interface depth signal needs of a Go unit (complexity.md, Interface depth), on the same terms as
+ * What the interface depth signal needs of a Go unit (the complexity skill's references/metrics.md, Interface depth), on the same terms as
  * the other languages: named nodes of the unit, comments left out, and the size of what a user of it has to know.
  *
  * - Function interface: its declared parameters, and at least 1.

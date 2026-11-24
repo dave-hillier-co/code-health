@@ -8,7 +8,7 @@ import { adapterById, overrideSupportedAdapters, registeredAdapters } from "../s
 import { treeFromDirectory } from "../src/source-tree.ts";
 
 /**
- * The structural layer's side of the conformance harness (suite.md, Testing). Every registered adapter,
+ * The structural layer's side of the conformance harness (CONTRIBUTING.md, Conformance). Every registered adapter,
  * supported or not, runs the fixtures in `fixtures/languages/<id>/`: the dependency model (`adapter`), the
  * hand-counted metrics of every function (`metrics`, `metrics-wide`) and the interface shapes (`depth`).
  * Complexity, structure and locality run the areas they own through their own commands.

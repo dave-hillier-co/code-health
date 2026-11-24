@@ -17,7 +17,7 @@ const ENVELOPE = new Set(["schemaVersion", "tool", "command", "repo", "config", 
 
 /**
  * A plugin's stored result when it is whole and describes `head`. A reader never computes another plugin's
- * result (see the shared caches in suite.md), so a missing, unreadable, dirty or older one is undefined and the
+ * result, so a missing, unreadable, dirty or older one is undefined and the
  * report says which command to run. The stored result's own config hash is named, not matched: each plugin
  * hashes its own config.
  */

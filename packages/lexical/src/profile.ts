@@ -307,7 +307,7 @@ const kotlin: LexerProfile = {
     charLiteral,
   ],
   branchKeywords: [...cBranchKeywords, "when"],
-  // The elvis operator is null-coalescing, not a decision (suite.md, Metric definitions per language).
+  // The elvis operator is null-coalescing, not a decision (docs/languages.md, Metric definitions per language).
   shortCircuitOperators: ["&&", "\\|\\|"],
   bumpOpeners: [...cBumpOpeners, "when"],
   headerNoise: annotationNoise,

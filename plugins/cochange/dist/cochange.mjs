@@ -239,10 +239,10 @@ function loadConfig(root, spec) {
   }
   const pluginDefaults = { ...spec.section, ...Object.fromEntries(historyKeys.map((key) => [key, historyDefaults[key]])) };
   const defaults = { ...sharedDefaults, [spec.plugin]: pluginDefaults };
-  const rows7 = /* @__PURE__ */ new Map();
+  const rows9 = /* @__PURE__ */ new Map();
   const effective = {};
   for (const key of Object.keys(defaults)) {
-    effective[key] = merge(defaults[key], document?.[key], key, rows7);
+    effective[key] = merge(defaults[key], document?.[key], key, rows9);
   }
   readHistory(effective.history, "history");
   const pluginDocument = document?.[spec.plugin];
@@ -251,10 +251,10 @@ function loadConfig(root, spec) {
   const section2 = effective[spec.plugin];
   for (const key of historyKeys) {
     section2[key] = overlay(effective.history[key], pluginDocument?.[key]);
-    inheritSources(rows7, spec.plugin, key);
+    inheritSources(rows9, spec.plugin, key);
   }
   const sources = {};
-  for (const row2 of rows7.values()) sources[row2.path] = row2.source;
+  for (const row2 of rows9.values()) sources[row2.path] = row2.source;
   const hash = createHash("sha256").update(serialise(effective)).digest("hex").slice(0, 16);
   return { file: document ? file : null, effective, hash, sources };
 }
@@ -265,13 +265,13 @@ function overlay(shared, own) {
   }
   return own;
 }
-function inheritSources(rows7, plugin, key) {
+function inheritSources(rows9, plugin, key) {
   const own = `${plugin}.${key}`;
-  for (const row2 of [...rows7.values()]) {
+  for (const row2 of [...rows9.values()]) {
     if (row2.path !== own && !row2.path.startsWith(`${own}.`)) continue;
     if (row2.source === "file") continue;
-    const shared = rows7.get(`history${row2.path.slice(plugin.length)}`);
-    if (shared !== void 0) rows7.set(row2.path, { ...row2, source: shared.source });
+    const shared = rows9.get(`history${row2.path.slice(plugin.length)}`);
+    if (shared !== void 0) rows9.set(row2.path, { ...row2, source: shared.source });
   }
 }
 function readHistory(history, where) {
@@ -309,12 +309,12 @@ function readLanguages(value) {
   return mapped;
 }
 function explainConfig(config) {
-  const rows7 = [];
+  const rows9 = [];
   flatten(config.effective, "", (path, value) => {
-    rows7.push({ path, value, source: config.sources[path] ?? "default" });
+    rows9.push({ path, value, source: config.sources[path] ?? "default" });
   });
-  BUILTIN_EXCLUDE_ENTRIES.forEach((entry, index2) => rows7.push({ path: `exclude.built-in[${index2}]`, value: entry, source: "built-in" }));
-  return rows7.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  BUILTIN_EXCLUDE_ENTRIES.forEach((entry, index2) => rows9.push({ path: `exclude.built-in[${index2}]`, value: entry, source: "built-in" }));
+  return rows9.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 }
 function parseDocument(file) {
   let parsed;
@@ -326,15 +326,15 @@ function parseDocument(file) {
   if (!isPlainObject(parsed)) throw configError(`${CONFIG_FILE} must be a JSON object`);
   return parsed;
 }
-function merge(defaultValue, fileValue, path, rows7) {
+function merge(defaultValue, fileValue, path, rows9) {
   if (fileValue === void 0) {
-    flatten(defaultValue, path, (leaf, value) => rows7.set(leaf, { path: leaf, value, source: "default" }));
+    flatten(defaultValue, path, (leaf, value) => rows9.set(leaf, { path: leaf, value, source: "default" }));
     return defaultValue;
   }
   if (isPlainObject(defaultValue)) {
     if (!isPlainObject(fileValue)) throw configError(`${CONFIG_FILE}: ${path} must be an object`);
     if (Object.keys(defaultValue).length === 0) {
-      flatten(fileValue, path, (leaf, value) => rows7.set(leaf, { path: leaf, value, source: "file" }));
+      flatten(fileValue, path, (leaf, value) => rows9.set(leaf, { path: leaf, value, source: "file" }));
       return fileValue;
     }
     for (const key of Object.keys(fileValue)) {
@@ -342,14 +342,14 @@ function merge(defaultValue, fileValue, path, rows7) {
     }
     const merged = {};
     for (const key of Object.keys(defaultValue)) {
-      merged[key] = merge(defaultValue[key], fileValue[key], `${path}.${key}`, rows7);
+      merged[key] = merge(defaultValue[key], fileValue[key], `${path}.${key}`, rows9);
     }
     return merged;
   }
   if (defaultValue !== null && kindOf(fileValue) !== kindOf(defaultValue)) {
     throw configError(`${CONFIG_FILE}: ${path} must be ${article(kindOf(defaultValue))}`);
   }
-  rows7.set(path, { path, value: fileValue, source: "file" });
+  rows9.set(path, { path, value: fileValue, source: "file" });
   return fileValue;
 }
 var removedSettings = {
@@ -456,11 +456,11 @@ function git(cwd, ...args) {
 // packages/cli-kit/src/results.ts
 function shapeResults(results, options) {
   if (!Array.isArray(results)) return { results, truncated: { limit: null, total: null, cut: 0 } };
-  const { limit, fields, columns: columns8 } = options;
-  if (fields && columns8 && columns8.length > 0) {
-    const unknown = fields.filter((field) => !columns8.includes(field));
+  const { limit, fields, columns: columns10 } = options;
+  if (fields && columns10 && columns10.length > 0) {
+    const unknown = fields.filter((field) => !columns10.includes(field));
     if (unknown.length > 0) {
-      throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${columns8.join(", ")}`);
+      throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${columns10.join(", ")}`);
     }
   }
   const sorted = options.presorted === true ? results : [...results].sort(byScoreThenPath);
@@ -501,13 +501,13 @@ function runNotes() {
 }
 
 // packages/cli-kit/src/table.ts
-function renderTable(rows7, columns8, truncated) {
-  if (rows7.length === 0) return "No results.\n";
-  const cells = rows7.map((row2) => columns8.map((column) => format(row2[column])));
-  const numeric = columns8.map((column) => rows7.every((row2) => row2[column] == null || typeof row2[column] === "number"));
-  const widths = columns8.map((column, i) => Math.max(column.length, ...cells.map((line) => line[i]?.length ?? 0)));
+function renderTable(rows9, columns10, truncated) {
+  if (rows9.length === 0) return "No results.\n";
+  const cells = rows9.map((row2) => columns10.map((column) => format(row2[column])));
+  const numeric = columns10.map((column) => rows9.every((row2) => row2[column] == null || typeof row2[column] === "number"));
+  const widths = columns10.map((column, i) => Math.max(column.length, ...cells.map((line) => line[i]?.length ?? 0)));
   const render = (line) => line.map((cell, i) => numeric[i] ? cell.padStart(widths[i] ?? 0) : cell.padEnd(widths[i] ?? 0)).join("  ").trimEnd();
-  const lines2 = [render(columns8), ...cells.map(render)];
+  const lines2 = [render(columns10), ...cells.map(render)];
   if (truncated.cut > 0) lines2.push(`${truncated.cut} more not shown (use --limit N or --limit all)`);
   return lines2.join("\n") + "\n";
 }
@@ -587,8 +587,8 @@ async function execute(cli2, io) {
 `);
   for (const note of noted) if (note.warning !== void 0) io.stderr.write(`${note.warning}
 `);
-  const columns8 = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
-  const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns: columns8, presorted: output.presorted });
+  const columns10 = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
+  const { results, truncated } = shapeResults(output.results, { limit: args.limit, fields: args.fields, columns: columns10, presorted: output.presorted });
   if (args.json || !io.stdout.isTTY) {
     io.stdout.write(
       serialise(
@@ -618,7 +618,7 @@ async function execute(cli2, io) {
       )
     );
   } else if (Array.isArray(results)) {
-    io.stdout.write(renderTable(results, args.fields ?? columns8, truncated));
+    io.stdout.write(renderTable(results, args.fields ?? columns10, truncated));
     for (const notice of output.notices ?? []) io.stdout.write(`Notice: ${notice}.
 `);
     for (const note of noted) if (note.notice !== void 0) io.stdout.write(`Notice: ${note.notice}.
@@ -630,8 +630,8 @@ async function execute(cli2, io) {
     }
     const left = Object.entries(leftOut);
     if (left.length > 0) {
-      const names = { generated: "generated", vendored: "vendored", nonCode: "non-code", tests: "test" };
-      io.stdout.write(`Notice: omitted ${left.map(([kind, count3]) => `${count3} ${names[kind]} ${count3 === 1 ? "file" : "files"}`).join(", ")}.
+      const names2 = { generated: "generated", vendored: "vendored", nonCode: "non-code", tests: "test" };
+      io.stdout.write(`Notice: omitted ${left.map(([kind, count3]) => `${count3} ${names2[kind]} ${count3 === 1 ? "file" : "files"}`).join(", ")}.
 `);
     }
     if (context.report?.stored === false) io.stdout.write(`No report stored for other plugins: ${context.report.reason}.
@@ -1352,12 +1352,12 @@ function setMeta(db, key, value) {
   );
 }
 function storedShas(db) {
-  const rows7 = db.prepare("SELECT sha FROM commits").all();
-  return new Set(rows7.map((r) => r.sha));
+  const rows9 = db.prepare("SELECT sha FROM commits").all();
+  return new Set(rows9.map((r) => r.sha));
 }
 function storedBoundaryShas(db) {
-  const rows7 = db.prepare("SELECT sha FROM commits WHERE boundary = 1").all();
-  return rows7.map((r) => r.sha);
+  const rows9 = db.prepare("SELECT sha FROM commits WHERE boundary = 1").all();
+  return rows9.map((r) => r.sha);
 }
 function deleteCommits(db, shas) {
   const statements = ["commits", "commit_parents", "changes"].map((t) => db.prepare(`DELETE FROM ${t} WHERE sha = ?`));
@@ -1478,28 +1478,28 @@ var RenameMap = class {
   edges = /* @__PURE__ */ new Map();
   deletions = /* @__PURE__ */ new Map();
   /** Records `from` -> `to` made by the commit at `position`. Call in position order. */
-  add(from, to, position) {
+  add(from, to, position2) {
     const list = this.edges.get(from);
-    if (list) list.push({ position, to });
-    else this.edges.set(from, [{ position, to }]);
+    if (list) list.push({ position: position2, to });
+    else this.edges.set(from, [{ position: position2, to }]);
   }
   /** Records that the file at `path` was deleted by the commit at `position`. Call in position order. */
-  delete(path, position) {
+  delete(path, position2) {
     const list = this.deletions.get(path);
-    if (list) list.push(position);
-    else this.deletions.set(path, [position]);
+    if (list) list.push(position2);
+    else this.deletions.set(path, [position2]);
   }
   get size() {
     return this.edges.size;
   }
   /** The stable identity of `path` as touched by the commit at `position`. */
-  resolve(path, position) {
+  resolve(path, position2) {
     let current2 = path;
-    let at2 = position;
+    let at2 = position2;
     for (; ; ) {
       const next = this.edges.get(current2)?.find((edge) => edge.position > at2);
       if (!next) return current2;
-      const deletedAt = this.deletions.get(current2)?.find((position2) => position2 >= at2);
+      const deletedAt = this.deletions.get(current2)?.find((position3) => position3 >= at2);
       if (deletedAt !== void 0 && deletedAt <= next.position) return current2;
       current2 = next.to;
       at2 = next.position;
@@ -1564,7 +1564,7 @@ async function applyMailmap(repoRoot, view, mailmapFile) {
 function select(db, ref, headSha, firstParent) {
   const head = db.prepare("SELECT committer_date FROM commits WHERE sha = ?").get(headSha);
   if (!head) throw new NoCacheError(`Commit ${headSha} is not in the history cache. Run refresh first.`);
-  const rows7 = db.prepare(`${REACH(firstParent)} SELECT c.* FROM commits c JOIN reach ON reach.sha = c.sha`).all(headSha);
+  const rows9 = db.prepare(`${REACH(firstParent)} SELECT c.* FROM commits c JOIN reach ON reach.sha = c.sha`).all(headSha);
   const changeRows = db.prepare(
     `${REACH(firstParent)}
        SELECT ch.* FROM changes ch JOIN reach ON reach.sha = ch.sha ORDER BY ch.sha, ch.idx`
@@ -1586,21 +1586,21 @@ function select(db, ref, headSha, firstParent) {
     if (list) list.push(row2);
     else changesBySha.set(row2.sha, [row2]);
   }
-  const ordered = topologicalOrder(rows7, parents);
+  const ordered = topologicalOrder(rows9, parents);
   const renames = new RenameMap();
   const commits = [];
   for (const row2 of ordered) {
     const rawChanges = changesBySha.get(row2.sha) ?? [];
     const isMerge = row2.parent_count > 1;
     if (isMerge) continue;
-    const position = commits.length;
+    const position2 = commits.length;
     for (const ch of rawChanges) {
-      if (ch.status === "R" && ch.old_path) renames.add(ch.old_path, ch.path, position);
-      else if (ch.status === "D") renames.delete(ch.path, position);
+      if (ch.status === "R" && ch.old_path) renames.add(ch.old_path, ch.path, position2);
+      else if (ch.status === "D") renames.delete(ch.path, position2);
     }
     commits.push({
       sha: row2.sha,
-      position,
+      position: position2,
       authorName: row2.author_name,
       authorEmail: row2.author_email,
       mappedName: row2.author_name,
@@ -1628,9 +1628,9 @@ function select(db, ref, headSha, firstParent) {
   }
   return { ref, headSha, headDate: head.committer_date, firstParent, commits, renames };
 }
-function topologicalOrder(rows7, parents) {
-  const bySha = new Map(rows7.map((r) => [r.sha, r]));
-  const sorted = [...rows7].sort((a, b) => a.committer_date - b.committer_date || (a.sha < b.sha ? -1 : 1));
+function topologicalOrder(rows9, parents) {
+  const bySha = new Map(rows9.map((r) => [r.sha, r]));
+  const sorted = [...rows9].sort((a, b) => a.committer_date - b.committer_date || (a.sha < b.sha ? -1 : 1));
   const done = /* @__PURE__ */ new Set();
   const out = [];
   for (const start of sorted) {
@@ -3182,8 +3182,8 @@ function coupledPairs(history, guidelines) {
 // packages/cochange/src/components.ts
 var UNASSIGNED = "(unassigned)";
 function readComponents(value) {
-  const names = Object.keys(value).sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
-  return names.map((name18) => {
+  const names2 = Object.keys(value).sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
+  return names2.map((name18) => {
     if (name18 === UNASSIGNED) throw configError(`code-health.json: components.${name18} is a reserved name`);
     const raw = value[name18];
     const globs = typeof raw === "string" ? [raw] : raw;
@@ -3373,7 +3373,7 @@ function factsOf(node) {
   const organisational = /* @__PURE__ */ new Set();
   const locals = /* @__PURE__ */ new Set();
   const noreplies = /* @__PURE__ */ new Map();
-  const names = /* @__PURE__ */ new Set();
+  const names2 = /* @__PURE__ */ new Set();
   const nameList = /* @__PURE__ */ new Set();
   const derived4 = /* @__PURE__ */ new Set();
   const flattened = /* @__PURE__ */ new Set();
@@ -3388,7 +3388,7 @@ function factsOf(node) {
       if (organisation !== null && local.length >= MIN_ORGANISATIONAL_LOCAL_LENGTH) organisational.add(`${local}@${organisation}`);
     }
     if (nameTokens(name18).length >= 2) {
-      names.add(normaliseName(name18));
+      names2.add(normaliseName(name18));
       nameList.add(name18);
       for (const d of derivedLocalParts(name18)) derived4.add(d);
       for (const f of flattenedNames(name18)) flattened.add(f);
@@ -3400,7 +3400,7 @@ function factsOf(node) {
     organisational: [...organisational].sort(),
     locals: [...locals].sort(),
     noreplies: [...noreplies.values()].sort((x2, y2) => compare2(x2.username, y2.username)),
-    names: [...names].sort(),
+    names: [...names2].sort(),
     nameList: [...nameList].sort(),
     derived: [...derived4].sort(),
     flattened: [...flattened].sort(),
@@ -4066,12 +4066,12 @@ function openBlameForRead(path) {
   return void 0;
 }
 function storedFiles(db, options) {
-  const rows7 = db.prepare("SELECT path, blob, at_commit, lines FROM files WHERE options = ?").all(options);
-  return rows7.map((r) => ({ path: r.path, blob: r.blob, atCommit: r.at_commit, lines: r.lines }));
+  const rows9 = db.prepare("SELECT path, blob, at_commit, lines FROM files WHERE options = ?").all(options);
+  return rows9.map((r) => ({ path: r.path, blob: r.blob, atCommit: r.at_commit, lines: r.lines }));
 }
 function storedRanges(db, options, path, blob) {
-  const rows7 = db.prepare("SELECT start, count, sha FROM ranges WHERE path = ? AND blob = ? AND options = ? ORDER BY start").all(path, blob, options);
-  return rows7.map((r) => ({ start: r.start, count: r.count, sha: r.sha }));
+  const rows9 = db.prepare("SELECT start, count, sha FROM ranges WHERE path = ? AND blob = ? AND options = ? ORDER BY start").all(path, blob, options);
+  return rows9.map((r) => ({ start: r.start, count: r.count, sha: r.sha }));
 }
 function inTransaction(db, work) {
   db.exec("BEGIN");
@@ -4587,13 +4587,13 @@ function compile2(model, guidelinePercent, components2) {
       pool.push(i);
     }
   });
-  const names = [...new Set(model.files.map((f) => componentOf(components2, f.path)))].sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
-  const componentIndex = new Map(names.map((n, i) => [n, i]));
+  const names2 = [...new Set(model.files.map((f) => componentOf(components2, f.path)))].sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
+  const componentIndex = new Map(names2.map((n, i) => [n, i]));
   const componentOfFile = model.files.map((f) => componentIndex.get(componentOf(components2, f.path)));
   const poolLines = pool.map(() => 0);
   const byComponent = pool.map(() => /* @__PURE__ */ new Map());
-  const componentPeopleLines = names.map(() => 0);
-  const componentBaselineLines = names.map(() => 0);
+  const componentPeopleLines = names2.map(() => 0);
+  const componentBaselineLines = names2.map(() => 0);
   const relevant = [];
   const abandonedFiles = /* @__PURE__ */ new Set();
   let baselineLines = 0;
@@ -4620,7 +4620,7 @@ function compile2(model, guidelinePercent, components2) {
     poolComponentLines: byComponent.map((m) => [...m]),
     relevant,
     baseline: { files: abandonedFiles.size, lines: baselineLines, abandonedFiles },
-    componentNames: names,
+    componentNames: names2,
     componentOfFile,
     componentPeopleLines,
     componentBaselineLines
@@ -4802,7 +4802,7 @@ async function backtestCommand(context) {
   const actual = new Set(candidates.filter((id) => abandonedAfter.has(id)));
   const score = scorePredictions(predicted, actual);
   const predictedGone = [...present].filter((id) => !abandonedBefore.has(id) && !survivors.has(id) && probability.get(id) * 100 >= settings.atRiskProbability).length;
-  const rows7 = candidates.filter((id) => predicted.has(id) || actual.has(id)).map((id) => ({
+  const rows9 = candidates.filter((id) => predicted.has(id) || actual.has(id)).map((id) => ({
     path: pathOf2.get(id),
     score: round4(probability.get(id)),
     probability: round4(probability.get(id)),
@@ -4844,7 +4844,7 @@ async function backtestCommand(context) {
       recall: score.recall === null ? null : round4(score.recall),
       // What the model expected against what happened, over every file, whether or not it crossed the guideline.
       expectedAbandoned: round4(candidates.reduce((sum, path) => sum + probability.get(path), 0)),
-      files: rows7
+      files: rows9
     }
   };
 }
@@ -5200,7 +5200,7 @@ var kotlin = {
     charLiteral
   ],
   branchKeywords: [...cBranchKeywords, "when"],
-  // The elvis operator is null-coalescing, not a decision (suite.md, Metric definitions per language).
+  // The elvis operator is null-coalescing, not a decision (docs/languages.md, Metric definitions per language).
   shortCircuitOperators: ["&&", "\\|\\|"],
   bumpOpeners: [...cBumpOpeners, "when"],
   headerNoise: annotationNoise,
@@ -5520,16 +5520,16 @@ async function readFixes(history, units, classifier, root) {
     const reviewTouched = /* @__PURE__ */ new Map();
     const reviewSeen = /* @__PURE__ */ new Set();
     for (const change3 of changes) {
-      const names = /* @__PURE__ */ new Set();
+      const names2 = /* @__PURE__ */ new Set();
       for (const file of change3.files) {
         const name18 = unitOf.get(file.fileId);
-        if (name18 !== void 0) names.add(name18);
+        if (name18 !== void 0) names2.add(name18);
       }
-      for (const name18 of names) touched.add(name18);
+      for (const name18 of names2) touched.add(name18);
       for (const sha of change3.shas) {
         if (!review.has(sha)) continue;
         reviewSeen.add(sha);
-        for (const name18 of names) reviewTouched.set(name18, (reviewTouched.get(name18) ?? /* @__PURE__ */ new Set()).add(sha));
+        for (const name18 of names2) reviewTouched.set(name18, (reviewTouched.get(name18) ?? /* @__PURE__ */ new Set()).add(sha));
       }
     }
     for (const sha of reviewSeen) reviewMatches.push(review.get(sha).commit);
@@ -5795,11 +5795,11 @@ function findBracedBlocks(lines2, profile) {
     const kept = [...header2, { line: line.number, text: before }];
     const classification = classifyHeader(kept, profile);
     if (classification.kind !== "function") return false;
-    const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
+    const names2 = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
     const block = { startLine: classification.line, endLine: -1, source: "lexical" };
     if (classification.name !== void 0) {
       block.name = classification.name;
-      block.qualifiedName = qualify(names, classification.name);
+      block.qualifiedName = qualify(names2, classification.name);
     }
     arrow = { block, scopes: stack.length, lastLine: line.number, declaration: false };
     return true;
@@ -5832,11 +5832,11 @@ function findBracedBlocks(lines2, profile) {
       break;
     }
     if (!matched) return false;
-    const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
+    const names2 = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
     const block = { startLine: kept[0].line, endLine: -1, source: "lexical" };
     if (name18 !== void 0) {
       block.name = cleanName(name18);
-      block.qualifiedName = qualify(names, block.name);
+      block.qualifiedName = qualify(names2, block.name);
     }
     arrow = { block, scopes: stack.length, lastLine: line.number, declaration: inDeclaration || keywordAssignment.test(text6) };
     return true;
@@ -5901,7 +5901,7 @@ function findBracedBlocks(lines2, profile) {
           continue;
         }
         const classification = classifyHeader(header2, profile);
-        const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
+        const names2 = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
         let block;
         let name18;
         if (classification.kind === "function") {
@@ -5909,7 +5909,7 @@ function findBracedBlocks(lines2, profile) {
           block = { startLine: classification.line, endLine: -1, source: "lexical" };
           if (name18 !== void 0) {
             block.name = name18;
-            block.qualifiedName = qualify(names, name18);
+            block.qualifiedName = qualify(names2, name18);
           }
         } else if (classification.kind === "type") name18 = classification.name;
         const typeOnly = /^(?:export\s+)?(?:declare\s+)?(?:interface|type)\b/.test(headerText(""));
@@ -5988,13 +5988,13 @@ function findIndentedBlocks(lines2, profile) {
     while (stack.length > 0 && stack[stack.length - 1].level >= level) close(stack.pop());
     const classification = classifyHeader([{ line: line.number, text: line.code }], profile);
     if (classification.kind !== "other") {
-      const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
+      const names2 = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
       let block;
       if (classification.kind === "function") {
         block = { startLine: line.number, endLine: -1, source: "lexical" };
         if (classification.name !== void 0) {
           block.name = classification.name;
-          block.qualifiedName = qualify(names, classification.name);
+          block.qualifiedName = qualify(names2, classification.name);
         }
       }
       stack.push({ level, name: classification.name, block });
@@ -6330,12 +6330,12 @@ function readComplexityReport(root, head) {
   if (document.tool !== COMPLEXITY_REPORT.tool || document.command !== COMPLEXITY_REPORT.command) return void 0;
   if (document.repo?.head !== head || document.repo?.dirty !== false) return void 0;
   if (!Array.isArray(document.results) || typeof document.config !== "string") return void 0;
-  const rows7 = /* @__PURE__ */ new Map();
+  const rows9 = /* @__PURE__ */ new Map();
   for (const row2 of document.results) {
     const value = row2[COMPLEXITY_FIELD];
-    if (typeof row2.path === "string" && typeof value === "number") rows7.set(row2.path, value);
+    if (typeof row2.path === "string" && typeof value === "number") rows9.set(row2.path, value);
   }
-  return { document, rows: rows7 };
+  return { document, rows: rows9 };
 }
 function complexityReportInput(root, head) {
   const report = readComplexityReport(root, head);
@@ -6383,7 +6383,7 @@ function isTestPath2(path) {
 function siblingTestOf(path, tree) {
   if (isTestPath2(path)) return null;
   const { folder, stem: stem2, ext } = split(path);
-  const names = [
+  const names2 = [
     `${stem2}.test${ext}`,
     `${stem2}.spec${ext}`,
     `${stem2}_test${ext}`,
@@ -6392,7 +6392,7 @@ function siblingTestOf(path, tree) {
     `${stem2}Test${ext}`,
     `${stem2}Tests${ext}`
   ];
-  const candidates = [...names.map((name18) => `${folder}${name18}`), ...[...names, `${stem2}${ext}`].map((name18) => `${folder}__tests__/${name18}`)];
+  const candidates = [...names2.map((name18) => `${folder}${name18}`), ...[...names2, `${stem2}${ext}`].map((name18) => `${folder}__tests__/${name18}`)];
   return candidates.find((candidate) => tree.has(candidate)) ?? null;
 }
 
@@ -6420,7 +6420,7 @@ async function rankHotspots(context, history, by) {
   const recentSince = monthsBefore(anchor, settings.recentMonths);
   const topShare = (100 - settings.hotspotPercentile) / 100;
   const drifting = by === "file" ? await testDrift(context.repo.root, history, units.map((u) => u.name)) : /* @__PURE__ */ new Map();
-  const rows7 = units.map((unit, i) => {
+  const rows9 = units.map((unit, i) => {
     const score = scores[i];
     const fixStats = statisticsOf(fixReading, unit);
     const isHotspot = score !== null && shareStrictlyAbove(scored, score) < topShare && unit.lastChanged >= recentSince;
@@ -6443,7 +6443,7 @@ async function rankHotspots(context, history, by) {
       ...by === "file" ? fileFindings(unit, isHotspot, drifting.get(unit.name) ?? null, settings.minSupport) : {}
     };
   });
-  return { rows: rows7, complexity, fixConvention: fixReading.convention };
+  return { rows: rows9, complexity, fixConvention: fixReading.convention };
 }
 async function testDrift(root, history, paths) {
   const tree = new Set(await listTree(root, history.view.headSha));
@@ -6471,14 +6471,14 @@ function orderedHotspots(output) {
 
 // packages/cochange/src/abandonment/ranking.ts
 async function hotspotWeights(context, history) {
-  const { rows: rows7 } = await rankHotspots(context, history, "file");
-  return weightsOf(rows7);
+  const { rows: rows9 } = await rankHotspots(context, history, "file");
+  return weightsOf(rows9);
 }
-function weightsOf(rows7) {
-  const scored = rows7.filter((row2) => row2.score !== null);
+function weightsOf(rows9) {
+  const scored = rows9.filter((row2) => row2.score !== null);
   const percentiles = midRankPercentiles(scored.map((row2) => row2.score));
   const weights = /* @__PURE__ */ new Map();
-  for (const row2 of rows7) weights.set(row2.path, { hot: row2.recommendation === "hotspot", percentile: 0 });
+  for (const row2 of rows9) weights.set(row2.path, { hot: row2.recommendation === "hotspot", percentile: 0 });
   scored.forEach((row2, i) => weights.set(row2.path, { hot: row2.recommendation === "hotspot", percentile: percentiles[i] }));
   return weights;
 }
@@ -6687,12 +6687,12 @@ async function redundancyCommand(context) {
   const hot = new Set([...weights].filter(([, w]) => w.hot).map(([path]) => path));
   const files = measureRedundancy(p.knowledge.model, hot, { minAuthors, minSharePercent: minShare });
   const percentile2 = (path) => weights.get(path)?.percentile ?? 0;
-  const rows7 = [...files].sort((a, b) => Number(a.redundant) - Number(b.redundant) || percentile2(b.path) - percentile2(a.path) || byBytes(a.path, b.path)).map((f) => ({ ...f, hotspotPercentile: round4(percentile2(f.path)) }));
+  const rows9 = [...files].sort((a, b) => Number(a.redundant) - Number(b.redundant) || percentile2(b.path) - percentile2(a.path) || byBytes(a.path, b.path)).map((f) => ({ ...f, hotspotPercentile: round4(percentile2(f.path)) }));
   return {
     inputs: commonInputs(p, "redundancy", { minAuthors, minSharePercent: minShare }),
     extra: commonExtra(p, { summary: summariseRedundancy(files) }),
     notices: p.notices,
-    results: rows7,
+    results: rows9,
     columns: ["path", "redundant", "qualifyingAuthors", "activeAuthors", "peopleLines", "hotspotPercentile"]
   };
 }
@@ -6714,7 +6714,7 @@ async function trendCommand(context) {
     throw usageError(`the history is too short to estimate turnover; ${turnoverRateHint(settings)}, so every point shares one rate`);
   }
   const components2 = readComponents(context.config.effective.components);
-  const rows7 = [];
+  const rows9 = [];
   let skipped = 0;
   for (let i = 0; i < points; i++) {
     const at2 = anchor - i * periodSeconds;
@@ -6733,7 +6733,7 @@ async function trendCommand(context) {
       components: components2
     });
     const abandoned = measureCurrent(knowledge2.model, settings.abandonmentGuideline).filter((f) => f.abandoned).length;
-    rows7.push({
+    rows9.push({
       date: isoDay4(at2),
       commit: sha,
       activeDevelopers: result.activeDevelopers,
@@ -6742,11 +6742,11 @@ async function trendCommand(context) {
       lines: reportLoss(result.lines, result.baseline.lines, result.population.peopleLines)
     });
   }
-  rows7.reverse();
-  const first = rows7[0]?.lines.total.expectedShare;
-  const last = rows7.at(-1)?.lines.total.expectedShare;
+  rows9.reverse();
+  const first = rows9[0]?.lines.total.expectedShare;
+  const last = rows9.at(-1)?.lines.total.expectedShare;
   const notices = [...await mappedShareNotices(context, settings), ...turnoverNotices(settings, observed, settings.turnoverRate === null)];
-  const direction = rows7.length < 2 || first === void 0 || last === void 0 ? null : last < first ? "falling" : last > first ? "rising" : "flat";
+  const direction = rows9.length < 2 || first === void 0 || last === void 0 ? null : last < first ? "falling" : last > first ? "rising" : "flat";
   return {
     inputs: {
       subcommand: "trend",
@@ -6769,7 +6769,7 @@ async function trendCommand(context) {
       rateSource: settings.turnoverRate === null ? "history" : "configured",
       skippedPoints: skipped,
       direction,
-      points: rows7
+      points: rows9
     }
   };
 }
@@ -6949,8 +6949,8 @@ function complexityStandings(values) {
 }
 async function measurePatterns(context, p) {
   const { model } = p.knowledge;
-  const { rows: rows7 } = await rankHotspots(context, p.history, "file");
-  const weights = weightsOf(rows7);
+  const { rows: rows9 } = await rankHotspots(context, p.history, "file");
+  const weights = weightsOf(rows9);
   const identities = await analyseIdentities(context, { noRefresh: true });
   const snapshot = await readBlame(context.repo.root, { ref: p.history.view.headSha, ...blameOptions(p.history, p.settings) });
   const known = /* @__PURE__ */ new Set([...model.files.map((f) => f.path), ...model.missing]);
@@ -6962,7 +6962,7 @@ async function measurePatterns(context, p) {
   const codePaths = [...model.files.map((f) => f.path), ...botOnly].filter((path) => kindOf2(path) === "code");
   const complexity = await loadComplexity(context, p.history.view.headSha, codePaths);
   const files = classifyPatterns({ model, guidelines, hotspots: weights, complexity: complexityStandings(complexity.values), unmapped: identities.unresolved, botOnly, kindOf: kindOf2 });
-  return { files, summary: summarisePatterns(files), guidelines, hotspotRows: rows7, weights, complexity };
+  return { files, summary: summarisePatterns(files), guidelines, hotspotRows: rows9, weights, complexity };
 }
 async function patternsCommand(context) {
   const p = await prepare(context);
@@ -7187,7 +7187,7 @@ async function current(context) {
   const rank2 = readRank(context, p.settings);
   const weights = by === "file" ? await hotspotWeights(context, p.history) : /* @__PURE__ */ new Map();
   const noSuccessor = noSuccessorCheck(p.history, model);
-  const rows7 = by === "file" ? files.filter((f) => f.abandonedLines > 0).map((f) => ({
+  const rows9 = by === "file" ? files.filter((f) => f.abandonedLines > 0).map((f) => ({
     path: f.path,
     abandoned: f.abandoned,
     // Ranked by the hotspot percentile weighting the abandoned share, or by the lines lost under --rank abandonment.
@@ -7208,11 +7208,11 @@ async function current(context) {
   return {
     inputs: commonInputs(p, "current", { by, rank: rank2 }),
     extra: commonExtra(p, { summary: summariseCurrent(files, unattributed) }),
-    results: rows7,
+    results: rows9,
     // Only the file view omits rows by a value: files with no lines held by people who have left. Say how many.
     notices: [
       ...p.notices,
-      ...by === "file" ? [`Omitted ${files.length - rows7.length} of ${files.length} measured files that have no lines held by people who have left`] : []
+      ...by === "file" ? [`Omitted ${files.length - rows9.length} of ${files.length} measured files that have no lines held by people who have left`] : []
     ],
     columns: by === "file" ? ["path", "abandoned", "abandonedShare", "abandonedLines", "peopleLines", "activeAuthors", "formerAuthors", "nonPersonLines", "hotspot", "findings"] : ["path", "files", "abandonedFiles", "abandonedShare", "abandonedLines", "peopleLines"]
   };
@@ -7248,7 +7248,7 @@ var command2 = analysisCommand(name2, {
     const anchor = history.view.headDate;
     const staleBefore = monthsBefore(anchor, history.settings.staleMonths);
     const units = await loadUnits(context, history);
-    const rows7 = units.map((unit) => {
+    const rows9 = units.map((unit) => {
       const ageDays = Math.floor((anchor - unit.lastChanged) / SECONDS_PER_DAY2);
       return {
         path: unit.name,
@@ -7263,7 +7263,7 @@ var command2 = analysisCommand(name2, {
     });
     return {
       inputs: { by, allFiles: wantsAllFiles(context) },
-      results: rows7,
+      results: rows9,
       columns: ["path", "score", ...by === "component" ? ["files"] : [], "ageDays", "firstSeen", "lastChanged", "revisions", "recommendation"]
     };
   }
@@ -7470,7 +7470,7 @@ async function couplingOutput(context, history) {
   const focus = typeof requested === "string" ? await focusPath(context, history, requested) : void 0;
   const previous = context.values.trend === true ? await previousWindow(context, history) : void 0;
   const tolerance = settings.couplingTrendTolerance;
-  const rows7 = counts.pairs.filter((pair) => focus === void 0 || pair.a === focus || pair.b === focus).map((pair) => describe(pair, focus, settings, minDegree, previous === void 0 ? void 0 : pairTrend(pair, previous.index, tolerance), (path) => isCodePath(path, languages) ? "code" : "non-code")).sort((x2, y2) => Number(y2.aboveGuideline) - Number(x2.aboveGuideline) || y2.score - x2.score || y2.support - x2.support || compareBytes(x2.path, y2.path) || compareBytes(x2.with, y2.with));
+  const rows9 = counts.pairs.filter((pair) => focus === void 0 || pair.a === focus || pair.b === focus).map((pair) => describe(pair, focus, settings, minDegree, previous === void 0 ? void 0 : pairTrend(pair, previous.index, tolerance), (path) => isCodePath(path, languages) ? "code" : "non-code")).sort((x2, y2) => Number(y2.aboveGuideline) - Number(x2.aboveGuideline) || y2.score - x2.score || y2.support - x2.support || compareBytes(x2.path, y2.path) || compareBytes(x2.with, y2.with));
   return {
     // The order above is the documented one (shared changes break ties on degree); the kit's default sort would drop that tie-break.
     presorted: true,
@@ -7481,7 +7481,7 @@ async function couplingOutput(context, history) {
       asymmetry: ASYMMETRY,
       ...context.values.trend === true ? { trend: { toleranceGuideline: tolerance } } : {}
     },
-    results: rows7,
+    results: rows9,
     columns: [
       "path",
       "pathKind",
@@ -7499,7 +7499,7 @@ async function couplingOutput(context, history) {
     extra: {
       population: { eligibleChanges: counts.eligibleChanges, oversizedExcluded: counts.oversizedChanges },
       ...previous === void 0 ? {} : { trendWindows: previous.windows },
-      note: rows7.length === 0 ? `No pair shares at least ${minSupport} changes. The support floor was not lowered; a young or sparse history has little coupling evidence.` : null
+      note: rows9.length === 0 ? `No pair shares at least ${minSupport} changes. The support floor was not lowered; a young or sparse history has little coupling evidence.` : null
     }
   };
 }
@@ -7569,15 +7569,15 @@ __export(hotspots_exports, {
 // packages/cochange/src/contributors.ts
 function contributorsOf(history) {
   const { since, until } = history.evidence.window;
-  const names = /* @__PURE__ */ new Map();
-  for (const commit of history.view.commits) names.set(commit.mappedEmail.toLowerCase(), commit.mappedName);
+  const names2 = /* @__PURE__ */ new Map();
+  for (const commit of history.view.commits) names2.set(commit.mappedEmail.toLowerCase(), commit.mappedName);
   const addresses = /* @__PURE__ */ new Set();
   for (const change3 of history.filtered.changes) {
     if (change3.committerDate < since || change3.committerDate > until) continue;
     for (const author of change3.authors) addresses.add(author.toLowerCase());
   }
   let agents = 0;
-  for (const address2 of addresses) if (history.identities.matcher.classify(names.get(address2) ?? "", address2)?.kind === "agent") agents++;
+  for (const address2 of addresses) if (history.identities.matcher.classify(names2.get(address2) ?? "", address2)?.kind === "agent") agents++;
   return { people: addresses.size - agents, agents };
 }
 function contributorsText({ people, agents }) {
@@ -7628,10 +7628,10 @@ var command5 = analysisCommand(name6, {
 });
 async function rankedOutput(context, history) {
   const by = readBy(context);
-  const { rows: rows7, complexity, fixConvention } = await rankHotspots(context, history, by);
+  const { rows: rows9, complexity, fixConvention } = await rankHotspots(context, history, by);
   return {
     inputs: { by, allFiles: wantsAllFiles(context), includeTests: wantsTests(context), complexityReport: complexity.input },
-    results: rows7,
+    results: rows9,
     columns: [
       "path",
       ...by === "file" ? ["role"] : [],
@@ -7690,7 +7690,7 @@ function briefOutput(context, settings, present, sources, resolve4) {
   const partnersByFile = partnerIndex(sources.coupling.results);
   const { fixConvention } = sources.hotspots.extra;
   const { headDate: anchor } = sources.activity.extra;
-  const rows7 = [...new Set(requested.map((raw) => repoRelative(root, raw)))].map((asked) => {
+  const rows9 = [...new Set(requested.map((raw) => repoRelative(root, raw)))].map((asked) => {
     const path = present.has(asked) ? asked : resolve4(asked);
     const exists2 = present.has(path);
     const activity = activityOf.get(path);
@@ -7730,12 +7730,12 @@ function briefOutput(context, settings, present, sources, resolve4) {
   const { window, filtersApplied, evidence } = sources.hotspots.extra;
   return {
     inputs: {
-      paths: rows7.map((row2) => row2.requested ?? row2.path),
+      paths: rows9.map((row2) => row2.requested ?? row2.path),
       partners: limit,
       degreeGuideline: settings.minDegree,
       ...sources.hotspots.inputs?.identityInputs === void 0 ? {} : { identityInputs: sources.hotspots.inputs.identityInputs }
     },
-    results: rows7,
+    results: rows9,
     extra: { window, filtersApplied, evidence, fixConvention },
     notices: fixConvention.note === null ? [] : [fixConvention.note.replace(/\.$/, "")],
     columns: ["path", "frequency", "recentRevisions", "fixes", "lastChanged", "recommendation", "alongside", "note"]
@@ -7901,7 +7901,7 @@ var command7 = analysisCommand(name8, {
         set.add(to);
       }
     }
-    const rows7 = components(counts.pairs).map((files) => {
+    const rows9 = components(counts.pairs).map((files) => {
       const members = new Set(files);
       const inside2 = counts.pairs.filter((pair) => members.has(pair.a));
       const folders = new Set(files.map(folderOf)).size;
@@ -7923,14 +7923,14 @@ var command7 = analysisCommand(name8, {
         evidence: { pairs: inside2.length, weakestSupport, clearsMinimum: weakestSupport >= settings.minSupport }
       };
     });
-    rows7.sort((x2, y2) => y2.score - x2.score || compareBytes(x2.path, y2.path));
+    rows9.sort((x2, y2) => y2.score - x2.score || compareBytes(x2.path, y2.path));
     return {
       inputs: { minDegree, minSupport, magnet: MAGNET, clusterMinFolders: CLUSTER_MIN_FOLDERS },
-      results: rows7,
+      results: rows9,
       columns: ["path", "score", "size", "folders", "spread", "meanDegree", "findings"],
       extra: {
         population: { eligibleChanges: counts.eligibleChanges, oversizedExcluded: counts.oversizedChanges },
-        note: rows7.length === 0 ? `No cluster: no pair reaches support ${minSupport} and degree ${minDegree} %. The guidelines were not lowered; a young or sparse history has little coupling evidence.` : null
+        note: rows9.length === 0 ? `No cluster: no pair reaches support ${minSupport} and degree ${minDegree} %. The guidelines were not lowered; a young or sparse history has little coupling evidence.` : null
       }
     };
   }
@@ -7980,7 +7980,7 @@ var command8 = analysisCommand(name9, {
     const evidenceLimit = evidenceOption(context.values.evidence);
     const units = await loadUnits(context, history, by);
     const reading = await readFixes(history, units, readFixClassifier(context.config), context.repo.root);
-    const rows7 = units.map((unit) => {
+    const rows9 = units.map((unit) => {
       const stats = statisticsOf(reading, unit);
       return {
         path: unit.name,
@@ -8001,7 +8001,7 @@ var command8 = analysisCommand(name9, {
     const { convention } = reading;
     return {
       inputs: { by, allFiles: wantsAllFiles(context), evidenceLimit },
-      results: rows7,
+      results: rows9,
       columns: ["path", ...by === "component" ? ["files"] : [], "fixes", "revisions", "landedChanges", "fixShare", "recentFixes", "lastFix", "reverts", "evidence", "reviewFixes", "reviewEvidence"],
       extra: { fixConvention: convention, fixesExcluded: reading.excluded, fixesDuringReview: reading.reviewFixes },
       notices: [
@@ -8086,7 +8086,7 @@ var compare3 = (x2, y2) => x2 < y2 ? -1 : x2 > y2 ? 1 : 0;
 var compare4 = (x2, y2) => x2 < y2 ? -1 : x2 > y2 ? 1 : 0;
 function listRows(analysis, onlyUnmapped) {
   const nodes = new Map(analysis.nodes.map((n) => [n.key, n]));
-  const rows7 = analysis.raws.map((raw) => {
+  const rows9 = analysis.raws.map((raw) => {
     const key = identityKey(raw);
     const nodeKey = analysis.nodeOfRaw.get(key);
     const node = nodes.get(nodeKey);
@@ -8105,7 +8105,7 @@ function listRows(analysis, onlyUnmapped) {
       unmapped: analysis.unresolved.has(nodeKey)
     };
   });
-  return onlyUnmapped ? rows7.filter((r) => r.unmapped) : rows7;
+  return onlyUnmapped ? rows9.filter((r) => r.unmapped) : rows9;
 }
 var isWord = (word) => new RegExp("^\\p{L}[\\p{L}'.\\-]*$", "u").test(word);
 var looksPersonal = (name18) => {
@@ -8133,7 +8133,7 @@ var PROPOSE_ORDER = "members' commits, largest first, then strength (strong, med
 function proposeRows(analysis) {
   const nodes = new Map(analysis.nodes.map((n) => [n.key, n]));
   const strengthOrder = { strong: 0, medium: 1, chain: 2 };
-  const rows7 = analysis.proposals.map((proposal) => {
+  const rows9 = analysis.proposals.map((proposal) => {
     const members = proposal.members.map((key) => nodes.get(key));
     const current2 = suggestCanonical(members);
     return {
@@ -8160,29 +8160,29 @@ function proposeRows(analysis) {
       }))
     };
   });
-  rows7.sort((x2, y2) => y2.commits - x2.commits || strengthOrder[x2.strength] - strengthOrder[y2.strength] || compare4(x2.suggestedCanonical, y2.suggestedCanonical));
-  return rows7.map(({ commits: _held, ...row2 }, i) => ({ ...row2, id: `P${i + 1}` }));
+  rows9.sort((x2, y2) => y2.commits - x2.commits || strengthOrder[x2.strength] - strengthOrder[y2.strength] || compare4(x2.suggestedCanonical, y2.suggestedCanonical));
+  return rows9.map(({ commits: _held, ...row2 }, i) => ({ ...row2, id: `P${i + 1}` }));
 }
 var MIN_SERVICE_COMMITS = 3;
 function classifyRows(analysis) {
   const { decisions, matcher } = analysis.history.identities;
   const decided = new Set(decisions.classifications.map((c) => emailOf3(c.identity)));
-  const rows7 = [];
+  const rows9 = [];
   for (const raw of analysis.raws) {
     const key = identityKey(raw);
     const found = matcher.classify(raw.name, raw.email);
     if (found) {
-      rows7.push({ kind: found.kind, identity: key, commits: raw.commits, source: found.source, pattern: found.pattern, decided: decided.has(raw.email.toLowerCase()) });
+      rows9.push({ kind: found.kind, identity: key, commits: raw.commits, source: found.source, pattern: found.pattern, decided: decided.has(raw.email.toLowerCase()) });
       continue;
     }
     if (decided.has(raw.email.toLowerCase())) continue;
     const subjects = analysis.facts.subjects.get(key) ?? [];
     if (subjects.length >= MIN_SERVICE_COMMITS && onlyVersionBumpsOrMerges(subjects)) {
-      rows7.push({ kind: "service", identity: key, commits: raw.commits, source: "heuristic", pattern: "only version bumps, releases or merges", decided: false });
+      rows9.push({ kind: "service", identity: key, commits: raw.commits, source: "heuristic", pattern: "only version bumps, releases or merges", decided: false });
     }
   }
   for (const agent of analysis.facts.agents) {
-    rows7.push({
+    rows9.push({
       kind: "agent",
       identity: agent.value,
       commits: agent.commits,
@@ -8193,7 +8193,7 @@ function classifyRows(analysis) {
     });
   }
   const order = { bot: 0, service: 1, agent: 2 };
-  return rows7.sort((x2, y2) => order[x2.kind] - order[y2.kind] || compare4(x2.identity, y2.identity));
+  return rows9.sort((x2, y2) => order[x2.kind] - order[y2.kind] || compare4(x2.identity, y2.identity));
 }
 var emailOf3 = (identity) => {
   const open = identity.lastIndexOf("<");
@@ -9451,10 +9451,10 @@ function parseTranscript(text6, scope = "main") {
 }
 
 // packages/transcripts/src/time-window.ts
-function dateToMs(value, label) {
+function dateToMs(value, label2) {
   const ms = /^\d{4}-\d{2}-\d{2}$/.test(value) ? Date.parse(`${value}T00:00:00.000Z`) : Number.NaN;
   if (Number.isNaN(ms) || new Date(ms).toISOString().slice(0, 10) !== value) {
-    throw new Error(`${label} must be a calendar date in YYYY-MM-DD form, got "${value}"`);
+    throw new Error(`${label2} must be a calendar date in YYYY-MM-DD form, got "${value}"`);
   }
   return ms;
 }
@@ -9527,13 +9527,13 @@ function findOpportunities(sessions, partnersOf2) {
   const found = [];
   for (const session of sessions) {
     const firstEdit = /* @__PURE__ */ new Map();
-    session.edits.forEach((file, position) => {
-      if (!firstEdit.has(file)) firstEdit.set(file, position);
+    session.edits.forEach((file, position2) => {
+      if (!firstEdit.has(file)) firstEdit.set(file, position2);
     });
-    for (const [file, position] of firstEdit) {
+    for (const [file, position2] of firstEdit) {
       const unedited = partnersOf2(file, session).filter((partner) => {
         const at2 = firstEdit.get(partner);
-        return at2 === void 0 || at2 > position;
+        return at2 === void 0 || at2 > position2;
       });
       if (unedited.length === 0) continue;
       found.push({
@@ -9947,8 +9947,8 @@ function shortHash(content) {
 function slug(text6) {
   return text6.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "item";
 }
-function count2(n, singular, plural2 = `${singular}s`) {
-  return `${formatNumber(n)} ${n === 1 ? singular : plural2}`;
+function count2(n, singular, plural3 = `${singular}s`) {
+  return `${formatNumber(n)} ${n === 1 ? singular : plural3}`;
 }
 function clip(text6, max) {
   if (max < 1) return "";
@@ -9976,11 +9976,11 @@ function noticeMd(data) {
 }
 
 // packages/report/src/tables.ts
-function htmlTable(caption, columns8, rows7, options = {}) {
-  const head = columns8.map((c) => `<th scope="col"${c.align === "right" ? ' class="number"' : ""}>${escapeHtml(c.label)}</th>`).join("");
-  const body = rows7.map((row2) => {
+function htmlTable(caption, columns10, rows9, options = {}) {
+  const head = columns10.map((c) => `<th scope="col"${c.align === "right" ? ' class="number"' : ""}>${escapeHtml(c.label)}</th>`).join("");
+  const body = rows9.map((row2) => {
     const cells = row2.map((cell, i) => {
-      const number6 = columns8[i]?.align === "right" ? ' class="number"' : "";
+      const number6 = columns10[i]?.align === "right" ? ' class="number"' : "";
       return i === 0 && options.rowHeaders === true ? `<th scope="row">${cell}</th>` : `<td${number6}>${cell}</td>`;
     });
     return `<tr>${cells.join("")}</tr>`;
@@ -9993,10 +9993,10 @@ ${body}
 </tbody>
 </table>`;
 }
-function mdTable(columns8, rows7) {
-  const head = `| ${columns8.map((c) => escapeMd(c.label)).join(" | ")} |`;
-  const rule = `| ${columns8.map((c) => c.align === "right" ? "---:" : "---").join(" | ")} |`;
-  const body = rows7.map((row2) => `| ${row2.map((cell) => escapeMd(cell)).join(" | ")} |`);
+function mdTable(columns10, rows9) {
+  const head = `| ${columns10.map((c) => escapeMd(c.label)).join(" | ")} |`;
+  const rule = `| ${columns10.map((c) => c.align === "right" ? "---:" : "---").join(" | ")} |`;
+  const body = rows9.map((row2) => `| ${row2.map((cell) => escapeMd(cell)).join(" | ")} |`);
   return [head, rule, ...body].join("\n");
 }
 
@@ -10037,21 +10037,21 @@ function rankedTableHtml(data) {
     const side = column.guideline?.direction === "below" ? "below" : "above";
     return `${shown2} <span class="marker ${side}" title="${side} guideline">${MARK[side]}<span class="visually-hidden"> ${side} guideline</span></span>`;
   };
-  const columns8 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
-  const rows7 = data.rows.map((row2, i) => [...rankCell(data, i), ...data.columns.map((c) => cell(c, row2[c.key] ?? null))]);
-  const table = htmlTable(data.caption, columns8, rows7, { rowHeaders: data.numbered === false, className: "ranked" });
-  const notes3 = [legend(data), omitted(data)].flatMap((n) => n === void 0 ? [] : [`<p class="legend">${inlineHtml(n)}</p>`]);
-  return [table, ...notes3].join("\n");
+  const columns10 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
+  const rows9 = data.rows.map((row2, i) => [...rankCell(data, i), ...data.columns.map((c) => cell(c, row2[c.key] ?? null))]);
+  const table = htmlTable(data.caption, columns10, rows9, { rowHeaders: data.numbered === false, className: "ranked" });
+  const notes4 = [legend(data), omitted(data)].flatMap((n) => n === void 0 ? [] : [`<p class="legend">${inlineHtml(n)}</p>`]);
+  return [table, ...notes4].join("\n");
 }
 function rankedTableMd(data) {
   const empty2 = rankedTableEmpty(data);
   if (empty2 !== void 0) return noticeMd({ level: "notice", text: empty2 });
-  const columns8 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
-  const rows7 = data.rows.map((row2, i) => [...rankCell(data, i), ...data.columns.map((c) => `${text(row2[c.key] ?? null)}${marked(c, row2[c.key] ?? null) ? ` ${MARK[c.guideline?.direction === "below" ? "below" : "above"]}` : ""}`)]);
+  const columns10 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
+  const rows9 = data.rows.map((row2, i) => [...rankCell(data, i), ...data.columns.map((c) => `${text(row2[c.key] ?? null)}${marked(c, row2[c.key] ?? null) ? ` ${MARK[c.guideline?.direction === "below" ? "below" : "above"]}` : ""}`)]);
   return [
     `**${escapeMd(data.caption)}**`,
     "",
-    mdTable(columns8, rows7),
+    mdTable(columns10, rows9),
     ...[legend(data), omitted(data)].flatMap((n) => n === void 0 ? [] : ["", `_${escapeMd(n)}_`])
   ].join("\n");
 }
@@ -10076,8 +10076,8 @@ var DEFAULT_MAX_POINTS = 40;
 var MIN_POINTS = 3;
 function stabilityChartEmpty(data) {
   if (data.points.length >= MIN_POINTS) return void 0;
-  const noun = data.noun ?? "packages";
-  return data.emptyText ?? `${data.title}: ${formatNumber(data.points.length)} of ${formatNumber(data.total)} ${noun} have both instability and abstractness; a chart needs at least ${MIN_POINTS}.`;
+  const noun2 = data.noun ?? "packages";
+  return data.emptyText ?? `${data.title}: ${formatNumber(data.points.length)} of ${formatNumber(data.total)} ${noun2} have both instability and abstractness; a chart needs at least ${MIN_POINTS}.`;
 }
 function positionOf(point, zoneDistance) {
   const sum = point.instability + point.abstractness;
@@ -10124,7 +10124,7 @@ function positionCounts(data) {
   return counts;
 }
 function notes2(data) {
-  const noun = data.noun ?? "packages";
+  const noun2 = data.noun ?? "packages";
   const left = data.total - shown(data).length;
   const unplotted = data.total - data.points.length;
   const cut = data.points.length - shown(data).length;
@@ -10133,8 +10133,8 @@ function notes2(data) {
   const counts = positionCounts(data);
   return [
     `The dashed diagonal is the main sequence, where A + I = 1. A zone starts ${formatNumber(data.zoneDistance)} from it${data.zoneSource === void 0 ? "" : ` (${data.zoneSource})`}: the zone of pain is concrete and stable (A + I at most ${formatNumber(1 - data.zoneDistance)}) and the zone of uselessness is abstract and unstable (A + I at least ${formatNumber(1 + data.zoneDistance)}). Square points are inside a zone, round points are not, and the table gives each position in words. A guideline orders and labels results; it decides nothing.`,
-    `Of the ${formatNumber(data.points.length)} measured ${noun}, ${formatNumber(counts["zone of pain"])} are in the zone of pain, ${formatNumber(counts["zone of uselessness"])} in the zone of uselessness and ${formatNumber(counts["outside the zones"])} outside the zones.`,
-    `The table lists ${formatNumber(shown(data).length)} of ${formatNumber(data.total)} ${noun}, furthest from the main sequence first; ${formatNumber(left)} not listed${left > 0 ? `: ${[why, drawn].filter((s) => s !== "").join("; ")}` : ""}.`
+    `Of the ${formatNumber(data.points.length)} measured ${noun2}, ${formatNumber(counts["zone of pain"])} are in the zone of pain, ${formatNumber(counts["zone of uselessness"])} in the zone of uselessness and ${formatNumber(counts["outside the zones"])} outside the zones.`,
+    `The table lists ${formatNumber(shown(data).length)} of ${formatNumber(data.total)} ${noun2}, furthest from the main sequence first; ${formatNumber(left)} not listed${left > 0 ? `: ${[why, drawn].filter((s) => s !== "").join("; ")}` : ""}.`
   ];
 }
 function stabilityChartHtml(data) {
@@ -10402,7 +10402,7 @@ function treemapHtml(data) {
     })
   ].join("\n");
   const left = omissions(prepared);
-  const notes3 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in ${bandCountText(prepared.bands)}, and each tile prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.</p>
+  const notes4 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in ${bandCountText(prepared.bands)}, and each tile prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.</p>
 ${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>
 `}`;
   return figureHtml({
@@ -10413,7 +10413,7 @@ ${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</
     height: HEIGHT2,
     drawing,
     table: htmlTable(`${data.title}: the items drawn, largest first`, columns2(data), rows2(prepared).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
-    notes: notes3
+    notes: notes4
   });
 }
 function treemapMd(data) {
@@ -10471,7 +10471,7 @@ function categoryTreemapHtml(data) {
   const per = drawnPerCategory(prepared);
   const legend2 = data.categories.map((c) => `<li><strong>${escapeHtml(c.mark)}</strong> ${escapeHtml(c.label)}: ${count2(per.get(c.id) ?? 0, "tile")}</li>`).join("\n");
   const left = omissions2(prepared);
-  const notes3 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Each tile prints its name and the mark of its ${escapeHtml(data.categoryLabel.toLowerCase())}; hatched tiles have none. The marks are:</p>
+  const notes4 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Each tile prints its name and the mark of its ${escapeHtml(data.categoryLabel.toLowerCase())}; hatched tiles have none. The marks are:</p>
 <ul class="legend">
 ${legend2}
 </ul>
@@ -10485,7 +10485,7 @@ ${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</
     height: HEIGHT3,
     drawing,
     table: htmlTable(`${data.title}: the items drawn, largest first`, columns3(data), rows3(prepared).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
-    notes: notes3
+    notes: notes4
   });
 }
 function categoryTreemapMd(data) {
@@ -10529,11 +10529,74 @@ function factsMd(data) {
   return [`**${escapeMd(data.caption)}**`, "", mdTable(columns4, data.facts.map((f) => [f.label, f.value]))].join("\n");
 }
 
+// packages/report/src/components/function-bars.ts
+var WIDTH4 = 760;
+var HEADER2 = 22;
+var ROW = 26;
+var LABEL = 250;
+var BAR_MAX = 260;
+var REVISIONS_X = 660;
+var FIXES_X = 740;
+var LABEL_CHARS = 36;
+var shorten = (text6) => text6.length <= LABEL_CHARS ? text6 : `…${text6.slice(text6.length - LABEL_CHARS + 1)}`;
+var figure = (value) => value === null ? "none" : formatNumber(value);
+var position = (bar, guideline) => bar.value > guideline ? "above guideline" : bar.value === guideline ? "at guideline" : "below guideline";
+var columns5 = (data) => [
+  { label: "Function" },
+  { label: data.unit, align: "right" },
+  { label: "Guideline", align: "right" },
+  { label: "Position" },
+  { label: "Revisions", align: "right" },
+  { label: "Fixes", align: "right" }
+];
+var rows4 = (data) => data.bars.map((b) => [b.label, formatNumber(b.value), formatNumber(data.guideline), position(b, data.guideline), figure(b.revisions), figure(b.fixes)]);
+var omittedText = (data) => data.omitted === void 0 || data.omitted.count === 0 ? void 0 : `The chart omits ${count2(data.omitted.count, "function")}: ${data.omitted.reason}.`;
+function functionBarsHtml(data) {
+  const greatest = Math.max(1, data.guideline, ...data.bars.map((b) => b.value));
+  const scale = BAR_MAX / greatest;
+  const marker = LABEL + data.guideline * scale;
+  const header2 = `<g class="column-heads"><text x="${LABEL - 6}" y="14" text-anchor="end">Function</text><text x="${LABEL}" y="14">${escapeHtml(data.unit)}</text><text x="${REVISIONS_X}" y="14" text-anchor="end">Revisions</text><text x="${FIXES_X}" y="14" text-anchor="end">Fixes</text></g>`;
+  const drawing = [
+    header2,
+    ...data.bars.map((b, i) => {
+      const y2 = HEADER2 + i * ROW;
+      const width = b.value * scale;
+      const above = b.value > data.guideline;
+      return `<g class="bar ${above ? "above" : "within"}"><text x="${LABEL - 6}" y="${y2 + 17}" text-anchor="end">${escapeHtml(shorten(b.label))}<title>${escapeHtml(b.label)}</title></text><rect x="${LABEL}" y="${y2 + 4}" width="${width.toFixed(1)}" height="${ROW - 8}"/><line x1="${marker.toFixed(1)}" x2="${marker.toFixed(1)}" y1="${y2 + 1}" y2="${y2 + ROW - 1}"/><text x="${(LABEL + Math.max(width, data.guideline * scale) + 8).toFixed(1)}" y="${y2 + 17}">${above ? "▲ " : ""}${formatNumber(b.value)}</text><text x="${REVISIONS_X}" y="${y2 + 17}" text-anchor="end">${figure(b.revisions)}</text><text x="${FIXES_X}" y="${y2 + 17}" text-anchor="end">${figure(b.fixes)}</text></g>`;
+    })
+  ].join("\n");
+  const omitted2 = omittedText(data);
+  const notes4 = [
+    `The vertical line marks the guideline of ${formatNumber(data.guideline)} and ▲ marks a function above it. A guideline orders and labels results; it decides nothing.${data.source === void 0 ? "" : ` ${escapeHtml(data.source)}`}`,
+    ...omitted2 === void 0 ? [] : [escapeHtml(omitted2)]
+  ];
+  return figureHtml({
+    kind: "function-bars",
+    title: data.title,
+    description: `${count2(data.bars.length, "function")} by ${data.unit}, each with its revisions and fixes in the history window. A bar longer than the guideline marker is above guideline, shown with a triangle and the words in the table.`,
+    width: WIDTH4,
+    height: HEADER2 + Math.max(1, data.bars.length) * ROW,
+    drawing,
+    table: htmlTable(`${data.title}: ${data.unit}, revisions and fixes`, columns5(data), rows4(data).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    notes: notes4.map((line) => `<p class="legend">${line}</p>
+`).join("")
+  });
+}
+function functionBarsMd(data) {
+  const omitted2 = omittedText(data);
+  return [
+    `**${escapeMd(data.title)}** (${escapeMd(data.unit)} against a guideline of ${formatNumber(data.guideline)}, with revisions and fixes${data.source === void 0 ? "" : `. ${escapeMd(data.source)}`})`,
+    "",
+    mdTable(columns5(data), rows4(data)),
+    ...omitted2 === void 0 ? [] : ["", escapeMd(omitted2)]
+  ].join("\n");
+}
+
 // packages/report/src/components/guideline-bar.ts
-var WIDTH4 = 720;
-var ROW = 28;
-var LABEL = 200;
-var BAR_MAX = 360;
+var WIDTH5 = 720;
+var ROW2 = 28;
+var LABEL2 = 200;
+var BAR_MAX2 = 360;
 function positionOf2(bar) {
   return bar.value > bar.guideline ? "above guideline" : bar.value === bar.guideline ? "at guideline" : "below guideline";
 }
@@ -10544,68 +10607,68 @@ var ratioText = (bar) => {
   const ratio = ratioOf2(bar);
   return ratio === null ? "none" : `${Number(ratio.toPrecision(2))}x`;
 };
-var columns5 = (data) => [{ label: "Item" }, { label: data.unit, align: "right" }, { label: "Guideline", align: "right" }, { label: "Ratio", align: "right" }, { label: "Position" }];
-var rows4 = (data) => data.bars.map((b) => [b.label, formatNumber(b.value), formatNumber(b.guideline), ratioText(b), positionOf2(b)]);
+var columns6 = (data) => [{ label: "Item" }, { label: data.unit, align: "right" }, { label: "Guideline", align: "right" }, { label: "Ratio", align: "right" }, { label: "Position" }];
+var rows5 = (data) => data.bars.map((b) => [b.label, formatNumber(b.value), formatNumber(b.guideline), ratioText(b), positionOf2(b)]);
 function guidelineBarsHtml(data) {
   const greatest = Math.max(1, ...data.bars.flatMap((b) => [b.value, b.guideline]));
-  const scale = BAR_MAX / greatest;
+  const scale = BAR_MAX2 / greatest;
   const drawing = data.bars.map((b, i) => {
-    const y2 = i * ROW;
+    const y2 = i * ROW2;
     const width = b.value * scale;
-    const marker = LABEL + b.guideline * scale;
+    const marker = LABEL2 + b.guideline * scale;
     const above = b.value > b.guideline;
-    return `<g class="bar ${above ? "above" : "within"}"><text x="${LABEL - 6}" y="${y2 + 18}" text-anchor="end">${escapeHtml(b.label)}</text><rect x="${LABEL}" y="${y2 + 5}" width="${width.toFixed(1)}" height="${ROW - 10}"/><line x1="${marker.toFixed(1)}" x2="${marker.toFixed(1)}" y1="${y2 + 2}" y2="${y2 + ROW - 2}"/><text x="${(LABEL + Math.max(width, b.guideline * scale) + 8).toFixed(1)}" y="${y2 + 18}">${above ? "▲ " : ""}${formatNumber(b.value)} (guideline ${formatNumber(b.guideline)})</text></g>`;
+    return `<g class="bar ${above ? "above" : "within"}"><text x="${LABEL2 - 6}" y="${y2 + 18}" text-anchor="end">${escapeHtml(b.label)}</text><rect x="${LABEL2}" y="${y2 + 5}" width="${width.toFixed(1)}" height="${ROW2 - 10}"/><line x1="${marker.toFixed(1)}" x2="${marker.toFixed(1)}" y1="${y2 + 2}" y2="${y2 + ROW2 - 2}"/><text x="${(LABEL2 + Math.max(width, b.guideline * scale) + 8).toFixed(1)}" y="${y2 + 18}">${above ? "▲ " : ""}${formatNumber(b.value)} (guideline ${formatNumber(b.guideline)})</text></g>`;
   }).join("\n");
   return figureHtml({
     kind: "guideline-bars",
     title: data.title,
     description: `${data.bars.length} values of ${data.unit}, each against its guideline. A bar longer than its marker is above guideline, shown with a triangle and the words in the table.`,
-    width: WIDTH4,
-    height: Math.max(ROW, data.bars.length * ROW),
+    width: WIDTH5,
+    height: Math.max(ROW2, data.bars.length * ROW2),
     drawing,
-    table: htmlTable(`${data.title}: each value against its guideline`, columns5(data), rows4(data).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    table: htmlTable(`${data.title}: each value against its guideline`, columns6(data), rows5(data).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
     notes: `<p class="legend">The vertical line marks the guideline and ▲ marks a value above it. A guideline orders and labels results; it decides nothing.${data.source === void 0 ? "" : ` ${escapeHtml(data.source)}`}</p>
 `
   });
 }
 function guidelineBarsMd(data) {
-  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, each against its guideline${data.source === void 0 ? "" : `. ${escapeMd(data.source)}`})`, "", mdTable(columns5(data), rows4(data))].join("\n");
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, each against its guideline${data.source === void 0 ? "" : `. ${escapeMd(data.source)}`})`, "", mdTable(columns6(data), rows5(data))].join("\n");
 }
 
 // packages/report/src/components/histogram.ts
-var WIDTH5 = 640;
-var ROW2 = 22;
-var LABEL2 = 150;
-var BAR_MAX2 = 400;
-var columns6 = (data) => [{ label: "Bin" }, { label: `Count (${data.unit})`, align: "right" }, { label: "Share", align: "right" }];
+var WIDTH6 = 640;
+var ROW3 = 22;
+var LABEL3 = 150;
+var BAR_MAX3 = 400;
+var columns7 = (data) => [{ label: "Bin" }, { label: `Count (${data.unit})`, align: "right" }, { label: "Share", align: "right" }];
 function shares(data) {
   const total = data.bins.reduce((sum, bin) => sum + bin.count, 0);
   return data.bins.map((bin) => total === 0 ? "0%" : `${formatNumber(bin.count / total * 100)}%`);
 }
-var rows5 = (data) => {
+var rows6 = (data) => {
   const share3 = shares(data);
   return data.bins.map((bin, i) => [bin.label, formatNumber(bin.count), share3[i]]);
 };
 function histogramHtml(data) {
   const greatest = Math.max(1, ...data.bins.map((bin) => bin.count));
   const drawing = data.bins.map((bin, i) => {
-    const y2 = i * ROW2;
-    const width = bin.count / greatest * BAR_MAX2;
-    return `<g class="bin"><text x="${LABEL2 - 6}" y="${y2 + 15}" text-anchor="end">${escapeHtml(bin.label)}</text><rect x="${LABEL2}" y="${y2 + 3}" width="${width.toFixed(1)}" height="${ROW2 - 6}"/><text x="${(LABEL2 + width + 6).toFixed(1)}" y="${y2 + 15}">${formatNumber(bin.count)}</text></g>`;
+    const y2 = i * ROW3;
+    const width = bin.count / greatest * BAR_MAX3;
+    return `<g class="bin"><text x="${LABEL3 - 6}" y="${y2 + 15}" text-anchor="end">${escapeHtml(bin.label)}</text><rect x="${LABEL3}" y="${y2 + 3}" width="${width.toFixed(1)}" height="${ROW3 - 6}"/><text x="${(LABEL3 + width + 6).toFixed(1)}" y="${y2 + 15}">${formatNumber(bin.count)}</text></g>`;
   }).join("\n");
   const total = data.bins.reduce((sum, bin) => sum + bin.count, 0);
   return figureHtml({
     kind: "histogram",
     title: data.title,
     description: `${formatNumber(total)} ${data.unit} in ${data.bins.length} bins. Each bar prints its count; the table below lists the same counts.`,
-    width: WIDTH5,
-    height: Math.max(ROW2, data.bins.length * ROW2),
+    width: WIDTH6,
+    height: Math.max(ROW3, data.bins.length * ROW3),
     drawing,
-    table: htmlTable(`${data.title}: ${data.unit} per bin`, columns6(data), rows5(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
+    table: htmlTable(`${data.title}: ${data.unit} per bin`, columns7(data), rows6(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
   });
 }
 function histogramMd(data) {
-  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)} per bin)`, "", mdTable(columns6(data), rows5(data))].join("\n");
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)} per bin)`, "", mdTable(columns7(data), rows6(data))].join("\n");
 }
 
 // packages/report/src/components/judgement.ts
@@ -10662,44 +10725,101 @@ function judgedLineMd(slot, entry) {
 
 // packages/report/src/components/matrix.ts
 var CELL_W = 64;
+var SPARSE_CELL_W = 44;
 var CELL_H = 26;
 var ROW_LABEL = 180;
 var COLUMN_LABEL = 90;
 var display = (value) => value === null ? "none" : formatNumber(value);
+var markOf = (data, i, j) => {
+  const name18 = data.cellMarks?.[i]?.[j] ?? null;
+  return name18 === null ? void 0 : data.marks?.[name18];
+};
+function cellText(data, i, j) {
+  const value = data.cells[i]?.[j] ?? null;
+  const mark = markOf(data, i, j);
+  if (mark === void 0) return display(value);
+  return value === null ? mark.symbol : `${formatNumber(value)} ${mark.symbol}`;
+}
+var isSquare = (data) => data.rows.length === data.columns.length && data.rows.every((r, i) => r === data.columns[i]);
+var usableGroups = (data) => isSquare(data) ? (data.groups ?? []).filter((g) => g.start >= 0 && g.end >= g.start && g.end < data.rows.length) : [];
+function markLegend(data) {
+  if (data.marks === void 0 || data.cellMarks === void 0) return void 0;
+  const counts = /* @__PURE__ */ new Map();
+  for (const row2 of data.cellMarks) for (const name18 of row2) if (name18 !== null && data.marks[name18] !== void 0) counts.set(name18, (counts.get(name18) ?? 0) + 1);
+  const parts2 = Object.entries(data.marks).filter(([name18]) => counts.has(name18)).map(([name18, mark]) => `${mark.symbol} is ${mark.text} (${count2(counts.get(name18), "cell")})`);
+  return parts2.length === 0 ? void 0 : `${parts2.join("; ")}.`;
+}
+function groupLegend(groups) {
+  if (groups.length === 0) return void 0;
+  return `Boxes along the diagonal mark ${count2(groups.length, "group")}: ${groups.map((g) => `${g.label} (${count2(g.end - g.start + 1, "row")})`).join(", ")}.`;
+}
 function matrixHtml(data) {
   const present = data.cells.flat().flatMap((v) => v === null ? [] : [v]);
   const bands = makeBands(present, data.breaks);
+  const groups = usableGroups(data);
+  const cellW = data.sparse ? SPARSE_CELL_W : CELL_W;
   const labels = [
-    ...data.columns.map((c, j) => `<text x="${ROW_LABEL + j * CELL_W + CELL_W / 2}" y="${COLUMN_LABEL - 6}" transform="rotate(-35 ${ROW_LABEL + j * CELL_W + CELL_W / 2} ${COLUMN_LABEL - 6})">${escapeHtml(c)}</text>`),
+    ...data.columns.map((c, j) => `<text x="${ROW_LABEL + j * cellW + cellW / 2}" y="${COLUMN_LABEL - 6}" transform="rotate(-35 ${ROW_LABEL + j * cellW + cellW / 2} ${COLUMN_LABEL - 6})">${escapeHtml(c)}</text>`),
     ...data.rows.map((r, i) => `<text x="${ROW_LABEL - 6}" y="${COLUMN_LABEL + i * CELL_H + 17}" text-anchor="end">${escapeHtml(r)}</text>`)
   ];
   const cells = data.rows.flatMap(
     (_, i) => data.columns.map((_2, j) => {
       const value = data.cells[i]?.[j] ?? null;
-      const x2 = ROW_LABEL + j * CELL_W;
+      const name18 = data.cellMarks?.[i]?.[j] ?? null;
+      const markClass = name18 !== null && data.marks?.[name18] !== void 0 ? ` mark-${name18}` : "";
+      const x2 = ROW_LABEL + j * cellW;
       const y2 = COLUMN_LABEL + i * CELL_H;
-      return `<g class="cell band-${value === null ? "none" : bands.of(value)}"><rect x="${x2}" y="${y2}" width="${CELL_W - 2}" height="${CELL_H - 2}"/><text x="${x2 + CELL_W / 2 - 1}" y="${y2 + 16}" text-anchor="middle">${display(value)}</text></g>`;
+      return `<g class="cell band-${value === null ? "none" : bands.of(value)}${markClass}"><rect x="${x2}" y="${y2}" width="${cellW - 2}" height="${CELL_H - 2}"/><text x="${x2 + cellW / 2 - 1}" y="${y2 + 16}" text-anchor="middle">${data.sparse && value === null && markOf(data, i, j) === void 0 ? "" : escapeHtml(cellText(data, i, j))}</text></g>`;
     })
   );
+  const boxes = groups.map((g) => {
+    const x2 = ROW_LABEL + g.start * cellW - 1;
+    const y2 = COLUMN_LABEL + g.start * CELL_H - 1;
+    const span = g.end - g.start + 1;
+    return `<g class="group"><rect x="${x2}" y="${y2}" width="${span * cellW}" height="${span * CELL_H}"><title>${escapeHtml(g.label)}</title></rect></g>`;
+  });
+  const notes4 = [
+    `Colour is ${data.valueLabel} in ${bandCountText(bands)}, and each cell prints its value: ${bandLegend(bands)}. Hatched cells have no value.`,
+    markLegend(data),
+    groupLegend(groups),
+    data.orderText
+  ].filter((line) => line !== void 0);
+  const description = [
+    `A grid of ${data.rows.length} rows by ${data.columns.length} columns holding ${data.valueLabel}.`,
+    groups.length > 0 ? `${count2(groups.length, "box", "boxes")} along the diagonal mark groups of rows.` : void 0,
+    "Each cell prints its value; the table below lists the same values."
+  ].filter((line) => line !== void 0).join(" ");
+  const groupOf = (i) => groups.find((g) => i >= g.start && i <= g.end)?.label;
+  const rowLabel = (r, i) => {
+    const group = groupOf(i);
+    return group === void 0 ? r : `${r} (${group})`;
+  };
   return figureHtml({
     kind: "matrix",
     title: data.title,
-    description: `A grid of ${data.rows.length} rows by ${data.columns.length} columns holding ${data.valueLabel}. Each cell prints its value; the table below lists the same values.`,
-    width: ROW_LABEL + data.columns.length * CELL_W + 40,
+    description,
+    width: ROW_LABEL + data.columns.length * cellW + (data.sparse ? 100 : 40),
     height: COLUMN_LABEL + data.rows.length * CELL_H + 4,
-    drawing: [...labels, ...cells].join("\n"),
-    table: htmlTable(`${data.title}: ${data.valueLabel}`, [{ label: "" }, ...data.columns.map((c) => ({ label: c, align: "right" }))], data.rows.map((r, i) => [escapeHtml(r), ...data.columns.map((_, j) => escapeHtml(display(data.cells[i]?.[j] ?? null)))]), { rowHeaders: true }),
-    notes: `<p class="legend">Colour is ${escapeHtml(data.valueLabel)} in ${bandCountText(bands)}, and each cell prints its value: ${escapeHtml(bandLegend(bands))}. Hatched cells have no value.</p>
+    drawing: [...labels, ...cells, ...boxes].join("\n"),
+    table: htmlTable(`${data.title}: ${data.valueLabel}`, [{ label: "" }, ...data.columns.map((c) => ({ label: c, align: "right" }))], data.rows.map((r, i) => [escapeHtml(rowLabel(r, i)), ...data.columns.map((_, j) => escapeHtml(cellText(data, i, j)))]), { rowHeaders: true }),
+    notes: `<p class="legend">${notes4.map(escapeHtml).join(" ")}</p>
 `
   });
 }
 function matrixMd(data) {
   const present = data.cells.flat().flatMap((v) => v === null ? [] : [v]);
   const bands = makeBands(present, data.breaks);
+  const groups = usableGroups(data);
+  const groupOf = (i) => groups.find((g) => i >= g.start && i <= g.end)?.label;
+  const extra = [markLegend(data), groupLegend(groups), data.orderText].filter((line) => line !== void 0);
   return [
     `**${escapeMd(data.title)}** (${escapeMd(data.valueLabel)}; ${bandLegend(bands)})`,
     "",
-    mdTable([{ label: "" }, ...data.columns.map((c) => ({ label: c, align: "right" }))], data.rows.map((r, i) => [r, ...data.columns.map((_, j) => display(data.cells[i]?.[j] ?? null))]))
+    mdTable([{ label: "" }, ...data.columns.map((c) => ({ label: c, align: "right" }))], data.rows.map((r, i) => {
+      const group = groupOf(i);
+      return [group === void 0 ? r : `${r} (${group})`, ...data.columns.map((_, j) => cellText(data, i, j))];
+    })),
+    ...extra.length === 0 ? [] : ["", escapeMd(extra.join(" "))]
   ].join("\n");
 }
 
@@ -10707,20 +10827,182 @@ function matrixMd(data) {
 var paragraphHtml = (data) => `<p>${inlineHtml(data.text)}</p>`;
 var paragraphMd = (data) => escapeMd(data.text);
 
+// packages/report/src/components/scatter.ts
+var DEFAULT_MAX_LABELS = 12;
+var WIDTH7 = 680;
+var HEIGHT4 = 440;
+var LEFT2 = 64;
+var RIGHT = 20;
+var TOP2 = 12;
+var BOTTOM = 56;
+var PLOT_W = WIDTH7 - LEFT2 - RIGHT;
+var PLOT_H = HEIGHT4 - TOP2 - BOTTOM;
+var CHAR_W = 5.9;
+var LABEL_H = 11;
+var MAX_NAME = 30;
+var DEFAULT_NAMES = { upperRight: "upper right", upperLeft: "upper left", lowerRight: "lower right", lowerLeft: "lower left" };
+var names = (data) => ({ ...DEFAULT_NAMES, ...data.quadrantNames });
+var noun = (data) => data.noun ?? "points";
+var hasQuadrants = (data) => data.xGuideline !== void 0 && data.yGuideline !== void 0;
+function quadrantOf(data, point) {
+  const right = point.x >= data.xGuideline.value;
+  const upper = point.y >= data.yGuideline.value;
+  return upper ? right ? "upperRight" : "upperLeft" : right ? "lowerRight" : "lowerLeft";
+}
+function quadrantCounts(data) {
+  const counts = { upperRight: 0, upperLeft: 0, lowerRight: 0, lowerLeft: 0 };
+  if (!hasQuadrants(data)) return counts;
+  for (const point of data.points) counts[quadrantOf(data, point)]++;
+  return counts;
+}
+var labelled = (data) => data.points.filter((p) => p.highlight === true).slice(0, data.maxLabels ?? DEFAULT_MAX_LABELS);
+var highlighted = (data) => data.points.filter((p) => p.highlight === true).length;
+function niceMax(value) {
+  const power = 10 ** Math.floor(Math.log10(Math.max(value, 1)));
+  const step = [1, 2, 2.5, 5, 10].find((s) => s * power >= value) ?? 10;
+  return step * power;
+}
+function axisOf(values, log, guideline) {
+  const greatest = Math.max(1, ...values, guideline ?? 0);
+  if (log) {
+    const top3 = Math.max(1, Math.ceil(Math.log10(greatest)));
+    const ticks = Array.from({ length: top3 + 1 }, (_, i) => 10 ** i);
+    return { log, ticks, at: (v) => Math.log10(Math.max(v, 1)) / top3 };
+  }
+  const max = niceMax(greatest);
+  return { log, ticks: [0, 1, 2, 3, 4].map((i) => max * i / 4), at: (v) => Math.max(0, v) / max };
+}
+var overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+function placeLabels(items) {
+  const taken = items.map((i) => ({ x: i.cx - 5, y: i.cy - 5, w: 10, h: 10 }));
+  const inside2 = (b) => b.x >= LEFT2 && b.x + b.w <= WIDTH7 - RIGHT + 4 && b.y >= TOP2 && b.y + b.h <= TOP2 + PLOT_H;
+  return items.map((item) => {
+    for (const [text6, byNumber] of [[item.name, false], [item.number, true]]) {
+      const w = text6.length * CHAR_W;
+      const candidates = [
+        { box: { x: item.cx + 7, y: item.cy - LABEL_H - 1, w, h: LABEL_H }, x: item.cx + 7, y: item.cy - 4, anchor: "start" },
+        { box: { x: item.cx + 7, y: item.cy + 1, w, h: LABEL_H }, x: item.cx + 7, y: item.cy + 10, anchor: "start" },
+        { box: { x: item.cx - 7 - w, y: item.cy - LABEL_H - 1, w, h: LABEL_H }, x: item.cx - 7, y: item.cy - 4, anchor: "end" },
+        { box: { x: item.cx - 7 - w, y: item.cy + 1, w, h: LABEL_H }, x: item.cx - 7, y: item.cy + 10, anchor: "end" },
+        { box: { x: item.cx - w / 2, y: item.cy - 8 - LABEL_H, w, h: LABEL_H }, x: item.cx - w / 2, y: item.cy - 9, anchor: "start" },
+        { box: { x: item.cx - w / 2, y: item.cy + 8, w, h: LABEL_H }, x: item.cx - w / 2, y: item.cy + 17, anchor: "start" }
+      ];
+      const fit = candidates.find((c) => inside2(c.box) && !taken.some((t) => overlaps(c.box, t)));
+      if (fit !== void 0) {
+        taken.push(fit.box);
+        return { text: text6, x: fit.x, y: fit.y, anchor: fit.anchor, byNumber };
+      }
+    }
+    return null;
+  });
+}
+var tickText = (v) => formatNumber(Math.round(v * 100) / 100);
+function notes3(data) {
+  const n = noun(data);
+  const out = [];
+  const scales = [data.xLog === true ? `${data.xLabel} (horizontal)` : null, data.yLog === true ? `${data.yLabel} (vertical)` : null].filter((s) => s !== null);
+  if (scales.length > 0) out.push(`Log scale on ${scales.join(" and ")}: each tick is ten times the one before, because the values have a long tail.`);
+  const below = data.points.filter((p) => data.xLog === true && p.x < 1 || data.yLog === true && p.y < 1).length;
+  if (below > 0) out.push(`${formatNumber(below)} ${n} have a value below 1 on a log axis and are drawn on the axis minimum, 1.`);
+  const lines2 = [data.xGuideline === void 0 ? null : `vertical dashed line at ${formatNumber(data.xGuideline.value)}: ${data.xGuideline.name}`, data.yGuideline === void 0 ? null : `horizontal dashed line at ${formatNumber(data.yGuideline.value)}: ${data.yGuideline.name}`].filter((s) => s !== null);
+  if (lines2.length > 0) out.push(`Guidelines: ${lines2.join("; ")}. A guideline orders and labels results; it decides nothing.`);
+  if (hasQuadrants(data)) out.push(quadrantLine(data));
+  const total = highlighted(data);
+  const listed = labelled(data).length;
+  if (total > 0) out.push(`Squares are highlighted ${n}. The table lists ${formatNumber(listed)} of ${formatNumber(total)} highlighted ${n}, in the order given, and the drawing names them; ${formatNumber(total - listed)} are not listed and are drawn as squares without a name.`);
+  return out;
+}
+function quadrantLine(data) {
+  const q = quadrantCounts(data);
+  const nm = names(data);
+  return `Of ${formatNumber(data.points.length)} ${noun(data)}: ${["upperRight", "upperLeft", "lowerRight", "lowerLeft"].map((k) => `${formatNumber(q[k])} ${nm[k]}`).join(", ")}.`;
+}
+var columns8 = (data) => [
+  { label: "#", align: "right" },
+  { label: "Point" },
+  { label: data.xLabel, align: "right" },
+  { label: data.yLabel, align: "right" },
+  ...hasQuadrants(data) ? [{ label: "Quadrant" }] : []
+];
+function rows7(data) {
+  const nm = names(data);
+  return labelled(data).map((p, i) => [String(i + 1), p.label, formatNumber(p.x), formatNumber(p.y), ...hasQuadrants(data) ? [nm[quadrantOf(data, p)]] : []]);
+}
+var emptyOf = (data) => data.points.length === 0 ? data.emptyText ?? `${data.title}: no ${noun(data)} to draw.` : void 0;
+function scatterHtml(data) {
+  const empty2 = emptyOf(data);
+  if (empty2 !== void 0) return noticeHtml({ level: "notice", text: empty2 });
+  const ax = axisOf(data.points.map((p) => p.x), data.xLog === true, data.xGuideline?.value);
+  const ay = axisOf(data.points.map((p) => p.y), data.yLog === true, data.yGuideline?.value);
+  const px = (v) => LEFT2 + ax.at(v) * PLOT_W;
+  const py = (v) => TOP2 + (1 - ay.at(v)) * PLOT_H;
+  const at2 = (v) => v.toFixed(1);
+  const frame = `<rect class="frame" x="${LEFT2}" y="${TOP2}" width="${PLOT_W}" height="${PLOT_H}"/>`;
+  const ticks = [
+    ...ax.ticks.map((v) => `<text class="tick" x="${at2(px(v))}" y="${TOP2 + PLOT_H + 16}" text-anchor="middle">${tickText(v)}</text>`),
+    ...ay.ticks.map((v) => `<text class="tick" x="${LEFT2 - 8}" y="${at2(py(v) + 4)}" text-anchor="end">${tickText(v)}</text>`)
+  ];
+  const axisNames = [
+    `<text class="axis" x="${at2(LEFT2 + PLOT_W / 2)}" y="${HEIGHT4 - 8}" text-anchor="middle">${escapeHtml(data.xLabel)}${data.xLog === true ? " (log scale)" : ""}</text>`,
+    `<text class="axis" transform="rotate(-90 14 ${at2(TOP2 + PLOT_H / 2)})" x="14" y="${at2(TOP2 + PLOT_H / 2)}" text-anchor="middle">${escapeHtml(data.yLabel)}${data.yLog === true ? " (log scale)" : ""}</text>`
+  ];
+  const lines2 = [
+    ...data.xGuideline === void 0 ? [] : [`<g class="guideline"><line x1="${at2(px(data.xGuideline.value))}" y1="${TOP2}" x2="${at2(px(data.xGuideline.value))}" y2="${TOP2 + PLOT_H}"><title>${escapeHtml(data.xGuideline.name)}</title></line><text x="${at2(px(data.xGuideline.value) + 3)}" y="${TOP2 + PLOT_H - 4}">${formatNumber(data.xGuideline.value)}</text></g>`],
+    ...data.yGuideline === void 0 ? [] : [`<g class="guideline"><line x1="${LEFT2}" y1="${at2(py(data.yGuideline.value))}" x2="${LEFT2 + PLOT_W}" y2="${at2(py(data.yGuideline.value))}"><title>${escapeHtml(data.yGuideline.name)}</title></line><text x="${LEFT2 + PLOT_W - 3}" y="${at2(py(data.yGuideline.value) - 3)}" text-anchor="end">${formatNumber(data.yGuideline.value)}</text></g>`]
+  ];
+  const named = labelled(data);
+  const dots = data.points.filter((p) => !named.includes(p)).map((p) => p.highlight === true ? `<rect class="point highlight" x="${at2(px(p.x) - 2.5)}" y="${at2(py(p.y) - 2.5)}" width="5" height="5"/>` : `<circle class="point" cx="${at2(px(p.x))}" cy="${at2(py(p.y))}" r="2.2"/>`);
+  const placed = placeLabels(named.map((p, i) => ({ cx: px(p.x), cy: py(p.y), name: clip(p.short ?? p.label, MAX_NAME), number: String(i + 1) })));
+  const marks = named.map((p, i) => {
+    const label2 = placed[i];
+    const text6 = label2 === null || label2 === void 0 ? "" : `<text class="name" x="${at2(label2.x)}" y="${at2(label2.y)}" text-anchor="${label2.anchor}">${escapeHtml(label2.text)}</text>`;
+    return `<g class="point named"><title>${escapeHtml(`${i + 1}. ${p.label}: ${formatNumber(p.x)} ${data.xLabel}, ${formatNumber(p.y)} ${data.yLabel}`)}</title><rect x="${at2(px(p.x) - 4)}" y="${at2(py(p.y) - 4)}" width="8" height="8"/>${text6}</g>`;
+  });
+  const byNumber = placed.filter((p) => p?.byNumber === true).length;
+  const unplaced = placed.filter((p) => p === null).length;
+  const extra = [
+    ...byNumber > 0 ? [`${formatNumber(byNumber)} named ${noun(data)} have no free room for their name and print their table number instead.`] : [],
+    ...unplaced > 0 ? [`${formatNumber(unplaced)} named ${noun(data)} have no free room for a name or number; the table gives them.`] : []
+  ];
+  const description = `A scatter of ${formatNumber(data.points.length)} ${noun(data)}: ${data.xLabel} horizontal, ${data.yLabel} vertical${data.xLog === true || data.yLog === true ? ", on log scales" : ""}${hasQuadrants(data) ? `, split into four quadrants by dashed guideline lines. ${quadrantLine(data)}` : "."} The table below lists the ${formatNumber(named.length)} named points with their values.`;
+  return figureHtml({
+    kind: "scatter",
+    title: data.title,
+    description,
+    width: WIDTH7,
+    height: HEIGHT4,
+    drawing: [frame, ...lines2, ...ticks, ...axisNames, ...dots, ...marks].join("\n"),
+    table: htmlTable(`${data.title}: the named points`, columns8(data), rows7(data).map((r) => r.map(escapeHtml)), { rowHeaders: false }),
+    notes: [...notes3(data), ...extra].map((n) => `<p class="legend">${escapeHtml(n)}</p>
+`).join("")
+  });
+}
+function scatterMd(data) {
+  const empty2 = emptyOf(data);
+  if (empty2 !== void 0) return noticeMd({ level: "notice", text: empty2 });
+  const body = rows7(data);
+  return [
+    `**${escapeMd(data.title)}** (${escapeMd(data.xLabel)} against ${escapeMd(data.yLabel)})`,
+    "",
+    ...body.length === 0 ? [] : [mdTable(columns8(data), body.map((r) => r.map((cell, i) => i === 1 ? clip(cell, 80) : cell))), ""],
+    notes3(data).map((n) => `_${escapeMd(n)}_`).join("\n\n")
+  ].join("\n");
+}
+
 // packages/report/src/components/sparkline.ts
-var WIDTH6 = 240;
-var HEIGHT4 = 48;
+var WIDTH8 = 240;
+var HEIGHT5 = 48;
 var MARGIN = 6;
-var columns7 = (data) => [{ label: "Period" }, { label: data.unit, align: "right" }];
-var rows6 = (data) => data.points.map((p) => [p.label, formatNumber(p.value)]);
+var columns9 = (data) => [{ label: "Period" }, { label: data.unit, align: "right" }];
+var rows8 = (data) => data.points.map((p) => [p.label, formatNumber(p.value)]);
 function sparklineCoordinates(points) {
   const values = points.map((p) => p.value);
   const least = Math.min(...values);
   const greatest = Math.max(...values);
   const span = greatest - least;
   return points.map((p, i) => [
-    points.length === 1 ? WIDTH6 / 2 : MARGIN + i * (WIDTH6 - 2 * MARGIN) / (points.length - 1),
-    span === 0 ? HEIGHT4 / 2 : HEIGHT4 - MARGIN - (p.value - least) * (HEIGHT4 - 2 * MARGIN) / span
+    points.length === 1 ? WIDTH8 / 2 : MARGIN + i * (WIDTH8 - 2 * MARGIN) / (points.length - 1),
+    span === 0 ? HEIGHT5 / 2 : HEIGHT5 - MARGIN - (p.value - least) * (HEIGHT5 - 2 * MARGIN) / span
   ]);
 }
 function sparklineHtml(data) {
@@ -10734,14 +11016,14 @@ function sparklineHtml(data) {
     kind: "sparkline",
     title: data.title,
     description: `${data.unit} over ${data.points.length} periods, ${range2}. The table below lists every value.`,
-    width: WIDTH6,
-    height: HEIGHT4,
+    width: WIDTH8,
+    height: HEIGHT5,
     drawing: `${line}${end}`,
-    table: htmlTable(`${data.title}: ${data.unit} by period`, columns7(data), rows6(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
+    table: htmlTable(`${data.title}: ${data.unit} by period`, columns9(data), rows8(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
   });
 }
 function sparklineMd(data) {
-  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, oldest first)`, "", mdTable(columns7(data), rows6(data))].join("\n");
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, oldest first)`, "", mdTable(columns9(data), rows8(data))].join("\n");
 }
 
 // packages/report/src/components/trend-marker.ts
@@ -10813,8 +11095,12 @@ function renderBlock(block, format2, context) {
       return format2 === "html" ? histogramHtml(block) : histogramMd(block);
     case "matrix":
       return format2 === "html" ? matrixHtml(block) : matrixMd(block);
+    case "function-bars":
+      return format2 === "html" ? functionBarsHtml(block) : functionBarsMd(block);
     case "guideline-bars":
       return format2 === "html" ? guidelineBarsHtml(block) : guidelineBarsMd(block);
+    case "scatter":
+      return format2 === "html" ? scatterHtml(block) : scatterMd(block);
     case "stability-chart":
       return format2 === "html" ? stabilityChartHtml(block) : stabilityChartMd(block);
     case "trend-marker":
@@ -10902,9 +11188,16 @@ svg .band-3 rect { fill: var(--band-3); } svg .band-3 text { fill: var(--on-band
 svg .band-4 rect { fill: var(--band-4); } svg .band-4 text { fill: var(--on-band-4); }
 svg .band-5 rect { fill: var(--band-5); } svg .band-5 text { fill: var(--on-band-5); }
 svg .band-none rect { fill: var(--panel); stroke: var(--muted); stroke-dasharray: 3 2; }
+svg .group rect { fill: none; stroke: var(--marker); stroke-width: 2; }
+svg .cell[class*="mark-"] text { font-weight: 700; }
 svg .bin rect { fill: var(--bar); }
 svg .bar rect { fill: var(--bar); } svg .bar.above rect { fill: var(--bar-above); }
 svg .bar line { stroke: var(--marker); stroke-width: 2; }
+svg .frame { fill: none; stroke: var(--rule); }
+svg .guideline line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 6 4; } svg .guideline text, svg .tick { fill: var(--muted); }
+svg circle.point { fill: var(--bar); fill-opacity: .4; }
+svg rect.point, svg .point.named rect { fill: var(--bar-above); stroke: var(--bg); stroke-width: 1; }
+svg .point.named text { paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
 svg polyline { fill: none; stroke: var(--bar-above); stroke-width: 2; } svg circle { fill: var(--bar-above); }
 .notice { border-left: 4px solid var(--notice-rule); background: var(--notice-bg); padding: .5rem .75rem; margin: .75rem 0; }
 .judgement { border: 1px solid var(--rule); border-left: 4px solid var(--link); background: var(--panel); padding: .25rem 1rem .5rem; margin: 1rem 0; }
@@ -10928,7 +11221,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 function headerFacts(report) {
   const { header: header2 } = report;
   const excluded = header2.excluded.length === 0 ? "nothing" : `<ul>${header2.excluded.map((e) => `<li>${escapeHtml(e.what)}: ${formatNumber(e.count)}</li>`).join("")}</ul>`;
-  const rows7 = [
+  const rows9 = [
     ["Repository", escapeHtml(header2.repo)],
     ["Analysed commit", `<code>${escapeHtml(header2.commit)}</code>`],
     ["Date", escapeHtml(header2.date)],
@@ -10938,24 +11231,24 @@ function headerFacts(report) {
     ["Excluded", excluded]
   ];
   return `<dl class="header">
-${rows7.map(([term, value]) => `<dt>${term}</dt><dd>${value}</dd>`).join("\n")}
+${rows9.map(([term, value]) => `<dt>${term}</dt><dd>${value}</dd>`).join("\n")}
 </dl>`;
 }
-function section(s, report, notes3) {
+function section(s, report, notes4) {
   const empty2 = emptySection(s);
   if (empty2 !== void 0) return `<section id="${escapeHtml(s.id)}" aria-labelledby="${escapeHtml(s.id)}-heading">
 <p class="empty"><strong id="${escapeHtml(s.id)}-heading">${escapeHtml(s.heading)}:</strong> ${inlineHtml(empty2)}</p>
 </section>`;
-  const body = s.blocks.map((block) => renderBlock(block, "html", { slots: report.slots, notes: notes3 })).join("\n");
+  const body = s.blocks.map((block) => renderBlock(block, "html", { slots: report.slots, notes: notes4 })).join("\n");
   return `<section id="${escapeHtml(s.id)}" aria-labelledby="${escapeHtml(s.id)}-heading">
 <h2 id="${escapeHtml(s.id)}-heading">${escapeHtml(s.heading)}</h2>
 ${body}
 </section>`;
 }
-function limitsSection(report, notes3) {
+function limitsSection(report, notes4) {
   const slot = report.slots.find((s) => s.id === "limits");
   const fixed = report.limits.map((text6) => `<li>${inlineHtml(text6)}</li>`).join("\n");
-  const judged = slot === void 0 ? "" : renderBlock({ type: "judgement", slot: slot.id }, "html", { slots: report.slots, notes: notes3 });
+  const judged = slot === void 0 ? "" : renderBlock({ type: "judgement", slot: slot.id }, "html", { slots: report.slots, notes: notes4 });
   return `<section id="limits" aria-labelledby="limits-heading">
 <h2 id="limits-heading">Limits</h2>
 ${fixed === "" ? "" : `<ul>
@@ -10964,7 +11257,7 @@ ${fixed}
 `}${judged}
 </section>`;
 }
-function htmlPage(report, notes3) {
+function htmlPage(report, notes4) {
   const ids = [...report.sections.map((s) => [s.id, s.heading]), ["limits", "Limits"]];
   const nav = `<nav aria-label="Sections">
 <ul>
@@ -10989,8 +11282,8 @@ ${headerFacts(report)}
 </header>`,
     nav,
     '<main id="main">',
-    ...report.sections.map((s) => section(s, report, notes3)),
-    limitsSection(report, notes3),
+    ...report.sections.map((s) => section(s, report, notes4)),
+    limitsSection(report, notes4),
     "</main>",
     `<footer>
 <p>Report <code>${escapeHtml(report.kind)}</code> for commit <code>${escapeHtml(report.header.commit.slice(0, 12))}</code>. Every number comes from the command's data. The judgements were written by an agent from that data and checked against the report's slots.</p>
@@ -11023,8 +11316,8 @@ function header(report, compact) {
     ...h.excluded.length === 0 ? ["- Excluded: nothing"] : ["- Excluded:", ...h.excluded.map((e) => `  - ${escapeMd(e.what)}: ${formatNumber(e.count)}`)]
   ];
 }
-function markdownPage(report, notes3, options = {}) {
-  const context = { slots: report.slots, notes: notes3 };
+function markdownPage(report, notes4, options = {}) {
+  const context = { slots: report.slots, notes: notes4 };
   const limits = report.limits.map((text6) => `- ${escapeMd(text6)}`);
   const slot = report.slots.find((s) => s.id === "limits");
   const judged = slot === void 0 ? [] : [renderBlock({ type: "judgement", slot: slot.id }, "md", context)];
@@ -11040,12 +11333,12 @@ function markdownPage(report, notes3, options = {}) {
 }
 
 // packages/report/src/render.ts
-function renderReport(report, format2, notes3, options = {}) {
+function renderReport(report, format2, notes4, options = {}) {
   if (format2 === "html") {
-    if (notes3 === void 0) throw new ReportError("html needs notes: run --slots, write the notes file, then render with --notes FILE --format html");
-    return htmlPage(report, notes3);
+    if (notes4 === void 0) throw new ReportError("html needs notes: run --slots, write the notes file, then render with --notes FILE --format html");
+    return htmlPage(report, notes4);
   }
-  return markdownPage(report, notes3, options);
+  return markdownPage(report, notes4, options);
 }
 
 // packages/report/src/slots-document.ts
@@ -11202,7 +11495,7 @@ var protocolOptionHelp = {
 };
 var protocolOptionNames = Object.keys(protocolOptions);
 function reportCommand(kinds) {
-  const names = Object.keys(kinds);
+  const names2 = Object.keys(kinds);
   const kindOptions = Object.assign({}, ...Object.values(kinds).map((k) => k.options ?? {}));
   const subcommands = Object.fromEntries(
     Object.entries(kinds).map(([name18, kind]) => [name18, { summary: kind.summary, options: [.../* @__PURE__ */ new Set([...protocolOptionNames, ...Object.keys(kind.options ?? {})])] }])
@@ -11215,9 +11508,9 @@ function reportCommand(kinds) {
     subcommands,
     async run(context) {
       const [name18, ...args] = context.positionals;
-      if (name18 === void 0) throw usageError(`report needs a report name: ${names.join(", ")}`);
+      if (name18 === void 0) throw usageError(`report needs a report name: ${names2.join(", ")}`);
       const kind = kinds[name18];
-      if (kind === void 0) throw usageError(`unknown report "${name18}"; reports: ${names.join(", ")}`);
+      if (kind === void 0) throw usageError(`unknown report "${name18}"; reports: ${names2.join(", ")}`);
       const request = readRequest(context);
       const own = { ...context, positionals: args };
       const build = await cachedBuild(own, name18, kind.dependsOn === void 0 ? void 0 : () => kind.dependsOn(own), async () => kind.build(own));
@@ -11243,7 +11536,7 @@ function reportCommand(kinds) {
   };
 }
 function readRequest(context) {
-  const { slots: slots5, notes: notes3, format: format2, out, compact } = context.values;
+  const { slots: slots5, notes: notes4, format: format2, out, compact } = context.values;
   const text6 = (value, option) => {
     if (value === void 0) return void 0;
     if (typeof value !== "string" || value === "") throw usageError(`--${option} needs a value`);
@@ -11251,7 +11544,7 @@ function readRequest(context) {
   };
   const chosen = text6(format2, "format");
   if (chosen !== void 0 && chosen !== "html" && chosen !== "md") throw usageError(`--format must be html or md, got "${chosen}"`);
-  const request = { slots: slots5 === true, notes: text6(notes3, "notes"), format: chosen, out: text6(out, "out"), compact: compact === true };
+  const request = { slots: slots5 === true, notes: text6(notes4, "notes"), format: chosen, out: text6(out, "out"), compact: compact === true };
   if (request.slots) {
     if (request.notes !== void 0 || request.format !== void 0 || request.compact) throw usageError("--slots prints the slots and takes no --notes, --format or --compact");
   } else if (request.notes === void 0 && request.format !== "md") {
@@ -11333,6 +11626,384 @@ function capRows(table, max, command17) {
   const total = Math.max(table.total ?? table.rows.length, table.rows.length);
   if (table.rows.length <= max && total === table.rows.length) return table;
   return { ...table, rows: table.rows.slice(0, max), total, fullIn: command17 };
+}
+
+// packages/cochange/src/expected-pair.ts
+var EXPECTED_LABEL = {
+  test: "a test and the code it tests",
+  "two-tests": "two test files",
+  "fixture-or-golden": "a fixture or golden file and what it checks",
+  "header-and-source": "a C or C++ header and its source file",
+  "build-manifests": "two build or packaging manifests of one toolchain",
+  "same-format-data": "two data or configuration files of one format",
+  "non-code-file": "a file that is not code, such as documentation or configuration, and another file"
+};
+var EXPECTED_REASONS = ["test", "two-tests", "fixture-or-golden", "header-and-source", "build-manifests", "same-format-data", "non-code-file"];
+var FIXTURE_FOLDER = /(^|\/)(testdata|test-data|fixtures?|__fixtures__|__snapshots__|__mocks__|snapshots?|goldens?|golden-files)\//i;
+var FIXTURE_NAME = /[._-](golden|snap|approved|received)(\.[^/.]+)?$/i;
+function isFixturePath(path) {
+  return FIXTURE_FOLDER.test(path) || FIXTURE_NAME.test(path);
+}
+var extension = (path) => {
+  const base = path.slice(path.lastIndexOf("/") + 1);
+  const dot = base.lastIndexOf(".");
+  return dot <= 0 ? "" : base.slice(dot).toLowerCase();
+};
+var HEADER3 = /* @__PURE__ */ new Set([".h", ".hh", ".hpp", ".hxx", ".h++", ".inl"]);
+var SOURCE = /* @__PURE__ */ new Set([".c", ".cc", ".cpp", ".cxx", ".c++", ".m", ".mm"]);
+var stem = (path) => {
+  const ext = extension(path);
+  return path.slice(0, path.length - ext.length);
+};
+function isHeaderAndSource(a, b) {
+  const [x2, y2] = [extension(a), extension(b)];
+  const pair = HEADER3.has(x2) && SOURCE.has(y2) || SOURCE.has(x2) && HEADER3.has(y2);
+  return pair && stem(a) === stem(b);
+}
+var FAMILIES = [
+  { family: "go", name: /^(go\.(mod|sum|work|work\.sum))$/ },
+  { family: "docker", name: /^(Dockerfile([._-].*)?|.*\.Dockerfile|.*\.dockerfile|\.dockerignore)$/ },
+  { family: "node", name: /^(package\.json|package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|pnpm-lock\.yaml|pnpm-workspace\.yaml|bun\.lockb?|\.npmrc|\.nvmrc)$/ },
+  { family: "cargo", name: /^(Cargo\.(toml|lock)|rust-toolchain(\.toml)?)$/ },
+  { family: "cmake", name: /^(CMakeLists\.txt|CMakePresets\.json|.*\.cmake)$/ },
+  { family: "dotnet", name: /^(.*\.(csproj|fsproj|vbproj|sln|slnx|props|targets)|global\.json|nuget\.config|packages\.lock\.json)$/i },
+  { family: "jvm", name: /^(pom\.xml|build\.gradle(\.kts)?|settings\.gradle(\.kts)?|gradle\.properties|gradlew(\.bat)?)$/ },
+  { family: "python", name: /^(pyproject\.toml|requirements.*\.txt|Pipfile(\.lock)?|poetry\.lock|uv\.lock|setup\.cfg|tox\.ini)$/ },
+  { family: "ruby", name: /^(Gemfile(\.lock)?|.*\.gemspec)$/ },
+  { family: "make", name: /^(Makefile|GNUmakefile|.*\.mk)$/ }
+];
+function manifestFamily(path) {
+  const base = path.slice(path.lastIndexOf("/") + 1);
+  return FAMILIES.find((entry) => entry.name.test(base))?.family ?? null;
+}
+function expectedReason(a, b, isTest) {
+  if (isTest(a.path) && isTest(b.path)) return "two-tests";
+  if (isTest(a.path) || isTest(b.path)) return "test";
+  if (isFixturePath(a.path) || isFixturePath(b.path)) return "fixture-or-golden";
+  if (isHeaderAndSource(a.path, b.path)) return "header-and-source";
+  const family = manifestFamily(a.path);
+  if (family !== null && family === manifestFamily(b.path)) return "build-manifests";
+  if (!a.code && !b.code && extension(a.path) === extension(b.path)) return "same-format-data";
+  if (!a.code || !b.code) return "non-code-file";
+  return null;
+}
+var SOURCE_LIST_NAME = /^(CMakeLists\.txt|.*\.cmake|Makefile|GNUmakefile|.*\.mk|meson\.build|BUILD|BUILD\.bazel|Android\.bp|SConscript|SConstruct|.*\.(vcxproj|pro|pri))$/;
+function listsSourceFiles(path) {
+  return SOURCE_LIST_NAME.test(path.slice(path.lastIndexOf("/") + 1));
+}
+var folderPrefix = (path) => path.slice(0, path.lastIndexOf("/") + 1);
+
+// packages/cochange/src/risk/measure.ts
+var round2 = (value, places = 6) => Math.round(value * 10 ** places) / 10 ** places;
+var churnOf = (file) => (file.added ?? 0) + (file.deleted ?? 0);
+var isBinary = (file) => file.added === null && file.deleted === null;
+var FIRST_ROWS = 5;
+function measurement(name18, family, layer, kind, source, parts2) {
+  return { name: name18, family, layer, kind, source, unavailable: null, series: {}, value: {}, evidence: [], ...parts2 };
+}
+var unavailable = (name18, family, layer, kind, source, reason) => measurement(name18, family, layer, kind, source, { unavailable: reason });
+function measureHistoryLayer(facts, state, context) {
+  return [
+    size(facts),
+    spread(facts, context),
+    entropy(facts),
+    mixedPurpose(facts),
+    hotspotsTouched(facts, state, context),
+    defectHistory(facts, state, context),
+    contention(facts, state, context),
+    age(facts, state, context),
+    missingCoChange(facts, state, context),
+    novelCoupling(facts, state, context),
+    testEvidence(facts, state, context),
+    blastRadius(facts, state, context),
+    sensitivePaths(facts, context)
+  ];
+}
+function size(facts) {
+  const lines2 = facts.files.reduce((sum, file) => sum + churnOf(file), 0);
+  return measurement("size", "size-and-diffusion", "history", "percentile", "history", {
+    series: { lines: lines2 },
+    value: { lines: lines2, files: facts.files.length }
+  });
+}
+function spread(facts, context) {
+  const paths = facts.files.map((file) => file.path);
+  const value = round2(changeSpread(paths));
+  const folders = new Set(paths.map(folderOf)).size;
+  const components2 = context.components.length === 0 ? null : new Set(paths.map((path) => componentOf(context.components, path))).size;
+  return measurement("spread", "size-and-diffusion", "history", "percentile", "history", {
+    series: { spread: value },
+    value: { spread: value, folders, components: components2 }
+  });
+}
+function entropy(facts) {
+  const churn = facts.files.map(churnOf).filter((c) => c > 0);
+  const total = churn.reduce((sum, c) => sum + c, 0);
+  const value = total === 0 ? 0 : round2(churn.reduce((sum, c) => sum - c / total * Math.log2(c / total), 0));
+  const binaryFiles = facts.files.filter(isBinary).length;
+  return measurement("entropy", "size-and-diffusion", "history", "percentile", "history", {
+    series: { entropy: value },
+    value: { entropy: value, filesWithLineChanges: churn.length, ...binaryFiles > 0 ? { binaryFiles } : {} }
+  });
+}
+function mixedPurpose(facts) {
+  const moved = facts.moved;
+  const edited = facts.files.filter((file) => (churnOf(file) > 0 || isBinary(file)) && file.status !== "R").length;
+  const editedWhileMoved = facts.files.filter((file) => file.status === "R" && churnOf(file) > 0).length;
+  const mixed = moved > 0 && (edited > 0 || editedWhileMoved > 0);
+  const count3 = mixed ? moved : 0;
+  return measurement("mixed-purpose", "size-and-diffusion", "history", "count", "history", {
+    series: { count: count3 },
+    value: { moved, edited, editedWhileMoved },
+    evidence: mixed ? facts.files.filter((file) => file.status === "R").slice(0, FIRST_ROWS).map((file) => ({ file: file.path, from: file.oldPath })) : [],
+    evidenceTotal: mixed ? facts.files.filter((file) => file.status === "R").length : 0
+  });
+}
+function hotspotsTouched(facts, state, context) {
+  const recentSince = monthsBefore(facts.time, context.recentMonths);
+  const line = state.hotRevisionCount((100 - context.hotspotPercentile) / 100);
+  const busy = facts.files.filter((file) => {
+    const last = state.lastChanged(file.fileId);
+    return state.present(file.fileId) && last !== null && last >= recentSince && state.revisionsInWindow(file.fileId) >= line;
+  });
+  const hot = busy.filter((file) => isCodePath(file.fileId, context.languages));
+  const nonCodeHot = busy.length - hot.length;
+  const total = facts.files.reduce((sum, file) => sum + churnOf(file), 0);
+  const inHot = hot.reduce((sum, file) => sum + churnOf(file), 0);
+  const share3 = total === 0 ? 0 : round2(inHot / total);
+  return measurement("hotspots-touched", "history", "history", "percentile", "history", {
+    series: { share: share3 },
+    value: { share: share3, hotFiles: hot.length, ...nonCodeHot > 0 ? { nonCodeHotFiles: nonCodeHot } : {} },
+    evidence: hot.map((file) => ({ file: file.fileId, revisions: state.revisionsInWindow(file.fileId) })).sort((a, b) => b.revisions - a.revisions || (a.file < b.file ? -1 : 1)).slice(0, FIRST_ROWS),
+    evidenceTotal: hot.length
+  });
+}
+var FIX_COMMITS_PER_FILE = 3;
+function defectHistory(facts, state, context) {
+  if (state.windowSummary().fixes === 0) {
+    return unavailable("defect-history", "history", "history", "percentile", "history", "no change in the window matches a fix pattern, so the commit messages cannot say which revisions were fixes");
+  }
+  const since = facts.time - context.windowMonths * 30.4375 * SECONDS_PER_DAY2;
+  let revisions = 0;
+  let fixes = 0;
+  const perFile = [];
+  for (const file of facts.files) {
+    const own = state.revisionsSince(file.fileId, since);
+    const matches = own.flatMap((revision) => revision.fix ?? []);
+    const fixed = matches.length;
+    revisions += own.length;
+    fixes += fixed;
+    if (fixed > 0) perFile.push({ file: file.fileId, fixes: fixed, revisions: own.length, commits: matches.slice(-FIX_COMMITS_PER_FILE).reverse(), omitted: Math.max(0, fixed - FIX_COMMITS_PER_FILE) });
+  }
+  const share3 = revisions === 0 ? 0 : round2(fixes / revisions);
+  return measurement("defect-history", "history", "history", "percentile", "history", {
+    series: { share: share3 },
+    value: { share: share3, fixes, revisions },
+    evidence: perFile.sort((a, b) => b.fixes - a.fixes || (a.file < b.file ? -1 : 1)).slice(0, FIRST_ROWS),
+    evidenceTotal: perFile.length
+  });
+}
+function contention(facts, state, context) {
+  const since = monthsBefore(facts.time, context.recentMonths);
+  const own = new Set(facts.authors);
+  const others = /* @__PURE__ */ new Set();
+  const perFile = [];
+  for (const file of facts.files) {
+    const here = /* @__PURE__ */ new Set();
+    for (const revision of state.revisionsSince(file.fileId, since)) {
+      for (const author of revision.authors) if (!own.has(author.toLowerCase())) here.add(author.toLowerCase());
+    }
+    for (const author of here) others.add(author);
+    if (here.size > 0) perFile.push({ file: file.fileId, authors: here.size });
+  }
+  return measurement("contention", "history", "history", "percentile", "history", {
+    series: { authors: others.size },
+    value: { authors: others.size },
+    evidence: perFile.sort((a, b) => b.authors - a.authors || (a.file < b.file ? -1 : 1)).slice(0, FIRST_ROWS),
+    evidenceTotal: perFile.length
+  });
+}
+function age(facts, state, context) {
+  const staleBefore = monthsBefore(facts.time, context.staleMonths);
+  const settlingFrom = facts.time - context.risk.settlingDays * SECONDS_PER_DAY2;
+  const known = facts.files.filter((file) => state.known(file.fileId) && state.present(file.fileId));
+  const stale = known.filter((file) => state.lastChanged(file.fileId) < staleBefore);
+  const settling = known.filter((file) => state.lastChanged(file.fileId) >= settlingFrom);
+  const share3 = (n) => known.length === 0 ? 0 : round2(n / known.length);
+  return measurement("age", "history", "history", "percentile", "history", {
+    series: { stale: share3(stale.length), settling: share3(settling.length) },
+    value: { stale: stale.length, settling: settling.length, known: known.length },
+    evidence: [
+      ...stale.slice(0, FIRST_ROWS).map((file) => ({ file: file.fileId, side: "stale" })),
+      ...settling.slice(0, FIRST_ROWS).map((file) => ({ file: file.fileId, side: "settling" }))
+    ],
+    evidenceTotal: stale.length + settling.length
+  });
+}
+function pairCoupled(support, revisions, context) {
+  return support >= context.minSupport && 100 * support >= context.risk.missingConfidence * revisions;
+}
+function coupledPartners(facts, state, context) {
+  const best = /* @__PURE__ */ new Map();
+  for (const file of facts.files) {
+    if (file.status === "D") continue;
+    const revisions = state.eligibleRevisionsInWindow(file.fileId);
+    if (revisions === 0) continue;
+    for (const [other, support] of state.partners(file.fileId)) {
+      if (!pairCoupled(support, revisions, context)) continue;
+      if (!state.present(other)) continue;
+      const confidence = round2(100 * support / revisions, 1);
+      const current2 = best.get(other);
+      if (!current2 || confidence > current2.confidence || confidence === current2.confidence && file.fileId < current2.towards) {
+        best.set(other, { file: other, towards: file.fileId, confidence, support });
+      }
+    }
+  }
+  return [...best.values()].sort((a, b) => b.confidence - a.confidence || b.support - a.support || (a.file < b.file ? -1 : 1));
+}
+function manifestExpected(manifest, facts) {
+  const folder = folderPrefix(manifest);
+  return facts.files.some((file) => {
+    if (file.status !== "A" && file.status !== "D" && file.status !== "R") return false;
+    const paths = file.oldPath === null ? [file.path] : [file.path, file.oldPath];
+    return paths.some((path) => path.startsWith(folder) && !listsSourceFiles(path) && hasAdapter(path));
+  });
+}
+function sameToolchainManifests(partner, facts) {
+  const touched = facts.files.find((file) => file.fileId === partner.towards);
+  const never = () => false;
+  return touched !== void 0 && expectedReason({ path: touched.path, code: false }, { path: partner.file, code: false }, never) === "build-manifests";
+}
+function missingCoChange(facts, state, context) {
+  const touched = new Set(facts.files.map((file) => file.fileId));
+  const absent = coupledPartners(facts, state, context).filter((partner) => !touched.has(partner.file));
+  const withoutManifests = coupledPartners({ ...facts, files: facts.files.filter((file) => !listsSourceFiles(file.fileId)) }, state, context);
+  const candidates = withoutManifests.filter((partner) => !touched.has(partner.file) && (!listsSourceFiles(partner.file) || manifestExpected(partner.file, facts)));
+  const missing = candidates.filter((partner) => !sameToolchainManifests(partner, facts));
+  const skipped = absent.length - candidates.length;
+  const toolchainSkipped = candidates.length - missing.length;
+  return measurement("missing-co-change", "completeness", "history", "count", "history", {
+    series: { count: missing.length },
+    value: {
+      count: missing.length,
+      ...skipped === 0 ? {} : { manifestPartnersSkipped: skipped },
+      ...toolchainSkipped === 0 ? {} : { buildManifestPartnersSkipped: toolchainSkipped }
+    },
+    evidence: missing.map((partner) => ({ file: partner.file, towards: partner.towards, confidence: partner.confidence, support: partner.support }))
+  });
+}
+function novelCoupling(facts, state, context) {
+  const files = facts.files.filter((file) => file.status !== "D" && state.known(file.fileId));
+  const pairs = [];
+  for (const [i, a] of files.entries()) {
+    for (const b of files.slice(i + 1)) {
+      const distance = treeDistance(a.path, b.path);
+      if (distance >= context.risk.novelDistance && !state.everTogether(a.fileId, b.fileId)) pairs.push({ a: a.fileId, b: b.fileId, distance });
+    }
+  }
+  pairs.sort((x2, y2) => y2.distance - x2.distance || (x2.a + x2.b < y2.a + y2.b ? -1 : 1));
+  return measurement("novel-coupling", "completeness", "history", "count", "history", {
+    series: { count: pairs.length },
+    value: { count: pairs.length },
+    evidence: pairs.slice(0, FIRST_ROWS).map((pair) => ({ ...pair })),
+    evidenceTotal: pairs.length
+  });
+}
+function testEvidence(facts, state, context) {
+  const touched = new Set(facts.files.map((file) => file.fileId));
+  const exists2 = { has: (path) => touched.has(path) || state.present(path) };
+  const rows9 = [];
+  for (const file of facts.files) {
+    if (file.status === "D" || isTestPath2(file.path)) continue;
+    const test = siblingTestOf(file.path, exists2);
+    if (test === null || touched.has(test)) continue;
+    const revisions = state.eligibleRevisionsInWindow(file.fileId);
+    const together = state.support(file.fileId, test);
+    if (revisions >= context.minSupport && 100 * together >= context.risk.testShare * revisions) {
+      rows9.push({ file: file.fileId, test, kind: "not-updated", together, revisions });
+    }
+  }
+  for (const file of facts.files) if (file.status === "D" && isTestPath2(file.path)) rows9.push({ file: file.fileId, test: file.fileId, kind: "deleted" });
+  rows9.sort((a, b) => String(a.file) < String(b.file) ? -1 : 1);
+  return measurement("test-evidence", "completeness", "history", "count", "history", {
+    series: { count: rows9.length },
+    value: { count: rows9.length },
+    evidence: rows9
+  });
+}
+function blastRadius(facts, state, context) {
+  const partners = coupledPartners(facts, state, context);
+  return measurement("blast-radius", "structure-and-content", "history", "percentile", "co-change", {
+    series: { files: partners.length },
+    value: { files: partners.length },
+    evidence: partners.slice(0, FIRST_ROWS).map((partner) => ({ file: partner.file, towards: partner.towards, confidence: partner.confidence })),
+    evidenceTotal: partners.length
+  });
+}
+function sensitivePaths(facts, context) {
+  const matches = compileGlobs(context.risk.sensitivePaths);
+  const hits = facts.files.filter((file) => matches(file.path) || file.oldPath !== null && matches(file.oldPath)).map((file) => file.path).sort();
+  return measurement("sensitive-paths", "structure-and-content", "history", "count", "configured globs", {
+    series: { count: hits.length },
+    value: { count: hits.length },
+    evidence: hits.map((file) => ({ file }))
+  });
+}
+
+// packages/cochange/src/reports/change-footprint.ts
+var FOOTPRINT_ROWS = 12;
+var FOOTPRINT_MISSING_COLUMNS = 10;
+var LABEL4 = 20;
+var label = (file) => file.length <= LABEL4 ? file : `...${file.slice(file.length - LABEL4 + 3)}`;
+var plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+function footprintBlocks(assessed) {
+  const { state, facts, context } = assessed;
+  const factor = assessed.factors.find((f) => f.name === "missing-co-change");
+  if (factor === void 0 || factor.status !== "ok") return [];
+  const missing = factor.evidence.flatMap((e) => typeof e.file === "string" && typeof e.towards === "string" ? [{ file: e.file, towards: e.towards }] : []);
+  const changed = facts.files.filter((f) => f.status !== "D").map((f) => f.fileId);
+  const changedSet = new Set(changed);
+  const coupled = (a, b) => {
+    const support = state.partners(a).get(b) ?? 0;
+    return support > 0 && state.present(b) && pairCoupled(support, state.eligibleRevisionsInWindow(a), context);
+  };
+  const ranked = changed.map((file) => ({
+    file,
+    missing: missing.filter((m) => m.towards === file).length,
+    inChange: changed.filter((other) => other !== file && coupled(file, other)).length
+  })).filter((s) => s.missing + s.inChange > 0).sort((a, b) => b.missing - a.missing || b.inChange - a.inChange || (a.file < b.file ? -1 : 1));
+  if (ranked.length === 0) {
+    return [{ type: "notice", level: "notice", text: "Change footprint: no changed file has a usual co-change partner, in the change or missing from it, so there is no matrix to draw." }];
+  }
+  const rows9 = ranked.slice(0, FOOTPRINT_ROWS).map((s) => s.file);
+  const rowSet = new Set(rows9);
+  const drawable = missing.filter((m) => rowSet.has(m.towards));
+  const drawn = drawable.slice(0, FOOTPRINT_MISSING_COLUMNS);
+  const columns10 = [...rows9, ...drawn.map((m) => m.file)];
+  const missingPairs = new Set(drawn.map((m) => `${m.towards}\0${m.file}`));
+  const cells = rows9.map((r) => columns10.map((c) => r === c ? null : state.partners(r).get(c) ?? null));
+  const cellMarks = rows9.map((r) => columns10.map((c) => missingPairs.has(`${r}\0${c}`) ? "missing" : changedSet.has(c) && r !== c && coupled(r, c) ? "in-change" : null));
+  const left = [];
+  const undrawnRows = ranked.length - rows9.length;
+  if (undrawnRows > 0) left.push(`${plural(undrawnRows, "changed file")} with partners not drawn as ${undrawnRows === 1 ? "a row" : "rows"}`);
+  const noPartners = changed.length - ranked.length;
+  if (noPartners > 0) left.push(`${plural(noPartners, "changed file")} with no usual partner`);
+  const undrawnMissing = missing.length - drawn.length;
+  if (undrawnMissing > 0) left.push(`${plural(undrawnMissing, "missing partner")} not drawn as ${undrawnMissing === 1 ? "a column" : "columns"}, all of them listed under Missing co-change partners`);
+  const data = {
+    title: `Change footprint: ${plural(rows9.length, "changed file")} against ${plural(columns10.length, "file")}`,
+    valueLabel: "shared changes of the row file and the column file in the analysis window",
+    rows: rows9.map(label),
+    columns: columns10.map(label),
+    cells,
+    marks: {
+      "in-change": { symbol: "+", text: `a usual partner of the row file that the change also changed (at least ${context.minSupport} shared changes and ${assessed.risk.missingConfidence}% of the row file's revisions)` },
+      missing: { symbol: "!", text: "a usual partner of the row file that the change left out, as listed under Missing co-change partners" }
+    },
+    cellMarks,
+    orderText: `Columns are the changed files, then the missing partners. Rows are ordered by missing partners, then by partners in the change, then by path. Missing columns follow the order of the Missing co-change partners section, and each is marked at the file it usually changes with.${left.length === 0 ? "" : ` Left out: ${left.join("; ")}.`}`
+  };
+  return [{ type: "matrix", ...data }];
 }
 
 // packages/cochange/src/risk/change.ts
@@ -11502,13 +12173,13 @@ function readAbandonmentReport(root, head, config, overridesStamp) {
 }
 
 // packages/cochange/src/risk/abandoned-touched.ts
-var SOURCE = "knowledge analysis";
-var unavailable = (reason) => ({
+var SOURCE2 = "knowledge analysis";
+var unavailable2 = (reason) => ({
   name: "abandoned-touched",
   family: "history",
   layer: "history",
   kind: "count",
-  source: SOURCE,
+  source: SOURCE2,
   unavailable: reason,
   series: {},
   value: {},
@@ -11516,7 +12187,7 @@ var unavailable = (reason) => ({
 });
 async function abandonedTouched(context, history, change3) {
   const section2 = context.config.effective[TOOL2].knowledge;
-  if (section2?.enabled !== true) return { measurement: unavailable("knowledge analysis is not enabled (cochange.knowledge.enabled)"), report: null };
+  if (section2?.enabled !== true) return { measurement: unavailable2("knowledge analysis is not enabled (cochange.knowledge.enabled)"), report: null };
   const settings = readKnowledgeSettings(context.config.effective);
   const root = context.repo.root;
   const report = change3.worktree ? null : readAbandonmentReport(root, change3.head, context.config.hash, readOverrides(root).stamp);
@@ -11526,18 +12197,18 @@ async function abandonedTouched(context, history, change3) {
 function fromReport(report, change3, settings) {
   const { baseline, margin } = baselineOf(report.leaverProbability, settings.trials);
   const touched = [...new Set(change3.files.filter((f) => f.status !== "A" && f.status !== "D").map((f) => f.path))].sort();
-  const rows7 = touched.flatMap((file) => {
+  const rows9 = touched.flatMap((file) => {
     const row2 = report.files.get(file);
     if (row2 === void 0) return [];
     const abandoned = row2.abandoned;
     return abandoned || row2.probability * 100 >= settings.atRiskProbability && row2.probability > baseline + margin ? [{ file, abandoned, probability: round4(abandoned ? 1 : row2.probability) }] : [];
   });
-  return { ...measurement(rows7, touched.length, 0, baseline, margin), source: "abandonment report" };
+  return { ...measurement2(rows9, touched.length, 0, baseline, margin), source: "abandonment report" };
 }
 async function fromBlame(context, history, change3, settings) {
   const root = context.repo.root;
   const paths = [...new Set(change3.files.filter((f) => f.status !== "A").map((f) => f.oldPath ?? f.path))].sort();
-  if (paths.length === 0) return measurement([], 0, 0, 0, 0);
+  if (paths.length === 0) return measurement2([], 0, 0, 0, 0);
   const options = { ref: change3.base, ...blameOptions(history, settings), paths };
   if (context.values["no-refresh"] !== true) await refreshBlame(root, options);
   const snapshot = await readBlame(root, options);
@@ -11562,14 +12233,14 @@ async function fromBlame(context, history, change3, settings) {
     for (const risk of result.fileRisks) probabilities.set(risk.path, risk.probability);
   }
   const { baseline, margin } = baselineOf(leaverProbability, settings.trials);
-  const rows7 = model.files.map((file) => {
+  const rows9 = model.files.map((file) => {
     const abandoned = reachesGuideline(goneLinesOf(file, model.developers), file.people, settings.abandonmentGuideline);
     const probability = abandoned ? 1 : probabilities.get(file.path) ?? 0;
     return { path: file.path, abandoned, probability, share: round4(goneLinesOf(file, model.developers) / file.people) };
   }).filter((row2) => row2.abandoned || row2.probability * 100 >= settings.atRiskProbability && row2.probability > baseline + margin);
   const nowPath = new Map(change3.files.map((f) => [f.oldPath ?? f.path, f.path]));
-  return measurement(
-    rows7.map((row2) => ({ file: nowPath.get(row2.path) ?? row2.path, abandoned: row2.abandoned, probability: round4(row2.probability), abandonedShare: row2.share })),
+  return measurement2(
+    rows9.map((row2) => ({ file: nowPath.get(row2.path) ?? row2.path, abandoned: row2.abandoned, probability: round4(row2.probability), abandonedShare: row2.share })),
     snapshot.files.size,
     snapshot.missing.length,
     baseline,
@@ -11579,7 +12250,7 @@ async function fromBlame(context, history, change3, settings) {
 function baselineOf(leaverProbability, trials) {
   return { baseline: round4(leaverProbability), margin: round4(3 * Math.sqrt(leaverProbability * (1 - leaverProbability) / trials)) };
 }
-function measurement(evidence, files, unknown, baseline, margin) {
+function measurement2(evidence, files, unknown, baseline, margin) {
   const sorted = [...evidence].sort(
     (a, b) => Number(b.abandoned) - Number(a.abandoned) || b.probability - a.probability || (a.file < b.file ? -1 : a.file > b.file ? 1 : 0)
   );
@@ -11588,7 +12259,7 @@ function measurement(evidence, files, unknown, baseline, margin) {
     family: "history",
     layer: "history",
     kind: "count",
-    source: SOURCE,
+    source: SOURCE2,
     unavailable: null,
     series: { count: sorted.length },
     value: { count: sorted.length, files, unknown, baseline, margin },
@@ -11672,7 +12343,7 @@ function checkAgainst(file, document, change3) {
 }
 function aboveGuideline(evidence) {
   return evidence.units.filter((unit) => {
-    const over = unit.labels.some((label) => /-(warn|high)$/.test(label));
+    const over = unit.labels.some((label2) => /-(warn|high)$/.test(label2));
     return over && (unit.change === "added" || (unit.delta ?? 0) > 0);
   });
 }
@@ -11712,7 +12383,7 @@ async function complexityDelta(root, change3, risk, evidence, isTest) {
       evidenceTotal: units.length
     };
   }
-  const rows7 = [];
+  const rows9 = [];
   let examined = 0;
   let added = 0;
   for (const file of change3.files) {
@@ -11730,18 +12401,18 @@ async function complexityDelta(root, change3, risk, evidence, isTest) {
     }
     const was = analyseSource(file.oldPath ?? file.path, before).file.indentationComplexity;
     const rose = now.file.indentationComplexity;
-    if (rose - was >= risk.complexityRise) rows7.push({ file: file.path, before: was, after: rose, delta: rose - was });
+    if (rose - was >= risk.complexityRise) rows9.push({ file: file.path, before: was, after: rose, delta: rose - was });
   }
-  rows7.sort((a, b) => b.delta - a.delta || (a.file < b.file ? -1 : 1));
+  rows9.sort((a, b) => b.delta - a.delta || (a.file < b.file ? -1 : 1));
   return {
     ...base,
     layer: "lexical",
     source: INDENTATION_PROXY,
     unavailable: null,
-    series: { count: rows7.length },
-    value: { count: rows7.length, files: examined, newFiles: added },
-    evidence: rows7.slice(0, 5),
-    evidenceTotal: rows7.length
+    series: { count: rows9.length },
+    value: { count: rows9.length, files: examined, newFiles: added },
+    evidence: rows9.slice(0, 5),
+    evidenceTotal: rows9.length
   };
 }
 function readWorktree(root, path) {
@@ -11772,8 +12443,8 @@ function readLocalityFanIn(root, head) {
   }
 }
 function withFanIn(factor, touched, locality, risk) {
-  const rows7 = touched.flatMap((file) => locality.byFile.has(file) ? [{ file, fanIn: locality.byFile.get(file) }] : []);
-  const fanIn = rows7.reduce((most, row2) => Math.max(most, row2.fanIn), 0);
+  const rows9 = touched.flatMap((file) => locality.byFile.has(file) ? [{ file, fanIn: locality.byFile.get(file) }] : []);
+  const fanIn = rows9.reduce((most, row2) => Math.max(most, row2.fanIn), 0);
   const cutoffs = locality.population.length < risk.minBaseline ? null : cutoffsOf(locality.population, risk.moderatePercentile, risk.highPercentile);
   const placed = cutoffs === null ? null : bandAgainst(fanIn, cutoffs);
   const band = placed === null ? factor.band : factor.band === null ? placed : higherBand(factor.band, placed);
@@ -11785,8 +12456,8 @@ function withFanIn(factor, touched, locality, risk) {
     reason: band === null ? factor.reason : null,
     value: { ...factor.value, fanIn },
     guidelines: { ...factor.guidelines, fanIn: cutoffs === null ? null : { moderate: cutoffs.moderate, high: cutoffs.high } },
-    evidenceTotal: (factor.evidenceTotal ?? factor.evidence.length) + rows7.length,
-    evidence: [...factor.evidence, ...rows7.sort((a, b) => b.fanIn - a.fanIn || (a.file < b.file ? -1 : 1)).slice(0, 5).map((row2) => ({ ...row2, from: "locality" }))]
+    evidenceTotal: (factor.evidenceTotal ?? factor.evidence.length) + rows9.length,
+    evidence: [...factor.evidence, ...rows9.sort((a, b) => b.fanIn - a.fanIn || (a.file < b.file ? -1 : 1)).slice(0, 5).map((row2) => ({ ...row2, from: "locality" }))]
   };
 }
 
@@ -11969,325 +12640,6 @@ var HistoryState = class {
   }
 };
 
-// packages/cochange/src/expected-pair.ts
-var EXPECTED_LABEL = {
-  test: "a test and the code it tests",
-  "two-tests": "two test files",
-  "fixture-or-golden": "a fixture or golden file and what it checks",
-  "header-and-source": "a C or C++ header and its source file",
-  "build-manifests": "two build or packaging manifests of one toolchain",
-  "same-format-data": "two data or configuration files of one format",
-  "non-code-file": "a file that is not code, such as documentation or configuration, and another file"
-};
-var EXPECTED_REASONS = ["test", "two-tests", "fixture-or-golden", "header-and-source", "build-manifests", "same-format-data", "non-code-file"];
-var FIXTURE_FOLDER = /(^|\/)(testdata|test-data|fixtures?|__fixtures__|__snapshots__|__mocks__|snapshots?|goldens?|golden-files)\//i;
-var FIXTURE_NAME = /[._-](golden|snap|approved|received)(\.[^/.]+)?$/i;
-function isFixturePath(path) {
-  return FIXTURE_FOLDER.test(path) || FIXTURE_NAME.test(path);
-}
-var extension = (path) => {
-  const base = path.slice(path.lastIndexOf("/") + 1);
-  const dot = base.lastIndexOf(".");
-  return dot <= 0 ? "" : base.slice(dot).toLowerCase();
-};
-var HEADER2 = /* @__PURE__ */ new Set([".h", ".hh", ".hpp", ".hxx", ".h++", ".inl"]);
-var SOURCE2 = /* @__PURE__ */ new Set([".c", ".cc", ".cpp", ".cxx", ".c++", ".m", ".mm"]);
-var stem = (path) => {
-  const ext = extension(path);
-  return path.slice(0, path.length - ext.length);
-};
-function isHeaderAndSource(a, b) {
-  const [x2, y2] = [extension(a), extension(b)];
-  const pair = HEADER2.has(x2) && SOURCE2.has(y2) || SOURCE2.has(x2) && HEADER2.has(y2);
-  return pair && stem(a) === stem(b);
-}
-var FAMILIES = [
-  { family: "go", name: /^(go\.(mod|sum|work|work\.sum))$/ },
-  { family: "docker", name: /^(Dockerfile([._-].*)?|.*\.Dockerfile|.*\.dockerfile|\.dockerignore)$/ },
-  { family: "node", name: /^(package\.json|package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|pnpm-lock\.yaml|pnpm-workspace\.yaml|bun\.lockb?|\.npmrc|\.nvmrc)$/ },
-  { family: "cargo", name: /^(Cargo\.(toml|lock)|rust-toolchain(\.toml)?)$/ },
-  { family: "cmake", name: /^(CMakeLists\.txt|CMakePresets\.json|.*\.cmake)$/ },
-  { family: "dotnet", name: /^(.*\.(csproj|fsproj|vbproj|sln|slnx|props|targets)|global\.json|nuget\.config|packages\.lock\.json)$/i },
-  { family: "jvm", name: /^(pom\.xml|build\.gradle(\.kts)?|settings\.gradle(\.kts)?|gradle\.properties|gradlew(\.bat)?)$/ },
-  { family: "python", name: /^(pyproject\.toml|requirements.*\.txt|Pipfile(\.lock)?|poetry\.lock|uv\.lock|setup\.cfg|tox\.ini)$/ },
-  { family: "ruby", name: /^(Gemfile(\.lock)?|.*\.gemspec)$/ },
-  { family: "make", name: /^(Makefile|GNUmakefile|.*\.mk)$/ }
-];
-function manifestFamily(path) {
-  const base = path.slice(path.lastIndexOf("/") + 1);
-  return FAMILIES.find((entry) => entry.name.test(base))?.family ?? null;
-}
-function expectedReason(a, b, isTest) {
-  if (isTest(a.path) && isTest(b.path)) return "two-tests";
-  if (isTest(a.path) || isTest(b.path)) return "test";
-  if (isFixturePath(a.path) || isFixturePath(b.path)) return "fixture-or-golden";
-  if (isHeaderAndSource(a.path, b.path)) return "header-and-source";
-  const family = manifestFamily(a.path);
-  if (family !== null && family === manifestFamily(b.path)) return "build-manifests";
-  if (!a.code && !b.code && extension(a.path) === extension(b.path)) return "same-format-data";
-  if (!a.code || !b.code) return "non-code-file";
-  return null;
-}
-var SOURCE_LIST_NAME = /^(CMakeLists\.txt|.*\.cmake|Makefile|GNUmakefile|.*\.mk|meson\.build|BUILD|BUILD\.bazel|Android\.bp|SConscript|SConstruct|.*\.(vcxproj|pro|pri))$/;
-function listsSourceFiles(path) {
-  return SOURCE_LIST_NAME.test(path.slice(path.lastIndexOf("/") + 1));
-}
-var folderPrefix = (path) => path.slice(0, path.lastIndexOf("/") + 1);
-
-// packages/cochange/src/risk/measure.ts
-var round2 = (value, places = 6) => Math.round(value * 10 ** places) / 10 ** places;
-var churnOf = (file) => (file.added ?? 0) + (file.deleted ?? 0);
-var isBinary = (file) => file.added === null && file.deleted === null;
-var FIRST_ROWS = 5;
-function measurement2(name18, family, layer, kind, source, parts2) {
-  return { name: name18, family, layer, kind, source, unavailable: null, series: {}, value: {}, evidence: [], ...parts2 };
-}
-var unavailable2 = (name18, family, layer, kind, source, reason) => measurement2(name18, family, layer, kind, source, { unavailable: reason });
-function measureHistoryLayer(facts, state, context) {
-  return [
-    size(facts),
-    spread(facts, context),
-    entropy(facts),
-    mixedPurpose(facts),
-    hotspotsTouched(facts, state, context),
-    defectHistory(facts, state, context),
-    contention(facts, state, context),
-    age(facts, state, context),
-    missingCoChange(facts, state, context),
-    novelCoupling(facts, state, context),
-    testEvidence(facts, state, context),
-    blastRadius(facts, state, context),
-    sensitivePaths(facts, context)
-  ];
-}
-function size(facts) {
-  const lines2 = facts.files.reduce((sum, file) => sum + churnOf(file), 0);
-  return measurement2("size", "size-and-diffusion", "history", "percentile", "history", {
-    series: { lines: lines2 },
-    value: { lines: lines2, files: facts.files.length }
-  });
-}
-function spread(facts, context) {
-  const paths = facts.files.map((file) => file.path);
-  const value = round2(changeSpread(paths));
-  const folders = new Set(paths.map(folderOf)).size;
-  const components2 = context.components.length === 0 ? null : new Set(paths.map((path) => componentOf(context.components, path))).size;
-  return measurement2("spread", "size-and-diffusion", "history", "percentile", "history", {
-    series: { spread: value },
-    value: { spread: value, folders, components: components2 }
-  });
-}
-function entropy(facts) {
-  const churn = facts.files.map(churnOf).filter((c) => c > 0);
-  const total = churn.reduce((sum, c) => sum + c, 0);
-  const value = total === 0 ? 0 : round2(churn.reduce((sum, c) => sum - c / total * Math.log2(c / total), 0));
-  const binaryFiles = facts.files.filter(isBinary).length;
-  return measurement2("entropy", "size-and-diffusion", "history", "percentile", "history", {
-    series: { entropy: value },
-    value: { entropy: value, filesWithLineChanges: churn.length, ...binaryFiles > 0 ? { binaryFiles } : {} }
-  });
-}
-function mixedPurpose(facts) {
-  const moved = facts.moved;
-  const edited = facts.files.filter((file) => (churnOf(file) > 0 || isBinary(file)) && file.status !== "R").length;
-  const editedWhileMoved = facts.files.filter((file) => file.status === "R" && churnOf(file) > 0).length;
-  const mixed = moved > 0 && (edited > 0 || editedWhileMoved > 0);
-  const count3 = mixed ? moved : 0;
-  return measurement2("mixed-purpose", "size-and-diffusion", "history", "count", "history", {
-    series: { count: count3 },
-    value: { moved, edited, editedWhileMoved },
-    evidence: mixed ? facts.files.filter((file) => file.status === "R").slice(0, FIRST_ROWS).map((file) => ({ file: file.path, from: file.oldPath })) : [],
-    evidenceTotal: mixed ? facts.files.filter((file) => file.status === "R").length : 0
-  });
-}
-function hotspotsTouched(facts, state, context) {
-  const recentSince = monthsBefore(facts.time, context.recentMonths);
-  const line = state.hotRevisionCount((100 - context.hotspotPercentile) / 100);
-  const busy = facts.files.filter((file) => {
-    const last = state.lastChanged(file.fileId);
-    return state.present(file.fileId) && last !== null && last >= recentSince && state.revisionsInWindow(file.fileId) >= line;
-  });
-  const hot = busy.filter((file) => isCodePath(file.fileId, context.languages));
-  const nonCodeHot = busy.length - hot.length;
-  const total = facts.files.reduce((sum, file) => sum + churnOf(file), 0);
-  const inHot = hot.reduce((sum, file) => sum + churnOf(file), 0);
-  const share3 = total === 0 ? 0 : round2(inHot / total);
-  return measurement2("hotspots-touched", "history", "history", "percentile", "history", {
-    series: { share: share3 },
-    value: { share: share3, hotFiles: hot.length, ...nonCodeHot > 0 ? { nonCodeHotFiles: nonCodeHot } : {} },
-    evidence: hot.map((file) => ({ file: file.fileId, revisions: state.revisionsInWindow(file.fileId) })).sort((a, b) => b.revisions - a.revisions || (a.file < b.file ? -1 : 1)).slice(0, FIRST_ROWS),
-    evidenceTotal: hot.length
-  });
-}
-var FIX_COMMITS_PER_FILE = 3;
-function defectHistory(facts, state, context) {
-  if (state.windowSummary().fixes === 0) {
-    return unavailable2("defect-history", "history", "history", "percentile", "history", "no change in the window matches a fix pattern, so the commit messages cannot say which revisions were fixes");
-  }
-  const since = facts.time - context.windowMonths * 30.4375 * SECONDS_PER_DAY2;
-  let revisions = 0;
-  let fixes = 0;
-  const perFile = [];
-  for (const file of facts.files) {
-    const own = state.revisionsSince(file.fileId, since);
-    const matches = own.flatMap((revision) => revision.fix ?? []);
-    const fixed = matches.length;
-    revisions += own.length;
-    fixes += fixed;
-    if (fixed > 0) perFile.push({ file: file.fileId, fixes: fixed, revisions: own.length, commits: matches.slice(-FIX_COMMITS_PER_FILE).reverse(), omitted: Math.max(0, fixed - FIX_COMMITS_PER_FILE) });
-  }
-  const share3 = revisions === 0 ? 0 : round2(fixes / revisions);
-  return measurement2("defect-history", "history", "history", "percentile", "history", {
-    series: { share: share3 },
-    value: { share: share3, fixes, revisions },
-    evidence: perFile.sort((a, b) => b.fixes - a.fixes || (a.file < b.file ? -1 : 1)).slice(0, FIRST_ROWS),
-    evidenceTotal: perFile.length
-  });
-}
-function contention(facts, state, context) {
-  const since = monthsBefore(facts.time, context.recentMonths);
-  const own = new Set(facts.authors);
-  const others = /* @__PURE__ */ new Set();
-  const perFile = [];
-  for (const file of facts.files) {
-    const here = /* @__PURE__ */ new Set();
-    for (const revision of state.revisionsSince(file.fileId, since)) {
-      for (const author of revision.authors) if (!own.has(author.toLowerCase())) here.add(author.toLowerCase());
-    }
-    for (const author of here) others.add(author);
-    if (here.size > 0) perFile.push({ file: file.fileId, authors: here.size });
-  }
-  return measurement2("contention", "history", "history", "percentile", "history", {
-    series: { authors: others.size },
-    value: { authors: others.size },
-    evidence: perFile.sort((a, b) => b.authors - a.authors || (a.file < b.file ? -1 : 1)).slice(0, FIRST_ROWS),
-    evidenceTotal: perFile.length
-  });
-}
-function age(facts, state, context) {
-  const staleBefore = monthsBefore(facts.time, context.staleMonths);
-  const settlingFrom = facts.time - context.risk.settlingDays * SECONDS_PER_DAY2;
-  const known = facts.files.filter((file) => state.known(file.fileId) && state.present(file.fileId));
-  const stale = known.filter((file) => state.lastChanged(file.fileId) < staleBefore);
-  const settling = known.filter((file) => state.lastChanged(file.fileId) >= settlingFrom);
-  const share3 = (n) => known.length === 0 ? 0 : round2(n / known.length);
-  return measurement2("age", "history", "history", "percentile", "history", {
-    series: { stale: share3(stale.length), settling: share3(settling.length) },
-    value: { stale: stale.length, settling: settling.length, known: known.length },
-    evidence: [
-      ...stale.slice(0, FIRST_ROWS).map((file) => ({ file: file.fileId, side: "stale" })),
-      ...settling.slice(0, FIRST_ROWS).map((file) => ({ file: file.fileId, side: "settling" }))
-    ],
-    evidenceTotal: stale.length + settling.length
-  });
-}
-function coupledPartners(facts, state, context) {
-  const best = /* @__PURE__ */ new Map();
-  for (const file of facts.files) {
-    if (file.status === "D") continue;
-    const revisions = state.eligibleRevisionsInWindow(file.fileId);
-    if (revisions === 0) continue;
-    for (const [other, support] of state.partners(file.fileId)) {
-      if (support < context.minSupport || 100 * support < context.risk.missingConfidence * revisions) continue;
-      if (!state.present(other)) continue;
-      const confidence = round2(100 * support / revisions, 1);
-      const current2 = best.get(other);
-      if (!current2 || confidence > current2.confidence || confidence === current2.confidence && file.fileId < current2.towards) {
-        best.set(other, { file: other, towards: file.fileId, confidence, support });
-      }
-    }
-  }
-  return [...best.values()].sort((a, b) => b.confidence - a.confidence || b.support - a.support || (a.file < b.file ? -1 : 1));
-}
-function manifestExpected(manifest, facts) {
-  const folder = folderPrefix(manifest);
-  return facts.files.some((file) => {
-    if (file.status !== "A" && file.status !== "D" && file.status !== "R") return false;
-    const paths = file.oldPath === null ? [file.path] : [file.path, file.oldPath];
-    return paths.some((path) => path.startsWith(folder) && !listsSourceFiles(path) && hasAdapter(path));
-  });
-}
-function sameToolchainManifests(partner, facts) {
-  const touched = facts.files.find((file) => file.fileId === partner.towards);
-  const never = () => false;
-  return touched !== void 0 && expectedReason({ path: touched.path, code: false }, { path: partner.file, code: false }, never) === "build-manifests";
-}
-function missingCoChange(facts, state, context) {
-  const touched = new Set(facts.files.map((file) => file.fileId));
-  const absent = coupledPartners(facts, state, context).filter((partner) => !touched.has(partner.file));
-  const withoutManifests = coupledPartners({ ...facts, files: facts.files.filter((file) => !listsSourceFiles(file.fileId)) }, state, context);
-  const candidates = withoutManifests.filter((partner) => !touched.has(partner.file) && (!listsSourceFiles(partner.file) || manifestExpected(partner.file, facts)));
-  const missing = candidates.filter((partner) => !sameToolchainManifests(partner, facts));
-  const skipped = absent.length - candidates.length;
-  const toolchainSkipped = candidates.length - missing.length;
-  return measurement2("missing-co-change", "completeness", "history", "count", "history", {
-    series: { count: missing.length },
-    value: {
-      count: missing.length,
-      ...skipped === 0 ? {} : { manifestPartnersSkipped: skipped },
-      ...toolchainSkipped === 0 ? {} : { buildManifestPartnersSkipped: toolchainSkipped }
-    },
-    evidence: missing.map((partner) => ({ file: partner.file, towards: partner.towards, confidence: partner.confidence, support: partner.support }))
-  });
-}
-function novelCoupling(facts, state, context) {
-  const files = facts.files.filter((file) => file.status !== "D" && state.known(file.fileId));
-  const pairs = [];
-  for (const [i, a] of files.entries()) {
-    for (const b of files.slice(i + 1)) {
-      const distance = treeDistance(a.path, b.path);
-      if (distance >= context.risk.novelDistance && !state.everTogether(a.fileId, b.fileId)) pairs.push({ a: a.fileId, b: b.fileId, distance });
-    }
-  }
-  pairs.sort((x2, y2) => y2.distance - x2.distance || (x2.a + x2.b < y2.a + y2.b ? -1 : 1));
-  return measurement2("novel-coupling", "completeness", "history", "count", "history", {
-    series: { count: pairs.length },
-    value: { count: pairs.length },
-    evidence: pairs.slice(0, FIRST_ROWS).map((pair) => ({ ...pair })),
-    evidenceTotal: pairs.length
-  });
-}
-function testEvidence(facts, state, context) {
-  const touched = new Set(facts.files.map((file) => file.fileId));
-  const exists2 = { has: (path) => touched.has(path) || state.present(path) };
-  const rows7 = [];
-  for (const file of facts.files) {
-    if (file.status === "D" || isTestPath2(file.path)) continue;
-    const test = siblingTestOf(file.path, exists2);
-    if (test === null || touched.has(test)) continue;
-    const revisions = state.eligibleRevisionsInWindow(file.fileId);
-    const together = state.support(file.fileId, test);
-    if (revisions >= context.minSupport && 100 * together >= context.risk.testShare * revisions) {
-      rows7.push({ file: file.fileId, test, kind: "not-updated", together, revisions });
-    }
-  }
-  for (const file of facts.files) if (file.status === "D" && isTestPath2(file.path)) rows7.push({ file: file.fileId, test: file.fileId, kind: "deleted" });
-  rows7.sort((a, b) => String(a.file) < String(b.file) ? -1 : 1);
-  return measurement2("test-evidence", "completeness", "history", "count", "history", {
-    series: { count: rows7.length },
-    value: { count: rows7.length },
-    evidence: rows7
-  });
-}
-function blastRadius(facts, state, context) {
-  const partners = coupledPartners(facts, state, context);
-  return measurement2("blast-radius", "structure-and-content", "history", "percentile", "co-change", {
-    series: { files: partners.length },
-    value: { files: partners.length },
-    evidence: partners.slice(0, FIRST_ROWS).map((partner) => ({ file: partner.file, towards: partner.towards, confidence: partner.confidence })),
-    evidenceTotal: partners.length
-  });
-}
-function sensitivePaths(facts, context) {
-  const matches = compileGlobs(context.risk.sensitivePaths);
-  const hits = facts.files.filter((file) => matches(file.path) || file.oldPath !== null && matches(file.oldPath)).map((file) => file.path).sort();
-  return measurement2("sensitive-paths", "structure-and-content", "history", "count", "configured globs", {
-    series: { count: hits.length },
-    value: { count: hits.length },
-    evidence: hits.map((file) => ({ file }))
-  });
-}
-
 // packages/cochange/src/risk/placement.ts
 var round3 = (value, places = 4) => Math.round(value * 10 ** places) / 10 ** places;
 var SECONDS_PER_MONTH3 = 30.4375 * SECONDS_PER_DAY2;
@@ -12328,7 +12680,7 @@ function placeChange(facts, state, context, options = {}) {
       windowShare: inWindow2.length === 0 ? 0 : windowMine.length / inWindow2.length
     };
     const brandNew = file.status === "A" || revisions.length === 0;
-    const label = unplaced || brandNew ? "unknown" : labelOf2(stats, blame, context);
+    const label2 = unplaced || brandNew ? "unknown" : labelOf2(stats, blame, context);
     let coupled = 0;
     for (const [other, support] of state.partners(file.fileId)) {
       const together = state.eligibleRevisionsInWindow(file.fileId);
@@ -12350,7 +12702,7 @@ function placeChange(facts, state, context, options = {}) {
     }
     return {
       file: file.fileId,
-      label,
+      label: label2,
       churn: (file.added ?? 0) + (file.deleted ?? 0),
       earlierChanges: stats.earlier,
       recentChanges: stats.recent,
@@ -12364,7 +12716,7 @@ function placeChange(facts, state, context, options = {}) {
   const denominator = total === 0 ? files.length : total;
   const shares2 = { owner: 0, regular: 0, occasional: 0, "first-touch": 0, unknown: 0 };
   for (const file of files) shares2[file.label] += denominator === 0 ? 0 : weight(file) / denominator;
-  for (const label of Object.keys(shares2)) shares2[label] = round3(shares2[label]);
+  for (const label2 of Object.keys(shares2)) shares2[label2] = round3(shares2[label2]);
   const distantOwners = files.flatMap((file) => {
     const owner = options.blame?.get(file.file)?.distantOwner;
     return owner ? [{ file: file.file, name: owner.name, email: owner.email, share: round3(owner.share) }] : [];
@@ -12905,15 +13257,15 @@ function readChangeEvidence(root, files, change3) {
     const command17 = text2(document.command);
     if (!Array.isArray(document.results)) throw usageError(`--evidence ${file}: no results list`);
     checkAgainst2(file, document, change3);
-    const rows7 = document.results;
+    const rows9 = document.results;
     if (tool === "complexity" && (command17 === "check" || command17 === "diff")) {
       if (complexity !== null && complexity.source === command17) throw usageError(`--evidence names complexity ${command17} twice`);
-      const parsed = command17 === "check" ? fromCheck(rows7, document) : fromDiff(rows7, document);
+      const parsed = command17 === "check" ? fromCheck(rows9, document) : fromDiff(rows9, document);
       if (complexity === null || command17 === "check") complexity = parsed;
       if (command17 === "diff") forAssessment.push(file);
     } else if (tool === "structure" && command17 === "check") {
       if (structure !== null) throw usageError("--evidence names structure check twice");
-      structure = rows7.filter((row2) => row2.kind === "cycle" || row2.kind === "layer-violation").map(structureRow);
+      structure = rows9.filter((row2) => row2.kind === "cycle" || row2.kind === "layer-violation").map(structureRow);
       forAssessment.push(file);
     } else {
       throw usageError(`--evidence ${file}: ${tool}/${command17} is not evidence this report reads; pass \`complexity check --json\`, \`complexity diff --json\` or \`structure check --json\``);
@@ -12922,13 +13274,13 @@ function readChangeEvidence(root, files, change3) {
   }
   return { files: read2, complexity, structure, forAssessment };
 }
-function fromCheck(rows7, document) {
+function fromCheck(rows9, document) {
   const summary = record(document.summary);
   return {
     source: "check",
     compared: number(summary.compared),
     unsupportedFiles: number(document.unsupportedFiles) ?? 0,
-    rows: rows7.map((row2) => ({
+    rows: rows9.map((row2) => ({
       id: text2(row2.id) || text2(row2.path),
       path: text2(row2.path),
       unit: text2(row2.unit) || text2(row2.id),
@@ -12940,16 +13292,16 @@ function fromCheck(rows7, document) {
     }))
   };
 }
-function fromDiff(rows7, document) {
+function fromDiff(rows9, document) {
   const kept = [];
-  for (const row2 of rows7) {
+  for (const row2 of rows9) {
     const labels = Array.isArray(row2.labels) ? row2.labels.map(String) : [];
     const added = row2.change === "added";
     const before = record(row2.before);
     const after = record(row2.after);
     const delta2 = record(row2.delta);
-    for (const label of labels) {
-      const match = /^(.*)-(warn|high)$/.exec(label);
+    for (const label2 of labels) {
+      const match = /^(.*)-(warn|high)$/.exec(label2);
       if (match === null) continue;
       const metric = match[1];
       if (!added && (number(delta2[metric]) ?? 0) <= 0) continue;
@@ -12965,7 +13317,7 @@ function fromDiff(rows7, document) {
       });
     }
   }
-  return { source: "diff", compared: rows7.length, unsupportedFiles: number(document.unsupportedFiles) ?? 0, rows: kept };
+  return { source: "diff", compared: rows9.length, unsupportedFiles: number(document.unsupportedFiles) ?? 0, rows: kept };
 }
 function structureRow(row2) {
   const kind = row2.kind === "cycle" ? "cycle" : "layer-violation";
@@ -12994,7 +13346,7 @@ var ITEM_VERDICTS = ["needs-change", "accepted-with-reason", "false-positive"];
 var isoDate3 = (iso2) => iso2.slice(0, 10);
 var text3 = (value) => typeof value === "string" ? value : null;
 var number2 = (value) => typeof value === "number" && Number.isFinite(value) ? value : null;
-var plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+var plural2 = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 var short2 = (sha) => sha.slice(0, 7);
 var clip2 = (value, max) => value.length <= max ? value : `${value.slice(0, max - 3)}...`;
 var ITEM_TASK = "Give a verdict and one or two sentences. needs-change: the change should be altered before it merges, and the text says what. accepted-with-reason: the change stays as it is, and the text gives the reason. false-positive: the finding does not apply, and the text says why. Cite only values shown in this report.";
@@ -13018,12 +13370,12 @@ function evidenceItems(records, total = records.length) {
 }
 function findingItem(finding) {
   const files = finding.evidence.flatMap((record2) => text3(record2.file) ?? text3(record2.path) ?? []);
-  const label = clip2(files.length === 0 ? finding.summary : `${finding.summary}: ${files.slice(0, 3).join(", ")}${files.length > 3 ? ", ..." : ""}`, 220);
+  const label2 = clip2(files.length === 0 ? finding.summary : `${finding.summary}: ${files.slice(0, 3).join(", ")}${files.length > 3 ? ", ..." : ""}`, 220);
   const { items, omitted: omitted2 } = evidenceItems(finding.evidence, finding.evidenceTotal);
   return {
     slot: itemSlot(
       `finding-${finding.id}`,
-      { kind: "finding", ref: `risk:${finding.id}`, label },
+      { kind: "finding", ref: `risk:${finding.id}`, label: label2 },
       `${finding.id}`,
       `Finding "${finding.id}": ${finding.summary}. The risk response is: ${finding.response}${finding.redFlag === null ? "" : ` The usual red flag is ${finding.redFlag}.`}`
     ),
@@ -13047,11 +13399,11 @@ function structureItem(row2, index2) {
   };
 }
 var range = (row2) => row2.before === null ? String(row2.after) : `${row2.before} to ${row2.after}`;
-function complexityItem(rows7, index2) {
-  const first = rows7[0];
+function complexityItem(rows9, index2) {
+  const first = rows9[0];
   const unit = first.id;
-  const worst = rows7.map((r) => `${r.metric} ${range(r)}${r.guideline === null ? "" : ` (guideline ${r.guideline})`}`).join(", ");
-  const kind = rows7.some((r) => r.kind === "new") ? "new" : "worsened";
+  const worst = rows9.map((r) => `${r.metric} ${range(r)}${r.guideline === null ? "" : ` (guideline ${r.guideline})`}`).join(", ");
+  const kind = rows9.some((r) => r.kind === "new") ? "new" : "worsened";
   return {
     slot: itemSlot(
       `complexity-${index2 + 1}`,
@@ -13060,7 +13412,7 @@ function complexityItem(rows7, index2) {
       `The function ${unit} is ${kind === "new" ? "new and above a complexity guideline" : "above a complexity guideline and got worse"}. Say whether it should be simplified before merge.`
     ),
     heading: `${unit}: ${kind === "new" ? "new function above guideline" : "existing function above guideline that got worse"}`,
-    evidence: rows7.map((r) => ({ id: r.metric, text: `${r.kind === "new" ? "new function" : "worsened"}: ${r.before === null ? "" : `before ${r.before}, `}after ${r.after}${r.guideline === null ? ", above its guideline" : `, guideline ${r.guideline}`}` })),
+    evidence: rows9.map((r) => ({ id: r.metric, text: `${r.kind === "new" ? "new function" : "worsened"}: ${r.before === null ? "" : `before ${r.before}, `}after ${r.after}${r.guideline === null ? ", above its guideline" : `, guideline ${r.guideline}`}` })),
     omitted: 0
   };
 }
@@ -13070,11 +13422,11 @@ function hotspotsItem(factor) {
   return {
     slot: itemSlot(
       "hotspots-touched",
-      { kind: "finding", ref: "risk:hotspots-touched", label: clip2(`${plural(number2(factor.value.hotFiles) ?? files.length, "hotspot")} touched: ${files.slice(0, 3).join(", ")}${files.length > 3 ? ", ..." : ""}`, 220) },
+      { kind: "finding", ref: "risk:hotspots-touched", label: clip2(`${plural2(number2(factor.value.hotFiles) ?? files.length, "hotspot")} touched: ${files.slice(0, 3).join(", ")}${files.length > 3 ? ", ..." : ""}`, 220) },
       "hotspots touched",
       "The change puts churn into files that are hotspots. Say whether the change is covered well enough for those files."
     ),
-    heading: `hotspots touched (${factor.band}): ${plural(number2(factor.value.hotFiles) ?? 0, "hot file")}`,
+    heading: `hotspots touched (${factor.band}): ${plural2(number2(factor.value.hotFiles) ?? 0, "hot file")}`,
     evidence: items,
     omitted: omitted2
   };
@@ -13085,7 +13437,7 @@ function attentionItems(assessed, evidence) {
   (evidence.structure ?? []).forEach((row2, i) => items.push(structureItem(row2, i)));
   const byUnit = /* @__PURE__ */ new Map();
   for (const row2 of evidence.complexity?.rows ?? []) byUnit.set(row2.id, [...byUnit.get(row2.id) ?? [], row2]);
-  [...byUnit.entries()].forEach(([, rows7], i) => items.push(complexityItem(rows7, i)));
+  [...byUnit.entries()].forEach(([, rows9], i) => items.push(complexityItem(rows9, i)));
   const hot = assessed.factors.find((f) => f.name === "hotspots-touched");
   if (hot !== void 0 && hot.status === "ok" && (hot.band === "moderate" || hot.band === "high")) items.push(hotspotsItem(hot));
   return { shown: items.slice(0, MAX_ITEMS), total: items.length };
@@ -13120,8 +13472,8 @@ function guidelineText(factor) {
 }
 function valueText(factor) {
   const parts2 = Object.entries(factor.value).filter(([, value]) => value !== null && typeof value !== "object").map(([key, value]) => `${key} ${value}`);
-  const label = factor.name === "complexity-delta" && factor.source === INDENTATION_PROXY ? `${INDENTATION_PROXY}: ` : "";
-  return parts2.length === 0 ? `${label}none` : `${label}${parts2.join(", ")}`;
+  const label2 = factor.name === "complexity-delta" && factor.source === INDENTATION_PROXY ? `${INDENTATION_PROXY}: ` : "";
+  return parts2.length === 0 ? `${label2}none` : `${label2}${parts2.join(", ")}`;
 }
 function bandText(factor) {
   return factor.status === "ok" ? factor.band ?? "none" : factor.status;
@@ -13133,7 +13485,7 @@ function factorBlocks(assessed, compact) {
   const blocks = [
     {
       type: "paragraph",
-      text: `Each band compares the change with the ${plural(baseline.population, "merged change")} measured as of their own time since ${isoDate3(baseline.since)}, and counts are met from a stated value. A band labels the value beside it and decides nothing.`
+      text: `Each band compares the change with the ${plural2(baseline.population, "merged change")} measured as of their own time since ${isoDate3(baseline.since)}, and counts are met from a stated value. A band labels the value beside it and decides nothing.`
     },
     {
       type: "ranked-table",
@@ -13163,7 +13515,7 @@ function abandonedBlocks(assessed) {
   const baseline = number2(factor.value.baseline) ?? 0;
   const count3 = number2(factor.value.count) ?? 0;
   if (count3 === 0) return [{ type: "notice", level: "notice", text: `No touched file is abandoned or above the repository's baseline abandonment probability of ${baseline}.` }];
-  const rows7 = factor.evidence.map((e) => ({ file: text3(e.file), abandoned: e.abandoned === true ? "yes" : "no", probability: number2(e.probability) }));
+  const rows9 = factor.evidence.map((e) => ({ file: text3(e.file), abandoned: e.abandoned === true ? "yes" : "no", probability: number2(e.probability) }));
   const table = capRows(
     {
       caption: `Touched files that are abandoned or above the repository's baseline abandonment probability of ${baseline}, the probability one developer leaves within the horizon, which every file has from the turnover model alone`,
@@ -13176,7 +13528,7 @@ function abandonedBlocks(assessed) {
         { key: "abandoned", label: "Abandoned now" },
         { key: "probability", label: "Probability of abandonment", align: "right" }
       ],
-      rows: rows7
+      rows: rows9
     },
     ROWS,
     "cochange abandonment simulate"
@@ -13216,26 +13568,26 @@ function missingBlocks(assessed) {
     return [{ type: "notice", level: "notice", text: `Missing co-change partners could not be computed: ${factor?.reason ?? "the factor is not available"}.` }];
   }
   const skipped = number2(factor.value.manifestPartnersSkipped) ?? 0;
-  const skippedNotice = skipped === 0 ? [] : [{ type: "notice", level: "notice", text: `${plural(skipped, "partner")} left out of this list because the pairing is with a build manifest that lists source files (such as CMakeLists.txt): a manifest counts as missing only when the change adds, removes or renames a code file in its folder, and a touched manifest does not make its source files missing.` }];
+  const skippedNotice = skipped === 0 ? [] : [{ type: "notice", level: "notice", text: `${plural2(skipped, "partner")} left out of this list because the pairing is with a build manifest that lists source files (such as CMakeLists.txt): a manifest counts as missing only when the change adds, removes or renames a code file in its folder, and a touched manifest does not make its source files missing.` }];
   const toolchainSkipped = number2(factor.value.buildManifestPartnersSkipped) ?? 0;
-  const toolchainNotice = toolchainSkipped === 0 ? [] : [{ type: "notice", level: "notice", text: `${plural(toolchainSkipped, "partner")} left out of this list because it and the touched file are build or packaging manifests of one toolchain (such as go.mod and go.work), which a change often edits one without the other.` }];
+  const toolchainNotice = toolchainSkipped === 0 ? [] : [{ type: "notice", level: "notice", text: `${plural2(toolchainSkipped, "partner")} left out of this list because it and the touched file are build or packaging manifests of one toolchain (such as go.mod and go.work), which a change often edits one without the other.` }];
   skippedNotice.push(...toolchainNotice);
   if (factor.evidence.length === 0) return [...skippedNotice, { type: "notice", level: "notice", text: "No file that usually changes with a touched file is missing from the change." }];
-  const rows7 = factor.evidence.map((e) => ({ file: text3(e.file), towards: text3(e.towards), confidence: number2(e.confidence), support: number2(e.support) }));
+  const rows9 = factor.evidence.map((e) => ({ file: text3(e.file), towards: text3(e.towards), confidence: number2(e.confidence), support: number2(e.support) }));
   return [
     ...skippedNotice,
     {
       type: "ranked-table",
       caption: "Files that usually change with a touched file and are not in the change",
       noun: "partners",
-      total: rows7.length,
+      total: rows9.length,
       columns: [
         { key: "file", label: "Missing file" },
         { key: "towards", label: "Usually changes with" },
         { key: "confidence", label: "Confidence (%)", align: "right", guideline: { value: assessed.risk.missingConfidence, note: "cochange.risk.missingConfidence", direction: "below" } },
         { key: "support", label: "Shared changes", align: "right", guideline: { value: assessed.context.minSupport, note: "cochange.minSupport", direction: "below" } }
       ],
-      rows: rows7.slice(0, ROWS)
+      rows: rows9.slice(0, ROWS)
     }
   ];
 }
@@ -13246,9 +13598,9 @@ function complexityBlocks(evidence) {
   }
   const blocks = [];
   if (complexity.rows.length === 0) {
-    blocks.push({ type: "notice", level: "notice", text: `No new function is above a guideline and no existing one above it got worse${complexity.compared === null ? "" : `, over ${plural(complexity.compared, "compared function")}`}, from complexity ${complexity.source}.` });
+    blocks.push({ type: "notice", level: "notice", text: `No new function is above a guideline and no existing one above it got worse${complexity.compared === null ? "" : `, over ${plural2(complexity.compared, "compared function")}`}, from complexity ${complexity.source}.` });
   } else {
-    const rows7 = complexity.rows.map((r) => ({
+    const rows9 = complexity.rows.map((r) => ({
       unit: r.id,
       metric: r.metric,
       change: r.kind === "new" ? "new" : "worsened",
@@ -13261,7 +13613,7 @@ function complexityBlocks(evidence) {
       type: "ranked-table",
       caption: `Functions above a complexity guideline that are new or got worse, from complexity ${complexity.source}`,
       noun: "rows",
-      total: rows7.length,
+      total: rows9.length,
       numbered: false,
       columns: [
         { key: "unit", label: "Function" },
@@ -13272,10 +13624,10 @@ function complexityBlocks(evidence) {
         { key: "guideline", label: "Guideline", align: "right" },
         { key: "against", label: "Against the guideline" }
       ],
-      rows: rows7.slice(0, ROWS)
+      rows: rows9.slice(0, ROWS)
     });
   }
-  if (complexity.unsupportedFiles > 0) blocks.push({ type: "notice", level: "limit", text: `${plural(complexity.unsupportedFiles, "changed file")} could not be parsed, so ${complexity.unsupportedFiles === 1 ? "its" : "their"} functions were not compared.` });
+  if (complexity.unsupportedFiles > 0) blocks.push({ type: "notice", level: "limit", text: `${plural2(complexity.unsupportedFiles, "changed file")} could not be parsed, so ${complexity.unsupportedFiles === 1 ? "its" : "their"} functions were not compared.` });
   return blocks;
 }
 function structureBlocks(evidence) {
@@ -13337,7 +13689,7 @@ function hotspotBlocks(assessed) {
 function landedBlocks(assessed) {
   const { landed, commits } = assessed.change;
   if (landed <= 1) return [];
-  return [{ type: "notice", level: "limit", text: `This range covers ${landed} landed changes and ${plural(commits.length, "commit")}, so the per-change factors (size, spread, novel coupling and the others) describe their union, not one change. Name a single change as BASE..HEAD to read it alone.` }];
+  return [{ type: "notice", level: "limit", text: `This range covers ${landed} landed changes and ${plural2(commits.length, "commit")}, so the per-change factors (size, spread, novel coupling and the others) describe their union, not one change. Name a single change as BASE..HEAD to read it alone.` }];
 }
 function changeBlocks(assessed) {
   const { change: change3 } = assessed;
@@ -13371,7 +13723,7 @@ function attentionSection(assessed, items, total, compact) {
       emptyText: "Nothing needs attention."
     }
   ] : items.flatMap((item) => [{ type: "evidence-list", title: item.heading, items: item.evidence, omitted: item.omitted, emptyText: "The finding has no evidence item to list." }, { type: "judgement", slot: item.slot.id }]);
-  if (total > items.length) blocks.push({ type: "notice", level: "notice", text: `${plural(total - items.length, "more item")} need attention and have no judgement slot, to keep the summary short. ${compact ? "The full report lists them" : "The tables below list them"}.` });
+  if (total > items.length) blocks.push({ type: "notice", level: "notice", text: `${plural2(total - items.length, "more item")} need attention and have no judgement slot, to keep the summary short. ${compact ? "The full report lists them" : "The tables below list them"}.` });
   return { id: "attention", heading: "Needs attention", blocks };
 }
 function excludedOf(assessed) {
@@ -13471,7 +13823,7 @@ var change2 = {
       attentionSection(assessed, shown2, total, true),
       { id: "guidance", heading: "Reviewer guidance", blocks: [{ type: "judgement", slot: "guidance" }] }
     ] : [
-      { id: "change", heading: "The change", blocks: changeBlocks(assessed) },
+      { id: "change", heading: "The change", blocks: [...changeBlocks(assessed), ...footprintBlocks(assessed)] },
       { id: "guidance", heading: "Reviewer guidance", blocks: [{ type: "judgement", slot: "guidance" }] },
       attentionSection(assessed, shown2, total, false),
       { id: "factors", heading: "Risk factors", blocks: [...factorBlocks(assessed, false), ...levelBlocks(level)] },
@@ -13483,7 +13835,7 @@ var change2 = {
       { id: "evidence", heading: "Evidence behind the factors", blocks: evidenceBlocks(assessed) }
     ];
     return dropEmptySlots({
-      title: `Change summary ${short2(assessed.change.base)}..${short2(assessed.change.head)}${compact ? ` (${plural(assessed.change.commits.length, "commit")}, ${plural(assessed.change.files.length, "file")})` : ""}`,
+      title: `Change summary ${short2(assessed.change.base)}..${short2(assessed.change.head)}${compact ? ` (${plural2(assessed.change.commits.length, "commit")}, ${plural2(assessed.change.files.length, "file")})` : ""}`,
       inputs: {
         range: requested ?? null,
         base: assessed.change.base,
@@ -13496,7 +13848,7 @@ var change2 = {
       },
       header: {
         evidenceGrade: hist.grade,
-        historyWindow: `${hist.usableHistoryMonths} months of usable history; the baseline is the ${plural(assessed.baseline.population, "merged change")} since ${isoDate3(assessed.baseline.since)}`,
+        historyWindow: `${hist.usableHistoryMonths} months of usable history; the baseline is the ${plural2(assessed.baseline.population, "merged change")} since ${isoDate3(assessed.baseline.since)}`,
         excluded: excludedOf(assessed)
       },
       sections,
@@ -13638,10 +13990,10 @@ function expectedSection(expected, settings) {
     table
   ];
 }
-function trendBlocks(rows7, total, settings, previous) {
+function trendBlocks(rows9, total, settings, previous) {
   if (!trendOf2(previous)) return [{ type: "notice", level: "notice", text: "The window before the current one holds no eligible change, so no pair has a trend." }];
   const counts = { stronger: 0, stable: 0, weaker: 0 };
-  for (const row2 of rows7) if (row2.trend !== null) counts[row2.trend]++;
+  for (const row2 of rows9) if (row2.trend !== null) counts[row2.trend]++;
   return [
     {
       type: "facts",
@@ -13650,7 +14002,7 @@ function trendBlocks(rows7, total, settings, previous) {
         { label: "Stronger", value: String(counts.stronger) },
         { label: "Stable", value: String(counts.stable) },
         { label: "Weaker", value: String(counts.weaker) },
-        { label: "Pairs that shared no change in the previous window", value: String(rows7.filter((row2) => row2.previousSupport === 0).length) },
+        { label: "Pairs that shared no change in the previous window", value: String(rows9.filter((row2) => row2.previousSupport === 0).length) },
         { label: "Stable means a change in degree of at most", value: `${settings.tolerance} points (guideline cochange.couplingTrendTolerance, a judgement call)` },
         { label: "Eligible changes in the previous window", value: String(previous.eligibleChanges) }
       ]
@@ -13677,7 +14029,7 @@ function thinBlocks(total, minSupport, below) {
     )
   ];
 }
-function sumsOf(rows7) {
+function sumsOf(rows9) {
   const sums = /* @__PURE__ */ new Map();
   const add = (file, row2) => {
     const sum = sums.get(file) ?? { file, shared: 0, partners: 0, strongest: 0 };
@@ -13686,7 +14038,7 @@ function sumsOf(rows7) {
     sum.strongest = Math.max(sum.strongest, row2.degree);
     sums.set(file, sum);
   };
-  for (const row2 of rows7) {
+  for (const row2 of rows9) {
     add(row2.path, row2);
     add(row2.with, row2);
   }
@@ -13711,30 +14063,91 @@ function sumSection(sums) {
     }
   ];
 }
-function matrixSection(rows7, sums, minSupport) {
-  const files = sums.slice(0, TOP_FILES).map((s) => s.file);
-  if (files.length < 2) return [];
-  const shared = new Map(rows7.map((row2) => [`${row2.path}\0${row2.with}`, row2.support]));
-  const between = (a, b) => shared.get(`${a}\0${b}`) ?? shared.get(`${b}\0${a}`) ?? null;
-  const labels = files.map(shortLabel);
+var MATRIX_FILES = 18;
+var MATRIX_BREAKS = [20, 40, 60, 80];
+var MATRIX_MARKS = {
+  expected: { symbol: "e", text: "an expected pair (a test and its code, a header and its source, or another pair listed in the table of expected pairs)" },
+  across: { symbol: "!", text: "a pair outside every box: files in different clusters, or a file in no cluster, that reach the support floor" }
+};
+function matrixFiles(clusters, sums) {
+  const sumOf = new Map(sums.map((s) => [s.file, s]));
+  const rank2 = (a, b) => (sumOf.get(b)?.shared ?? 0) - (sumOf.get(a)?.shared ?? 0) || (sumOf.get(b)?.partners ?? 0) - (sumOf.get(a)?.partners ?? 0) || byBytes5(a, b);
+  const drawn = [];
+  const inCluster = new Set(clusters.flatMap((c) => c.files));
+  for (const [i, cluster] of clusters.entries()) {
+    const room = MATRIX_FILES - drawn.length;
+    if (room < 2) break;
+    const members = [...cluster.files].sort(rank2).slice(0, room);
+    drawn.push(...members.map((file) => ({ file, cluster: i + 1 })));
+  }
+  for (const s of sums) {
+    if (drawn.length >= MATRIX_FILES) break;
+    if (!inCluster.has(s.file)) drawn.push({ file: s.file, cluster: null });
+  }
+  return drawn;
+}
+function matrixSection(classified, clusters, sums, settings) {
+  const drawn = matrixFiles(clusters, sums);
+  if (drawn.length < 2) return [];
+  const pair = /* @__PURE__ */ new Map();
+  for (const c of classified) {
+    pair.set(`${c.row.path}\0${c.row.with}`, c);
+    pair.set(`${c.row.with}\0${c.row.path}`, c);
+  }
+  const labels = drawn.map((d) => shortLabel(d.file));
+  const boxed = (a, b) => drawn[a].cluster !== null && drawn[a].cluster === drawn[b].cluster;
+  const at2 = (i, j) => i === j ? void 0 : pair.get(`${drawn[i].file}\0${drawn[j].file}`);
+  const groups = [];
+  for (const [i, d] of drawn.entries()) {
+    if (d.cluster === null) continue;
+    const last = groups[groups.length - 1];
+    if (last !== void 0 && last.label === `cluster ${d.cluster}`) last.end = i;
+    else groups.push({ label: `cluster ${d.cluster}`, start: i, end: i });
+  }
+  const clustersDrawn = new Set(drawn.flatMap((d) => d.cluster === null ? [] : [d.cluster]));
+  const trailing = drawn.filter((d) => d.cluster === null).length;
+  const inClusters = clusters.reduce((n, c) => n + c.files.length, 0);
+  const omittedFiles = Math.max(0, inClusters + sums.filter((s) => !clusters.some((c) => c.files.includes(s.file))).length - drawn.length);
+  const omittedClusters = clusters.length - clustersDrawn.size;
+  const expectedPairs = classified.filter((c) => c.reason !== null);
+  const expectedDrawn = drawn.flatMap((_, i) => drawn.slice(i + 1).flatMap((_2, k) => at2(i, i + 1 + k)?.reason ? [1] : [])).length;
+  const cut = [...clustersDrawn].flatMap((n) => {
+    const shown2 = drawn.filter((d) => d.cluster === n).length;
+    const size2 = clusters[n - 1].files.length;
+    return shown2 < size2 ? [`cluster ${n} shows ${shown2} of its ${size2} files`] : [];
+  });
+  const orderText = [
+    `Rows and columns are ordered by cluster (the numbers of the table of clusters), and within a cluster by sum of coupling over production pairs, then coupled files, then path${trailing === 0 ? "" : `; the last ${trailing} ${trailing === 1 ? "file is" : "files are"} in no cluster and follow the clusters by sum of coupling`}.`,
+    `Draws ${drawn.length} files and ${clustersDrawn.size} of ${clusters.length} clusters, at most ${MATRIX_FILES} files; omits ${omittedFiles} ${omittedFiles === 1 ? "file" : "files"} and ${omittedClusters} ${omittedClusters === 1 ? "cluster" : "clusters"} (clusters are drawn in the order of the table of clusters, then the files in no cluster with the greatest sum). ${cut.length === 0 ? "" : ` ${cut.join("; ")}, the ones with the greatest sum.`} \`cochange clusters\` lists every cluster.`,
+    `A cell is the degree of the pair, which is also its colour; shared changes are in the tables of pairs, and a pair that shares fewer than ${settings.minSupport} changes (the support floor) has no cell value. Expected pairs are drawn and marked, not left out (${expectedDrawn} of ${expectedPairs.length} expected ${expectedPairs.length === 1 ? "pair falls" : "pairs fall"} within the drawn files).`,
+    `Cluster edges are pairs at or above the degree guideline of ${settings.minDegree} percent, so a marked cell outside the boxes is a pair under the guideline.`
+  ].join(" ");
   return [
     {
       type: "matrix",
-      title: `Shared changes between the top ${files.length} files by sum of coupling`,
-      valueLabel: `shared changes (none where the pair shares fewer than ${minSupport}, the support floor)`,
+      title: `Co-change between the ${drawn.length} files of the strongest clusters, degree in percent`,
+      valueLabel: "coupling degree in percent",
       rows: labels,
       columns: labels,
-      cells: files.map((a) => files.map((b) => a === b ? null : between(a, b)))
+      cells: drawn.map((_, i) => drawn.map((_2, j) => at2(i, j)?.row.degree ?? null)),
+      breaks: MATRIX_BREAKS,
+      marks: MATRIX_MARKS,
+      cellMarks: drawn.map((_, i) => drawn.map((_2, j) => {
+        const c = at2(i, j);
+        return c === void 0 ? null : c.reason !== null ? "expected" : boxed(i, j) ? null : "across";
+      })),
+      groups,
+      orderText
     }
   ];
 }
-function degreeHistogram(rows7) {
+function degreeHistogram(rows9) {
   const bins = Array.from({ length: 10 }, (_, i) => ({ label: `${i * 10} to ${i === 9 ? 100 : (i + 1) * 10 - 1}`, count: 0 }));
-  for (const row2 of rows7) bins[Math.min(9, Math.floor(row2.degree / 10))].count++;
+  for (const row2 of rows9) bins[Math.min(9, Math.floor(row2.degree / 10))].count++;
   return { type: "histogram", title: "Distribution of pair degrees (percent)", unit: "pairs", bins };
 }
-function clustersSection(rows7) {
-  if (rows7.length === 0) {
+function clustersSection(rows9) {
+  if (rows9.length === 0) {
     return [
       {
         type: "ranked-table",
@@ -13754,7 +14167,7 @@ function clustersSection(rows7) {
       type: "ranked-table",
       caption: "Clusters of mutually coupled files, with their spread",
       noun: "clusters",
-      total: rows7.length,
+      total: rows9.length,
       columns: [
         { key: "files", label: "Files" },
         { key: "size", label: "Files in cluster", align: "right" },
@@ -13763,7 +14176,7 @@ function clustersSection(rows7) {
         { key: "degree", label: "Mean degree (%)", align: "right" },
         { key: "findings", label: "Findings" }
       ],
-      rows: rows7.slice(0, TOP_CLUSTERS).map((row2) => ({
+      rows: rows9.slice(0, TOP_CLUSTERS).map((row2) => ({
         files: members(row2),
         size: row2.size,
         folders: row2.folders,
@@ -13781,17 +14194,17 @@ function hiddenSection(stored) {
       read: null
     };
   }
-  const rows7 = stored.rows;
+  const rows9 = stored.rows;
   const coChange = (row2) => typeof row2.coChange === "object" && row2.coChange !== null ? row2.coChange : {};
   const statics = (row2) => typeof row2.staticCoupling === "object" && row2.staticCoupling !== null ? row2.staticCoupling : {};
   return {
     read: { report: stored.report, head: stored.head, config: stored.config },
-    blocks: rows7.length === 0 ? [{ type: "notice", level: "notice", text: "The stored structure hidden result lists no pair with high co-change and low static coupling." }] : [
+    blocks: rows9.length === 0 ? [{ type: "notice", level: "notice", text: "The stored structure hidden result lists no pair with high co-change and low static coupling." }] : [
       {
         type: "ranked-table",
         caption: "Pairs with high co-change and low static coupling, from structure hidden",
         noun: "pairs",
-        total: rows7.length,
+        total: rows9.length,
         columns: [
           { key: "from", label: "Module" },
           { key: "to", label: "Module" },
@@ -13800,7 +14213,7 @@ function hiddenSection(stored) {
           { key: "expected", label: "Expected by chance", align: "right" },
           { key: "sites", label: "Static reference sites", align: "right" }
         ],
-        rows: rows7.slice(0, TOP_HIDDEN).map((row2) => ({
+        rows: rows9.slice(0, TOP_HIDDEN).map((row2) => ({
           from: text4(row2.from),
           to: text4(row2.to),
           level: text4(row2.level),
@@ -13874,7 +14287,7 @@ function limitsOf2(evidence, settings, previous, hiddenMissing) {
   ];
 }
 var coupling = {
-  summary: "Coupled pairs with their trend, sum of coupling per file, a matrix of the top files, clusters and hidden coupling, with a judgement of each top pair",
+  summary: "Coupled pairs with their trend, sum of coupling per file, a matrix of the clustered files, clusters and hidden coupling, with a judgement of each top pair",
   options: { ...windowOptions, "no-refresh": { type: "boolean" }, ...noCacheOption },
   optionHelp: {
     since: "analyse history from this date (ISO 8601); needed on a shallow clone",
@@ -13888,14 +14301,14 @@ var coupling = {
     const clusterOutput = await command7.run(context);
     const extra = pairOutput.extra;
     const { evidence } = extra;
-    const rows7 = pairOutput.results;
+    const rows9 = pairOutput.results;
     const clusters = clusterOutput.results;
     const previous = extra.trendWindows?.previous;
     const settings = readSettings(context.config);
     const guideline = { minDegree: settings.minDegree, tolerance: settings.couplingTrendTolerance };
     const hidden = hiddenSection(readSiblingResult(context.repo.root, "structure", "hidden", context.repo.head));
     const isTest = testClassifier(context.config.effective.testPatterns);
-    const classified = rows7.map((row2) => ({ row: row2, reason: expectedReason({ path: row2.path, code: row2.pathKind === "code" }, { path: row2.with, code: row2.withKind === "code" }, isTest) }));
+    const classified = rows9.map((row2) => ({ row: row2, reason: expectedReason({ path: row2.path, code: row2.pathKind === "code" }, { path: row2.with, code: row2.withKind === "code" }, isTest) }));
     const production = classified.filter((c) => c.reason === null).map((c) => c.row);
     const expected = classified.filter((c) => c.reason !== null);
     const sums = sumsOf(production);
@@ -13903,18 +14316,18 @@ var coupling = {
     const excluded = excludedCounts(extra.filtersApplied, droppedCounts(), builtinOmissions(), { leftOutOf: "the rankings", oversizedNote: "counted on neither side of any ratio" });
     const inputs = pairOutput.inputs;
     const withTrend = trendOf2(previous);
-    const thin = rows7.length < FEW_PAIRS;
+    const thin = rows9.length < FEW_PAIRS;
     const below = thin ? await pairsBelowFloor(context, inputs.minSupport) : [];
     const tie = tieNotice(production, JUDGED_PAIRS);
     const pairsHeading = [
-      ...thin ? thinBlocks(rows7.length, inputs.minSupport, below) : [],
-      ...rows7.length === 0 ? [] : [
-        ...pairsSection(production, rows7.length, guideline, withTrend),
+      ...thin ? thinBlocks(rows9.length, inputs.minSupport, below) : [],
+      ...rows9.length === 0 ? [] : [
+        ...pairsSection(production, rows9.length, guideline, withTrend),
         ...tie === null ? [] : [tie],
         ...judged.map((_, i) => ({ type: "judgement", slot: `pair-${i + 1}` })),
         ...expectedSection(expected, guideline),
-        ...trendBlocks(rows7, rows7.length, guideline, previous),
-        degreeHistogram(rows7)
+        ...trendBlocks(rows9, rows9.length, guideline, previous),
+        degreeHistogram(rows9)
       ]
     ];
     return dropEmptySlots({
@@ -13933,9 +14346,9 @@ var coupling = {
         excluded: excluded.filter((e) => e.count > 0)
       },
       sections: [
-        { id: "summary", heading: "What the coupling says", blocks: [{ type: "judgement", slot: "summary" }] },
+        { id: "summary", heading: "What the coupling says", blocks: [{ type: "judgement", slot: "summary" }, ...matrixSection(classified, clusters, sums, { minSupport: inputs.minSupport, minDegree: settings.minDegree })] },
         { id: "pairs", heading: "Coupled pairs", blocks: pairsHeading },
-        { id: "sums", heading: "Sum of coupling per file", blocks: [...sumSection(sums), ...matrixSection(rows7, sums, inputs.minSupport)] },
+        { id: "sums", heading: "Sum of coupling per file", blocks: sumSection(sums) },
         { id: "clusters", heading: "Clusters", blocks: clustersSection(clusters) },
         { id: "hidden", heading: "Hidden coupling", blocks: hidden.blocks },
         { id: "excluded", heading: "What was excluded", blocks: [excludedBlock(excluded)] }
@@ -14088,26 +14501,26 @@ var command12 = analysisCommand(name13, {
         };
       })
     );
-    const rows7 = sampled.map((s) => s.row);
+    const rows9 = sampled.map((s) => s.row);
     const headSha = history.view.headSha;
     const headText = await readBlobAt(context.repo.root, headSha, file);
     if (headText !== void 0 && headText !== sampled.at(-1).text) {
       const date = (await runGit(context.repo.root, ["show", "-s", "--format=%ct", headSha])).trim();
-      rows7.push({ commit: headSha, date: isoDate(Number(date)), path: file, ...measureText(headText, file), bytes: Buffer.byteLength(headText), atHead: true });
+      rows9.push({ commit: headSha, date: isoDate(Number(date)), path: file, ...measureText(headText, file), bytes: Buffer.byteLength(headText), atHead: true });
     }
-    const first = rows7[0];
-    const last = rows7.at(-1);
+    const first = rows9[0];
+    const last = rows9.at(-1);
     const changeRatio = changeRatioOf(first.complexity, last.complexity);
-    const measured = rows7.filter((r) => r.complexity !== null);
+    const measured = rows9.filter((r) => r.complexity !== null);
     const peak = measured.reduce((best, r) => best === null || r.complexity > best.complexity ? r : best, null);
     return {
       inputs: { path: file, samples, guideline: TREND_GUIDELINE },
       results: {
         path: file,
         revisions: revisions.length,
-        samples: rows7,
+        samples: rows9,
         summary: {
-          direction: directionOf(changeRatio, rows7.length),
+          direction: directionOf(changeRatio, rows9.length),
           changeRatio: changeRatio === null ? null : Math.round(changeRatio * 1e4) / 1e4,
           guideline: TREND_GUIDELINE,
           peak: peak === null ? null : { complexity: peak.complexity, date: peak.date, commit: peak.commit },
@@ -14137,16 +14550,16 @@ function cognitiveAbove(analyse) {
   const above = /* @__PURE__ */ new Map();
   for (const row2 of analyse.rows) {
     if (typeof row2.path !== "string" || !Array.isArray(row2.labels)) continue;
-    if (row2.labels.some((label) => label === "cognitive-warn" || label === "cognitive-high")) above.set(row2.path, (above.get(row2.path) ?? 0) + 1);
+    if (row2.labels.some((label2) => label2 === "cognitive-warn" || label2 === "cognitive-high")) above.set(row2.path, (above.get(row2.path) ?? 0) + 1);
   }
   return above;
 }
-function frictionOf(rows7, percentile2, above) {
-  const frequency = midRankPercentiles(rows7.map((row2) => row2.frequency));
-  const scored = rows7.flatMap((row2, i) => row2.complexity === null ? [] : [i]);
-  const complexity = new Map(midRankPercentiles(scored.map((i) => rows7[i].complexity)).map((p, k) => [scored[k], p]));
+function frictionOf(rows9, percentile2, above) {
+  const frequency = midRankPercentiles(rows9.map((row2) => row2.frequency));
+  const scored = rows9.flatMap((row2, i) => row2.complexity === null ? [] : [i]);
+  const complexity = new Map(midRankPercentiles(scored.map((i) => rows9[i].complexity)).map((p, k) => [scored[k], p]));
   const guideline = percentile2 / 100;
-  const all = rows7.flatMap((row2, i) => {
+  const all = rows9.flatMap((row2, i) => {
     if (frequency[i] < guideline) return [];
     const c = complexity.get(i);
     const complexityPercentile = c === void 0 ? null : percentOf(c);
@@ -14179,8 +14592,8 @@ function bandBreaks(values) {
   for (const share3 of [0.5, 0.75, 0.9, 0.97]) breaks.push(Math.max(at2(share3), (breaks.at(-1) ?? 0) + 1));
   return breaks;
 }
-function mapBlocks(rows7, lines2) {
-  const sized = rows7.flatMap((row2) => lines2.has(row2.path) ? [{ path: row2.path, size: lines2.get(row2.path), colour: row2.frequency }] : []);
+function mapBlocks(rows9, lines2) {
+  const sized = rows9.flatMap((row2) => lines2.has(row2.path) ? [{ path: row2.path, size: lines2.get(row2.path), colour: row2.frequency }] : []);
   const largest = [...sized].sort((a, b) => b.size - a.size || (a.path < b.path ? -1 : 1)).slice(0, MAP_FILES);
   const blocks = [
     {
@@ -14194,7 +14607,7 @@ function mapBlocks(rows7, lines2) {
   ];
   blocks.push({ type: "paragraph", text: "Colour bands are rank steps of the files shown: the band edges sit at the 50th, 75th, 90th and 97th percentile of their revisions, so band 5 is the most changed and says nothing about good or bad." });
   if (sized.length > largest.length) blocks.push({ type: "notice", level: "limit", text: `The map and its table show the ${largest.length} files with the most lines of ${sized.length} ranked files; the ${sized.length - largest.length} smaller files are not in it.` });
-  if (rows7.length > sized.length) blocks.push({ type: "notice", level: "limit", text: `${rows7.length - sized.length} ranked files have no text lines to size and are not in the map.` });
+  if (rows9.length > sized.length) blocks.push({ type: "notice", level: "limit", text: `${rows9.length - sized.length} ranked files have no text lines to size and are not in the map.` });
   return blocks;
 }
 function frictionBlocks(friction, shown2, judged, percentile2, basis, complexityLabel, considered, judgedGuideline) {
@@ -14421,17 +14834,17 @@ var hotspots = {
     const excluded = excludedCounts(output.extra.filtersApplied, droppedCounts(), builtinOmissions());
     const extra = output.extra;
     const { evidence } = extra;
-    const rows7 = orderedHotspots(output);
+    const rows9 = orderedHotspots(output);
     const root = context.repo.root;
     const head = context.repo.head;
     const settings = readSettings(context.config);
     const percentile2 = settings.hotspotPercentile;
     const analyse = readSiblingResult(root, "complexity", "analyse", head);
     const fixes = readSiblingResult(root, "complexity", "fixes", head);
-    const { all: friction, basis } = frictionOf(rows7, percentile2, cognitiveAbove(analyse));
+    const { all: friction, basis } = frictionOf(rows9, percentile2, cognitiveAbove(analyse));
     const shown2 = friction.slice(0, limit);
     const judged = shown2.slice(0, settings.hotspotJudged);
-    const lines2 = await linesOf(root, head, rows7.map((row2) => row2.path));
+    const lines2 = await linesOf(root, head, rows9.map((row2) => row2.path));
     const trendPaths = shown2.slice(0, TREND_FILES).map((f) => f.row.path);
     const trends = await Promise.all(trendPaths.map((path) => trendOf3(context, path)));
     const complexityLabel = extra.complexitySource === "complexity-report" ? "Complexity (complexity files)" : "Complexity (indentation)";
@@ -14439,12 +14852,12 @@ var hotspots = {
     const read2 = [analyse, fixes].flatMap((s) => s === void 0 ? [] : [{ report: s.report, head: s.head, config: s.config }]);
     const sections = [
       { id: "summary", heading: "What the picture says", blocks: [{ type: "judgement", slot: "summary" }] },
-      { id: "map", heading: "Map of the code", blocks: mapBlocks(rows7, lines2) },
+      { id: "map", heading: "Map of the code", blocks: mapBlocks(rows9, lines2) },
       {
         id: "friction",
         heading: "Friction list",
-        blocks: friction.length === 0 ? [{ type: "notice", level: "notice", text: basis === "functions" ? `No file in the top ${100 - percentile2} percent of change frequency among the ${rows7.length} files ranked has a function above the cognitive guideline.` : `No file is in the top ${100 - percentile2} percent of both change frequency and complexity among the ${rows7.length} files ranked.` }] : [
-          ...frictionBlocks(friction, shown2, judged, percentile2, basis, complexityLabel, rows7.length, settings.hotspotJudged)
+        blocks: friction.length === 0 ? [{ type: "notice", level: "notice", text: basis === "functions" ? `No file in the top ${100 - percentile2} percent of change frequency among the ${rows9.length} files ranked has a function above the cognitive guideline.` : `No file is in the top ${100 - percentile2} percent of both change frequency and complexity among the ${rows9.length} files ranked.` }] : [
+          ...frictionBlocks(friction, shown2, judged, percentile2, basis, complexityLabel, rows9.length, settings.hotspotJudged)
         ]
       },
       { id: "history", heading: "History of the top files", blocks: trendPaths.length === 0 ? [{ type: "notice", level: "notice", text: "There is no friction file to draw." }] : historyBlocks(trends, trendPaths, Math.max(0, shown2.length - trendPaths.length)) },
@@ -14467,7 +14880,7 @@ var hotspots = {
       sections,
       limits: [
         "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-        basis === "functions" ? `The friction list is the files at or above the ${percentile2}th percentile of change frequency (cochange.hotspotPercentile) that have a function above the cognitive complexity guideline (from the stored \`complexity analyse\` result). A percentile is a rank among the ${rows7.length} files ranked, so it moves when files are added.` : `The friction list is the files at or above the ${percentile2}th percentile (cochange.hotspotPercentile) of both change frequency and complexity, because no stored \`complexity analyse\` result covers this commit; run \`complexity analyse\` and this report again to list files with a function above the cognitive guideline instead. A percentile is a rank among the ${rows7.length} files ranked, so it moves when files are added.`,
+        basis === "functions" ? `The friction list is the files at or above the ${percentile2}th percentile of change frequency (cochange.hotspotPercentile) that have a function above the cognitive complexity guideline (from the stored \`complexity analyse\` result). A percentile is a rank among the ${rows9.length} files ranked, so it moves when files are added.` : `The friction list is the files at or above the ${percentile2}th percentile (cochange.hotspotPercentile) of both change frequency and complexity, because no stored \`complexity analyse\` result covers this commit; run \`complexity analyse\` and this report again to list files with a function above the cognitive guideline instead. A percentile is a rank among the ${rows9.length} files ranked, so it moves when files are added.`,
         `The friction list shows ${shown2.length} of ${friction.length} files; the judgement covers the first ${judged.length} (cochange.hotspotJudged), the history table covers the first ${Math.min(TREND_FILES, shown2.length)} (sparklines of the first ${Math.min(SPARKLINES, shown2.length)}) and the X-Ray the first ${Math.min(XRAY_FILES, shown2.length)}.`,
         extra.complexitySource === "indentation" ? "The Complexity column is the file's indentation complexity computed by this report; `complexity files` stores the same figure for this commit." : "The Complexity column is the file's indentation complexity from the stored `complexity files` result.",
         "Revisions count every commit that touched the file in the window. Landed changes count the merged changes (a pull request, or a commit on the main line) that touched it, so they are fewer than revisions when a change has several commits; the fix share is fixes landed divided by landed changes. A fix is a count of commit messages, not of defects, and fixes in review are fix-like commits made on a branch before it merged.",
@@ -14482,9 +14895,9 @@ var hotspots = {
 };
 
 // packages/cochange/src/reports/knowledge.ts
-var TOP2 = 10;
+var TOP3 = 10;
 var TREEMAP_TILES = 60;
-var cappedTable2 = (table, command17) => ({ type: "ranked-table", ...capRows(table, TOP2, command17) });
+var cappedTable2 = (table, command17) => ({ type: "ranked-table", ...capRows(table, TOP3, command17) });
 var ONE_CONTRIBUTOR = "The repository has one contributor in the window, so bus-factor and turnover figures do not apply. The blame holds one developer and none who has left. The report omits the bus-factor table and the turnover simulation, and still prints the pattern counts and the knowledge held by people who have left.";
 var notAppliedTable = (caption, consequence) => ({
   type: "ranked-table",
@@ -14547,9 +14960,9 @@ function activeHolders(model, byPath, path) {
   if (file === void 0) return "";
   return file.holders.filter((h) => model.developers[h.dev].active).sort((a, b) => b.lines - a.lines || a.dev - b.dev).map((h) => model.developers[h.dev].key.replace(/\s*<[^>]*>$/, "")).join("; ");
 }
-var holdersColumn = (names, label) => names.enabled ? [{ key: "holders", label }] : [];
-var holdersCell = (names, path) => names.enabled ? { holders: activeHolders(names.model, names.byPath, path) || null } : {};
-function patternRow(file, names) {
+var holdersColumn = (names2, label2) => names2.enabled ? [{ key: "holders", label: label2 }] : [];
+var holdersCell = (names2, path) => names2.enabled ? { holders: activeHolders(names2.model, names2.byPath, path) || null } : {};
+function patternRow(file, names2) {
   return {
     path: file.path,
     hotspot: file.hotspot ? "yes" : "no",
@@ -14560,10 +14973,10 @@ function patternRow(file, names) {
     top: percent2(file.topActiveShare),
     gone: percent2(file.formerShare),
     bus: file.busFactor,
-    ...holdersCell(names, file.path)
+    ...holdersCell(names2, file.path)
   };
 }
-function patternTable(pattern, files, names) {
+function patternTable(pattern, files, names2) {
   const own = files.filter((f) => f.pattern === pattern);
   return cappedTable2({
     caption: `Top files whose first pattern is ${PATTERN_INFO[pattern].label.toLowerCase()}, hottest first`,
@@ -14579,15 +14992,15 @@ function patternTable(pattern, files, names) {
       { key: "top", label: "Top active holder (%)", align: "right" },
       { key: "gone", label: "Held by former (%)", align: "right" },
       { key: "bus", label: "Bus factor", align: "right" },
-      ...holdersColumn(names, "Active developers holding lines")
+      ...holdersColumn(names2, "Active developers holding lines")
     ],
     emptyText: `No file's first pattern is ${PATTERN_INFO[pattern].label.toLowerCase()}.`,
-    rows: own.map((f) => patternRow(f, names))
+    rows: own.map((f) => patternRow(f, names2))
   }, "cochange abandonment patterns");
 }
 function countsTable(p, measured) {
-  const rows7 = measured.summary.counts.map((c) => ({ pattern: PATTERN_INFO[c.pattern].label, rule: PATTERN_INFO[c.pattern].rule(p), primary: c.primary, matching: c.matching }));
-  rows7.push({ pattern: "No pattern", rule: "None of the above applies", primary: measured.summary.none, matching: measured.summary.none });
+  const rows9 = measured.summary.counts.map((c) => ({ pattern: PATTERN_INFO[c.pattern].label, rule: PATTERN_INFO[c.pattern].rule(p), primary: c.primary, matching: c.matching }));
+  rows9.push({ pattern: "No pattern", rule: "None of the above applies", primary: measured.summary.none, matching: measured.summary.none });
   return {
     type: "ranked-table",
     caption: "Files by knowledge-risk pattern",
@@ -14598,7 +15011,7 @@ function countsTable(p, measured) {
       { key: "primary", label: "Files, first pattern", align: "right" },
       { key: "matching", label: "Files, any pattern", align: "right" }
     ],
-    rows: rows7
+    rows: rows9
   };
 }
 function guidelineFacts(p) {
@@ -14635,10 +15048,10 @@ function treemapBlock(measured) {
     { type: "notice", level: "notice", text: `The treemap draws the ${drawn.length} production code files with the most lines held by people, of ${sized.length}. ${measured.files.length - code.length === 0 ? "" : `${measured.files.length - code.length} test, document, data and configuration files are not drawn. `}The tables below list files of every kind by pattern, hottest first.` }
   ];
 }
-function busFactorTable(p, measured, names) {
+function busFactorTable(p, measured, names2) {
   const byPath = new Map(measured.files.map((f) => [f.path, f]));
   const hotspots2 = measured.hotspotRows.filter((r) => r.recommendation === "hotspot" && r.role !== "test").sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
-  const rows7 = hotspots2.map((h) => {
+  const rows9 = hotspots2.map((h) => {
     const f = byPath.get(h.path);
     return {
       path: h.path,
@@ -14649,7 +15062,7 @@ function busFactorTable(p, measured, names) {
       top: f === void 0 ? null : percent2(f.topActiveShare),
       gone: f === void 0 ? null : percent2(f.formerShare),
       pattern: f?.pattern === null || f === void 0 ? null : PATTERN_INFO[f.pattern].label,
-      ...holdersCell(names, h.path)
+      ...holdersCell(names2, h.path)
     };
   });
   return [
@@ -14666,12 +15079,12 @@ function busFactorTable(p, measured, names) {
         { key: "top", label: "Top active holder (%)", align: "right" },
         { key: "gone", label: "Held by former (%)", align: "right" },
         { key: "pattern", label: "First pattern" },
-        ...holdersColumn(names, "Active developers holding lines")
+        ...holdersColumn(names2, "Active developers holding lines")
       ],
       emptyText: "No production file is flagged as a hotspot, so no bus factor is listed.",
-      rows: rows7
+      rows: rows9
     }, "cochange hotspots"),
-    ...rows7.length === 0 ? [] : [{ type: "notice", level: "notice", text: `A dash in the bus factor column means active developers together hold less than ${p.settings.busFactorShare}% of the file's lines held by people, so the rest sits with developers who have left or with lines nobody holds.` }]
+    ...rows9.length === 0 ? [] : [{ type: "notice", level: "notice", text: `A dash in the bus factor column means active developers together hold less than ${p.settings.busFactorShare}% of the file's lines held by people, so the rest sits with developers who have left or with lines nobody holds.` }]
   ];
 }
 async function abandonmentBlocks(p, measured) {
@@ -14821,7 +15234,7 @@ function limitsOf3(p, measured, notices) {
     "Authorship is git blame ignoring whitespace and following moved and copied lines. It says who last wrote a line, which is not who understands it.",
     `A developer counts as having left after ${s.activityWindowMonths} months without a commit. Someone on leave looks the same, and local overrides correct it.`,
     "The simulation assumes turnover is random. It says nothing about any person, and the report names nobody unless run with --names, which lists active developers only.",
-    `Each table shows the top ${TOP2} of its result and says how many rows it leaves out; \`cochange abandonment patterns\` prints every file.`,
+    `Each table shows the top ${TOP3} of its result and says how many rows it leaves out; \`cochange abandonment patterns\` prints every file.`,
     `Complexity is ${measured.complexity.source === "indentation" ? "the indentation proxy, because no `complexity files` result is stored for this commit" : "from the stored `complexity files` result"}. Test files and files that are not code have none, so the complex-code pattern does not apply to them (${measured.summary.complexityUnknown} files with a blame have no complexity).`,
     ...evidence.grade === "weak" ? ["The evidence grade is weak, so history-based results are tentative."] : [],
     ...notices.length > 0 ? ["The notices above say where the identities or the turnover estimate weaken the results."] : [],
@@ -14840,7 +15253,7 @@ var knowledge = {
     const p = await prepare(context);
     const measured = await measurePatterns(context, p);
     const { model } = p.knowledge;
-    const names = { enabled: context.values.names === true, model, byPath: new Map(model.files.map((f) => [f.path, f])) };
+    const names2 = { enabled: context.values.names === true, model, byPath: new Map(model.files.map((f) => [f.path, f])) };
     const { evidence, window } = p.history;
     const single = model.developers.length === 1;
     const abandonment = await abandonmentBlocks(p, measured);
@@ -14849,7 +15262,7 @@ var knowledge = {
     const excluded = excludedCounts(p.history.filtersApplied, droppedCounts(), builtinOmissions(), { leftOutOf: "the hotspot ranking" });
     return dropEmptySlots({
       title: "Knowledge report",
-      inputs: { ...commonInputs(p, "report", { names: names.enabled, guidelines: measured.guidelines, complexityReport: measured.complexity.input }) },
+      inputs: { ...commonInputs(p, "report", { names: names2.enabled, guidelines: measured.guidelines, complexityReport: measured.complexity.input }) },
       header: {
         evidenceGrade: evidence.grade,
         historyWindow: historyWindowText(evidence, window, "; authorship is the blame at the analysed commit"),
@@ -14871,10 +15284,10 @@ var knowledge = {
             guidelineFacts(p),
             countsTable(p, measured),
             ...treemapBlock(measured),
-            ...withFiles.flatMap((pattern) => [patternTable(pattern, measured.files, names), { type: "judgement", slot: slotId(pattern) }])
+            ...withFiles.flatMap((pattern) => [patternTable(pattern, measured.files, names2), { type: "judgement", slot: slotId(pattern) }])
           ]
         },
-        { id: "bus-factor", heading: "Bus factor of the top hotspots", blocks: single ? [notAppliedTable("Bus factor of the top hotspots", "the bus factor is 1 for every file")] : busFactorTable(p, measured, names) },
+        { id: "bus-factor", heading: "Bus factor of the top hotspots", blocks: single ? [notAppliedTable("Bus factor of the top hotspots", "the bus factor is 1 for every file")] : busFactorTable(p, measured, names2) },
         { id: "knowledge-lost", heading: "Knowledge lost so far", blocks: abandonment },
         { id: "simulation", heading: "Simulated turnover", blocks: simulation.blocks }
       ],
@@ -14885,7 +15298,8 @@ var knowledge = {
 };
 
 // packages/cochange/src/reports/overview.ts
-var TOP3 = 5;
+var TOP4 = 5;
+var SCATTER_LABELS = 12;
 var FIRST_LOOK_MAX = 3;
 var percent3 = percentText;
 var number5 = (value) => typeof value === "number" && Number.isFinite(value) ? value : null;
@@ -14982,13 +15396,13 @@ function resultFrom(stored, title, command17, build) {
   const { block, candidates } = build(stored);
   return { candidates, blocks: [block], read: { report: stored.report, head: stored.head, config: stored.config }, missing: null };
 }
-var topTable = (table, command17) => ({ type: "ranked-table", ...capRows(table, TOP3, command17) });
-var top2 = (rows7) => rows7.slice(0, TOP3);
+var topTable = (table, command17) => ({ type: "ranked-table", ...capRows(table, TOP4, command17) });
+var top2 = (rows9) => rows9.slice(0, TOP4);
 function complexityResult(stored) {
   return resultFrom(stored, "complexity analyse result", "complexity analyse", (s) => {
-    const rows7 = top2(s.rows);
+    const rows9 = top2(s.rows);
     return {
-      candidates: rows7.flatMap((row2) => text5(row2.id) === null ? [] : [{ ref: `complexity:${text5(row2.id)}`, label: `${text5(row2.id)} (complexity)` }]),
+      candidates: rows9.flatMap((row2) => text5(row2.id) === null ? [] : [{ ref: `complexity:${text5(row2.id)}`, label: `${text5(row2.id)} (complexity)` }]),
       block: topTable({
         caption: "Most complex units, from complexity analyse",
         noun: "units",
@@ -15002,7 +15416,7 @@ function complexityResult(stored) {
           { key: "length", label: "Length", align: "right" },
           { key: "labels", label: "Labels" }
         ],
-        rows: rows7.map((row2) => ({
+        rows: rows9.map((row2) => ({
           id: text5(row2.id) ?? text5(row2.path),
           cognitive: number5(row2.cognitive),
           cyclomatic: number5(row2.cyclomatic),
@@ -15016,9 +15430,9 @@ function complexityResult(stored) {
 }
 function cyclesResult(stored) {
   return resultFrom(stored, "structure cycles result", "structure cycles", (s) => {
-    const rows7 = top2(s.rows);
+    const rows9 = top2(s.rows);
     return {
-      candidates: rows7.flatMap((row2) => text5(row2.id) === null ? [] : [{ ref: `structure:${text5(row2.id)}`, label: `${text5(row2.id)} (import cycle)` }]),
+      candidates: rows9.flatMap((row2) => text5(row2.id) === null ? [] : [{ ref: `structure:${text5(row2.id)}`, label: `${text5(row2.id)} (import cycle)` }]),
       block: topTable({
         caption: "Largest import cycles, from structure cycles",
         noun: "cycles",
@@ -15031,7 +15445,7 @@ function cyclesResult(stored) {
           { key: "coChangeAcross", label: "Co-changes across", align: "right" },
           { key: "unblockedGain", label: "Unblocked gain", align: "right" }
         ],
-        rows: rows7.map((row2) => ({
+        rows: rows9.map((row2) => ({
           id: text5(row2.id),
           size: number5(row2.size),
           method: text5(row2.method),
@@ -15058,10 +15472,10 @@ function localityLeftOutNotice(all) {
     const total = zero.reduce((sum, [, n]) => sum + n, 0);
     parts2.push(`${total} ${total === 1 ? "unit has" : "units have"} a gain of 0 and ${total === 1 ? "is" : "are"} not listed here: ${zero.map(([kind, n]) => `${n} ${kind}`).join(", ")}.`);
   }
-  const other = LEFT_OUT_LABELS.map(([kind, label]) => [label, count3(kind, () => true)]).filter(([, n]) => n > 0);
+  const other = LEFT_OUT_LABELS.map(([kind, label2]) => [label2, count3(kind, () => true)]).filter(([, n]) => n > 0);
   if (other.length > 0) {
     const total = other.reduce((sum, [, n]) => sum + n, 0);
-    parts2.push(`${total} ${total === 1 ? "unit is" : "units are"} ranked by other measures and not listed here: ${other.map(([label, n]) => `${n} ${label}`).join(", ")}.`);
+    parts2.push(`${total} ${total === 1 ? "unit is" : "units are"} ranked by other measures and not listed here: ${other.map(([label2, n]) => `${n} ${label2}`).join(", ")}.`);
   }
   if (parts2.length === 0) return null;
   return `${parts2.join(" ")} \`locality analyse\` and the locality report list them with their own measures.`;
@@ -15071,8 +15485,8 @@ function localityResult(stored) {
   const ranking = (row2) => typeof row2.ranking === "object" && row2.ranking !== null ? row2.ranking : {};
   const gainOf = (row2) => number5(ranking(row2).value) ?? number5(row2.score);
   const moves = stored.rows.filter((row2) => MOVE_KINDS.includes(text5(row2.recommendation) ?? "") && (gainOf(row2) ?? 0) > 0);
-  const rows7 = top2(moves);
-  const guideline = rows7.map((row2) => number5(ranking(row2).guideline)).find((g) => g !== null) ?? void 0;
+  const rows9 = top2(moves);
+  const guideline = rows9.map((row2) => number5(ranking(row2).guideline)).find((g) => g !== null) ?? void 0;
   const table = topTable({
     caption: "Units with a proposed move, split or inline, by gain, from locality analyse",
     noun: "units",
@@ -15086,7 +15500,7 @@ function localityResult(stored) {
       { key: "distance", label: "Distance", align: "right" },
       { key: "target", label: "Target" }
     ],
-    rows: rows7.map((row2) => ({
+    rows: rows9.map((row2) => ({
       path: text5(row2.path),
       recommendation: text5(row2.recommendation),
       gain: gainOf(row2),
@@ -15099,14 +15513,14 @@ function localityResult(stored) {
   const notice = localityLeftOutNotice(stored.rows);
   if (notice !== null) blocks.push({ type: "notice", level: "notice", text: notice });
   return {
-    candidates: rows7.flatMap((row2) => text5(row2.path) === null ? [] : [{ ref: `locality:${text5(row2.path)}`, label: `${text5(row2.path)} (locality)` }]),
+    candidates: rows9.flatMap((row2) => text5(row2.path) === null ? [] : [{ ref: `locality:${text5(row2.path)}`, label: `${text5(row2.path)} (locality)` }]),
     blocks,
     read: { report: stored.report, head: stored.head, config: stored.config },
     missing: null
   };
 }
-function hotspotResult(rows7) {
-  const shown2 = top2(rows7);
+function hotspotResult(rows9) {
+  const shown2 = top2(rows9);
   return {
     candidates: shown2.map((row2) => ({ ref: `hotspot:${row2.path}`, label: `${row2.path} (hotspot ranking)` })),
     read: null,
@@ -15115,7 +15529,7 @@ function hotspotResult(rows7) {
       topTable({
         caption: "Highest hotspot scores, from cochange hotspots",
         noun: "files",
-        total: rows7.length,
+        total: rows9.length,
         emptyText: "The hotspot ranking lists no file.",
         columns: [
           { key: "path", label: "File" },
@@ -15126,15 +15540,55 @@ function hotspotResult(rows7) {
           { key: "recommendation", label: "Flag" }
         ],
         rows: shown2.map((row2) => ({ path: row2.path, score: row2.score, frequency: row2.frequency, complexity: row2.complexity, fixes: row2.fixes, recommendation: row2.recommendation }))
-      }, "cochange hotspots"),
-      scoreHistogram(rows7)
+      }, "cochange hotspots")
     ]
   };
 }
-function scoreHistogram(rows7) {
-  const bins = Array.from({ length: 10 }, (_, i) => ({ label: `${(i / 10).toFixed(1)} to ${((i + 1) / 10).toFixed(1)}`, count: 0 }));
-  for (const row2 of rows7) if (row2.score !== null) bins[Math.min(9, Math.floor(row2.score * 10))].count++;
-  return { type: "histogram", title: "Distribution of hotspot scores", unit: "files", bins };
+function valueAtPercentile(values, percentile2) {
+  const ranks = midRankPercentiles(values);
+  const reached = values.filter((_, i) => ranks[i] >= percentile2 / 100);
+  return reached.length === 0 ? void 0 : Math.min(...reached);
+}
+function scatterBlocks(rows9, percentile2, complexitySource) {
+  const production = rows9.filter((row2) => row2.role !== "test");
+  const unmeasured = production.filter((row2) => row2.complexity === null).length;
+  return [
+    churnComplexityScatter(rows9, percentile2, complexitySource),
+    {
+      type: "paragraph",
+      text: `Both lines are at the ${percentile2}th percentile (cochange.hotspotPercentile), a rank among the files shown, so they move when files are added. This is the split the hotspots friction list uses when no stored complexity analyse result covers the commit; with one, \`cochange report hotspots\` calls a file complex when it has a function above the cognitive guideline instead, so its list can differ from the upper right here.${unmeasured > 0 ? ` ${unmeasured} of ${production.length} production code files have no complexity and are not drawn.` : ""}`
+    }
+  ];
+}
+function churnComplexityScatter(rows9, percentile2, complexitySource) {
+  const production = rows9.filter((row2) => row2.role !== "test");
+  const measured = production.flatMap((row2) => row2.complexity === null ? [] : [{ row: row2, complexity: row2.complexity }]);
+  const unmeasured = production.length - measured.length;
+  const xLine = valueAtPercentile(production.map((row2) => row2.frequency), percentile2);
+  const yLine = valueAtPercentile(measured.map((m) => m.complexity), percentile2);
+  const measure = complexitySource === "complexity-report" ? "the `complexity files` complexity" : "the indentation complexity";
+  const points = measured.map(({ row: row2, complexity }) => ({
+    label: row2.path,
+    short: row2.path.split("/").at(-1) ?? row2.path,
+    x: row2.frequency,
+    y: complexity,
+    highlight: xLine !== void 0 && yLine !== void 0 && row2.frequency >= xLine && complexity >= yLine
+  }));
+  return {
+    type: "scatter",
+    title: `Revisions against complexity, ${points.length} production code files`,
+    xLabel: "Revisions in the window",
+    yLabel: "Complexity",
+    noun: "files",
+    xLog: true,
+    yLog: true,
+    ...xLine === void 0 ? {} : { xGuideline: { value: xLine, name: `the ${percentile2}th percentile of revisions among the ${production.length} files (cochange.hotspotPercentile)` } },
+    ...yLine === void 0 ? {} : { yGuideline: { value: yLine, name: `the ${percentile2}th percentile of ${measure} among the ${measured.length} files that have one (cochange.hotspotPercentile)` } },
+    quadrantNames: { upperRight: "changed often and complex (look here first)", upperLeft: "complex, changed less often", lowerRight: "changed often, less complex", lowerLeft: "changed less often and less complex" },
+    maxLabels: SCATTER_LABELS,
+    points: [...points].sort((a, b) => Number(b.highlight) - Number(a.highlight)),
+    emptyText: `No production code file has both revisions and a complexity, so there is no scatter.${unmeasured > 0 ? ` ${unmeasured} files have no complexity.` : ""}`
+  };
 }
 function slots4(candidates) {
   return [
@@ -15160,7 +15614,7 @@ function slots4(candidates) {
 function limitsOf4(evidence, missing, complexitySource) {
   return [
     "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-    `Each table shows the top ${TOP3} of its result and says how many rows it leaves out; the command prints the rest.`,
+    `Each table shows the top ${TOP4} of its result and says how many rows it leaves out; the command prints the rest.`,
     ...evidence.grade === "weak" ? ["The evidence grade is weak, so history-based results are tentative and static signals should lead."] : [],
     ...evidence.truncated.shallow ? [`The clone is shallow, so history before ${evidence.truncated.availableSince === null ? "its boundary" : isoDate2(evidence.truncated.availableSince)} is missing.`] : [],
     ...evidence.commitSize.shifted ? ["A change of merge policy shifts what a commit means, so compare windows within one policy."] : [],
@@ -15182,11 +15636,11 @@ var overview = {
     const extra = output.extra;
     const { evidence } = extra;
     const contributors = extra.contributors ?? { people: evidence.activeContributors, agents: 0 };
-    const rows7 = orderedHotspots(output);
+    const rows9 = orderedHotspots(output);
     const root = context.repo.root;
     const head = context.repo.head;
     const results = [
-      hotspotResult(rows7),
+      hotspotResult(rows9),
       complexityResult(readSiblingResult(root, "complexity", "analyse", head)),
       cyclesResult(readSiblingResult(root, "structure", "cycles", head)),
       localityResult(readSiblingResult(root, "locality", "analyse", head))
@@ -15209,7 +15663,7 @@ var overview = {
         excluded: excluded.filter((e) => e.count > 0)
       },
       sections: [
-        { id: "first-look", heading: "What to look at first", blocks: [{ type: "judgement", slot: "first-look" }] },
+        { id: "first-look", heading: "What to look at first", blocks: [{ type: "judgement", slot: "first-look" }, ...scatterBlocks(rows9, readSettings(context.config).hotspotPercentile, extra.complexitySource)] },
         { id: "evidence", heading: "Evidence", blocks: evidenceBlocks2(evidence, contributors) },
         { id: "fix-convention", heading: "Fix convention", blocks: fixBlocks(extra.fixConvention) },
         { id: "excluded", heading: "What was excluded", blocks: excludedBlocks(excluded) },
@@ -15639,7 +16093,7 @@ function summarise(scored, all, outcomes, risk) {
     }
     return changes === 0 ? null : troubled2 / changes;
   };
-  const rows7 = (keys, keyOf2) => keys.map((band) => {
+  const rows9 = (keys, keyOf2) => keys.map((band) => {
     const members = known.filter((s) => keyOf2(s) === band);
     const troubled2 = members.filter(troubledOf).length;
     const bases = members.map(baseOf).filter((b) => b !== null);
@@ -15651,10 +16105,10 @@ function summarise(scored, all, outcomes, risk) {
       baseRate: bases.length === 0 ? null : round5(bases.reduce((a, b) => a + b, 0) / bases.length)
     };
   });
-  const levels = rows7(LEVELS, (s) => s.level);
+  const levels = rows9(LEVELS, (s) => s.level);
   const factors = [...SCORED_FACTORS].map((name18) => ({
     name: name18,
-    bands: rows7(["low", "moderate", "high"], (s) => {
+    bands: rows9(["low", "moderate", "high"], (s) => {
       const band = s.bands.get(name18);
       return band === void 0 || band === "unavailable" ? null : band;
     }),
@@ -15690,8 +16144,8 @@ function summarise(scored, all, outcomes, risk) {
       rate: known.length === 0 ? null : round5(troubled / known.length)
     },
     levels,
-    impact: rows7(["low", "moderate", "high"], (s) => s.impact.band === "unavailable" ? null : s.impact.band),
-    placement: rows7(["close", "mixed", "distant", "unknown"], (s) => s.placement),
+    impact: rows9(["low", "moderate", "high"], (s) => s.impact.band === "unavailable" ? null : s.impact.band),
+    placement: rows9(["close", "mixed", "distant", "unknown"], (s) => s.placement),
     factors,
     completeness: { findings: withFinding.length, followed, share: withFinding.length === 0 ? null : round5(followed / withFinding.length) },
     elevatedShare: withLevel.length === 0 ? null : round5(withLevel.filter((s) => s.level === "elevated").length / withLevel.length),
@@ -15988,8 +16442,8 @@ async function reviewersFor(context, assessed, noRefresh) {
     const user = await invokingUser(root, history.identities.localMailmap);
     if (user !== null) authors.add(user.email.toLowerCase());
   }
-  const names = /* @__PURE__ */ new Map();
-  for (const commit of history.view.commits) names.set(commit.mappedEmail.toLowerCase(), commit.mappedName);
+  const names2 = /* @__PURE__ */ new Map();
+  for (const commit of history.view.commits) names2.set(commit.mappedEmail.toLowerCase(), commit.mappedName);
   const paths = [...new Set(change3.files.filter((f) => f.status !== "A").map((f) => f.oldPath ?? f.path))].sort();
   const options = { ref: change3.base, exclude: history.settings.exclude, paths };
   const shares2 = /* @__PURE__ */ new Map();
@@ -16032,13 +16486,13 @@ async function reviewersFor(context, assessed, noRefresh) {
         for (const owner of blamed.values()) credit(owner.email, owner.name, { authorship: owner.share });
       } else {
         const revisions = state.revisionsSince(file.fileId, windowSince);
-        for (const revision of revisions) for (const author of revision.authors) credit(author, names.get(author.toLowerCase()) ?? author, { authorship: 1 / revisions.length });
+        for (const revision of revisions) for (const author of revision.authors) credit(author, names2.get(author.toLowerCase()) ?? author, { authorship: 1 / revisions.length });
       }
       for (const [partner, support] of state.partners(file.fileId)) {
         const together = state.eligibleRevisionsInWindow(file.fileId);
         if (support < assessed.context.minSupport || 100 * support < risk.missingConfidence * together) continue;
         for (const revision of state.revisionsSince(partner, windowSince)) {
-          for (const author of revision.authors) credit(author, names.get(author.toLowerCase()) ?? author, { coupledChanges: 1 });
+          for (const author of revision.authors) credit(author, names2.get(author.toLowerCase()) ?? author, { coupledChanges: 1 });
         }
       }
     }
@@ -16092,24 +16546,24 @@ async function runRisk(context, history, range2) {
 }
 async function runReviewers(context, history, range2) {
   const worktree = context.values.worktree === true;
-  const names = context.values.names === true;
+  const names2 = context.values.names === true;
   if (context.values.evidence !== void 0) throw usageError("risk reviewers does not take --evidence");
   const assessed = await assessBranch(context, history, { range: range2, worktree });
   const { areas, basis } = await reviewersFor(context, assessed, context.values["no-refresh"] === true);
   return {
-    inputs: { range: range2 ?? null, worktree, names },
+    inputs: { range: range2 ?? null, worktree, names: names2 },
     results: {
       kind: "reviewers",
-      names,
+      names: names2,
       basis,
       perArea: REVIEWERS_PER_AREA,
       areas: areas.map((area) => ({
         area: area.area,
         files: area.files,
         candidates: area.candidates.length,
-        suggested: names ? area.candidates.slice(0, REVIEWERS_PER_AREA).map((c) => ({ name: c.name, email: c.email, authorship: c.authorship, coupledChanges: c.coupledChanges })) : null
+        suggested: names2 ? area.candidates.slice(0, REVIEWERS_PER_AREA).map((c) => ({ name: c.name, email: c.email, authorship: c.authorship, coupledChanges: c.coupledChanges })) : null
       })),
-      note: names ? "Active developers only, as people to ask: ranked by the share of the touched files they last wrote and by their changes to coupled files. The change's own authors are not listed." : "Counts of active developers who could review each area. Pass --names to see them."
+      note: names2 ? "Active developers only, as people to ask: ranked by the share of the touched files they last wrote and by their changes to coupled files. The change's own authors are not listed." : "Counts of active developers who could review each area. Pass --names to see them."
     },
     columns: ["area", "files", "candidates"]
   };
@@ -16222,13 +16676,13 @@ var command15 = analysisCommand(name16, {
     };
     for (const change3 of measuredChanges) slot(change3.committerDate).changes.push(change3);
     for (const change3 of excluded) slot(change3.committerDate).excluded++;
-    const rows7 = [];
+    const rows9 = [];
     if (byBucket.size > 0) {
       const first = Math.min(...byBucket.keys());
       const last = bucketStart(history.window.until - (context.values.until === void 0 ? 0 : 1), bucket);
       for (let start = first; start <= last; start = nextBucketStart(start, bucket)) {
         const entry = byBucket.get(start);
-        rows7.push({
+        rows9.push({
           bucket: bucketLabel(start, bucket),
           start: new Date(start * 1e3).toISOString(),
           ...distribution(entry?.changes ?? [], entry?.excluded ?? 0)
@@ -16237,7 +16691,7 @@ var command15 = analysisCommand(name16, {
     }
     return {
       inputs: { bucket, trailerExcluded: "Code-Health" },
-      results: { bucket, overall: distribution(measuredChanges, excluded.length), buckets: rows7 }
+      results: { bucket, overall: distribution(measuredChanges, excluded.length), buckets: rows9 }
     };
   }
 });
@@ -16254,19 +16708,19 @@ var command16 = {
   options: { names: { type: "boolean" }, top: { type: "string" }, "no-refresh": { type: "boolean" } },
   async run(context) {
     if (context.positionals.length === 0) throw usageError("usage: successors PATH... [--names]");
-    const names = context.values.names === true;
+    const names2 = context.values.names === true;
     const top3 = integerOption(context, "top", 5, 1, 1e3);
     const p = await prepare(context);
     const { model } = p.knowledge;
     const present = new Set(await listTree(context.repo.root, p.history.view.headSha));
     const index2 = buildSuccessorIndex(p.history);
-    const rows7 = [];
+    const rows9 = [];
     for (const requested of context.positionals) {
       const path = await focusPath(context, p.history, requested);
       if (!present.has(path)) throw usageError(`${requested} is not a file at the analysed commit`);
       const successors = successorsOf(path, index2, model);
       const file = model.files.find((f) => f.path === path);
-      rows7.push({
+      rows9.push({
         path,
         abandoned: file !== void 0 && reachesGuideline(goneLinesOf(file, model.developers), file.people, p.settings.abandonmentGuideline),
         coupledFiles: [...index2.partners.get(path) ?? []].map((c) => ({ path: c.path, degree: round4(c.degree), support: c.support })).sort((a, b) => b.degree - a.degree || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path))),
@@ -16274,7 +16728,7 @@ var command16 = {
         noSuccessor: hasNoSuccessor(successors),
         successors: successors.slice(0, top3).map((s, i) => ({
           rank: i + 1,
-          ...names ? { developer: s.developer } : {},
+          ...names2 ? { developer: s.developer } : {},
           score: s.score,
           coupledChanges: s.coupledChanges,
           ownShare: s.ownShare,
@@ -16284,13 +16738,13 @@ var command16 = {
     }
     return {
       inputs: commonInputs(p, "successors", {
-        paths: rows7.map((r) => r.path),
-        names,
+        paths: rows9.map((r) => r.path),
+        names: names2,
         top: top3,
         minSupport: p.history.settings.minSupport
       }),
       extra: commonExtra(p),
-      results: rows7,
+      results: rows9,
       columns: ["path", "abandoned", "noSuccessor", "candidates", "coupledFiles", "successors"]
     };
   }

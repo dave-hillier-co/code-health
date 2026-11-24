@@ -35,7 +35,7 @@ function toolList(value) {
 
 /**
  * Checks every skill under `plugins/<plugin>/skills/<skill>` against the suite's
- * skill conventions (docs/specs/suite.md "Skills" and CONTRIBUTING.md):
+ * skill conventions (CONTRIBUTING.md "Skills"):
  *
  * - `SKILL.md` exists, is at most 500 lines, and has YAML frontmatter
  * - `name` equals the folder name; `description` is present and at most 1024 characters

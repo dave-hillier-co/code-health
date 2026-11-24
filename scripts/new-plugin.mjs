@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 const defaultRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const templates = join(defaultRoot, "scripts", "templates", "plugin");
 
-/** Plugin names are kebab-case and avoid the reserved prefixes (suite.md "Repository layout"). */
+/** Plugin names are kebab-case and avoid the reserved prefixes (CONTRIBUTING.md "Adding a plugin"). */
 export function validatePluginName(name) {
   if (!/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/.test(name)) return `"${name}" is not kebab-case`;
   const prefix = ["claude-", "anthropic-", "cc-plugin-"].find((p) => name.startsWith(p));

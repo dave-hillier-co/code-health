@@ -15,7 +15,7 @@ import type { MoveResult, MoverBackend, Rewrite, Skeleton } from "./mover-langua
 import { sourceFilesOf } from "./mover-language.ts";
 
 /**
- * The Go mover (suite.md, Language notes). Moving a file within its directory changes nothing. Moving one to
+ * The Go mover (docs/languages.md, Language notes). Moving a file within its directory changes nothing. Moving one to
  * another directory changes its package, so the move rewrites, in memory:
  *
  * - the package clause of a moved file, to the name of the package it lands in (the package already in the

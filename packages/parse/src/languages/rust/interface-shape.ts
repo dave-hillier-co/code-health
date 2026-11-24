@@ -2,7 +2,7 @@ import type { Node } from "web-tree-sitter";
 import { nodeCount } from "../typescript/interface-shape.ts";
 
 /**
- * What the interface depth signal needs of a unit (complexity.md, Interface depth), for Rust.
+ * What the interface depth signal needs of a unit (the complexity skill's references/metrics.md, Interface depth), for Rust.
  *
  * - Nodes: named nodes of the unit, comments left out (doc comments are comments).
  * - Function interface: its declared parameters, `self` excluded, and at least 1.

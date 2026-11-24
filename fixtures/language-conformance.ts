@@ -6,7 +6,7 @@ import { executableWorks, findExecutable } from "@code-health/cli-kit/executable
 /**
  * The shared conformance harness. Every language keeps hand-verified fixtures in `fixtures/languages/<id>/`,
  * one folder per area below, and every plugin that uses the language's adapter runs the areas it owns over
- * every registered adapter. A language is `supported` (suite.md, Tiers) only when it passes them all.
+ * every registered adapter. A language is `supported` (docs/languages.md, Tiers) only when it passes them all.
  *
  * The harness reads fixtures and describes what a language must have. It never imports an adapter: each
  * plugin's suite passes its registry's adapters in, so this package depends on none of them.

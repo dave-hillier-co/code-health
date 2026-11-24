@@ -10,7 +10,7 @@ import type { ReuseAnalysis } from "../reuse-profile.ts";
 
 /**
  * The entry files of CMake targets that have C++ code. The internals marker of a C++ package is its public
- * include directory (packaging.md, Languages): the headers under a directory the library hands to its
+ * include directory (docs/languages.md, Packages): the headers under a directory the library hands to its
  * consumers with `target_include_directories(... PUBLIC|INTERFACE ...)` are its entries, and every other header
  * is internal. A package whose CMakeLists.txt names no public include directory has not said what is public, so
  * every header it owns is an entry (a wildcard) and nothing in it can be reached too deeply.

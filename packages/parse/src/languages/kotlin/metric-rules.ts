@@ -4,7 +4,7 @@ import type { ConstructMap, MetricRules, RecursionScope } from "../../metric-rul
 /**
  * The Kotlin mapping onto the metric engine. Decisions are `if`, loops, each `when` entry with a condition (the
  * `else` entry is not one), `catch`, `&&` and `||`. The elvis operator `?:` is null-coalescing, like `??` in
- * TypeScript: a cyclomatic decision as `??` is (complexity.md lists short-circuit null-coalescing) and free in
+ * TypeScript: a cyclomatic decision as `??` is (docs/languages.md, Metric definitions per language) and free in
  * cognitive complexity. Safe calls `?.` and `!!` are free. `if` is an expression, so Kotlin
  * has no ternary. A lambda, an anonymous function and a local function are nested functions: one level deeper,
  * counted in the enclosing function. `break@label` and `continue@label` cost a flat 1.
