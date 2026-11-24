@@ -34,6 +34,16 @@ test("groups draw one box along the diagonal and label their rows in the table",
   expect(matrixMd(square)).toContain("Rows are ordered by cluster.");
 });
 
+test("a sparse matrix draws narrower cells and no text in empty cells, and its table still says none", () => {
+  const dense = matrixHtml(square);
+  const sparse = matrixHtml({ ...square, sparse: true });
+  expect(dense).toContain(">none</text>");
+  expect(sparse).not.toContain(">none</text>");
+  expect(sparse).toContain("<td class=\"number\">none</td>");
+  expect(sparse).toContain(">60 e</text>");
+  expect(Number(/viewBox="0 0 (\d+)/.exec(sparse)![1])).toBeLessThan(Number(/viewBox="0 0 (\d+)/.exec(dense)![1]) + 100);
+});
+
 test("groups are ignored when rows and columns differ", () => {
   const html = matrixHtml({ ...square, columns: ["x.ts", "y.ts", "z.ts"] });
   expect(html).not.toContain('<g class="group">');
