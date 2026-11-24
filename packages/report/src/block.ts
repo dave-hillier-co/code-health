@@ -8,6 +8,7 @@ import { matrixHtml, matrixMd, type MatrixData } from "./components/matrix.ts";
 import { noticeHtml, noticeMd, type NoticeData } from "./components/notice.ts";
 import { paragraphHtml, paragraphMd, type ParagraphData } from "./components/paragraph.ts";
 import { rankedTableHtml, rankedTableMd, type RankedTableData } from "./components/ranked-table.ts";
+import { scatterHtml, scatterMd, type ScatterData } from "./components/scatter.ts";
 import { stabilityChartHtml, stabilityChartMd, type StabilityChartData } from "./components/stability-chart.ts";
 import { sparklineHtml, sparklineMd, type SparklineData } from "./components/sparkline.ts";
 import { trendMarkerHtml, trendMarkerMd, type TrendMarkerData } from "./components/trend-marker.ts";
@@ -26,6 +27,7 @@ export type Block =
   | ({ type: "histogram" } & HistogramData)
   | ({ type: "matrix" } & MatrixData)
   | ({ type: "guideline-bars" } & GuidelineBarsData)
+  | ({ type: "scatter" } & ScatterData)
   | ({ type: "stability-chart" } & StabilityChartData)
   | ({ type: "trend-marker" } & TrendMarkerData)
   | ({ type: "evidence-list" } & EvidenceListData)
@@ -101,6 +103,7 @@ export function renderBlock(block: Block, format: Format, context: BlockContext)
     case "histogram": return format === "html" ? histogramHtml(block) : histogramMd(block);
     case "matrix": return format === "html" ? matrixHtml(block) : matrixMd(block);
     case "guideline-bars": return format === "html" ? guidelineBarsHtml(block) : guidelineBarsMd(block);
+    case "scatter": return format === "html" ? scatterHtml(block) : scatterMd(block);
     case "stability-chart": return format === "html" ? stabilityChartHtml(block) : stabilityChartMd(block);
     case "trend-marker": return format === "html" ? `<p>${trendMarkerHtml(block)}</p>` : trendMarkerMd(block);
     case "evidence-list": return format === "html" ? evidenceListHtml(block) : evidenceListMd(block);

@@ -78,6 +78,11 @@ svg .cell[class*="mark-"] text { font-weight: 700; }
 svg .bin rect { fill: var(--bar); }
 svg .bar rect { fill: var(--bar); } svg .bar.above rect { fill: var(--bar-above); }
 svg .bar line { stroke: var(--marker); stroke-width: 2; }
+svg .frame { fill: none; stroke: var(--rule); }
+svg .guideline line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 6 4; } svg .guideline text, svg .tick { fill: var(--muted); }
+svg circle.point { fill: var(--bar); fill-opacity: .4; }
+svg rect.point, svg .point.named rect { fill: var(--bar-above); stroke: var(--bg); stroke-width: 1; }
+svg .point.named text { paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
 svg polyline { fill: none; stroke: var(--bar-above); stroke-width: 2; } svg circle { fill: var(--bar-above); }
 .notice { border-left: 4px solid var(--notice-rule); background: var(--notice-bg); padding: .5rem .75rem; margin: .75rem 0; }
 .judgement { border: 1px solid var(--rule); border-left: 4px solid var(--link); background: var(--panel); padding: .25rem 1rem .5rem; margin: 1rem 0; }
@@ -131,6 +136,32 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <li><strong class="subject">src/reporting/summary.ts (hotspot ranking)</strong> <span class="verdict">Verdict: worth-a-look.</span> It tops the ranking, and it is the file the fixes touched.</li>
 </ol>
 </section>
+<figure class="chart scatter">
+<figcaption>Revisions against complexity, 2 production code files</figcaption>
+<svg role="img" aria-labelledby="revisions-against-complexity-2-production-code-files-501eb8-title revisions-against-complexity-2-production-code-files-501eb8-desc" viewBox="0 0 680 440" preserveAspectRatio="xMinYMin meet">
+<title id="revisions-against-complexity-2-production-code-files-501eb8-title">Revisions against complexity, 2 production code files</title>
+<desc id="revisions-against-complexity-2-production-code-files-501eb8-desc">A scatter of 2 files: Revisions in the window horizontal, Complexity vertical, on log scales. The table below lists the 0 named points with their values.</desc>
+<rect class="frame" x="64" y="12" width="596" height="372"/>
+<text class="tick" x="64.0" y="400" text-anchor="middle">1</text>
+<text class="tick" x="660.0" y="400" text-anchor="middle">10</text>
+<text class="tick" x="56" y="388.0" text-anchor="end">1</text>
+<text class="tick" x="56" y="16.0" text-anchor="end">10</text>
+<text class="axis" x="362.0" y="432" text-anchor="middle">Revisions in the window (log scale)</text>
+<text class="axis" transform="rotate(-90 14 198.0)" x="14" y="198.0" text-anchor="middle">Complexity (log scale)</text>
+<circle class="point" cx="422.8" cy="384.0" r="2.2"/>
+<circle class="point" cx="348.4" cy="384.0" r="2.2"/>
+</svg>
+<table>
+<caption>Revisions against complexity, 2 production code files: the named points</caption>
+<thead><tr><th scope="col" class="number">#</th><th scope="col">Point</th><th scope="col" class="number">Revisions in the window</th><th scope="col" class="number">Complexity</th></tr></thead>
+<tbody>
+
+</tbody>
+</table>
+<p class="legend">Log scale on Revisions in the window (horizontal) and Complexity (vertical): each tick is ten times the one before, because the values have a long tail.</p>
+<p class="legend">2 files have a value below 1 on a log axis and are drawn on the axis minimum, 1.</p>
+</figure>
+<p>Both lines are at the 90th percentile (cochange.hotspotPercentile), a rank among the files shown, so they move when files are added. This is the split the hotspots friction list uses when no stored complexity analyse result covers the commit; with one, <code>cochange report hotspots</code> calls a file complex when it has a function above the cognitive guideline instead, so its list can differ from the upper right here.</p>
 </section>
 <section id="evidence" aria-labelledby="evidence-heading">
 <h2 id="evidence-heading">Evidence</h2>
@@ -219,39 +250,6 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><td class="number">2</td><td>src/reporting/summary.ts</td><td class="number">0.13</td><td class="number">3</td><td class="number">0</td><td class="number">0</td><td>–</td></tr>
 </tbody>
 </table>
-<figure class="chart histogram">
-<figcaption>Distribution of hotspot scores</figcaption>
-<svg role="img" aria-labelledby="distribution-of-hotspot-scores-2d54e9-title distribution-of-hotspot-scores-2d54e9-desc" viewBox="0 0 640 220" preserveAspectRatio="xMinYMin meet">
-<title id="distribution-of-hotspot-scores-2d54e9-title">Distribution of hotspot scores</title>
-<desc id="distribution-of-hotspot-scores-2d54e9-desc">2 files in 10 bins. Each bar prints its count; the table below lists the same counts.</desc>
-<g class="bin"><text x="144" y="15" text-anchor="end">0.0 to 0.1</text><rect x="150" y="3" width="0.0" height="16"/><text x="156.0" y="15">0</text></g>
-<g class="bin"><text x="144" y="37" text-anchor="end">0.1 to 0.2</text><rect x="150" y="25" width="400.0" height="16"/><text x="556.0" y="37">1</text></g>
-<g class="bin"><text x="144" y="59" text-anchor="end">0.2 to 0.3</text><rect x="150" y="47" width="0.0" height="16"/><text x="156.0" y="59">0</text></g>
-<g class="bin"><text x="144" y="81" text-anchor="end">0.3 to 0.4</text><rect x="150" y="69" width="400.0" height="16"/><text x="556.0" y="81">1</text></g>
-<g class="bin"><text x="144" y="103" text-anchor="end">0.4 to 0.5</text><rect x="150" y="91" width="0.0" height="16"/><text x="156.0" y="103">0</text></g>
-<g class="bin"><text x="144" y="125" text-anchor="end">0.5 to 0.6</text><rect x="150" y="113" width="0.0" height="16"/><text x="156.0" y="125">0</text></g>
-<g class="bin"><text x="144" y="147" text-anchor="end">0.6 to 0.7</text><rect x="150" y="135" width="0.0" height="16"/><text x="156.0" y="147">0</text></g>
-<g class="bin"><text x="144" y="169" text-anchor="end">0.7 to 0.8</text><rect x="150" y="157" width="0.0" height="16"/><text x="156.0" y="169">0</text></g>
-<g class="bin"><text x="144" y="191" text-anchor="end">0.8 to 0.9</text><rect x="150" y="179" width="0.0" height="16"/><text x="156.0" y="191">0</text></g>
-<g class="bin"><text x="144" y="213" text-anchor="end">0.9 to 1.0</text><rect x="150" y="201" width="0.0" height="16"/><text x="156.0" y="213">0</text></g>
-</svg>
-<table>
-<caption>Distribution of hotspot scores: files per bin</caption>
-<thead><tr><th scope="col">Bin</th><th scope="col" class="number">Count (files)</th><th scope="col" class="number">Share</th></tr></thead>
-<tbody>
-<tr><th scope="row">0.0 to 0.1</th><td class="number">0</td><td class="number">0%</td></tr>
-<tr><th scope="row">0.1 to 0.2</th><td class="number">1</td><td class="number">50%</td></tr>
-<tr><th scope="row">0.2 to 0.3</th><td class="number">0</td><td class="number">0%</td></tr>
-<tr><th scope="row">0.3 to 0.4</th><td class="number">1</td><td class="number">50%</td></tr>
-<tr><th scope="row">0.4 to 0.5</th><td class="number">0</td><td class="number">0%</td></tr>
-<tr><th scope="row">0.5 to 0.6</th><td class="number">0</td><td class="number">0%</td></tr>
-<tr><th scope="row">0.6 to 0.7</th><td class="number">0</td><td class="number">0%</td></tr>
-<tr><th scope="row">0.7 to 0.8</th><td class="number">0</td><td class="number">0%</td></tr>
-<tr><th scope="row">0.8 to 0.9</th><td class="number">0</td><td class="number">0%</td></tr>
-<tr><th scope="row">0.9 to 1.0</th><td class="number">0</td><td class="number">0%</td></tr>
-</tbody>
-</table>
-</figure>
 <aside class="notice notice" role="note"><strong>Notice:</strong> No stored complexity analyse result for this commit. Run <code>complexity analyse</code> to store it, then run the overview again.</aside>
 <aside class="notice notice" role="note"><strong>Notice:</strong> No stored structure cycles result for this commit. Run <code>structure cycles</code> to store it, then run the overview again.</aside>
 <aside class="notice notice" role="note"><strong>Notice:</strong> No stored locality analyse result for this commit. Run <code>locality analyse</code> to store it, then run the overview again.</aside>
