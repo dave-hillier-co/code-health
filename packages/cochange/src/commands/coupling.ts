@@ -92,6 +92,8 @@ export async function couplingOutput(context: CommandContext, history: LoadedHis
     .sort((x, y) => Number(y.aboveGuideline) - Number(x.aboveGuideline) || y.score - x.score || y.support - x.support || compareBytes(x.path, y.path) || compareBytes(x.with, y.with));
 
   return {
+    // The order above is the documented one (shared changes break ties on degree); the kit's default sort would drop that tie-break.
+    presorted: true,
     inputs: {
       file: focus ?? null,
       degreeGuideline: minDegree,

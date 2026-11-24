@@ -1055,7 +1055,7 @@
           },
           {
             "level": "notice",
-            "text": "The history counts are zero because history is weak (12 months, 34 logical changes in the window, 1 contributors); history-only candidates need moderate or strong evidence.",
+            "text": "The history counts are zero because history is weak (12 months, 34 logical changes in the window, 1 active author address, agent identities included); history-only candidates need moderate or strong evidence.",
             "type": "notice"
           }
         ],

@@ -300,7 +300,7 @@ Verdict: do-it. It has few consumers and nothing blocks it. Risk: a missed consu
 | 2 | src/shared/pair/a.ts | blocked | 0 | 3 | src/shared/pair/core.ts |
 | 3 | src/shared/pair/b.ts | blocked | 0 | 3 | src/shared/pair/core.ts |
 
-> **Notice:** The history counts are zero because history is weak (12 months, 34 logical changes in the window, 1 contributors); history-only candidates need moderate or strong evidence.
+> **Notice:** The history counts are zero because history is weak (12 months, 34 logical changes in the window, 1 active author address, agent identities included); history-only candidates need moderate or strong evidence.
 
 ## Limits
 
