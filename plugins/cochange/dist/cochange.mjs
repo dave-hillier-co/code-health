@@ -7416,6 +7416,8 @@ async function couplingOutput(context, history) {
   const tolerance = settings.couplingTrendTolerance;
   const rows7 = counts.pairs.filter((pair) => focus === void 0 || pair.a === focus || pair.b === focus).map((pair) => describe(pair, focus, settings, minDegree, previous === void 0 ? void 0 : pairTrend(pair, previous.index, tolerance), (path) => isCodePath(path, languages) ? "code" : "non-code")).sort((x2, y2) => Number(y2.aboveGuideline) - Number(x2.aboveGuideline) || y2.score - x2.score || y2.support - x2.support || compareBytes(x2.path, y2.path) || compareBytes(x2.with, y2.with));
   return {
+    // The order above is the documented one (shared changes break ties on degree); the kit's default sort would drop that tie-break.
+    presorted: true,
     inputs: {
       file: focus ?? null,
       degreeGuideline: minDegree,

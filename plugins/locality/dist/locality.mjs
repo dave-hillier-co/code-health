@@ -3669,7 +3669,7 @@ function analyseByHistory(history, files, settings) {
       candidates: [],
       sortMethod: SORT_METHOD,
       omitted: omitted2,
-      reason: `history is weak (${history.evidence.usableHistoryMonths} months, ${history.evidence.logicalChangesInWindow} logical changes in the window, ${history.evidence.activeContributors} contributors); history-only candidates need moderate or strong evidence`
+      reason: `history is weak (${history.evidence.usableHistoryMonths} months, ${history.evidence.logicalChangesInWindow} logical changes in the window, ${history.evidence.activeContributors} active author ${history.evidence.activeContributors === 1 ? "address" : "addresses"}, agent identities included); history-only candidates need moderate or strong evidence`
     };
   }
   const present = new Set([...files].filter((file) => history.changesOf.has(file)));
