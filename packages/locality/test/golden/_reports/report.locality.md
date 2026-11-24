@@ -16,6 +16,35 @@
 
 The helpers sit far from their consumers.
 
+**Where the top candidates would move**
+
+| # | Unit | From folder | To folder | Gain | Status |
+| --- | --- | --- | --- | ---: | --- |
+| 1 | src/shared/pair | src/shared/pair | src/reports | 6 | move: the planner can plan it |
+| 2 | src/shared/utils/money.ts | src/shared/utils | src | 4 | move: the planner can plan it |
+| 3 | src/shared/cycle/a.ts | src/shared/cycle | src/orders | 3 | move: the planner can plan it |
+| 4 | src/shared/utils/invoice.ts | src/shared/utils | src/billing | 3 | move: the planner can plan it |
+| 5 | src/shared/log.ts | src/shared | src | 2 | move: the planner can plan it |
+| B1 | src/lib/kernel/tool.ts | src/lib/kernel | none: its own folder is its best until the blockers are resolved | 4 | blocked unit, marker on its folder; gain if unblocked; blocked by src/lib/kernel/core.ts |
+| B2 | src/shared/pair/a.ts | src/shared/pair | none: its own folder is its best until the blockers are resolved | 3 | blocked unit, marker on its folder; gain if unblocked; blocked by src/shared/pair/core.ts |
+| B3 | src/shared/pair/b.ts | src/shared/pair | none: its own folder is its best until the blockers are resolved | 3 | blocked unit, marker on its folder; gain if unblocked; blocked by src/shared/pair/core.ts |
+| R1 | src/shared/helpers/mixed.ts | src/shared/helpers | no single target | 4 | split: marker on its folder, no arrow |
+| R2 | src/shared/utils/slug.ts | src/shared/utils | no single target | 3 | inline: marker on its folder, no arrow |
+| R3 | src/orders/place.ts | src | no single target | 2 | review: marker on its folder, no arrow |
+| R4 | src/billing/index.ts | src/billing | no single target | 0 | inline: marker on its folder, no arrow |
+| R5 | src/orders/audit.ts | src/orders | no single target | 0 | inline: marker on its folder, no arrow |
+
+- Each folder is a row, indented under its parent. A folder with nothing of its own and one child is joined to that child.
+- An arrow runs from the folder a unit is in to the folder it moves to. Its number is the unit's number in the table, its thickness grows with gain, and the row text prints the number and gain. A solid line and a dashed line are told apart by the word in the row text as well as by the dash.
+- move: a unit of kind move with no blockers, which the planner can plan without --reason. Its number is its row in the moves table.
+- blocked move (dashed line): a unit of kind move held back by blockers, drawn to its target folder with the gain it would have if they were resolved. B numbers are rows of the blocked table.
+- blocked unit: a unit held back by blockers whose own folder is its best folder now, so there is no target to draw: a marker on its folder, with its first blocker. B numbers are rows of the blocked table.
+- review: a unit of kind review: no single target, so a marker on its folder and no arrow. R numbers are rows of the reviews, splits and inlines table.
+- split: a unit of kind split: no single target, so a marker on its folder and no arrow.
+- inline: a unit of kind inline: no single target, so a marker on its folder and no arrow.
+- consumers of: a folder with a file that uses the unit with that number
+- Not drawn: 0 of 5 moves, 0 of 3 blocked units, 0 of 5 reviews, splits and inlines (the map draws the top 10 moves, 5 blocked units and 5 reviews, splits and inlines). Scrutinise units propose no move and are not drawn. Gain is net distance removed, against the locality.minDistance guideline of 2.
+
 ## Candidates
 
 **What the analysis covered**

@@ -1,0 +1,32 @@
+<figure class="chart move-map">
+<figcaption>Moves of units to their target folders</figcaption>
+<svg role="img" aria-labelledby="moves-of-units-to-their-target-folders-0956ac-title moves-of-units-to-their-target-folders-0956ac-desc" viewBox="0 0 543 167" preserveAspectRatio="xMinYMin meet">
+<title id="moves-of-units-to-their-target-folders-0956ac-title">Moves of units to their target folders</title>
+<desc id="moves-of-units-to-their-target-folders-0956ac-desc">A folder tree of 7 rows with 2 arrows from a unit's folder to its target folder and 2 markers. Kinds: move, blocked move (dashed), review, consumer of. Each arrow is numbered and its row prints its gain; the table below lists every arrow and marker.</desc>
+<g class="folder-row"><text class="folder-name" x="8" y="15">docs</text><line class="guide" x1="32.8" y1="11" x2="70.8" y2="11"/><text class="row-note" x="118.8" y="15">review R1</text></g>
+<g class="folder-row"><text class="folder-name" x="8" y="37">src</text><line class="guide" x1="26.6" y1="33" x2="70.8" y2="33"/></g>
+<g class="folder-row"><text class="folder-name" x="22" y="59">a</text><line class="guide" x1="28.2" y1="55" x2="70.8" y2="55"/><text class="row-note" x="118.8" y="59">move 1 in</text></g>
+<g class="folder-row"><text class="folder-name" x="36" y="81">util</text><line class="guide" x1="60.8" y1="77" x2="70.8" y2="77"/><text class="row-note" x="118.8" y="81">move 1 out: gain 12</text></g>
+<g class="folder-row"><text class="folder-name" x="22" y="103">b</text><line class="guide" x1="28.2" y1="99" x2="70.8" y2="99"/></g>
+<g class="folder-row"><text class="folder-name" x="36" y="125">core</text><line class="guide" x1="60.8" y1="121" x2="70.8" y2="121"/><text class="row-note" x="118.8" y="125">blocked move B1 in</text></g>
+<g class="folder-row"><text class="folder-name" x="36" y="147">web</text><line class="guide" x1="54.6" y1="143" x2="70.8" y2="143"/><text class="row-note" x="118.8" y="147">blocked move B1 out: gain if unblocked 6, blocked by src/b/web/x.ts</text><text class="row-note" x="118.8" y="160">consumer of 1</text></g>
+<g class="edge move solid"><path d="M75.8 77.0H88.8V55.0H76.8" stroke-width="4.5"/><polygon points="71.8,55.0 78.8,51.5 78.8,58.5"/><title>1: src/a/util to src/a</title></g>
+<g class="edge blocked dashed"><path d="M75.8 149.5H88.8V121.0H76.8" stroke-width="3.0"/><polygon points="71.8,121.0 78.8,117.5 78.8,124.5"/><title>B1: src/b/web to src/b/core</title></g>
+</svg>
+<table>
+<caption>Moves of units to their target folders: each arrow and marker</caption>
+<thead><tr><th scope="col">#</th><th scope="col">Unit</th><th scope="col">From</th><th scope="col">To</th><th scope="col" class="number">Gain</th><th scope="col">Status</th></tr></thead>
+<tbody>
+<tr><th scope="row">1</th><td>src/a/util/x.ts</td><td>src/a/util</td><td>src/a</td><td class="number">12</td><td>move</td></tr>
+<tr><th scope="row">B1</th><td>src/b/web/y.ts</td><td>src/b/web</td><td>src/b/core</td><td class="number">6</td><td>blocked by src/b/web/x.ts</td></tr>
+<tr><th scope="row">R1</th><td>docs/z.md</td><td>docs</td><td></td><td class="number"></td><td>review</td></tr>
+</tbody>
+</table>
+<p class="legend">Each folder is a row, indented under its parent. A folder with nothing of its own and one child is joined to that child.</p>
+<p class="legend">An arrow runs from the folder a unit is in to the folder it moves to. Its number is the unit's number in the table, its thickness grows with gain, and the row text prints the number and gain. A solid line and a dashed line are told apart by the word in the row text as well as by the dash.</p>
+<p class="legend">move: the planner can plan it</p>
+<p class="legend">blocked move (dashed line): a dependency that stays behind holds it back</p>
+<p class="legend">review: a unit with no single target</p>
+<p class="legend">consumer of: a folder with a file that uses unit N</p>
+<p class="legend">3 more moves are not drawn: the map draws the top 10.</p>
+</figure>

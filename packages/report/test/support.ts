@@ -59,6 +59,26 @@ export const sampleBlocks: Record<string, Block> = {
   sparkline: { type: "sparkline", title: "Changes per month", unit: "changes", points: [{ label: "2025-01", value: 4 }, { label: "2025-02", value: 9 }, { label: "2025-03", value: 6 }] },
   histogram: { type: "histogram", title: "Complexity of files", unit: "files", bins: [{ label: "0 to 9", count: 30 }, { label: "10 to 19", count: 8 }, { label: "20 or more", count: 2 }] },
   matrix: { type: "matrix", title: "Shared changes", valueLabel: "shared changes", rows: ["a.ts", "b.ts"], columns: ["a.ts", "b.ts", "c.ts"], cells: [[null, 5, 1], [5, null, 9]] },
+  "move-map": {
+    type: "move-map",
+    title: "Moves of units to their target folders",
+    valueLabel: "gain",
+    rootText: "the repository root (/)",
+    folders: ["src/a/util", "src/a", "src/b/core", "src/b/web", "docs"],
+    edges: [
+      { label: "1", from: "src/a/util", to: "src/a", kind: "move", value: 12 },
+      { label: "B1", from: "src/b/web", to: "src/b/core", kind: "blocked", value: 6, valueText: "gain if unblocked 6", note: "blocked by src/b/web/x.ts" },
+    ],
+    marks: [{ folder: "docs", label: "R1", kind: "review" }, { folder: "src/b/web", label: "1", kind: "consumer" }],
+    kinds: [
+      { kind: "move", word: "move", meaning: "the planner can plan it" },
+      { kind: "blocked", word: "blocked move", meaning: "a dependency that stays behind holds it back", dashed: true },
+      { kind: "review", word: "review", meaning: "a unit with no single target" },
+      { kind: "consumer", word: "consumer of", meaning: "a folder with a file that uses unit N" },
+    ],
+    table: { columns: [{ label: "#" }, { label: "Unit" }, { label: "From" }, { label: "To" }, { label: "Gain", align: "right" }, { label: "Status" }], rows: [["1", "src/a/util/x.ts", "src/a/util", "src/a", "12", "move"], ["B1", "src/b/web/y.ts", "src/b/web", "src/b/core", "6", "blocked by src/b/web/x.ts"], ["R1", "docs/z.md", "docs", "", "", "review"]] },
+    omitted: "3 more moves are not drawn: the map draws the top 10.",
+  },
   "guideline-bars": { type: "guideline-bars", title: "Against guidelines", unit: "cognitive", source: "Guideline from a judgement call.", bars: [{ label: "f", value: 30, guideline: 15 }, { label: "g", value: 10, guideline: 15 }] },
   "stability-chart": {
     type: "stability-chart",
@@ -84,7 +104,7 @@ export const sampleBuild: ReportBuild = {
   header: { evidenceGrade: "moderate", historyWindow: "8 months of history", excluded: [{ what: "generated files", count: 3 }] },
   sections: [
     { id: "overview", heading: "Overview", blocks: [sampleBlocks.paragraph!, sampleBlocks.judgement!, sampleBlocks["ranked-table"]!, sampleBlocks.notice!] },
-    { id: "charts", heading: "Charts", blocks: ["treemap", "sparkline", "histogram", "matrix", "guideline-bars", "trend-marker", "evidence-list", "facts"].map((k) => sampleBlocks[k]!) },
+    { id: "charts", heading: "Charts", blocks: ["treemap", "sparkline", "histogram", "matrix", "move-map", "guideline-bars", "trend-marker", "evidence-list", "facts"].map((k) => sampleBlocks[k]!) },
   ],
   limits: ["The sample is small."],
   slots: [

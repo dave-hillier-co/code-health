@@ -10,6 +10,7 @@ import { capRows } from "@code-health/report/table-cap";
 import { clip } from "@code-health/report/text";
 import { treeFromRef } from "@code-health/parse/source-tree";
 import type { Block } from "@code-health/report/block";
+import type { MoveMapEdge, MoveMapMark } from "@code-health/report/components/move-map";
 import type { Cell } from "@code-health/report/components/ranked-table";
 import type { ExcludedCount, Slot } from "@code-health/report/protocol";
 import type { ReportBuild, Section } from "@code-health/report/report-model";
@@ -34,6 +35,10 @@ const TOP_OMITTED = 10;
 const TOP_BLOCKED = 10;
 const BLOCKERS_PER_UNIT = 3;
 const REFUSAL_DETAIL_CHARS = 120;
+/** Arrows and markers the move map draws: the top rows of the moves, blocked and review tables. */
+const MAP_MOVES = 10;
+const MAP_BLOCKED = 5;
+const MAP_REVIEWS = 5;
 const WARNINGS_SHOWN = 3;
 const WARNING_CHARS = 160;
 const OMITTED_DETAIL_CHARS = 200;
@@ -307,8 +312,10 @@ function omittedUnitsTable(units: OmittedUnit[]): Block {
   ) };
 }
 
+const byUnblockedGain = (units: Candidate[]) => [...units].sort((a, b) => b.unblockedGain - a.unblockedGain || (a.path < b.path ? -1 : 1));
+
 function blockedTable(units: Candidate[]): Block {
-  const sorted = [...units].sort((a, b) => b.unblockedGain - a.unblockedGain || (a.path < b.path ? -1 : 1));
+  const sorted = byUnblockedGain(units);
   return {
     type: "ranked-table",
     ...capRows(
@@ -335,6 +342,69 @@ function blockedTable(units: Candidate[]): Block {
     TOP_BLOCKED,
     "locality analyse --recommendation blocked",
   ) };
+}
+
+/**
+ * The move map: the top moves as solid arrows, the top blocked units as dashed arrows, and the top reviews, splits and inlines as markers on
+ * their folders. Labels are the row numbers of the moves, blocked and reviews tables (a plain number, B and R). The folders drawn are those of
+ * the units, their targets and the folders of the consumers of each arrow's unit.
+ */
+function moveMap(moves: Candidate[], blocked: Candidate[], reviews: Candidate[], settings: LocalitySettings): Block {
+  const drawnMoves = moves.slice(0, MAP_MOVES);
+  const drawnBlocked = byUnblockedGain(blocked).slice(0, MAP_BLOCKED);
+  const drawnReviews = reviews.slice(0, MAP_REVIEWS);
+  const entries = [
+    ...drawnMoves.map((c, i) => ({ c, label: String(i + 1), held: false })),
+    ...drawnBlocked.map((c, i) => ({ c, label: `B${i + 1}`, held: true })),
+  ];
+  const arrowed = entries.filter(({ c }) => c.target !== c.location);
+  // A blocked unit whose best folder is its own has no target to draw: its folder carries a marker.
+  const stuck = entries.filter(({ c, held }) => held && c.target === c.location);
+  const edges = arrowed.map(({ c, label, held }): MoveMapEdge =>
+    held
+      ? { label, from: c.location, to: c.target, kind: "blocked", value: c.unblockedGain, valueText: `gain if unblocked ${c.unblockedGain}`, note: `blocked by ${nameList(c.blockers.map((b) => posix.basename(b.path)), 1)}` }
+      : { label, from: c.location, to: c.target, kind: "move", value: c.gain },
+  );
+  const marks: MoveMapMark[] = [
+    ...drawnReviews.map((c, i) => ({ folder: c.location, label: `R${i + 1}`, kind: c.recommendation })),
+    ...stuck.map(({ c, label }) => ({ folder: c.location, label, kind: "blocked-unit", note: `blocked by ${nameList(c.blockers.map((b) => posix.basename(b.path)), 1)}` })),
+    ...arrowed.flatMap(({ c, label }) => [...consumerFolders(c)].filter((folder) => folder !== c.location && folder !== c.target).map((folder) => ({ folder, label, kind: "consumer" }))),
+  ];
+  const folders = [...new Set([...edges.flatMap((e) => [e.from, e.to]), ...marks.map((m) => m.folder)])].sort();
+  const blockers = (c: Candidate) => nameList(c.blockers.map((b) => b.path), BLOCKERS_PER_UNIT);
+  const rows = [
+    ...arrowed.map(({ c, label, held }) => [label, c.path, folderText(c.location), folderText(c.target), String(held ? c.unblockedGain : c.gain), held ? `blocked move, dashed arrow; gain if unblocked; blocked by ${blockers(c)}` : "move: the planner can plan it"]),
+    ...stuck.map(({ c, label }) => [label, c.path, folderText(c.location), "none: its own folder is its best until the blockers are resolved", String(c.unblockedGain), `blocked unit, marker on its folder; gain if unblocked; blocked by ${blockers(c)}`]),
+    ...drawnReviews.map((c, i) => [`R${i + 1}`, c.path, folderText(c.location), "no single target", String(c.gain), `${c.recommendation}: marker on its folder, no arrow`]),
+  ];
+  const stays = entries.length - arrowed.length - stuck.length;
+  const left = (all: Candidate[], drawn: Candidate[], noun: string) => (all.length === 0 ? [] : [`${all.length - drawn.length} of ${all.length} ${noun}`]);
+  const notDrawn = [...left(moves, drawnMoves, "moves"), ...left(blocked, drawnBlocked, "blocked units"), ...left(reviews, drawnReviews, "reviews, splits and inlines")];
+  return {
+    type: "move-map",
+    title: "Where the top candidates would move",
+    valueLabel: "gain",
+    rootText: ROOT_TEXT,
+    folders,
+    edges,
+    marks,
+    kinds: [
+      { kind: "move", word: "move", meaning: "a unit of kind move with no blockers, which the planner can plan without --reason. Its number is its row in the moves table." },
+      { kind: "blocked", word: "blocked move", meaning: "a unit of kind move held back by blockers, drawn to its target folder with the gain it would have if they were resolved. B numbers are rows of the blocked table.", dashed: true },
+      ...(stuck.length === 0 ? [] : [{ kind: "blocked-unit", word: "blocked unit", meaning: "a unit held back by blockers whose own folder is its best folder now, so there is no target to draw: a marker on its folder, with its first blocker. B numbers are rows of the blocked table." }]),
+      ...[
+        { kind: "review", word: "review", meaning: "a unit of kind review: no single target, so a marker on its folder and no arrow. R numbers are rows of the reviews, splits and inlines table." },
+        { kind: "split", word: "split", meaning: "a unit of kind split: no single target, so a marker on its folder and no arrow." },
+        { kind: "inline", word: "inline", meaning: "a unit of kind inline: no single target, so a marker on its folder and no arrow." },
+      ].filter((k) => drawnReviews.some((c) => c.recommendation === k.kind)),
+      { kind: "consumer", word: "consumers of", meaning: "a folder with a file that uses the unit with that number" },
+    ],
+    table: {
+      columns: [{ label: "#" }, { label: "Unit" }, { label: "From folder" }, { label: "To folder" }, { label: "Gain", align: "right" }, { label: "Status" }],
+      rows,
+    },
+    omitted: `Not drawn: ${notDrawn.join(", ")} (the map draws the top ${MAP_MOVES} moves, ${MAP_BLOCKED} blocked units and ${MAP_REVIEWS} reviews, splits and inlines). ${stays === 0 ? "" : `${stays} drawn ${stays === 1 ? "unit already sits" : "units already sit"} in the target folder and ${stays === 1 ? "has" : "have"} no arrow. `}Scrutinise units propose no move and are not drawn. Gain is net distance removed, against the locality.minDistance guideline of ${settings.minDistance}.`,
+  };
 }
 
 /** Names with the rest counted: `a, b, c and 4 more`. */
@@ -416,7 +486,7 @@ export const localityReport: ReportKind = {
     const history = extra.history;
     const inputs = output.inputs as Record<string, unknown>;
     const sections: Section[] = [
-      { id: "summary", heading: "Summary", blocks: [{ type: "judgement", slot: "summary" }] },
+      { id: "summary", heading: "Summary", blocks: [{ type: "judgement", slot: "summary" }, ...(moves.length + blocked.length + reviews.length === 0 ? [] : [moveMap(moves, blocked, reviews, settings)])] },
       {
         id: "candidates",
         heading: "Candidates",
