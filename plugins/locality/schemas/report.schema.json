@@ -47,7 +47,7 @@
                   "type": "object",
                   "properties": {
                     "type": {
-                      "enum": ["paragraph", "facts", "ranked-table", "treemap", "category-treemap", "sparkline", "histogram", "scatter", "matrix", "function-bars", "move-map", "guideline-bars", "stability-chart", "trend-marker", "evidence-list", "notice", "judgement", "judged-items"]
+                      "enum": ["paragraph", "facts", "ranked-table", "treemap", "category-treemap", "sparkline", "histogram", "scatter", "matrix", "function-bars", "move-map", "guideline-bars", "stability-chart", "trend-marker", "trend-chart", "trend-grid", "change-bars", "evidence-list", "notice", "judgement", "judged-items"]
                     }
                   },
                   "required": ["type"]

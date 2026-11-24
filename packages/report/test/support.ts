@@ -116,6 +116,42 @@ export const sampleBlocks: Record<string, Block> = {
     ],
   },
   "trend-marker": { type: "trend-marker", label: "support", earlier: 4, later: 9, windows: ["2024", "2025"] },
+  "trend-chart": {
+    type: "trend-chart",
+    title: "Mean distance per use",
+    unit: "mean distance per use",
+    labels: ["2025-01-01", "2025-02-01", "2025-03-01", "2025-04-01"],
+    series: [
+      { name: "src/app", values: [1.2, 1.4, 1.5, 2.1] },
+      { name: "src/<core>", values: [null, 0.8, 0.8, 0.7] },
+    ],
+    note: "Folders are those of the last sample.",
+  },
+  "trend-grid": {
+    type: "trend-grid",
+    title: "Folders by mean distance per use",
+    unit: "mean distance per use",
+    labels: ["2025-01-01", "2025-02-01", "2025-03-01", "2025-04-01"],
+    wording: { stronger: "further apart", weaker: "closer" },
+    items: [
+      { name: "src/app", values: [1.2, 1.4, 1.5, 2.1] },
+      { name: "src/core", values: [2, 1.8, 1.2, 1] },
+      { name: "src/new", values: [null, null, null, 3] },
+      { name: "src/gone", values: [1, 1, null, null] },
+      { name: "src/flat", values: [1, 1, 1, 1.05] },
+    ],
+  },
+  "change-bars": {
+    type: "change-bars",
+    title: "Change in import distance by folder",
+    unit: "import distance",
+    samples: ["2025-01-01", "2025-04-01"],
+    bars: [
+      { label: "src/app", from: 40, to: 95 },
+      { label: "src/core", from: 60, to: 22 },
+      { label: "src/flat", from: 5, to: 5 },
+    ],
+  },
   "evidence-list": { type: "evidence-list", title: "Commits", items: [{ id: "abc1234", text: "Fix the parser", detail: "2025-03-01" }, { id: "def5678", text: "Fix again" }], omitted: 3 },
   notice: { type: "notice", level: "limit", text: "History is short." },
   judgement: { type: "judgement", slot: "look" },
@@ -127,7 +163,7 @@ export const sampleBuild: ReportBuild = {
   header: { evidenceGrade: "moderate", historyWindow: "8 months of history", excluded: [{ what: "generated files", count: 3 }] },
   sections: [
     { id: "overview", heading: "Overview", blocks: [sampleBlocks.paragraph!, sampleBlocks.judgement!, sampleBlocks["ranked-table"]!, sampleBlocks.notice!] },
-    { id: "charts", heading: "Charts", blocks: ["treemap", "sparkline", "histogram", "scatter", "matrix", "function-bars", "move-map", "guideline-bars", "trend-marker", "evidence-list", "facts"].map((k) => sampleBlocks[k]!) },
+    { id: "charts", heading: "Charts", blocks: ["treemap", "sparkline", "histogram", "scatter", "matrix", "function-bars", "move-map", "guideline-bars", "trend-marker", "trend-chart", "trend-grid", "change-bars", "evidence-list", "facts"].map((k) => sampleBlocks[k]!) },
   ],
   limits: ["The sample is small."],
   slots: [

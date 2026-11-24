@@ -108,6 +108,20 @@ svg a > text, svg a > tspan { fill: var(--link); text-decoration: underline; }
 svg a:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 svg a .tile rect, svg a .tile.marked rect { stroke: var(--link); stroke-width: 2; }
 svg polyline { fill: none; stroke: var(--bar-above); stroke-width: 2; } svg circle { fill: var(--bar-above); }
+svg .grid { stroke: var(--rule); stroke-width: 1; } svg .zero { stroke: var(--marker); stroke-width: 1.5; }
+svg .series.cat-1 polyline { stroke: var(--cat-1); } svg .series.cat-1 circle { fill: var(--cat-1); }
+svg .series.cat-2 polyline { stroke: var(--cat-2); } svg .series.cat-2 circle { fill: var(--cat-2); }
+svg .series.cat-3 polyline { stroke: var(--cat-3); } svg .series.cat-3 circle { fill: var(--cat-3); }
+svg .series.cat-4 polyline { stroke: var(--cat-4); } svg .series.cat-4 circle { fill: var(--cat-4); }
+svg .series.cat-5 polyline { stroke: var(--cat-5); } svg .series.cat-5 circle { fill: var(--cat-5); }
+svg .series.cat-6 polyline { stroke: var(--cat-6); } svg .series.cat-6 circle { fill: var(--cat-6); }
+svg .series text { fill: var(--text); }
+svg .series .name, svg .panel .name, svg .change .name { font-weight: 600; }
+figure.chart details { margin: .25rem 0 .5rem; } figure.chart summary { cursor: pointer; color: var(--muted); font-size: .9rem; }
+svg .panel polyline { stroke: var(--bar); } svg .panel circle { fill: var(--bar); }
+svg .panel.stronger polyline { stroke: var(--bar-above); } svg .panel.stronger circle { fill: var(--bar-above); }
+svg .panel .reading, svg .panel .word { fill: var(--muted); } svg .panel.stronger .word { fill: var(--text); font-weight: 600; }
+svg .change rect { fill: var(--bar); } svg .change.rise rect { fill: var(--bar-above); }
 .notice { border-left: 4px solid var(--notice-rule); background: var(--notice-bg); padding: .5rem .75rem; margin: .75rem 0; }
 .judgement { border: 1px solid var(--rule); border-left: 4px solid var(--link); background: var(--panel); padding: .25rem 1rem .5rem; margin: 1rem 0; }
 .judgement ol { margin: 0; padding-left: 1.25rem; }
@@ -383,6 +397,95 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <p class="legend">The vertical line marks the guideline and ▲ marks a value above it. A guideline orders and labels results; it decides nothing. Guideline from a judgement call.</p>
 </figure>
 <p><span class="trend stronger"><span aria-hidden="true">↑</span> stronger <span class="trend-detail">(support: 4 in 2024, 9 in 2025)</span></span></p>
+<figure class="chart trend-chart">
+<figcaption>Mean distance per use</figcaption>
+<svg role="img" aria-labelledby="mean-distance-per-use-435d39-title mean-distance-per-use-435d39-desc" width="760" height="320" viewBox="0 0 760 320" preserveAspectRatio="xMinYMin meet">
+<title id="mean-distance-per-use-435d39-title">Mean distance per use</title>
+<desc id="mean-distance-per-use-435d39-desc">mean distance per use over 4 samples, from 2025-01-01 to 2025-04-01. src/app goes from 1.2 (2025-01-01) to 2.1 (2025-04-01); src/&lt;core&gt; goes from 0.8 (2025-02-01) to 0.7 (2025-04-01). The table below lists every value.</desc>
+<rect class="frame" x="60" y="14" width="510" height="262"/>
+<line class="grid" x1="60" y1="276.0" x2="570" y2="276.0"/><text class="tick" x="52" y="280.0" text-anchor="end">0</text>
+<line class="grid" x1="60" y1="210.5" x2="570" y2="210.5"/><text class="tick" x="52" y="214.5" text-anchor="end">0.63</text>
+<line class="grid" x1="60" y1="145.0" x2="570" y2="145.0"/><text class="tick" x="52" y="149.0" text-anchor="end">1.25</text>
+<line class="grid" x1="60" y1="79.5" x2="570" y2="79.5"/><text class="tick" x="52" y="83.5" text-anchor="end">1.88</text>
+<line class="grid" x1="60" y1="14.0" x2="570" y2="14.0"/><text class="tick" x="52" y="18.0" text-anchor="end">2.5</text>
+<text class="tick" x="60.0" y="292" text-anchor="start">2025-01-01</text>
+<text class="tick" x="230.0" y="292" text-anchor="middle">2025-02-01</text>
+<text class="tick" x="400.0" y="292" text-anchor="middle">2025-03-01</text>
+<text class="tick" x="570.0" y="292" text-anchor="end">2025-04-01</text>
+<text class="axis" transform="rotate(-90 14 145.0)" x="14" y="145.0" text-anchor="middle">mean distance per use</text>
+<g class="series cat-1"><polyline points="60.0,150.2 230.0,129.3 400.0,118.8 570.0,55.9"/><circle cx="60.0" cy="150.2" r="2.5"><title>src/app, 2025-01-01: 1.2</title></circle><circle cx="230.0" cy="129.3" r="2.5"><title>src/app, 2025-02-01: 1.4</title></circle><circle cx="400.0" cy="118.8" r="2.5"><title>src/app, 2025-03-01: 1.5</title></circle><circle cx="570.0" cy="55.9" r="2.5"><title>src/app, 2025-04-01: 2.1</title></circle><text class="name" x="580.0" y="59.9">src/app 2.1</text></g>
+<g class="series cat-2"><polyline points="230.0,192.2 400.0,192.2 570.0,202.6"/><circle cx="230.0" cy="192.2" r="2.5"><title>src/&lt;core&gt;, 2025-02-01: 0.8</title></circle><circle cx="400.0" cy="192.2" r="2.5"><title>src/&lt;core&gt;, 2025-03-01: 0.8</title></circle><circle cx="570.0" cy="202.6" r="2.5"><title>src/&lt;core&gt;, 2025-04-01: 0.7</title></circle><text class="name" x="580.0" y="206.6">src/&lt;core&gt; 0.7</text></g>
+</svg>
+<details>
+<summary>Table of the 4 samples</summary>
+<table>
+<caption>Mean distance per use: mean distance per use by sample</caption>
+<thead><tr><th scope="col">Sample</th><th scope="col" class="number">src/app</th><th scope="col" class="number">src/&lt;core&gt;</th></tr></thead>
+<tbody>
+<tr><th scope="row">2025-01-01</th><td class="number">1.2</td><td class="number">none</td></tr>
+<tr><th scope="row">2025-02-01</th><td class="number">1.4</td><td class="number">0.8</td></tr>
+<tr><th scope="row">2025-03-01</th><td class="number">1.5</td><td class="number">0.8</td></tr>
+<tr><th scope="row">2025-04-01</th><td class="number">2.1</td><td class="number">0.7</td></tr>
+</tbody>
+</table>
+</details>
+<p class="legend">The vertical axis starts at 0. Each line ends with its name and its last value.</p>
+<p class="legend">Folders are those of the last sample.</p>
+</figure>
+<figure class="chart trend-grid">
+<figcaption>Folders by mean distance per use</figcaption>
+<svg role="img" aria-labelledby="folders-by-mean-distance-per-use-c13d2f-title folders-by-mean-distance-per-use-c13d2f-desc" width="760" height="192" viewBox="0 0 760 192" preserveAspectRatio="xMinYMin meet">
+<title id="folders-by-mean-distance-per-use-c13d2f-title">Folders by mean distance per use</title>
+<desc id="folders-by-mean-distance-per-use-c13d2f-desc">5 small line charts of mean distance per use, one per item, over 4 samples from 2025-01-01 to 2025-04-01, all on one vertical scale. 1 further apart, 1 closer, 1 first seen 2025-04-01, 1 no value after 2025-02-01, 1 stable. The table below lists each item's first and last values.</desc>
+<g class="panel stronger"><title>src/app: 1.2 to 2.1, further apart</title><rect class="frame" x="2" y="2" width="186" height="92"/><line class="grid" x1="10" y1="62.0" x2="180" y2="62.0"/><text class="name" x="10" y="14">src/app</text><polyline points="10.0,46.0 66.7,43.3 123.3,42.0 180.0,34.0"/><circle cx="180.0" cy="34.0" r="3"/><text class="reading" x="10" y="74">1.2 to 2.1</text><text class="word" x="10" y="87"><tspan aria-hidden="true">↑ </tspan>further apart</text></g>
+<g class="panel weaker"><title>src/core: 2 to 1, closer</title><rect class="frame" x="192" y="2" width="186" height="92"/><line class="grid" x1="200" y1="62.0" x2="370" y2="62.0"/><text class="name" x="200" y="14">src/core</text><polyline points="200.0,35.3 256.7,38.0 313.3,46.0 370.0,48.7"/><circle cx="370.0" cy="48.7" r="3"/><text class="reading" x="200" y="74">2 to 1</text><text class="word" x="200" y="87"><tspan aria-hidden="true">↓ </tspan>closer</text></g>
+<g class="panel"><title>src/new: 3 to 3, first seen 2025-04-01</title><rect class="frame" x="382" y="2" width="186" height="92"/><line class="grid" x1="390" y1="62.0" x2="560" y2="62.0"/><text class="name" x="390" y="14">src/new</text><circle cx="560.0" cy="22.0" r="3"/><text class="reading" x="390" y="74">3 to 3</text><text class="word" x="390" y="87">first seen 2025-04-01</text></g>
+<g class="panel stable"><title>src/gone: 1 to 1, no value after 2025-02-01</title><rect class="frame" x="572" y="2" width="186" height="92"/><line class="grid" x1="580" y1="62.0" x2="750" y2="62.0"/><text class="name" x="580" y="14">src/gone</text><polyline points="580.0,48.7 636.7,48.7"/><circle cx="636.7" cy="48.7" r="3"/><text class="reading" x="580" y="74">1 to 1</text><text class="word" x="580" y="87">no value after 2025-02-01</text></g>
+<g class="panel stable"><title>src/flat: 1 to 1.05, stable</title><rect class="frame" x="2" y="98" width="186" height="92"/><line class="grid" x1="10" y1="158.0" x2="180" y2="158.0"/><text class="name" x="10" y="110">src/flat</text><polyline points="10.0,144.7 66.7,144.7 123.3,144.7 180.0,144.0"/><circle cx="180.0" cy="144.0" r="3"/><text class="reading" x="10" y="170">1 to 1.05</text><text class="word" x="10" y="183"><tspan aria-hidden="true">→ </tspan>stable</text></g>
+</svg>
+<details>
+<summary>Table of the 5 items</summary>
+<table>
+<caption>Folders by mean distance per use: first and last mean distance per use of each item</caption>
+<thead><tr><th scope="col">Item</th><th scope="col">First sample</th><th scope="col" class="number">First mean distance per use</th><th scope="col" class="number">Last mean distance per use</th><th scope="col" class="number">Change</th><th scope="col">Trend</th></tr></thead>
+<tbody>
+<tr><th scope="row">src/app</th><td>2025-01-01</td><td class="number">1.2</td><td class="number">2.1</td><td class="number">0.9</td><td>further apart</td></tr>
+<tr><th scope="row">src/core</th><td>2025-01-01</td><td class="number">2</td><td class="number">1</td><td class="number">-1</td><td>closer</td></tr>
+<tr><th scope="row">src/new</th><td>2025-04-01</td><td class="number">3</td><td class="number">3</td><td class="number">0</td><td>first seen 2025-04-01</td></tr>
+<tr><th scope="row">src/gone</th><td>2025-01-01</td><td class="number">1</td><td class="number">1</td><td class="number">0</td><td>no value after 2025-02-01</td></tr>
+<tr><th scope="row">src/flat</th><td>2025-01-01</td><td class="number">1</td><td class="number">1.05</td><td class="number">0.05</td><td>stable</td></tr>
+</tbody>
+</table>
+</details>
+<p class="legend">Every panel has the same vertical scale, from 0 to the greatest value in the grid, so the heights compare between panels.</p>
+<p class="legend">A trend compares an item's first value with its last: a change within 20 percent of the first value is stable. The tolerance is a guideline that labels the change; the table gives the values.</p>
+</figure>
+<figure class="chart change-bars">
+<figcaption>Change in import distance by folder</figcaption>
+<svg role="img" aria-labelledby="change-in-import-distance-by-folder-669b65-title change-in-import-distance-by-folder-669b65-desc" width="760" height="96" viewBox="0 0 760 96" preserveAspectRatio="xMinYMin meet">
+<title id="change-in-import-distance-by-folder-669b65-title">Change in import distance by folder</title>
+<desc id="change-in-import-distance-by-folder-669b65-desc">Horizontal bars of the change in import distance from 2025-01-01 to 2025-04-01 for 3 items: 1 rose, 1 fell. The table below lists both values and the change for each.</desc>
+<text class="axis" x="464.1" y="13" text-anchor="end">fell</text>
+<text class="axis" x="476.1" y="13">rose</text>
+<line class="zero" x1="470.1" y1="18" x2="470.1" y2="90"/>
+<g class="change rise"><title>src/app: 40 to 95, rose by 55</title><text class="name" x="242" y="37" text-anchor="end">src/app</text><rect x="470.1" y="26" width="225.9" height="14"/><text class="value" x="700.0" y="37" text-anchor="start">+55</text></g>
+<g class="change fall"><title>src/core: 60 to 22, fell by 38</title><text class="name" x="242" y="59" text-anchor="end">src/core</text><rect x="314.0" y="48" width="156.1" height="14"/><text class="value" x="310.0" y="59" text-anchor="end">-38</text></g>
+<g class="change level"><title>src/flat: 5 to 5, no change</title><text class="name" x="242" y="81" text-anchor="end">src/flat</text><rect x="470.1" y="70" width="1.0" height="14"/><text class="value" x="474.1" y="81" text-anchor="start">0</text></g>
+</svg>
+<details>
+<summary>Table of the 3 items</summary>
+<table>
+<caption>Change in import distance by folder: import distance at the two samples</caption>
+<thead><tr><th scope="col">Item</th><th scope="col" class="number">import distance, 2025-01-01</th><th scope="col" class="number">import distance, 2025-04-01</th><th scope="col" class="number">Change</th><th scope="col">Direction</th></tr></thead>
+<tbody>
+<tr><th scope="row">src/app</th><td class="number">40</td><td class="number">95</td><td class="number">+55</td><td>rose</td></tr>
+<tr><th scope="row">src/core</th><td class="number">60</td><td class="number">22</td><td class="number">-38</td><td>fell</td></tr>
+<tr><th scope="row">src/flat</th><td class="number">5</td><td class="number">5</td><td class="number">0</td><td>no change</td></tr>
+</tbody>
+</table>
+</details>
+<p class="legend">Each bar is the value at 2025-04-01 minus the value at 2025-01-01. A bar to the right of the line: rose. A bar to the left: fell. The direction is in the words and the sign, not in the colour alone.</p>
+</figure>
 <section class="evidence">
 <h3>Commits</h3>
 <ul>

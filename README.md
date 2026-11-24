@@ -58,7 +58,7 @@ Ask Claude in the terms of the problem, and the matching skill runs the CLI:
 
 Each CLI can also be run directly, in a terminal or in CI, as `node <plugin folder>/dist/<plugin>.mjs <command>`. It prints a table in a terminal and JSON with `--json` or when piped. `--help` lists the commands, `explain <rule>` describes a recommendation rule, and `config explain` prints the effective config and where each value came from.
 
-`<plugin> report <kind>` renders an HTML or Markdown page for a person to read: the CLI computes and prints every number, and the agent writes only the judgement. The reports are `cochange report overview`, `hotspots`, `coupling`, `knowledge` and `change` (a pull request summary), `complexity report xray`, `structure report structure` and `locality report locality`.
+`<plugin> report <kind>` renders an HTML or Markdown page for a person to read: the CLI computes and prints every number, and the agent writes only the judgement. The reports are `cochange report overview`, `hotspots`, `coupling`, `knowledge` and `change` (a pull request summary), `complexity report xray`, `structure report structure`, `locality report locality` and `locality report trends` (import distance of the repository and its folders over sampled revisions, as charts).
 
 ### Configuration
 

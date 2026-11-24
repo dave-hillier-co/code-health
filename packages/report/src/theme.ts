@@ -128,6 +128,20 @@ svg a > text, svg a > tspan { fill: var(--link); text-decoration: underline; }
 svg a:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 svg a .tile rect, svg a .tile.marked rect { stroke: var(--link); stroke-width: 2; }
 svg polyline { fill: none; stroke: var(--bar-above); stroke-width: 2; } svg circle { fill: var(--bar-above); }
+svg .grid { stroke: var(--rule); stroke-width: 1; } svg .zero { stroke: var(--marker); stroke-width: 1.5; }
+svg .series.cat-1 polyline { stroke: var(--cat-1); } svg .series.cat-1 circle { fill: var(--cat-1); }
+svg .series.cat-2 polyline { stroke: var(--cat-2); } svg .series.cat-2 circle { fill: var(--cat-2); }
+svg .series.cat-3 polyline { stroke: var(--cat-3); } svg .series.cat-3 circle { fill: var(--cat-3); }
+svg .series.cat-4 polyline { stroke: var(--cat-4); } svg .series.cat-4 circle { fill: var(--cat-4); }
+svg .series.cat-5 polyline { stroke: var(--cat-5); } svg .series.cat-5 circle { fill: var(--cat-5); }
+svg .series.cat-6 polyline { stroke: var(--cat-6); } svg .series.cat-6 circle { fill: var(--cat-6); }
+svg .series text { fill: var(--text); }
+svg .series .name, svg .panel .name, svg .change .name { font-weight: 600; }
+figure.chart details { margin: .25rem 0 .5rem; } figure.chart summary { cursor: pointer; color: var(--muted); font-size: .9rem; }
+svg .panel polyline { stroke: var(--bar); } svg .panel circle { fill: var(--bar); }
+svg .panel.stronger polyline { stroke: var(--bar-above); } svg .panel.stronger circle { fill: var(--bar-above); }
+svg .panel .reading, svg .panel .word { fill: var(--muted); } svg .panel.stronger .word { fill: var(--text); font-weight: 600; }
+svg .change rect { fill: var(--bar); } svg .change.rise rect { fill: var(--bar-above); }
 .notice { border-left: 4px solid var(--notice-rule); background: var(--notice-bg); padding: .5rem .75rem; margin: .75rem 0; }
 .judgement { border: 1px solid var(--rule); border-left: 4px solid var(--link); background: var(--panel); padding: .25rem 1rem .5rem; margin: 1rem 0; }
 .judgement ol { margin: 0; padding-left: 1.25rem; }
