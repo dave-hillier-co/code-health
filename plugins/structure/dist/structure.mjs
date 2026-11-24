@@ -211,24 +211,24 @@ var sharedDefaults = {
 var stringLists = ["exclude", "testPatterns", "entryPoints", "includeRoots", "vagueNames"];
 var PLUGIN_SECTIONS = ["cochange", "complexity", "locality", "structure"];
 var documentKeys = ["$schema"];
-function rejectUnknownKeys(document, plugin) {
+function rejectUnknownKeys(document2, plugin) {
   const known = /* @__PURE__ */ new Set([...Object.keys(sharedDefaults), ...PLUGIN_SECTIONS, plugin]);
-  for (const key of Object.keys(document)) {
+  for (const key of Object.keys(document2)) {
     if (documentKeys.includes(key) || known.has(key)) continue;
     throw configError(`${CONFIG_FILE}: ${key} is an unknown setting; known settings are ${[...known].sort().join(", ")}`);
   }
 }
 function loadConfig(root, spec) {
   const file = join(root, CONFIG_FILE);
-  const document = existsSync(file) ? parseDocument(file) : void 0;
-  if (document !== void 0) rejectUnknownKeys(document, spec.plugin);
+  const document2 = existsSync(file) ? parseDocument(file) : void 0;
+  if (document2 !== void 0) rejectUnknownKeys(document2, spec.plugin);
   for (const key of stringLists) {
-    const value = document?.[key];
+    const value = document2?.[key];
     if (value !== void 0 && (!Array.isArray(value) || value.some((item) => typeof item !== "string"))) {
       throw configError(`${CONFIG_FILE}: ${key} must be an array of strings`);
     }
   }
-  if (document !== void 0 && document.languages !== void 0) document.languages = readLanguages(document.languages);
+  if (document2 !== void 0 && document2.languages !== void 0) document2.languages = readLanguages(document2.languages);
   const historyKeys = spec.history ?? [];
   for (const key of historyKeys) {
     if (key in spec.section) throw new Error(`the ${spec.plugin} section lists ${key}, which it takes from history`);
@@ -238,10 +238,10 @@ function loadConfig(root, spec) {
   const rows8 = /* @__PURE__ */ new Map();
   const effective = {};
   for (const key of Object.keys(defaults)) {
-    effective[key] = merge(defaults[key], document?.[key], key, rows8);
+    effective[key] = merge(defaults[key], document2?.[key], key, rows8);
   }
   readHistory(effective.history, "history");
-  const pluginDocument = document?.[spec.plugin];
+  const pluginDocument = document2?.[spec.plugin];
   const override2 = Object.fromEntries(historyKeys.filter((key) => pluginDocument?.[key] !== void 0).map((key) => [key, pluginDocument[key]]));
   readHistory(override2, spec.plugin);
   const section2 = effective[spec.plugin];
@@ -252,7 +252,7 @@ function loadConfig(root, spec) {
   const sources = {};
   for (const row of rows8.values()) sources[row.path] = row.source;
   const hash2 = createHash("sha256").update(serialise(effective)).digest("hex").slice(0, 16);
-  return { file: document ? file : null, effective, hash: hash2, sources };
+  return { file: document2 ? file : null, effective, hash: hash2, sources };
 }
 function overlay(shared, own) {
   if (own === void 0) return shared;
@@ -1303,9 +1303,9 @@ function mergeFileChanges(changes) {
     status: first.status === "A" && last.status !== "D" ? "A" : last.status,
     oldPath: first.oldPath,
     similarity: first.similarity,
-    added: total((c) => c.added),
-    deleted: total((c) => c.deleted),
-    binary: changes.some((c) => c.binary)
+    added: total((c2) => c2.added),
+    deleted: total((c2) => c2.deleted),
+    binary: changes.some((c2) => c2.binary)
   };
 }
 
@@ -1318,10 +1318,10 @@ function detectImportedHistory(view, treeFiles, options2 = {}) {
   let addedBefore = 0;
   for (const commit of view.commits) {
     const atStart = commit.parentCount === 0 || addedBefore < minFiles;
-    addedBefore += commit.changes.filter((c) => c.status === "A").length;
+    addedBefore += commit.changes.filter((c2) => c2.status === "A").length;
     if (!atStart || commit.boundary) continue;
     const kept = new Set(
-      commit.changes.filter((c) => c.status === "A" && current.has(c.fileId)).map((c) => c.fileId)
+      commit.changes.filter((c2) => c2.status === "A" && current.has(c2.fileId)).map((c2) => c2.fileId)
     );
     const ratio = kept.size / treeFiles.length;
     if (ratio >= share2) {
@@ -1394,7 +1394,7 @@ function compileIssuePattern(pattern) {
   }
 }
 var DEFAULT_MAX_CHANGESET_SIZE = historyDefaults.maxChangesetSize;
-var isPureRename = (c) => c.status === "R" && c.similarity === 100 && (c.added ?? 0) === 0 && (c.deleted ?? 0) === 0;
+var isPureRename = (c2) => c2.status === "R" && c2.similarity === 100 && (c2.added ?? 0) === 0 && (c2.deleted ?? 0) === 0;
 async function filterHistory(repoPath, view, options2 = {}) {
   const maxChangesetSize = options2.maxChangesetSize ?? DEFAULT_MAX_CHANGESET_SIZE;
   const lockfileNames = options2.lockfiles === false ? [] : options2.lockfiles ?? DEFAULT_LOCKFILES;
@@ -1414,7 +1414,7 @@ async function filterHistory(repoPath, view, options2 = {}) {
   const imported = detectImportedHistory(view, treeFiles, options2.importDetection);
   const importedShas = new Set(excludeImported ? imported.map((i2) => i2.sha) : []);
   const ignoredRevs = blameFile === false ? [] : await readBlameIgnoreRevs(repoPath, view.headSha, blameFile);
-  const touchedPaths = [...new Set(view.commits.flatMap((c) => c.changes.map((ch) => ch.path)))].sort();
+  const touchedPaths = [...new Set(view.commits.flatMap((c2) => c2.changes.map((ch) => ch.path)))].sort();
   const attributes = useAttributes ? await classifyFiles(
     repoPath,
     view.headSha,
@@ -1520,7 +1520,7 @@ async function filterHistory(repoPath, view, options2 = {}) {
         mergedCommits: survivors.length - changes.length
       },
       dropped: dropped2,
-      oversizedChanges: changes.filter((c) => c.oversized).length
+      oversizedChanges: changes.filter((c2) => c2.oversized).length
     }
   };
 }
@@ -1834,20 +1834,20 @@ function insertCommits(db, commits, boundary) {
   );
   db.exec("BEGIN");
   try {
-    for (const c of commits) {
+    for (const c2 of commits) {
       insertCommit.run(
-        c.sha,
-        c.authorName,
-        c.authorEmail,
-        c.authorDate,
-        c.committerDate,
-        c.message,
-        c.parents.length,
-        boundary.has(c.sha) ? 1 : 0
+        c2.sha,
+        c2.authorName,
+        c2.authorEmail,
+        c2.authorDate,
+        c2.committerDate,
+        c2.message,
+        c2.parents.length,
+        boundary.has(c2.sha) ? 1 : 0
       );
-      c.parents.forEach((parent, ord) => insertParent.run(c.sha, ord, parent));
-      c.changes.forEach(
-        (ch, idx) => insertChange.run(c.sha, idx, ch.path, ch.oldPath, ch.status, ch.similarity, ch.added, ch.deleted, ch.binary ? 1 : 0, ch.blob)
+      c2.parents.forEach((parent, ord) => insertParent.run(c2.sha, ord, parent));
+      c2.changes.forEach(
+        (ch, idx) => insertChange.run(c2.sha, idx, ch.path, ch.oldPath, ch.status, ch.similarity, ch.added, ch.deleted, ch.binary ? 1 : 0, ch.blob)
       );
     }
     db.exec("COMMIT");
@@ -1994,7 +1994,7 @@ async function applyMailmap(repoRoot, view, mailmapFile) {
   } catch {
   }
   if (file === "" && blob === "") return;
-  const identities = [...new Set(view.commits.map((c) => `${c.authorName} <${c.authorEmail}>`))].sort();
+  const identities = [...new Set(view.commits.map((c2) => `${c2.authorName} <${c2.authorEmail}>`))].sort();
   if (identities.length === 0) return;
   const out2 = await runGit(
     repoRoot,
@@ -2002,7 +2002,7 @@ async function applyMailmap(repoRoot, view, mailmapFile) {
     { input: identities.join("\n") + "\n" }
   );
   const lines = out2.split("\n");
-  const mapped = new Map(identities.map((identity, i2) => [identity, lines[i2] ?? identity]));
+  const mapped = new Map(identities.map((identity2, i2) => [identity2, lines[i2] ?? identity2]));
   for (const commit of view.commits) {
     const line = mapped.get(`${commit.authorName} <${commit.authorEmail}>`) ?? "";
     const open = line.lastIndexOf("<");
@@ -3647,11 +3647,11 @@ var Language = class _Language {
   /**
    * Get the node type id for a node type name.
    */
-  idForNodeType(type, named) {
+  idForNodeType(type, named2) {
     const typeLength = C.lengthBytesUTF8(type);
     const typeAddress = C._malloc(typeLength + 1);
     C.stringToUTF8(type, typeAddress, typeLength + 1);
-    const result = C._ts_language_symbol_for_name(this[0], typeAddress, typeLength, named ? 1 : 0);
+    const result = C._ts_language_symbol_for_name(this[0], typeAddress, typeLength, named2 ? 1 : 0);
     C._free(typeAddress);
     return result || null;
   }
@@ -5031,12 +5031,12 @@ async function Module2(moduleArg = {}) {
   var lengthBytesUTF8 = /* @__PURE__ */ __name((str) => {
     var len = 0;
     for (var i2 = 0; i2 < str.length; ++i2) {
-      var c = str.charCodeAt(i2);
-      if (c <= 127) {
+      var c2 = str.charCodeAt(i2);
+      if (c2 <= 127) {
         len++;
-      } else if (c <= 2047) {
+      } else if (c2 <= 2047) {
         len += 2;
-      } else if (c >= 55296 && c <= 57343) {
+      } else if (c2 >= 55296 && c2 <= 57343) {
         len += 4;
         ++i2;
       } else {
@@ -5693,9 +5693,9 @@ function parseAnyPredicate(steps, index, operator, textPredicates) {
     textPredicates[index].push((captures) => {
       const nodes1 = [];
       const nodes2 = [];
-      for (const c of captures) {
-        if (c.name === captureName1) nodes1.push(c.node);
-        if (c.name === captureName2) nodes2.push(c.node);
+      for (const c2 of captures) {
+        if (c2.name === captureName1) nodes1.push(c2.node);
+        if (c2.name === captureName2) nodes2.push(c2.node);
       }
       const compare4 = /* @__PURE__ */ __name((n1, n2, positive) => {
         return positive ? n1.text === n2.text : n1.text !== n2.text;
@@ -5709,8 +5709,8 @@ function parseAnyPredicate(steps, index, operator, textPredicates) {
     const doesNotMatch = /* @__PURE__ */ __name((n) => n.text !== stringValue4, "doesNotMatch");
     textPredicates[index].push((captures) => {
       const nodes = [];
-      for (const c of captures) {
-        if (c.name === captureName) nodes.push(c.node);
+      for (const c2 of captures) {
+        if (c2.name === captureName) nodes.push(c2.node);
       }
       const test = isPositive ? matches : doesNotMatch;
       return matchAll ? nodes.every(test) : nodes.some(test);
@@ -5740,8 +5740,8 @@ function parseMatchPredicate(steps, index, operator, textPredicates) {
   const regex = new RegExp(steps[2].value);
   textPredicates[index].push((captures) => {
     const nodes = [];
-    for (const c of captures) {
-      if (c.name === captureName) nodes.push(c.node.text);
+    for (const c2 of captures) {
+      if (c2.name === captureName) nodes.push(c2.node.text);
     }
     const test = /* @__PURE__ */ __name((text3, positive) => {
       return positive ? regex.test(text3) : !regex.test(text3);
@@ -5773,8 +5773,8 @@ function parseAnyOfPredicate(steps, index, operator, textPredicates) {
   const values = stringSteps.map((s) => s.value);
   textPredicates[index].push((captures) => {
     const nodes = [];
-    for (const c of captures) {
-      if (c.name === captureName) nodes.push(c.node.text);
+    for (const c2 of captures) {
+      if (c2.name === captureName) nodes.push(c2.node.text);
     }
     if (nodes.length === 0) return !isPositive;
     return nodes.every((text3) => values.includes(text3)) === isPositive;
@@ -6540,31 +6540,31 @@ var Measurer = class {
   }
   visit(node, level, depth) {
     const type = node.type;
-    const c = this.c;
+    const c2 = this.c;
     if (this.rules.isStatement(node)) this.statements++;
-    if (c.functionLike.has(type)) {
+    if (c2.functionLike.has(type)) {
       this.statementsOfExpressionBody(node);
       this.children(node, level + 1, depth);
       return;
     }
-    if (type === c.conditional.type) {
+    if (type === c2.conditional.type) {
       this.ifStatement(node, level, depth, false);
       return;
     }
-    if (c.loops[type] !== void 0) {
+    if (c2.loops[type] !== void 0) {
       this.loop(node, level, depth);
       return;
     }
-    if (type === c.switch.type || c.switch.moreTypes?.has(type) === true) {
+    if (type === c2.switch.type || c2.switch.moreTypes?.has(type) === true) {
       this.switchStatement(node, level, depth);
       return;
     }
-    if (c.switchExpression !== void 0 && type === c.switchExpression.type) {
+    if (c2.switchExpression !== void 0 && type === c2.switchExpression.type) {
       this.switchExpression(node, level, depth);
       return;
     }
-    if (type === c.switch.caseType || c.switch.moreCaseTypes?.has(type) === true) {
-      const cases = c.switch.isCase?.(node) === false || this.rules.isDefaultCase?.(node) === true ? 0 : c.switch.caseCount?.(node) ?? 1;
+    if (type === c2.switch.caseType || c2.switch.moreCaseTypes?.has(type) === true) {
+      const cases = c2.switch.isCase?.(node) === false || this.rules.isDefaultCase?.(node) === true ? 0 : c2.switch.caseCount?.(node) ?? 1;
       for (let i2 = 0; i2 < cases; i2++) {
         this.cyclomatic++;
         this.record(node, "cyclomatic", "case", 1, 0, "case");
@@ -6572,19 +6572,19 @@ var Measurer = class {
       this.children(node, level, depth);
       return;
     }
-    const only = c.cyclomaticOnly?.[type];
+    const only = c2.cyclomaticOnly?.[type];
     if (only !== void 0) {
       this.decision(node, only);
       this.children(node, level, depth);
       return;
     }
-    if (type === c.tryType || c.alsoTryTypes?.has(type)) {
+    if (type === c2.tryType || c2.alsoTryTypes?.has(type)) {
       this.nesting = Math.max(this.nesting, depth + 1);
       if (depth === 0) this.bump(node, node.startPosition.row);
       this.children(node, level, depth + 1);
       return;
     }
-    if (type === c.catchType) {
+    if (type === c2.catchType) {
       this.flow(node, "catch", level);
       this.decision(node, "catch");
       const body2 = this.bodyOf(node);
@@ -6592,7 +6592,7 @@ var Measurer = class {
       if (body2 !== null) this.visit(body2, level + 1, depth);
       return;
     }
-    if (type === c.ternary.type) {
+    if (type === c2.ternary.type) {
       this.flow(node, "ternary", level);
       this.decision(node, "ternary");
       const [condition, ...branches] = this.ternaryParts(node);
@@ -6604,30 +6604,30 @@ var Measurer = class {
       this.logicalChain(node, level, depth);
       return;
     }
-    if (type === c.binary.type) {
+    if (type === c2.binary.type) {
       const operator = this.operatorOf(node);
-      if (operator !== void 0 && c.binary.decisions.has(operator)) this.decision(node, operator);
+      if (operator !== void 0 && c2.binary.decisions.has(operator)) this.decision(node, operator);
       this.children(node, level, depth);
       return;
     }
-    if (c.flatLogical !== void 0 && type === c.flatLogical.type) {
-      this.flatChain(node, c.flatLogical.operators, level, depth);
+    if (c2.flatLogical !== void 0 && type === c2.flatLogical.type) {
+      this.flatChain(node, c2.flatLogical.operators, level, depth);
       return;
     }
-    if (type === c.compoundAssignment.type) {
-      const operator = node.childForFieldName(c.compoundAssignment.operator)?.type;
-      if (operator !== void 0 && c.compoundAssignment.decisions.has(operator)) this.decision(node, operator);
+    if (type === c2.compoundAssignment.type) {
+      const operator = node.childForFieldName(c2.compoundAssignment.operator)?.type;
+      if (operator !== void 0 && c2.compoundAssignment.decisions.has(operator)) this.decision(node, operator);
       this.children(node, level, depth);
       return;
     }
-    if (c.labelledJump !== void 0) {
-      const jump = c.labelledJump(node);
+    if (c2.labelledJump !== void 0) {
+      const jump = c2.labelledJump(node);
       if (jump !== null) {
         this.flat(node, `labelled ${jump}`);
         return;
       }
     } else {
-      const jump = c.labelledJumps[type];
+      const jump = c2.labelledJumps[type];
       if (jump !== void 0) {
         if (this.isLabelled(node)) this.flat(node, `labelled ${jump}`);
         return;
@@ -6650,23 +6650,23 @@ var Measurer = class {
     return jump.childForFieldName(this.c.label) !== null;
   }
   switchStatement(node, level, depth) {
-    const c = this.c.switch;
+    const c2 = this.c.switch;
     this.flow(node, "switch", level);
     this.cyclomaticModified++;
     this.record(node, "cyclomatic", "switch", 1, 0, "modified");
     this.nesting = Math.max(this.nesting, depth + 1);
     if (depth === 0) this.bump(node, node.startPosition.row);
-    if (c.headTypes !== void 0) {
-      const heads = c.headTypes;
+    if (c2.headTypes !== void 0) {
+      const heads = c2.headTypes;
       for (const child2 of node.namedChildren) this.visit(child2, heads.has(child2.type) ? level : level + 1, heads.has(child2.type) ? depth : depth + 1);
       return;
     }
-    const body2 = c.body === "" ? null : node.childForFieldName(c.body);
-    if (body2 === null && c.clauseTypes !== void 0) {
+    const body2 = c2.body === "" ? null : node.childForFieldName(c2.body);
+    if (body2 === null && c2.clauseTypes !== void 0) {
       for (let i2 = 0; i2 < node.childCount; i2++) {
         const child2 = node.child(i2);
         if (child2 === null || !child2.isNamed) continue;
-        if (c.clauseTypes.has(child2.type)) this.visit(child2, level + 1, depth + 1);
+        if (c2.clauseTypes.has(child2.type)) this.visit(child2, level + 1, depth + 1);
         else this.visit(child2, level, depth);
       }
       return;
@@ -6715,32 +6715,32 @@ var Measurer = class {
     }
   }
   ifStatement(node, level, depth, isElseIf) {
-    const c = this.c.conditional;
+    const c2 = this.c.conditional;
     if (isElseIf) this.flat(node, "else if");
     else {
       this.flow(node, "if", level);
       this.nesting = Math.max(this.nesting, depth + 1);
     }
     this.decision(node, isElseIf ? "else if" : "if");
-    const condition = node.childForFieldName(c.condition);
-    const parts3 = c.branches?.(node);
-    const consequence = parts3 === void 0 ? node.childForFieldName(c.consequence) : parts3.consequence;
-    const alternative = parts3 === void 0 ? node.childForFieldName(c.alternative) : parts3.alternative;
+    const condition = node.childForFieldName(c2.condition);
+    const parts3 = c2.branches?.(node);
+    const consequence = parts3 === void 0 ? node.childForFieldName(c2.consequence) : parts3.consequence;
+    const alternative = parts3 === void 0 ? node.childForFieldName(c2.alternative) : parts3.alternative;
     for (const child2 of node.namedChildren) {
       if (child2.id === condition?.id || child2.id === consequence?.id || child2.id === alternative?.id) continue;
-      if (c.clauses !== void 0 && (child2.type === c.clauses.elif || child2.type === c.clauses.else)) continue;
+      if (c2.clauses !== void 0 && (child2.type === c2.clauses.elif || child2.type === c2.clauses.else)) continue;
       this.visit(child2, level, depth);
     }
     if (condition !== null) this.visit(condition, level, depth);
     if (consequence !== null) this.body(consequence, node, level, depth);
-    if (c.clauses !== void 0) {
+    if (c2.clauses !== void 0) {
       this.clauseChain(node, level, depth);
       return;
     }
     if (alternative === null) return;
-    const inner2 = c.alternativeIsClause ? alternative.namedChildren.find((child2) => !this.c.commentTypes.has(child2.type)) ?? null : alternative;
+    const inner2 = c2.alternativeIsClause ? alternative.namedChildren.find((child2) => !this.c.commentTypes.has(child2.type)) ?? null : alternative;
     if (inner2 === null) return;
-    if (inner2.type === c.type) {
+    if (inner2.type === c2.type) {
       this.statements++;
       this.ifStatement(inner2, level, depth, true);
     } else {
@@ -6750,16 +6750,16 @@ var Measurer = class {
   }
   /** The `elif` and `else` clauses of an `if` whose alternatives are clause nodes. They sit at the `if`'s level and depth. */
   clauseChain(node, level, depth) {
-    const c = this.c.conditional;
-    for (const clause of node.childrenForFieldName(c.alternative)) {
-      if (clause.type === c.clauses.elif) {
+    const c2 = this.c.conditional;
+    for (const clause of node.childrenForFieldName(c2.alternative)) {
+      if (clause.type === c2.clauses.elif) {
         this.flat(clause, "else if");
         this.decision(clause, "else if");
-        const condition = clause.childForFieldName(c.condition);
+        const condition = clause.childForFieldName(c2.condition);
         if (condition !== null) this.visit(condition, level, depth);
-        const consequence = clause.childForFieldName(c.consequence);
+        const consequence = clause.childForFieldName(c2.consequence);
         if (consequence !== null) this.body(consequence, clause, level, depth);
-      } else if (clause.type === c.clauses.else) {
+      } else if (clause.type === c2.clauses.else) {
         this.flat(clause, "else");
         const body2 = clause.childForFieldName("body");
         if (body2 !== null) this.body(body2, clause, level, depth);
@@ -6834,15 +6834,15 @@ var Measurer = class {
 function codeRowsOf(root, rules11) {
   const comments2 = rules11.constructs.commentTypes;
   const rows8 = new Array(root.endPosition.row + 1).fill(false);
-  const walk = (node) => {
+  const walk2 = (node) => {
     if (comments2.has(node.type)) return;
     if (node.childCount === 0) {
       for (let row = node.startPosition.row; row <= node.endPosition.row; row++) rows8[row] = true;
       return;
     }
-    for (let i2 = 0; i2 < node.childCount; i2++) walk(node.child(i2));
+    for (let i2 = 0; i2 < node.childCount; i2++) walk2(node.child(i2));
   };
-  walk(root);
+  walk2(root);
   return rows8;
 }
 function measureFunction(fn, options2, rules11) {
@@ -7007,16 +7007,16 @@ var typescriptMetricRules = {
 // packages/parse/src/languages/typescript/interface-shape.ts
 function nodeCount(node, skip) {
   let count3 = 0;
-  const walk = (current) => {
+  const walk2 = (current) => {
     if (!current.isNamed || current.type === "comment") return;
     if (skip?.(current) === true) return;
     count3++;
     for (let i2 = 0; i2 < current.childCount; i2++) {
       const child2 = current.child(i2);
-      if (child2 !== null) walk(child2);
+      if (child2 !== null) walk2(child2);
     }
   };
-  walk(node);
+  walk2(node);
   return count3;
 }
 function functionShape(fn, parameters) {
@@ -9055,12 +9055,12 @@ var Extractor3 = class {
     this.visit(value, context, node, "value");
   }
   exportedDeclaration(statement, declaration, isDefault, context, line) {
-    const named = declaration.type === "ambient_declaration" ? declaration.namedChildren.find((child2) => child2.type !== "comment") ?? declaration : declaration;
+    const named2 = declaration.type === "ambient_declaration" ? declaration.namedChildren.find((child2) => child2.type !== "comment") ?? declaration : declaration;
     const names2 = [];
-    declaredNames(named, names2);
-    const name14 = named.childForFieldName("name");
+    declaredNames(named2, names2);
+    const name14 = named2.childForFieldName("name");
     if (names2.length === 0 && name14) names2.push(name14.text);
-    const alias = named.type === "import_alias" ? named.namedChildren.find((c) => c.type === "identifier") : void 0;
+    const alias = named2.type === "import_alias" ? named2.namedChildren.find((c2) => c2.type === "identifier") : void 0;
     if (names2.length === 0 && alias) names2.push(alias.text);
     if (isDefault) {
       const anonymous = functionTypes.has(declaration.type) || classTypes.has(declaration.type);
@@ -9777,16 +9777,16 @@ var csharpMetricRules = {
 // packages/parse/src/languages/csharp/interface-shape.ts
 function nodeCount2(node, skip) {
   let count3 = 0;
-  const walk = (current) => {
+  const walk2 = (current) => {
     if (!current.isNamed || current.type === "comment") return;
     if (skip?.(current) === true) return;
     count3++;
     for (let i2 = 0; i2 < current.childCount; i2++) {
       const child2 = current.child(i2);
-      if (child2 !== null) walk(child2);
+      if (child2 !== null) walk2(child2);
     }
   };
-  walk(node);
+  walk2(node);
   return count3;
 }
 function functionShape2(fn, parameters) {
@@ -10638,14 +10638,14 @@ function stripComments(text3) {
   let out2 = "";
   let quoted = false;
   for (let i2 = 0; i2 < text3.length; i2++) {
-    const c = text3[i2];
-    if (c === '"' && text3[i2 - 1] !== "\\") quoted = !quoted;
-    if (c === "#" && !quoted) {
+    const c2 = text3[i2];
+    if (c2 === '"' && text3[i2 - 1] !== "\\") quoted = !quoted;
+    if (c2 === "#" && !quoted) {
       while (i2 < text3.length && text3[i2] !== "\n") i2++;
       out2 += "\n";
       continue;
     }
-    out2 += c;
+    out2 += c2;
   }
   return out2;
 }
@@ -10665,10 +10665,10 @@ function commands(text3) {
     let quoted = false;
     let i2 = start2.lastIndex;
     for (; i2 < source.length && depth > 0; i2++) {
-      const c = source[i2];
-      if (c === '"' && source[i2 - 1] !== "\\") quoted = !quoted;
-      else if (!quoted && c === "(") depth++;
-      else if (!quoted && c === ")") depth--;
+      const c2 = source[i2];
+      if (c2 === '"' && source[i2 - 1] !== "\\") quoted = !quoted;
+      else if (!quoted && c2 === "(") depth++;
+      else if (!quoted && c2 === ")") depth--;
     }
     found.push({ name: match[1].toLowerCase(), args: tokens(source.slice(start2.lastIndex, i2 - 1)) });
     start2.lastIndex = i2;
@@ -10866,10 +10866,10 @@ function ownerOf(fn, qualifier) {
 }
 function recursionScope5(fn, name14) {
   if (fn.type === "lambda_expression") return { bare: /* @__PURE__ */ new Set(), member: /* @__PURE__ */ new Set() };
-  const named = declaratorName(functionDeclarator(fn));
-  const own = named?.name ?? name14;
+  const named2 = declaratorName(functionDeclarator(fn));
+  const own = named2?.name ?? name14;
   const names2 = new Set(own === void 0 ? [] : [own]);
-  const owner = named === null ? void 0 : ownerOf(fn, named.qualifier);
+  const owner = named2 === null ? void 0 : ownerOf(fn, named2.qualifier);
   return { bare: names2, member: names2, ...owner === void 0 ? {} : { owner } };
 }
 function isRecursiveCall5(call, scope) {
@@ -11074,10 +11074,10 @@ function extractFileCensus5(root) {
       }
       case "function_definition": {
         const declarator = functionDeclarator(node);
-        const named = declaratorName(declarator);
-        if (declarator !== null && named !== null) {
-          const owner = named.qualifier.length > 0 ? named.qualifier.at(-1) : className;
-          facts.functions.push({ name: owner === null || owner === void 0 ? named.name : `${owner}.${named.name}`, line, parameters: parameterFacts(field3(declarator, "parameters")) });
+        const named2 = declaratorName(declarator);
+        if (declarator !== null && named2 !== null) {
+          const owner = named2.qualifier.length > 0 ? named2.qualifier.at(-1) : className;
+          facts.functions.push({ name: owner === null || owner === void 0 ? named2.name : `${owner}.${named2.name}`, line, parameters: parameterFacts(field3(declarator, "parameters")) });
         }
         nextFileLevel = false;
         break;
@@ -11087,9 +11087,9 @@ function extractFileCensus5(root) {
         if (type?.type === "type_identifier" && (type.text === "emit" || type.text === "Q_EMIT")) facts.calls.push({ line, receiver: null, method: "emit" });
         if (type?.type === "type_identifier" && macroName.test(type.text)) facts.decorators.push({ line, name: type.text });
         const declarator = functionDeclarator(node);
-        const named = declaratorName(declarator);
-        if (atFileLevel && declarator?.type === "function_declarator" && named !== null && named.qualifier.length === 0) {
-          facts.functions.push({ name: named.name, line, parameters: parameterFacts(field3(declarator, "parameters")) });
+        const named2 = declaratorName(declarator);
+        if (atFileLevel && declarator?.type === "function_declarator" && named2 !== null && named2.qualifier.length === 0) {
+          facts.functions.push({ name: named2.name, line, parameters: parameterFacts(field3(declarator, "parameters")) });
         }
         collectMap(node, line);
         break;
@@ -11167,16 +11167,16 @@ function extractFileCensus5(root) {
 // packages/parse/src/languages/cpp/interface-shape.ts
 function nodeCount3(node, skip) {
   let count3 = 0;
-  const walk = (current) => {
+  const walk2 = (current) => {
     if (!current.isNamed || current.type === "comment") return;
     if (skip?.(current) === true) return;
     count3++;
     for (let i2 = 0; i2 < current.childCount; i2++) {
       const child2 = current.child(i2);
-      if (child2 !== null) walk(child2);
+      if (child2 !== null) walk2(child2);
     }
   };
-  walk(node);
+  walk2(node);
   return count3;
 }
 function functionShape3(fn, parameters) {
@@ -11600,23 +11600,23 @@ var Extractor5 = class {
   functionDefinition(fn, extent, context) {
     const body2 = fn.childForFieldName("body");
     const declarator = functionDeclarator(fn);
-    const named = declaratorName(declarator);
-    if (body2 === null || declarator === null || named === null) {
+    const named2 = declaratorName(declarator);
+    if (body2 === null || declarator === null || named2 === null) {
       this.visitChildren(fn, context);
       return;
     }
     const insideClass = context.scope === "class";
-    const owner = named.qualifier.length > 0 ? named.qualifier.at(-1) : insideClass ? context.owners.at(-1) : void 0;
+    const owner = named2.qualifier.length > 0 ? named2.qualifier.at(-1) : insideClass ? context.owners.at(-1) : void 0;
     const isMember = owner !== void 0;
-    if (named.qualifier.length >= 2) this.needsClassTable = true;
-    const scope = named.qualifier.length > 0 ? this.outOfLineScope(context.namespaces, named.qualifier) : void 0;
-    const base = scope !== void 0 ? unitId(scope.namespaces, `${scope.classes.join(".")}.${named.name}`) : context.unit === void 0 || !insideClass ? unitId(context.namespaces, named.name) : `${context.unit}.${named.name}`;
+    if (named2.qualifier.length >= 2) this.needsClassTable = true;
+    const scope = named2.qualifier.length > 0 ? this.outOfLineScope(context.namespaces, named2.qualifier) : void 0;
+    const base = scope !== void 0 ? unitId(scope.namespaces, `${scope.classes.join(".")}.${named2.name}`) : context.unit === void 0 || !insideClass ? unitId(context.namespaces, named2.name) : `${context.unit}.${named2.name}`;
     const qualifiedName = this.uniqueName(base);
     const kind = isMember ? "method" : "function";
-    const unit = this.measuredUnit(qualifiedName, kind, fn, extent, named.name, context);
+    const unit = this.measuredUnit(qualifiedName, kind, fn, extent, named2.name, context);
     this.units.push(unit);
     const exported = !isStatic(fn);
-    this.addDeclaration(named.name, "function", qualifiedName, context, fn.startPosition.row + 1, exported, named.qualifier, context.scope === "file" && isStatic(fn));
+    this.addDeclaration(named2.name, "function", qualifiedName, context, fn.startPosition.row + 1, exported, named2.qualifier, context.scope === "file" && isStatic(fn));
     this.functionBody(fn, { ...context, unit: qualifiedName, scope: "function", types: this.parameterTypes(declarator, context.types) });
   }
   /**
@@ -11682,7 +11682,7 @@ var Extractor5 = class {
     const types = new Map(context.types);
     const names2 = new Set(context.locals);
     const declares = /* @__PURE__ */ new Set(["declaration", "for_range_loop", "parameter_declaration", "optional_parameter_declaration"]);
-    const walk = (node) => {
+    const walk2 = (node) => {
       if (declares.has(node.type)) {
         const type = node.type === "declaration" ? receiverType(node.childForFieldName("type")) : null;
         for (let i2 = 0; i2 < node.childCount; i2++) {
@@ -11693,19 +11693,19 @@ var Extractor5 = class {
           if (type !== null) types.set(name14, type);
         }
       }
-      for (const child2 of node.namedChildren) walk(child2);
+      for (const child2 of node.namedChildren) walk2(child2);
     };
-    walk(fn);
+    walk2(fn);
     this.visitChildren(fn, { ...context, types, locals: names2 });
   }
   declaration(node, context) {
     const type = node.childForFieldName("type");
     if (context.scope === "file") {
       const declarator = functionDeclarator(node);
-      const named = declaratorName(declarator);
-      if (declarator !== null && declarator.type === "function_declarator" && named !== null && named.qualifier.length === 0) {
-        this.addDeclaration(named.name, "function", named.name, context, node.startPosition.row + 1, !isStatic(node), [], isStatic(node));
-      } else if (declarator === null || named === null) {
+      const named2 = declaratorName(declarator);
+      if (declarator !== null && declarator.type === "function_declarator" && named2 !== null && named2.qualifier.length === 0) {
+        this.addDeclaration(named2.name, "function", named2.name, context, node.startPosition.row + 1, !isStatic(node), [], isStatic(node));
+      } else if (declarator === null || named2 === null) {
         for (let i2 = 0; i2 < node.childCount; i2++) {
           if (node.fieldNameForChild(i2) !== "declarator") continue;
           const name14 = declaredIdentifier(node.child(i2));
@@ -11839,9 +11839,9 @@ function hasQualifier(node, text3) {
   return node.namedChildren.some((child2) => child2.type === "type_qualifier" && child2.text === text3);
 }
 function hasInternalConstant(node) {
-  const constant = hasQualifier(node, "const") || hasQualifier(node, "constexpr");
+  const constant2 = hasQualifier(node, "const") || hasQualifier(node, "constexpr");
   const external = node.namedChildren.some((child2) => child2.type === "storage_class_specifier" && (child2.text === "extern" || child2.text === "inline"));
-  return constant && !external;
+  return constant2 && !external;
 }
 function extractFacts5(root, options2) {
   const explain2 = options2.explain === true;
@@ -11954,23 +11954,23 @@ function splitCommand(command13) {
   let quote = null;
   let started = false;
   for (let i2 = 0; i2 < command13.length; i2++) {
-    const c = command13[i2];
+    const c2 = command13[i2];
     if (quote !== null) {
-      if (c === quote) quote = null;
-      else if (c === "\\" && quote === '"' && i2 + 1 < command13.length) current += command13[++i2];
-      else current += c;
-    } else if (c === '"' || c === "'") {
-      quote = c;
+      if (c2 === quote) quote = null;
+      else if (c2 === "\\" && quote === '"' && i2 + 1 < command13.length) current += command13[++i2];
+      else current += c2;
+    } else if (c2 === '"' || c2 === "'") {
+      quote = c2;
       started = true;
-    } else if (c === "\\" && i2 + 1 < command13.length) {
+    } else if (c2 === "\\" && i2 + 1 < command13.length) {
       current += command13[++i2];
       started = true;
-    } else if (/\s/.test(c)) {
+    } else if (/\s/.test(c2)) {
       if (started || current !== "") out2.push(current);
       current = "";
       started = false;
     } else {
-      current += c;
+      current += c2;
     }
   }
   if (started || current !== "") out2.push(current);
@@ -12073,8 +12073,8 @@ function includePathsOf(paths, configs, options2 = {}) {
   const cmake = /* @__PURE__ */ new Map();
   for (const { directory, parsed } of parsedFiles) {
     const own = [...parsed.includeDirectories, ...parsed.targets.flatMap((target2) => [...target2.publicIncludes, ...target2.privateIncludes])].flatMap((dir) => toTree(dir, directory, false) ?? []);
-    const linked = reachable(parsed.targets.flatMap((target2) => target2.links));
-    const resolved = [...own, ...linked];
+    const linked2 = reachable(parsed.targets.flatMap((target2) => target2.links));
+    const resolved = [...own, ...linked2];
     if (resolved.length > 0) cmake.set(directory, resolved);
   }
   const configuredRoots = [...new Set((options2.includeRoots ?? []).map(normaliseRoot))];
@@ -12343,8 +12343,8 @@ var Reader = class {
     this.index += word.length;
     if (word === "true") return true;
     if (word === "false") return false;
-    const number = Number(word.replaceAll("_", ""));
-    return Number.isNaN(number) ? void 0 : number;
+    const number2 = Number(word.replaceAll("_", ""));
+    return Number.isNaN(number2) ? void 0 : number2;
   }
   string() {
     const quote = this.text[this.index++];
@@ -12604,8 +12604,8 @@ function parameterNodes(fn) {
   return entries;
 }
 function parameterName(parameter) {
-  const named = parameter.childForFieldName("name");
-  if (named !== null) return named.text;
+  const named2 = parameter.childForFieldName("name");
+  if (named2 !== null) return named2.text;
   if (parameter.type === "identifier") return parameter.text;
   return parameter.namedChildren.find((child2) => child2.type === "identifier")?.text;
 }
@@ -12671,7 +12671,7 @@ function memberNames(member) {
   if (assignment?.type !== "assignment") return [];
   const left = assignment.childForFieldName("left");
   if (left === null) return [];
-  return left.type === "identifier" ? [left.text] : left.type === "pattern_list" ? left.namedChildren.filter((c) => c.type === "identifier").map((c) => c.text) : [];
+  return left.type === "identifier" ? [left.text] : left.type === "pattern_list" ? left.namedChildren.filter((c2) => c2.type === "identifier").map((c2) => c2.text) : [];
 }
 function classShape3(declaration) {
   const body2 = declaration.childForFieldName("body");
@@ -12759,10 +12759,10 @@ function lastName5(node) {
 }
 function classKind(declaration) {
   const bases = declaration.childForFieldName("superclasses")?.namedChildren ?? [];
-  const named = bases.map((base) => base.type === "keyword_argument" ? `${base.childForFieldName("name")?.text}=${lastName5(base.childForFieldName("value"))}` : lastName5(base));
-  if (named.includes("Protocol")) return "interface";
-  if (named.includes("ABC") || named.includes("metaclass=ABCMeta")) return "abstract-class";
-  if (named.some((name14) => name14 !== void 0 && enumBases.has(name14))) return "enum";
+  const named2 = bases.map((base) => base.type === "keyword_argument" ? `${base.childForFieldName("name")?.text}=${lastName5(base.childForFieldName("value"))}` : lastName5(base));
+  if (named2.includes("Protocol")) return "interface";
+  if (named2.includes("ABC") || named2.includes("metaclass=ABCMeta")) return "abstract-class";
+  if (named2.some((name14) => name14 !== void 0 && enumBases.has(name14))) return "enum";
   return "class";
 }
 function isTypeChecking(statement) {
@@ -12788,7 +12788,7 @@ function targetNames(node, out2) {
 }
 function boundNames(scope, out2) {
   const globals = /* @__PURE__ */ new Set();
-  const walk = (node) => {
+  const walk2 = (node) => {
     for (const child2 of node.namedChildren) {
       switch (child2.type) {
         case "function_definition":
@@ -12831,10 +12831,10 @@ function boundNames(scope, out2) {
           continue;
         default:
       }
-      if (!comprehensionTypes.has(child2.type)) walk(child2);
+      if (!comprehensionTypes.has(child2.type)) walk2(child2);
     }
   };
-  walk(scope);
+  walk2(scope);
   for (const name14 of globals) out2.delete(name14);
 }
 function comprehensionNames(node) {
@@ -12901,17 +12901,17 @@ var Extractor6 = class {
   }
   // ---- imports ----
   collectImports(root) {
-    const walk = (node) => {
+    const walk2 = (node) => {
       for (const child2 of node.namedChildren) {
         if (importTypes.has(child2.type)) {
           this.importStatement(child2);
           continue;
         }
         if (child2.type === "call") this.dynamicImport(child2);
-        walk(child2);
+        walk2(child2);
       }
     };
-    walk(root);
+    walk2(root);
   }
   importStatement(node) {
     const line = node.startPosition.row + 1;
@@ -12945,7 +12945,7 @@ var Extractor6 = class {
       seen.add(exported);
       this.exports.push({ exported, local: exported, line, ...kind === void 0 ? {} : { kind }, ...implicit ? { implicit: true } : {} });
     };
-    const walk = (node) => {
+    const walk2 = (node) => {
       for (const statement of node.namedChildren) {
         const line = statement.startPosition.row + 1;
         const definition = statement.type === "decorated_definition" ? statement.childForFieldName("definition") : statement;
@@ -12977,9 +12977,9 @@ var Extractor6 = class {
           case "try_statement":
           case "with_statement":
             for (const block of definition.namedChildren) {
-              if (block.type === "block") walk(block);
+              if (block.type === "block") walk2(block);
               else if (block.type.endsWith("_clause")) {
-                for (const inner2 of block.namedChildren) if (inner2.type === "block") walk(inner2);
+                for (const inner2 of block.namedChildren) if (inner2.type === "block") walk2(inner2);
               }
             }
             break;
@@ -12987,7 +12987,7 @@ var Extractor6 = class {
         }
       }
     };
-    walk(root);
+    walk2(root);
   }
   // ---- traversal ----
   visitChildren(node, context) {
@@ -14253,7 +14253,7 @@ function declaredIn(fn) {
   if (result?.type === "parameter_list") addParameters(result);
   for (const parameter of fn.childForFieldName("type_parameters")?.namedChildren ?? []) for (const name14 of parameter.childrenForFieldName("name")) names2.add(name14.text);
   for (const name14 of fn.type === "method_declaration" ? receiverTypeParameters(fn) : []) names2.add(name14);
-  const walk = (node) => {
+  const walk2 = (node) => {
     for (const child2 of node.namedChildren) {
       switch (child2.type) {
         case "func_literal":
@@ -14284,11 +14284,11 @@ function declaredIn(fn) {
         }
         default:
       }
-      walk(child2);
+      walk2(child2);
     }
   };
   const body2 = fn.childForFieldName("body");
-  if (body2 !== null) walk(body2);
+  if (body2 !== null) walk2(body2);
   return names2;
 }
 var Extractor7 = class {
@@ -17400,7 +17400,7 @@ function indexPackages(packages, components = []) {
   const owners = /* @__PURE__ */ new Map();
   for (const pkg of packages) if (pkg.dir !== null && !owners.has(pkg.dir)) owners.set(pkg.dir, pkg.id);
   const componentIds = new Set(packages.filter((p) => p.ecosystem === "component" && p.dir === null).map((p) => p.id));
-  const matchers2 = components.filter((c) => componentIds.has(c.name));
+  const matchers2 = components.filter((c2) => componentIds.has(c2.name));
   const cache = /* @__PURE__ */ new Map();
   const ownerOfDir = (dir) => {
     if (cache.has(dir)) return cache.get(dir);
@@ -17410,7 +17410,7 @@ function indexPackages(packages, components = []) {
   };
   return {
     owner(path) {
-      const matched = matchers2.find((c) => c.matches(path));
+      const matched = matchers2.find((c2) => c2.matches(path));
       if (matched !== void 0) return matched.name;
       return ownerOfDir(dirOf(path));
     }
@@ -17795,17 +17795,17 @@ function exactFeedbackArcSet(graph, weight = noWeight) {
     for (let v = 0; v < n; v++) {
       if (!(mask2 & 1 << v)) continue;
       const rest = mask2 & ~(1 << v);
-      let c = count3[rest];
+      let c2 = count3[rest];
       let w = total[rest];
       let backward = out2[v] & rest;
       while (backward) {
         const bit = backward & -backward;
         backward ^= bit;
-        c++;
+        c2++;
         w += edgeWeight[v][31 - Math.clz32(bit)];
       }
-      if (c < bestCount || c === bestCount && w < bestTotal) {
-        bestCount = c;
+      if (c2 < bestCount || c2 === bestCount && w < bestTotal) {
+        bestCount = c2;
         bestTotal = w;
         bestLast = v;
       }
@@ -17975,7 +17975,7 @@ function moduleOfFile(level, project, componentsConfig) {
     case "component": {
       const components = readComponents(componentsConfig);
       if (components.length === 0) throw usageError('--by component needs "components" to be configured in code-health.json');
-      return (path) => components.find((c) => c.matches(path))?.name;
+      return (path) => components.find((c2) => c2.matches(path))?.name;
     }
   }
 }
@@ -18166,7 +18166,7 @@ var packagesDefaults = {
   minExportedTypes: 3
 };
 function readPackageSettings(section2, at2) {
-  const number = (key, min, max) => {
+  const number2 = (key, min, max) => {
     const value = section2[key];
     if (typeof value !== "number" || Number.isNaN(value) || value < min || value > max) {
       throw configError(`code-health.json: ${at2}.${key} must be a number from ${min} to ${max}`);
@@ -18174,7 +18174,7 @@ function readPackageSettings(section2, at2) {
     return value;
   };
   const integer = (key, min) => {
-    const value = number(key, min, Number.MAX_SAFE_INTEGER);
+    const value = number2(key, min, Number.MAX_SAFE_INTEGER);
     if (!Number.isInteger(value)) throw configError(`code-health.json: ${at2}.${key} must be an integer`);
     return value;
   };
@@ -18205,36 +18205,36 @@ function readPackageSettings(section2, at2) {
     }
     byPackage.set(id, entry);
   }
-  const closureBand = number("closureBand", 1, 100);
+  const closureBand = number2("closureBand", 1, 100);
   return {
     ignore: strings3("ignore"),
     extra: strings3("extra"),
     byPackage,
     closureBand,
     minComparable: integer("minComparable", 2),
-    significance: number("significance", 0, 1),
+    significance: number2("significance", 0, 1),
     minSupport: integer("minSupport", 1),
-    minConfidence: number("minConfidence", 0, 1),
-    minLift: number("minLift", 1, 1e3),
-    followerReverseConfidence: number("followerReverseConfidence", 0, 1),
+    minConfidence: number2("minConfidence", 0, 1),
+    minLift: number2("minLift", 1, 1e3),
+    followerReverseConfidence: number2("followerReverseConfidence", 0, 1),
     wideChangePackages: integer("wideChangePackages", 2),
-    wideChangeShare: number("wideChangeShare", 0, 1),
-    crossingUnitShare: number("crossingUnitShare", 0, 1),
-    crossingUnitMargin: number("crossingUnitMargin", 0, 1),
-    partialUseShare: number("partialUseShare", 0, 1),
+    wideChangeShare: number2("wideChangeShare", 0, 1),
+    crossingUnitShare: number2("crossingUnitShare", 0, 1),
+    crossingUnitMargin: number2("crossingUnitMargin", 0, 1),
+    partialUseShare: number2("partialUseShare", 0, 1),
     partialUseMinSurface: integer("partialUseMinSurface", 2),
-    overexposedShare: number("overexposedShare", 0, 1),
+    overexposedShare: number2("overexposedShare", 0, 1),
     inheritedWeightPackages: integer("inheritedWeightPackages", 1),
-    passThroughShare: number("passThroughShare", 0, 1),
-    disjointOverlap: number("disjointOverlap", 0, 1),
+    passThroughShare: number2("passThroughShare", 0, 1),
+    disjointOverlap: number2("disjointOverlap", 0, 1),
     dumpingNames: strings3("dumpingNames"),
     dumpingMinConsumers: integer("dumpingMinConsumers", 1),
     dumpingMinComponents: integer("dumpingMinComponents", 2),
     dumpingMinContributors: integer("dumpingMinContributors", 1),
-    tinyPercentile: number("tinyPercentile", 0, 100),
+    tinyPercentile: number2("tinyPercentile", 0, 100),
     graceDays: integer("graceDays", 0),
-    volatileInterfaceShare: number("volatileInterfaceShare", 0, 1),
-    zoneDistance: number("zoneDistance", 0, 1),
+    volatileInterfaceShare: number2("volatileInterfaceShare", 0, 1),
+    zoneDistance: number2("zoneDistance", 0, 1),
     minExportedTypes: integer("minExportedTypes", 1)
   };
 }
@@ -18414,7 +18414,7 @@ function reportPath(root, tool, command13, variant) {
 function skipReport(context, reason) {
   context.report = { stored: false, reason };
 }
-async function writeReport(context, identity, command13, output, analysedHead, options2 = {}) {
+async function writeReport(context, identity2, command13, output, analysedHead, options2 = {}) {
   if (options2.describesCommit !== true) {
     if (context.repo.dirty) {
       skipReport(context, "the working tree has uncommitted changes");
@@ -18434,9 +18434,9 @@ async function writeReport(context, identity, command13, output, analysedHead, o
     ...output.failed === true ? { failed: true } : {},
     ...output.presorted === true ? { presorted: true } : {}
   };
-  const document = buildDocument({
-    schemaVersion: identity.schemaVersion,
-    tool: identity.tool,
+  const document2 = buildDocument({
+    schemaVersion: identity2.schemaVersion,
+    tool: identity2.tool,
     command: command13,
     repo: { head: analysedHead, dirty: false },
     configHash: context.config.hash,
@@ -18451,13 +18451,13 @@ async function writeReport(context, identity, command13, output, analysedHead, o
     truncated,
     ...options2.replayable === true ? { meta: { printed } } : {}
   });
-  const file = reportPath(context.repo.root, identity.tool, command13, options2.variant);
+  const file = reportPath(context.repo.root, identity2.tool, command13, options2.variant);
   const location = await locateCache(context.repo.root);
   ensureCacheDir({ ...location, cacheDir: join11(context.repo.root, ".cache", "code-health") });
   mkdirSync2(join11(file, ".."), { recursive: true });
   const temporary = `${file}.${process.pid}.${randomUUID3()}.tmp`;
   try {
-    writeFileSync2(temporary, serialise(document));
+    writeFileSync2(temporary, serialise(document2));
     renameSync2(temporary, file);
   } catch (error) {
     rmSync3(temporary, { force: true });
@@ -18731,8 +18731,8 @@ function median(values) {
 }
 function commitSize(changes, minChanges) {
   const half = changes.length >> 1;
-  const earlier = changes.slice(0, half).map((c) => c.files.length);
-  const later = changes.slice(half).map((c) => c.files.length);
+  const earlier = changes.slice(0, half).map((c2) => c2.files.length);
+  const later = changes.slice(half).map((c2) => c2.files.length);
   const earlierMedian = median(earlier);
   const laterMedian = median(later);
   const enough = earlier.length >= minChanges && later.length >= minChanges;
@@ -18746,13 +18746,13 @@ function computeEvidence(view, changes, shallow, imported, options2 = {}) {
   const until = view.headDate;
   const since = monthsBefore(until, windowMonths);
   const afterImport = imported.reduce((max, i2) => Math.max(max, i2.committerDate), -Infinity);
-  const first = changes.filter((c) => c.committerDate >= afterImport).reduce((min, c) => min === null || c.committerDate < min ? c.committerDate : min, null);
+  const first = changes.filter((c2) => c2.committerDate >= afterImport).reduce((min, c2) => min === null || c2.committerDate < min ? c2.committerDate : min, null);
   const usableHistoryMonths = first === null ? 0 : Math.round((until - first) / SECONDS_PER_MONTH * 10) / 10;
-  const inWindow2 = changes.filter((c) => c.committerDate >= since && c.committerDate <= until);
-  const contributors = new Set(inWindow2.flatMap((c) => c.authors.map((a) => a.toLowerCase())));
+  const inWindow2 = changes.filter((c2) => c2.committerDate >= since && c2.committerDate <= until);
+  const contributors = new Set(inWindow2.flatMap((c2) => c2.authors.map((a) => a.toLowerCase())));
   const grade = meets(guidelines.strong, usableHistoryMonths, inWindow2.length, contributors.size) ? "strong" : meets(guidelines.moderate, usableHistoryMonths, inWindow2.length, contributors.size) ? "moderate" : "weak";
   const available = view.commits.reduce(
-    (min, c) => min === null || c.committerDate < min ? c.committerDate : min,
+    (min, c2) => min === null || c2.committerDate < min ? c2.committerDate : min,
     null
   );
   return {
@@ -18845,9 +18845,9 @@ function compilePattern(pattern) {
     throw new InvalidPatternError(pattern, error instanceof Error ? error.message : String(error));
   }
 }
-var addressOf = (identity) => {
-  const open = identity.lastIndexOf("<");
-  return (open === -1 ? identity : identity.slice(open + 1, identity.lastIndexOf(">"))).trim().toLowerCase();
+var addressOf = (identity2) => {
+  const open = identity2.lastIndexOf("<");
+  return (open === -1 ? identity2 : identity2.slice(open + 1, identity2.lastIndexOf(">"))).trim().toLowerCase();
 };
 function createNonPersonMatcher(rules11) {
   const decisions = new Map(rules11.decisions.map((d) => [addressOf(d.identity), d]));
@@ -18865,11 +18865,11 @@ function createNonPersonMatcher(rules11) {
       return decision.kind === "person" ? null : { kind: decision.kind, source: "decision", pattern: decision.identity };
     }
     const text3 = `${name14} <${email}>`;
-    const fromConfig = config.find((c) => c.re.test(text3));
+    const fromConfig = config.find((c2) => c2.re.test(text3));
     if (fromConfig) return { kind: fromConfig.kind, source: "config", pattern: fromConfig.pattern };
-    const agent = builtinAgents.find((c) => c.re.test(text3));
+    const agent = builtinAgents.find((c2) => c2.re.test(text3));
     if (agent) return { kind: "agent", source: "builtin", pattern: agent.pattern };
-    const bot = builtin.find((c) => c.re.test(text3));
+    const bot = builtin.find((c2) => c2.re.test(text3));
     if (bot) return { kind: "bot", source: "builtin", pattern: bot.pattern };
     const normalised = normaliseName(name14);
     if (serviceNames.has(normalised)) return { kind: "service", source: "builtin", pattern: normalised };
@@ -18928,12 +18928,12 @@ function parse(text3, file) {
     throw configError(`${file}: ${what}`);
   };
   if (value === null || typeof value !== "object" || Array.isArray(value)) return fail("must be a JSON object");
-  const document = value;
-  const unknown = Object.keys(document).filter((k) => !["schemaVersion", "rejectedMerges", "classifications"].includes(k));
+  const document2 = value;
+  const unknown = Object.keys(document2).filter((k) => !["schemaVersion", "rejectedMerges", "classifications"].includes(k));
   if (unknown.length > 0) fail(`unknown key ${unknown.join(", ")}`);
-  if (document.schemaVersion !== 1) fail("schemaVersion must be 1");
-  const rejected = document.rejectedMerges ?? [];
-  const classes = document.classifications ?? [];
+  if (document2.schemaVersion !== 1) fail("schemaVersion must be 1");
+  const rejected = document2.rejectedMerges ?? [];
+  const classes = document2.classifications ?? [];
   if (!Array.isArray(rejected) || !Array.isArray(classes)) return fail("rejectedMerges and classifications must be arrays");
   const rejectedMerges = rejected.map((r, i2) => {
     const entry = r;
@@ -18943,8 +18943,8 @@ function parse(text3, file) {
     }
     return { identities: [ids[0], ids[1]], ...typeof entry.reason === "string" ? { reason: entry.reason } : {} };
   });
-  const classifications = classes.map((c, i2) => {
-    const entry = c;
+  const classifications = classes.map((c2, i2) => {
+    const entry = c2;
     if (typeof entry?.identity !== "string") return fail(`classifications[${i2}].identity must be a "Name <email>" string`);
     if (typeof entry.kind !== "string" || !KINDS.has(entry.kind)) {
       return fail(`classifications[${i2}].kind must be bot, service, agent or person`);
@@ -18957,9 +18957,9 @@ function parse(text3, file) {
   });
   return normaliseDecisions({ schemaVersion: 1, rejectedMerges, classifications });
 }
-var emailOf = (identity) => {
-  const open = identity.lastIndexOf("<");
-  return (open === -1 ? identity : identity.slice(open + 1, identity.lastIndexOf(">"))).trim().toLowerCase();
+var emailOf = (identity2) => {
+  const open = identity2.lastIndexOf("<");
+  return (open === -1 ? identity2 : identity2.slice(open + 1, identity2.lastIndexOf(">"))).trim().toLowerCase();
 };
 var pairKey = (m) => m.identities.map((i2) => i2.toLowerCase()).sort().join("\0");
 var compare3 = (x2, y2) => x2 < y2 ? -1 : x2 > y2 ? 1 : 0;
@@ -18970,11 +18970,11 @@ function normaliseDecisions(decisions) {
     rejected.set(pairKey(m), { ...m, identities: ordered });
   }
   const classes = /* @__PURE__ */ new Map();
-  for (const c of decisions.classifications) classes.set(emailOf(c.identity), c);
+  for (const c2 of decisions.classifications) classes.set(emailOf(c2.identity), c2);
   return {
     schemaVersion: 1,
     rejectedMerges: [...rejected.entries()].sort(([p], [q]) => compare3(p, q)).map(([, m]) => m),
-    classifications: [...classes.entries()].sort(([p], [q]) => compare3(p, q)).map(([, c]) => c)
+    classifications: [...classes.entries()].sort(([p], [q]) => compare3(p, q)).map(([, c2]) => c2)
   };
 }
 function mergeDecisions(existing, additions) {
@@ -19033,7 +19033,7 @@ async function loadHistory(context, options2 = {}) {
     },
     evidence: { windowMonths: settings.windowMonths, guidelines: settings.evidenceGuidelines }
   });
-  const earliest2 = analysis.view.commits.reduce((least, c) => Math.min(least, c.committerDate), anchor);
+  const earliest2 = analysis.view.commits.reduce((least, c2) => Math.min(least, c2.committerDate), anchor);
   return { ...analysis, settings, window: { since: since ?? earliest2, until: options2.window?.until ?? anchor }, refreshed };
 }
 
@@ -19325,14 +19325,14 @@ function tokenize(source) {
       i2++;
       let closed = false;
       while (i2 < source.length) {
-        const c = source[i2];
-        if (c === '"') {
+        const c2 = source[i2];
+        if (c2 === '"') {
           closed = true;
           i2++;
           break;
         }
-        if (c === "`") return null;
-        if (c === "\\" && i2 + 1 < source.length) {
+        if (c2 === "`") return null;
+        if (c2 === "\\" && i2 + 1 < source.length) {
           const escaped = source[i2 + 1];
           if (escaped === "\n") {
             i2 += 2;
@@ -19345,11 +19345,11 @@ function tokenize(source) {
           }
           continue;
         }
-        if (c === "$") {
+        if (c2 === "$") {
           if (!dollar(true)) return null;
           continue;
         }
-        text3 += c;
+        text3 += c2;
         i2++;
       }
       if (!closed) return null;
@@ -19471,12 +19471,12 @@ function parseArgs2(args2, spec) {
         k++;
       }
     } else {
-      for (let c = 1; c < text3.length; c++) {
-        const char = text3[c];
+      for (let c2 = 1; c2 < text3.length; c2++) {
+        const char = text3[c2];
         flags2.add(char);
         if (spec.suffixShort === char) break;
         if (spec.valueShort?.includes(char)) {
-          const rest = text3.slice(c + 1);
+          const rest = text3.slice(c2 + 1);
           if (rest !== "") {
             values.push({ name: char, value: rest });
           } else {
@@ -19603,19 +19603,19 @@ function perlLike(args2, run3) {
       rest.push(...args2.slice(k + 1));
       break;
     }
-    for (let c = 1; c < text3.length; c++) {
-      const char = text3[c];
+    for (let c2 = 1; c2 < text3.length; c2++) {
+      const char = text3[c2];
       if (char === "i") {
         inPlace = true;
         break;
       }
       if (char === "e" || char === "E") {
         hasScript = true;
-        if (text3.slice(c + 1) === "") k++;
+        if (text3.slice(c2 + 1) === "") k++;
         break;
       }
       if ("IMmx".includes(char)) {
-        if (text3.slice(c + 1) === "") k++;
+        if (text3.slice(c2 + 1) === "") k++;
         break;
       }
     }
@@ -20385,11 +20385,11 @@ function readAgentTasks(repoRoots, projectsDir, window2) {
 function agentReadsAcross(tasks, from, to, fileEdges) {
   const sideFrom = new Set(from);
   const sideTo = new Set(to);
-  const linked = new Set(fileEdges.flatMap((edge) => [edgeKey(edge.from, edge.to), edgeKey(edge.to, edge.from)]));
+  const linked2 = new Set(fileEdges.flatMap((edge) => [edgeKey(edge.from, edge.to), edgeKey(edge.to, edge.from)]));
   const follows = (task, edited, other) => {
     const editedHere = task.editedPaths.filter((path) => edited.has(path));
     if (editedHere.length === 0 || task.editedPaths.some((path) => other.has(path))) return false;
-    return task.readPaths.some((read2) => other.has(read2) && editedHere.some((path) => linked.has(edgeKey(path, read2))));
+    return task.readPaths.some((read2) => other.has(read2) && editedHere.some((path) => linked2.has(edgeKey(path, read2))));
   };
   return tasks.filter((task) => follows(task, sideFrom, sideTo) || follows(task, sideTo, sideFrom)).length;
 }
@@ -20487,11 +20487,11 @@ function judgeDependency(from, to, settings) {
   const volatileTarget = to.change.active && to.change.revisionsPerFile > from.change.revisionsPerFile;
   const changeAboveGuideline = to.change.active ? from.change.revisionsPerFile === 0 || to.change.revisionsPerFile >= settings.minVolatilityRatio * from.change.revisionsPerFile : null;
   const volatilityRatio = from.change.revisionsPerFile === 0 ? null : round3(to.change.revisionsPerFile / from.change.revisionsPerFile);
-  const basis = to.change.active ? "change" : "structure";
-  const towardsLessStable = basis === "change" ? volatileTarget : gap !== null && gap > 0;
-  const aboveGuideline = basis === "change" ? volatileTarget && changeAboveGuideline === true : structuralAboveGuideline;
+  const basis2 = to.change.active ? "change" : "structure";
+  const towardsLessStable = basis2 === "change" ? volatileTarget : gap !== null && gap > 0;
+  const aboveGuideline = basis2 === "change" ? volatileTarget && changeAboveGuideline === true : structuralAboveGuideline;
   return {
-    basis,
+    basis: basis2,
     structuralAboveGuideline,
     changeAboveGuideline,
     volatilityRatio,
@@ -20619,24 +20619,24 @@ var RECOGNISED_LOCALITY_SCHEMA_VERSIONS = [1];
 function readLocalityUnblocks(context, head) {
   const file = reportPath2(context.repo.root, LOCALITY_REPORT.command, LOCALITY_REPORT.tool);
   if (!existsSync13(file)) return void 0;
-  let document;
+  let document2;
   try {
-    document = JSON.parse(readFileSync9(file, "utf8"));
+    document2 = JSON.parse(readFileSync9(file, "utf8"));
   } catch {
     return void 0;
   }
-  if (document.tool !== LOCALITY_REPORT.tool || document.command !== LOCALITY_REPORT.command) return void 0;
-  if (typeof document.schemaVersion !== "number" || !RECOGNISED_LOCALITY_SCHEMA_VERSIONS.includes(document.schemaVersion)) {
-    const found = document.schemaVersion === void 0 ? "has no schemaVersion" : `has schemaVersion ${JSON.stringify(document.schemaVersion)}`;
+  if (document2.tool !== LOCALITY_REPORT.tool || document2.command !== LOCALITY_REPORT.command) return void 0;
+  if (typeof document2.schemaVersion !== "number" || !RECOGNISED_LOCALITY_SCHEMA_VERSIONS.includes(document2.schemaVersion)) {
+    const found = document2.schemaVersion === void 0 ? "has no schemaVersion" : `has schemaVersion ${JSON.stringify(document2.schemaVersion)}`;
     (context.stderrNotices ??= []).push(
       `structure: ignored ${LOCALITY_REPORT.tool}.${LOCALITY_REPORT.command}.json because it ${found}, and this version of structure reads schemaVersion ${RECOGNISED_LOCALITY_SCHEMA_VERSIONS.join(", ")}`
     );
     return void 0;
   }
-  if (document.repo?.head !== head || document.repo?.dirty !== false) return void 0;
-  if (!Array.isArray(document.results) || typeof document.config !== "string") return void 0;
+  if (document2.repo?.head !== head || document2.repo?.dirty !== false) return void 0;
+  if (!Array.isArray(document2.results) || typeof document2.config !== "string") return void 0;
   const byFileEdge = /* @__PURE__ */ new Map();
-  for (const row of document.results) {
+  for (const row of document2.results) {
     const unit = typeof row.path === "string" ? row.path : typeof row.id === "string" ? row.id : void 0;
     if (unit === void 0 || !Array.isArray(row.blockers)) continue;
     for (const blocker of row.blockers) {
@@ -20650,7 +20650,7 @@ function readLocalityUnblocks(context, head) {
   }
   for (const list3 of byFileEdge.values()) list3.sort((a, b) => b.unblockedGain - a.unblockedGain || (a.unit < b.unit ? -1 : a.unit > b.unit ? 1 : 0));
   return {
-    input: { report: `${LOCALITY_REPORT.tool}.${LOCALITY_REPORT.command}`, head, config: document.config },
+    input: { report: `${LOCALITY_REPORT.tool}.${LOCALITY_REPORT.command}`, head, config: document2.config },
     byFileEdge
   };
 }
@@ -20848,8 +20848,8 @@ function buildDsm(graph, cycles, layerViolations, limit = DSM_MODULES) {
   const layer = layersOf(condensation);
   const cycleRank = (module3) => cycles.findIndex((row) => row.nodes.includes(module3));
   const components = [...condensation.members].map(([id, members2]) => ({ id, members: members2, layer: layer.get(id) })).sort((a, b) => a.layer - b.layer || compareIds(a.id, b.id));
-  const ordered = components.flatMap((c) => c.members.length > 1 ? orderCycle(c.members, sub, cycles[cycleRank(c.id)]) : [...c.members]);
-  const inCycle = new Set(components.filter((c) => c.members.length > 1).flatMap((c) => c.members));
+  const ordered = components.flatMap((c2) => c2.members.length > 1 ? orderCycle(c2.members, sub, cycles[cycleRank(c2.id)]) : [...c2.members]);
+  const inCycle = new Set(components.filter((c2) => c2.members.length > 1).flatMap((c2) => c2.members));
   const rankOf = (m) => inCycle.has(m) ? cycleRank(m) < 0 ? cycles.length : cycleRank(m) : Number.POSITIVE_INFINITY;
   const byInterest = [...connected].sort((a, b) => rankOf(a) - rankOf(b) || degree.get(b) - degree.get(a) || compareIds(a, b));
   const drawn = new Set(byInterest.slice(0, limit));
@@ -20866,11 +20866,11 @@ function buildDsm(graph, cycles, layerViolations, limit = DSM_MODULES) {
     const j = to === void 0 ? void 0 : index.get(to);
     if (i2 !== void 0 && j !== void 0 && i2 !== j) layerCells.set(`${i2},${j}`, [i2, j]);
   }
-  const groups = components.filter((c) => c.members.length > 1).flatMap((c) => {
-    const rows8 = c.members.map((m) => index.get(m)).filter((i2) => i2 !== void 0);
+  const groups = components.filter((c2) => c2.members.length > 1).flatMap((c2) => {
+    const rows8 = c2.members.map((m) => index.get(m)).filter((i2) => i2 !== void 0);
     if (rows8.length < 2) return [];
-    const rank = cycleRank(c.id);
-    return [{ label: rank < 0 ? `cycle of ${c.members.length} modules` : `cycle ${rank + 1}`, start: Math.min(...rows8), end: Math.max(...rows8), size: c.members.length }];
+    const rank = cycleRank(c2.id);
+    return [{ label: rank < 0 ? `cycle of ${c2.members.length} modules` : `cycle ${rank + 1}`, start: Math.min(...rows8), end: Math.max(...rows8), size: c2.members.length }];
   });
   return {
     language: chosen,
@@ -21074,7 +21074,7 @@ function evidencePack(model, from, to, settings, census) {
   const detail = describeEdge(model.project, model.graph, from, to);
   const judged = judgeEdge(model, from, to, settings);
   const { stability, id: _id, level: _l, from: _f, to: _t, fileEdges: _e, ...verdict } = judged;
-  const row = findCycles(model, settings).find((c) => c.nodes.includes(from) && c.nodes.includes(to));
+  const row = findCycles(model, settings).find((c2) => c2.nodes.includes(from) && c2.nodes.includes(to));
   const cycle = row && { id: row.id, inBreakingSet: row.breakingSet.some((e) => e.from === from && e.to === to) };
   const kinds2 = [];
   const findings = [];
@@ -21498,7 +21498,7 @@ var command5 = analysisCommand(name6, {
     }
     if (target2.kind === "cycle") {
       model = await buildModel(context, history, target2.level);
-      const cycle = findCycles(model, settings).find((c) => c.id === target2.id);
+      const cycle = findCycles(model, settings).find((c2) => c2.id === target2.id);
       if (!cycle) throw usageError(`no cycle "${target2.id}" at the analysed commit`);
       edges = cycle.breakingSet.map((e) => [e.from, e.to]);
     } else {
@@ -21704,8 +21704,8 @@ function measureOutcome(inputs, from, to) {
   const seconds = Math.min(point.date - monthsBefore(point.date, settings.windowMonths), point.until - point.date);
   if (seconds <= 0) return void 0;
   const outsideBreak = (change) => !change.shas.includes(point.sha);
-  const beforeChanges = inputs.changes.filter((c) => outsideBreak(c) && c.committerDate >= point.date - seconds && c.committerDate < point.date);
-  const afterChanges = inputs.changes.filter((c) => outsideBreak(c) && c.committerDate >= point.date && c.committerDate <= point.date + seconds);
+  const beforeChanges = inputs.changes.filter((c2) => outsideBreak(c2) && c2.committerDate >= point.date - seconds && c2.committerDate < point.date);
+  const afterChanges = inputs.changes.filter((c2) => outsideBreak(c2) && c2.committerDate >= point.date && c2.committerDate <= point.date + seconds);
   const graphBefore = buildModuleGraph(level, inputs.projectBefore, settings.components);
   const dropped2 = droppedPairs(graphBefore, inputs.graphAfter);
   const wanted = [[from, to], ...dropped2];
@@ -22893,7 +22893,7 @@ async function manifestChecks7(context, reuse) {
   for (const pkg of cargoPackages2) {
     if (!reuse.profiles.has(pkg.id) || pkg.manifest === null) continue;
     const declared = declaredBy(await model.tree.read(pkg.manifest) ?? "");
-    const named = (name14) => declared.packageOf.get(name14) ?? name14;
+    const named2 = (name14) => declared.packageOf.get(name14) ?? name14;
     const outside = externalsOf.get(pkg.id) ?? { production: /* @__PURE__ */ new Set(), tests: /* @__PURE__ */ new Set() };
     const own = crateName(pkg.name);
     const undeclared = [];
@@ -22902,7 +22902,7 @@ async function manifestChecks7(context, reuse) {
       const target2 = model.byId.get(edge.to);
       if (target2.ecosystem !== "cargo") continue;
       const name14 = crateName(target2.name);
-      const key = [...declared.runtime, ...declared.dev].find((candidate) => named(candidate) === name14);
+      const key = [...declared.runtime, ...declared.dev].find((candidate) => named2(candidate) === name14);
       const scope = key === void 0 ? null : declared.runtime.has(key) ? "runtime" : "dev";
       if (edge.productionImports > 0 && scope !== "runtime") undeclared.push({ name: target2.name, internal: true, via: "production", declaredAs: scope });
       else if (edge.productionImports === 0 && edge.testImports > 0 && scope === null) undeclared.push({ name: target2.name, internal: true, via: "tests", declaredAs: null });
@@ -22937,7 +22937,7 @@ async function manifestChecks7(context, reuse) {
       );
     }
     const unused = [...declared.runtime].filter((key) => !declared.optional.has(key)).filter((key) => {
-      const internal = packageNamed(named(key));
+      const internal = packageNamed(named2(key));
       if (internal !== void 0) {
         const edge = model.edges.get(edgeKey(pkg.id, internal.id));
         return (edge?.productionImports ?? 0) + (edge?.testImports ?? 0) === 0;
@@ -22952,7 +22952,7 @@ async function manifestChecks7(context, reuse) {
           "boundary",
           [pkg.id],
           `${pkg.id} declares ${unused.map((name14) => declared.written.get(name14) ?? name14).join(", ")} and its code never uses ${unused.length === 1 ? "it" : "them"}: coupling with no purpose, and build weight`,
-          { dependencies: unused.map((name14) => declared.written.get(name14) ?? name14), internal: unused.filter((name14) => packageNamed(named(name14)) !== void 0) }
+          { dependencies: unused.map((name14) => declared.written.get(name14) ?? name14), internal: unused.filter((name14) => packageNamed(named2(name14)) !== void 0) }
         )
       );
     }
@@ -23185,7 +23185,7 @@ async function analyseReuse(model) {
       const keys = [...byConsumer.get(consumer) ?? []].sort(compareIds);
       return { package: consumer, used: keys, share: surface.length === 0 ? 0 : round3(keys.length / surface.length) };
     });
-    const everyUsed = new Set(consumers.flatMap((c) => c.used));
+    const everyUsed = new Set(consumers.flatMap((c2) => c2.used));
     const sets = new UnionFind();
     for (const element2 of surface) sets.add(element2.key);
     for (const consumer of consumers) for (const key of consumer.used.slice(1)) sets.union(consumer.used[0], key);
@@ -23198,7 +23198,7 @@ async function analyseReuse(model) {
     }
     const components = [...grouped.values()].map((keys) => ({
       exports: keys.sort(compareIds),
-      consumers: consumers.filter((c) => c.used.some((key) => keys.includes(key))).map((c) => c.package)
+      consumers: consumers.filter((c2) => c2.used.some((key) => keys.includes(key))).map((c2) => c2.package)
     })).sort((a, b) => compareIds(a.exports[0], b.exports[0]));
     const passedAlong = surface.filter((element2) => model.index.owner(element2.file) !== id).length;
     profiles.set(id, {
@@ -23206,7 +23206,7 @@ async function analyseReuse(model) {
       entries: entries.get(id),
       surface,
       consumers,
-      medianShare: medianOf(consumers.map((c) => c.share)),
+      medianShare: medianOf(consumers.map((c2) => c2.share)),
       unused: surface.filter((e) => !everyUsed.has(e.key)).map((e) => e.key),
       components,
       passThroughShare: surface.length === 0 ? 0 : round3(passedAlong / surface.length),
@@ -23439,8 +23439,8 @@ function wideChange(context) {
   const share2 = wide / total;
   const midpoint = model.windowSince + (model.anchor - model.windowSince) / 2;
   const half = (later) => {
-    const changes = model.changes.filter((c) => !c.oversized && c.date >= midpoint === later);
-    return changes.length === 0 ? null : round3(changes.filter((c) => c.touched.length >= wideChangePackages).length / changes.length);
+    const changes = model.changes.filter((c2) => !c2.oversized && c2.date >= midpoint === later);
+    return changes.length === 0 ? null : round3(changes.filter((c2) => c2.touched.length >= wideChangePackages).length / changes.length);
   };
   const counts = /* @__PURE__ */ new Map();
   for (const change of model.changes) {
@@ -23653,9 +23653,9 @@ function volatileInterfaces(context, reuse) {
   for (const [id, profile] of reuse.profiles) {
     if (profile.consumers.length === 0 || profile.surface.length === 0) continue;
     const defining = new Set(profile.surface.map((e) => e.file));
-    const touching = model.changes.filter((c) => c.touched.includes(id));
+    const touching = model.changes.filter((c2) => c2.touched.includes(id));
     if (touching.length < model.settings.minRevisions) continue;
-    const onSurface = touching.filter((c) => c.files.some((f) => f.package === id && defining.has(f.path))).length;
+    const onSurface = touching.filter((c2) => c2.files.some((f) => f.package === id && defining.has(f.path))).length;
     const share2 = onSurface / touching.length;
     findings.push(
       raise(
@@ -23949,7 +23949,7 @@ function partialUse(context, profile) {
   const { settings } = context.model;
   const { partialUseShare, partialUseMinSurface } = settings.packages;
   if (profile.surface.length < partialUseMinSurface || profile.consumers.length === 0) return [];
-  const small = profile.consumers.filter((c) => c.share < partialUseShare);
+  const small = profile.consumers.filter((c2) => c2.share < partialUseShare);
   if (small.length === 0) return [];
   return [
     raise(
@@ -23963,7 +23963,7 @@ function partialUse(context, profile) {
         consumers: profile.consumers.length,
         smallUsers: small.length,
         medianShare: profile.medianShare,
-        shares: profile.consumers.map((c) => `${c.package}:${c.share}`)
+        shares: profile.consumers.map((c2) => `${c2.package}:${c2.share}`)
       },
       { changeCost: context.cost.package(profile.package), ...small.length * 2 > profile.consumers.length ? {} : { belowGuideline: `${small.length} of ${profile.consumers.length} consumers against more than half` } }
     )
@@ -23971,14 +23971,14 @@ function partialUse(context, profile) {
 }
 function disjointReuse(context, profile) {
   const { disjointOverlap } = context.model.settings.packages;
-  const used = profile.components.filter((c) => c.consumers.length > 0);
+  const used = profile.components.filter((c2) => c2.consumers.length > 0);
   if (used.length < 2) return [];
   let overlap = 0;
   for (let i2 = 0; i2 < used.length; i2++) {
     for (let j = i2 + 1; j < used.length; j++) {
       const a = new Set(used[i2].consumers);
       const b = used[j].consumers;
-      const shared = b.filter((c) => a.has(c)).length;
+      const shared = b.filter((c2) => a.has(c2)).length;
       overlap = Math.max(overlap, shared / (a.size + b.length - shared));
     }
   }
@@ -23988,12 +23988,12 @@ function disjointReuse(context, profile) {
       "disjoint-reuse",
       "CRP",
       [profile.package],
-      `${profile.package} exports ${used.length} groups of names that different consumers use: ${used.map((c) => `{${c.exports.map(shortName).join(", ")}} for ${c.consumers.join(", ")}`).join("; ")}`,
+      `${profile.package} exports ${used.length} groups of names that different consumers use: ${used.map((c2) => `{${c2.exports.map(shortName).join(", ")}} for ${c2.consumers.join(", ")}`).join("; ")}`,
       {
         components: used.length,
         componentsTotal: profile.components.length,
         overlap: round3(overlap),
-        groups: used.map((c) => `${c.exports.map(shortName).join("+")}:${c.consumers.join("+")}`)
+        groups: used.map((c2) => `${c2.exports.map(shortName).join("+")}:${c2.consumers.join("+")}`)
       },
       { changeCost: context.cost.package(profile.package), ...overlap > disjointOverlap ? { belowGuideline: `overlap ${percent2(overlap)} against at most ${percent2(disjointOverlap)}` } : {} }
     )
@@ -24003,15 +24003,15 @@ function dumpingGround(context, profile) {
   const { model } = context;
   const { dumpingNames, dumpingMinConsumers, dumpingMinComponents, dumpingMinContributors } = model.settings.packages;
   const pkg = model.byId.get(profile.package);
-  const used = profile.components.filter((c) => c.consumers.length > 0).length;
+  const used = profile.components.filter((c2) => c2.consumers.length > 0).length;
   const revisions = model.activity.revisions(profile.package);
   const all = model.packages.map((p) => model.activity.revisions(p.id)).sort((a, b) => a - b);
   const median3 = all[Math.floor((all.length - 1) / 2)] ?? 0;
-  const contributors = new Set(model.changes.filter((c) => c.touched.includes(profile.package)).flatMap((c) => c.authors)).size;
-  const named = dumpingNames.some((name14) => pkg.name.split("/").at(-1).toLowerCase() === name14.toLowerCase() || pkg.id.split("/").at(-1).toLowerCase() === name14.toLowerCase());
+  const contributors = new Set(model.changes.filter((c2) => c2.touched.includes(profile.package)).flatMap((c2) => c2.authors)).size;
+  const named2 = dumpingNames.some((name14) => pkg.name.split("/").at(-1).toLowerCase() === name14.toLowerCase() || pkg.id.split("/").at(-1).toLowerCase() === name14.toLowerCase());
   const busy = revisions > median3 && revisions >= model.settings.minRevisions;
   if (profile.consumers.length < dumpingMinConsumers || used < dumpingMinComponents || !busy) return [];
-  if (!named && contributors < dumpingMinContributors) return [];
+  if (!named2 && contributors < dumpingMinContributors) return [];
   return [
     raise(
       context,
@@ -24019,7 +24019,7 @@ function dumpingGround(context, profile) {
       "CRP",
       [profile.package],
       `${profile.package} is used by ${profile.consumers.length} packages, in ${used} unrelated parts, and changed in ${revisions} changes by ${contributors} people: every change risks everything and most consumers needed none of it`,
-      { consumers: profile.consumers.length, components: used, revisions, medianRevisions: median3, contributors, named },
+      { consumers: profile.consumers.length, components: used, revisions, medianRevisions: median3, contributors, named: named2 },
       { changeCost: context.cost.package(profile.package) }
     )
   ];
@@ -24111,7 +24111,7 @@ function newCycles(model, file, to) {
     return adjacency;
   };
   const cyclic = (graph) => stronglyConnectedComponents(graph).filter((component) => component.length > 1);
-  const before = new Set(cyclic(graphOf((path) => model.index.owner(path))).map((c) => c.join("\0")));
+  const before = new Set(cyclic(graphOf((path) => model.index.owner(path))).map((c2) => c2.join("\0")));
   return cyclic(graphOf((path) => path === file ? to : model.index.owner(path))).filter((component) => !before.has(component.join("\0")));
 }
 function importersOf(model, file) {
@@ -24125,7 +24125,7 @@ function mergeDisjoint(model, reuse, a, b) {
   const components = [];
   for (const profile of profiles) {
     for (const component of profile.components) {
-      const consumers = component.consumers.filter((c) => c !== a && c !== b);
+      const consumers = component.consumers.filter((c2) => c2 !== a && c2 !== b);
       if (consumers.length > 0) components.push({ exports: component.exports, consumers });
     }
   }
@@ -24134,17 +24134,17 @@ function mergeDisjoint(model, reuse, a, b) {
   for (let i2 = 0; i2 < components.length; i2++) {
     for (let j = i2 + 1; j < components.length; j++) {
       const left = new Set(components[i2].consumers);
-      const shared = components[j].consumers.filter((c) => left.has(c)).length;
+      const shared = components[j].consumers.filter((c2) => left.has(c2)).length;
       overlap = Math.max(overlap, shared / (left.size + components[j].consumers.length - shared));
     }
   }
   if (overlap > model.settings.packages.disjointOverlap) return null;
-  return { groups: components.map((c) => `${c.exports.map((e) => e.slice(e.lastIndexOf("#") + 1)).join("+")}:${c.consumers.join("+")}`), overlap: round3(overlap) };
+  return { groups: components.map((c2) => `${c2.exports.map((e) => e.slice(e.lastIndexOf("#") + 1)).join("+")}:${c2.consumers.join("+")}`), overlap: round3(overlap) };
 }
 function togetherComponents(model, id, parts3) {
   const { minSupport, minConfidence, minLift, significance } = model.settings.packages;
   const filesOf = parts3.map((part) => new Set(part.exports.map((key) => key.slice(0, key.lastIndexOf("#")))));
-  const touching = model.changes.filter((c) => !c.oversized && c.touched.includes(id));
+  const touching = model.changes.filter((c2) => !c2.oversized && c2.touched.includes(id));
   const counts = parts3.map(() => 0);
   const pair = /* @__PURE__ */ new Map();
   for (const change of touching) {
@@ -24277,7 +24277,7 @@ function buildCandidates(model, listed) {
     if (withhold("split", [id], findings)) continue;
     const profile = reuse.profiles.get(id);
     if (!profile) continue;
-    const consumed = profile.components.filter((c) => c.consumers.length > 0);
+    const consumed = profile.components.filter((c2) => c2.consumers.length > 0);
     const parts3 = consumed.length >= 2 ? consumed : profile.components;
     if (parts3.length < 2) continue;
     const against = softAgainst([id]);
@@ -24310,7 +24310,7 @@ function buildCandidates(model, listed) {
     const against = softAgainst([from, to]);
     const cycles = newCycles(model, unit, to);
     if (cycles.length > 0) {
-      against.push({ kind: "creates-package-cycle", hard: true, detail: `moving ${unit} into ${to} would make ${cycles.map((c) => c.join(", ")).join("; ")} depend on each other`, packages: [from, to] });
+      against.push({ kind: "creates-package-cycle", hard: true, detail: `moving ${unit} into ${to} would make ${cycles.map((c2) => c2.join(", ")).join("; ")} depend on each other`, packages: [from, to] });
     }
     const importers = importersOf(model, unit);
     const inFrom = importers.filter((f) => model.index.owner(f) === from);
@@ -24333,7 +24333,7 @@ function buildCandidates(model, listed) {
   }
   for (const finding of followers2) {
     const [from, to] = finding.packages;
-    if ([...found.values()].some((c) => c.kind === "move-unit" && c.findings.includes(finding.id))) continue;
+    if ([...found.values()].some((c2) => c2.kind === "move-unit" && c2.findings.includes(finding.id))) continue;
     if (withhold("move-unit", [from, to], [finding])) continue;
     add({
       id: `move-unit:${to}->${from}`,
@@ -24427,7 +24427,7 @@ var candidates = {
     const { candidates: found, withheld } = buildCandidates(model, await analysePackages(model, context.repo.root));
     return {
       inputs: { subcommand: "candidates", kind: kind ?? null },
-      results: kind === void 0 ? found : found.filter((c) => c.kind === kind),
+      results: kind === void 0 ? found : found.filter((c2) => c2.kind === kind),
       columns: ["id", "status", "changeCost", "step", "against", "findings"],
       extra: { withheld: kind === void 0 ? withheld : withheld.filter((w) => w.kind === kind) }
     };
@@ -24613,8 +24613,8 @@ var reuseEvidence = (profile) => ({
   wildcardExports: profile.entries.wildcard,
   hasExportsMap: profile.entries.hasExportsMap,
   surface: profile.surface.map((e) => ({ key: e.key, kind: e.kind, exportedAs: e.exportedAs })),
-  consumers: profile.consumers.map((c) => ({ ...c })),
-  components: profile.components.map((c) => ({ ...c })),
+  consumers: profile.consumers.map((c2) => ({ ...c2 })),
+  components: profile.components.map((c2) => ({ ...c2 })),
   unused: profile.unused,
   deepUses: profile.deepUses,
   passThroughShare: profile.passThroughShare
@@ -24636,7 +24636,7 @@ async function packageEvidence(model, analysis, id, root) {
   };
 }
 function pairEvidence(model, analysis, from, to) {
-  const shared = model.changes.filter((c) => !c.oversized && c.touched.includes(from) && c.touched.includes(to));
+  const shared = model.changes.filter((c2) => !c2.oversized && c2.touched.includes(from) && c2.touched.includes(to));
   const symbols = (a, b) => {
     if ((model.edges.get(edgeKey(a, b))?.productionImports ?? 0) === 0) return [];
     return describeEdge(model.project, model.model.graph, a, b).symbols;
@@ -24649,15 +24649,15 @@ function pairEvidence(model, analysis, from, to) {
     to,
     dependencies: { fromTo: model.edges.get(edgeKey(from, to)) ?? null, toFrom: model.edges.get(edgeKey(to, from)) ?? null },
     coChange: { ...pairFigures(model, from, to), cost: analysis.context.cost.pair(from, to) },
-    sharedChanges: [...shared].sort((a, b) => b.date - a.date || compareIds(a.id, b.id)).slice(0, SHARED_CHANGES_SHOWN).map((c) => ({
-      id: c.id,
-      date: new Date(c.date * 1e3).toISOString(),
-      files: c.files.filter((f) => f.package === from || f.package === to).map((f) => f.path).sort(compareIds),
-      touched: c.touched
+    sharedChanges: [...shared].sort((a, b) => b.date - a.date || compareIds(a.id, b.id)).slice(0, SHARED_CHANGES_SHOWN).map((c2) => ({
+      id: c2.id,
+      date: new Date(c2.date * 1e3).toISOString(),
+      files: c2.files.filter((f) => f.package === from || f.package === to).map((f) => f.path).sort(compareIds),
+      touched: c2.touched
     })),
     sharedChangesTotal: shared.length,
     symbols: { fromTo: symbols(from, to), toFrom: symbols(to, from) },
-    commonConsumers: [...consumersOf(from)].filter((c) => other.has(c)).sort(compareIds),
+    commonConsumers: [...consumersOf(from)].filter((c2) => other.has(c2)).sort(compareIds),
     findings: analysis.all.filter((f) => f.packages.includes(from) && f.packages.includes(to))
   };
 }
@@ -24733,7 +24733,7 @@ function figuresFor(changes, groupOf, members2) {
 }
 function compared(changes, groupOf, members2, alone, band) {
   const own = figuresFor(changes, groupOf, members2);
-  const eligible = changes.filter((c) => !c.oversized).length;
+  const eligible = changes.filter((c2) => !c2.oversized).length;
   const share2 = (figures) => eligible === 0 ? 0 : figures.changes / eligible;
   const others = alone.map((id) => ({ id, figures: figuresFor(changes, groupOf, /* @__PURE__ */ new Set([id])) })).filter((o) => o.figures.changes > 0);
   const near = others.filter((o) => share2(own) > 0 && Math.max(share2(o.figures), share2(own)) / Math.min(share2(o.figures), share2(own)) <= band);
@@ -24761,7 +24761,7 @@ function reuseOf(reuse, unit) {
       consumers.add(consumer.package);
       shares2.push(consumer.share);
     }
-    components += profile.components.filter((c) => c.consumers.some((p) => !unit.has(p))).length;
+    components += profile.components.filter((c2) => c2.consumers.some((p) => !unit.has(p))).length;
   }
   return any ? { consumers: consumers.size, medianShare: median2(shares2), components } : null;
 }
@@ -24827,8 +24827,8 @@ async function measureOutcome2(root, settings, changes, anchor, options2) {
     return owner !== void 0 && collapse && ids.has(owner) ? "unit" : owner;
   };
   const band = settings.packages.closureBand;
-  const before = changes.filter((c) => c.committerDate >= monthsBefore(date, settings.windowMonths) && c.committerDate < date && !c.shas.some((sha) => series.has(sha)));
-  const after = changes.filter((c) => c.committerDate > date && c.committerDate <= anchor && !c.shas.some((sha) => series.has(sha)));
+  const before = changes.filter((c2) => c2.committerDate >= monthsBefore(date, settings.windowMonths) && c2.committerDate < date && !c2.shas.some((sha) => series.has(sha)));
+  const after = changes.filter((c2) => c2.committerDate > date && c2.committerDate <= anchor && !c2.shas.some((sha) => series.has(sha)));
   const aloneBefore = [...earlierIds].filter((id) => laterIds.has(id) && !involved.has(id));
   const beforeFigures = compared(before, reshape(replaced, earlier.index, true), /* @__PURE__ */ new Set(["unit"]), aloneBefore, band);
   const afterFigures = created.size === 0 ? null : compared(after, reshape(created, later.index, false), created, aloneBefore, band);
@@ -25079,8 +25079,8 @@ __export(report_exports, {
 });
 
 // packages/cli-kit/src/report-command.ts
-import { mkdirSync as mkdirSync5, readFileSync as readFileSync12, writeFileSync as writeFileSync5 } from "node:fs";
-import { dirname as dirname5, resolve as resolve2 } from "node:path";
+import { mkdirSync as mkdirSync5, readFileSync as readFileSync13, writeFileSync as writeFileSync5 } from "node:fs";
+import { dirname as dirname6, resolve as resolve2 } from "node:path";
 
 // packages/report/src/json.ts
 var FLOAT_PRECISION2 = 6;
@@ -25161,7 +25161,7 @@ function entryProblems(slot, entry) {
   const { items } = entry;
   if (items.length === 0) problems.push(`${where} needs at least one item`);
   if (items.length > slot.choose.max) problems.push(`${where} has ${items.length} items and the limit is ${slot.choose.max}`);
-  const refs = slot.choose.candidates.map((c) => c.ref);
+  const refs = slot.choose.candidates.map((c2) => c2.ref);
   const seen = /* @__PURE__ */ new Set();
   items.forEach((item, i2) => {
     const at2 = `${where} item ${i2 + 1}`;
@@ -25174,10 +25174,10 @@ function entryProblems(slot, entry) {
   });
   return problems;
 }
-function validateNotes(report, document) {
-  if (!isRecord(document)) throw new ReportError("the notes file must be a JSON object with a stamp and a notes object");
-  const problems = stampProblems(report.stamp, document.stamp);
-  const given = document.notes;
+function validateNotes(report, document2) {
+  if (!isRecord(document2)) throw new ReportError("the notes file must be a JSON object with a stamp and a notes object");
+  const problems = stampProblems(report.stamp, document2.stamp);
+  const given = document2.notes;
   if (!isRecord(given)) {
     problems.push('the notes file has no "notes" object with one entry per slot id');
   } else {
@@ -25205,8 +25205,8 @@ var MD_SPECIAL = /[\\|*<>[\]]/g;
 function escapeMd(text3) {
   const line = oneLine(text3);
   const balanced = (line.match(/`/g) ?? []).length % 2 === 0;
-  if (!balanced) return line.replace(/[\\|*`<>[\]]/g, (c) => `\\${c}`);
-  return line.split("`").map((part, i2) => i2 % 2 === 1 ? part.replace(/\|/g, "\\|") : part.replace(MD_SPECIAL, (c) => `\\${c}`)).join("`");
+  if (!balanced) return line.replace(/[\\|*`<>[\]]/g, (c2) => `\\${c2}`);
+  return line.split("`").map((part, i2) => i2 % 2 === 1 ? part.replace(/\|/g, "\\|") : part.replace(MD_SPECIAL, (c2) => `\\${c2}`)).join("`");
 }
 function inlineHtml(text3) {
   const escaped = escapeHtml(text3);
@@ -25236,6 +25236,47 @@ function codeSpan(text3) {
   const pad = line.startsWith("`") || line.endsWith("`") ? " " : "";
   return `${fence}${pad}${line}${pad}${fence}`;
 }
+function targetId(prefix, subject) {
+  const name14 = subject.split("/").filter((part) => part !== "").at(-1) ?? subject;
+  return `${prefix}-${slug(name14).slice(0, 40)}-${shortHash(subject)}`;
+}
+
+// packages/report/src/links.ts
+var pageHref = (id) => `#${id}`;
+function reportHref(kind, options2 = {}) {
+  return `report:${kind}${options2.title === void 0 ? "" : `?title=${encodeURIComponent(options2.title)}`}${options2.id === void 0 ? "" : `#${options2.id}`}`;
+}
+var REPORT_REF = /^report:([a-z-]+)(?:\?title=([^#]*))?(?:#(.*))?$/;
+function resolveOne(href, siblings) {
+  const match = REPORT_REF.exec(href);
+  if (match === null) return href;
+  const [, kind, title, id] = match;
+  const page = siblings?.get(kind);
+  if (page === void 0) return void 0;
+  if (title !== void 0 && page !== decodeURIComponent(title)) return void 0;
+  return `${kind}.html${id === void 0 ? "" : `#${id}`}`;
+}
+var isLinkKey = (key) => /href/i.test(key);
+function walk(value, linky, siblings) {
+  if (typeof value === "string") return linky ? resolveOne(value, siblings) ?? null : value;
+  if (Array.isArray(value)) return value.map((item) => walk(item, linky, siblings));
+  if (typeof value === "object" && value !== null) {
+    const out2 = {};
+    for (const [key, item] of Object.entries(value)) {
+      const inside = linky || isLinkKey(key);
+      const resolved = walk(item, inside, siblings);
+      if (resolved !== null || !inside) out2[key] = resolved;
+    }
+    return out2;
+  }
+  return value;
+}
+function resolveLinks(block, siblings) {
+  return walk(block, false, siblings);
+}
+function linked(html, href) {
+  return href === null || href === void 0 ? html : `<a href="${escapeHtml(href)}">${html}</a>`;
+}
 
 // packages/report/src/components/notice.ts
 function endWithFullStop(text3) {
@@ -25252,13 +25293,14 @@ function noticeMd(data) {
 
 // packages/report/src/tables.ts
 function htmlTable(caption, columns10, rows8, options2 = {}) {
-  const head = columns10.map((c) => `<th scope="col"${c.align === "right" ? ' class="number"' : ""}>${escapeHtml(c.label)}</th>`).join("");
-  const body2 = rows8.map((row) => {
+  const head = columns10.map((c2) => `<th scope="col"${c2.align === "right" ? ' class="number"' : ""}>${escapeHtml(c2.label)}</th>`).join("");
+  const body2 = rows8.map((row, r) => {
     const cells = row.map((cell, i2) => {
-      const number = columns10[i2]?.align === "right" ? ' class="number"' : "";
-      return i2 === 0 && options2.rowHeaders === true ? `<th scope="row">${cell}</th>` : `<td${number}>${cell}</td>`;
+      const number2 = columns10[i2]?.align === "right" ? ' class="number"' : "";
+      return i2 === (options2.rowHeaderColumn ?? 0) && options2.rowHeaders === true ? `<th scope="row">${cell}</th>` : `<td${number2}>${cell}</td>`;
     });
-    return `<tr>${cells.join("")}</tr>`;
+    const id = options2.rowIds?.[r];
+    return `<tr${id === null || id === void 0 ? "" : ` id="${escapeHtml(id)}"`}>${cells.join("")}</tr>`;
   }).join("\n");
   return `<table${options2.className === void 0 ? "" : ` class="${options2.className}"`}>
 <caption>${escapeHtml(caption)}</caption>
@@ -25269,8 +25311,8 @@ ${body2}
 </table>`;
 }
 function mdTable(columns10, rows8) {
-  const head = `| ${columns10.map((c) => escapeMd(c.label)).join(" | ")} |`;
-  const rule2 = `| ${columns10.map((c) => c.align === "right" ? "---:" : "---").join(" | ")} |`;
+  const head = `| ${columns10.map((c2) => escapeMd(c2.label)).join(" | ")} |`;
+  const rule2 = `| ${columns10.map((c2) => c2.align === "right" ? "---:" : "---").join(" | ")} |`;
   const body2 = rows8.map((row) => `| ${row.map((cell) => escapeMd(cell)).join(" | ")} |`);
   return [head, rule2, ...body2].join("\n");
 }
@@ -25306,23 +25348,24 @@ function omitted2(data) {
 function rankedTableHtml(data) {
   const empty = rankedTableEmpty(data);
   if (empty !== void 0) return noticeHtml({ level: "notice", text: empty });
-  const cell = (column, value) => {
-    const shown2 = escapeHtml(text2(value));
+  const cell = (column, value, href) => {
+    const shown2 = linked(escapeHtml(text2(value)), href);
     if (!marked(column, value)) return shown2;
     const side = column.guideline?.direction === "below" ? "below" : "above";
     return `${shown2} <span class="marker ${side}" title="${side} guideline">${MARK[side]}<span class="visually-hidden"> ${side} guideline</span></span>`;
   };
-  const columns10 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
-  const rows8 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c) => cell(c, row[c.key] ?? null))]);
-  const table4 = htmlTable(data.caption, columns10, rows8, { rowHeaders: data.numbered === false, className: "ranked" });
+  const columns10 = [...rankColumn(data), ...data.columns.map((c2) => ({ label: c2.label, align: c2.align }))];
+  const rows8 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c2) => cell(c2, row[c2.key] ?? null, data.cellHrefs?.[i2]?.[c2.key]))]);
+  const table4 = htmlTable(data.caption, columns10, rows8, { rowHeaders: data.numbered === false, className: "ranked", ...data.rowIds === void 0 ? {} : { rowIds: data.rowIds } });
   const notes4 = [legend(data), omitted2(data)].flatMap((n) => n === void 0 ? [] : [`<p class="legend">${inlineHtml(n)}</p>`]);
+  for (const see of data.seeAlso ?? []) if (see.href !== void 0) notes4.push(`<p class="legend">${linked(escapeHtml(see.text), see.href)}</p>`);
   return [table4, ...notes4].join("\n");
 }
 function rankedTableMd(data) {
   const empty = rankedTableEmpty(data);
   if (empty !== void 0) return noticeMd({ level: "notice", text: empty });
-  const columns10 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
-  const rows8 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c) => `${text2(row[c.key] ?? null)}${marked(c, row[c.key] ?? null) ? ` ${MARK[c.guideline?.direction === "below" ? "below" : "above"]}` : ""}`)]);
+  const columns10 = [...rankColumn(data), ...data.columns.map((c2) => ({ label: c2.label, align: c2.align }))];
+  const rows8 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c2) => `${text2(row[c2.key] ?? null)}${marked(c2, row[c2.key] ?? null) ? ` ${MARK[c2.guideline?.direction === "below" ? "below" : "above"]}` : ""}`)]);
   return [
     `**${escapeMd(data.caption)}**`,
     "",
@@ -25334,7 +25377,7 @@ function rankedTableMd(data) {
 // packages/report/src/components/figure.ts
 function figureHtml(parts3) {
   const id = `${slug(parts3.title)}-${shortHash(parts3.drawing)}`;
-  const svg = `<svg role="img" aria-labelledby="${id}-title ${id}-desc" viewBox="0 0 ${parts3.width} ${parts3.height}" preserveAspectRatio="xMinYMin meet">
+  const svg = `<svg role="img" aria-labelledby="${id}-title ${id}-desc" width="${parts3.width}" height="${parts3.height}" viewBox="0 0 ${parts3.width} ${parts3.height}" preserveAspectRatio="xMinYMin meet">
 <title id="${id}-title">${escapeHtml(parts3.title)}</title>
 <desc id="${id}-desc">${escapeHtml(parts3.description)}</desc>
 ${parts3.drawing}
@@ -25633,7 +25676,7 @@ function layoutTreemap(items, width = WIDTH2, height = HEIGHT2) {
   const folders = [];
   const place = (node, rect) => {
     const children = [...node.children].sort((a, b) => b.size - a.size || byName(a.name, b.name));
-    const rects = squarify(children.map((c) => c.size), rect);
+    const rects = squarify(children.map((c2) => c2.size), rect);
     children.forEach((child2, i2) => {
       const r = rects[i2];
       if (child2.item !== void 0) {
@@ -25668,7 +25711,7 @@ function drawMap(items) {
   for (const t of tiles) {
     const item = byPath.get(t.path);
     const rect = `<rect x="${fmt(t.x)}" y="${fmt(t.y)}" width="${fmt(t.w)}" height="${fmt(t.h)}"/>`;
-    if (item.mark === void 0 && t.w * t.h < BARE_AREA) {
+    if (item.mark === void 0 && item.href === void 0 && t.w * t.h < BARE_AREA) {
       bare.set(item.band, [...bare.get(item.band) ?? [], rect]);
       bareTiles++;
       bareSize += item.size;
@@ -25678,10 +25721,10 @@ function drawMap(items) {
     const markText = item.mark === void 0 ? "" : `${item.mark} `;
     const first = t.w >= 36 && t.h >= 16 ? clip(`${markText}${t.name}`, room) : item.mark !== void 0 && t.w >= 14 && t.h >= 14 ? clip(item.mark, Math.floor((t.w - 4) / CHAR)) : "";
     const labels = first === "" ? [] : [`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 12)}">${escapeHtml(first)}</text>`];
-    if (t.w >= 36 && t.h >= 30) labels.push(`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 25)}">${escapeHtml(clip(item.value, room))}</text>`);
-    out2.push(`<g class="tile band-${item.band}${item.mark === void 0 ? "" : " marked"}"><title>${escapeHtml(item.title)}</title>${rect}${labels.join("")}</g>`);
+    if (t.w >= 36 && t.h >= 30 && item.value !== "") labels.push(`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 25)}">${escapeHtml(clip(item.value, room))}</text>`);
+    out2.push(linked(`<g class="tile ${item.band}${item.mark === void 0 ? "" : " marked"}"><title>${escapeHtml(item.title)}</title>${rect}${labels.join("")}</g>`, item.href));
   }
-  for (const band of [...bare.keys()].sort()) out2.push(`<g class="tile bare band-${band}">${bare.get(band).join("")}</g>`);
+  for (const band of [...bare.keys()].sort()) out2.push(`<g class="tile bare ${band}">${bare.get(band).join("")}</g>`);
   return { drawing: out2.join("\n"), bare: { tiles: bareTiles, size: bareSize }, width: WIDTH2, height: HEIGHT2 };
 }
 function tableOrder(items) {
@@ -25708,11 +25751,14 @@ function prepare(data) {
   return { drawn, notDrawn: { unsized, beyondLimit }, bands: makeBands(coloured, data.breaks) };
 }
 var bandName = (item, bands) => item.colour === null ? "none" : String(bands.of(item.colour));
-var rowsOf = (prepared, limit) => tableOrder(prepared.drawn).slice(0, limit).map((item) => [`${item.mark === void 0 ? "" : `${item.mark} `}${item.path}`, formatNumber(item.size), item.colour === null ? "none" : formatNumber(item.colour), bandName(item, prepared.bands)]);
-function columns2(data) {
-  return [{ label: "Path" }, { label: `Size (${data.sizeLabel})`, align: "right" }, { label: `Colour (${data.colourLabel})`, align: "right" }, { label: "Band", align: "right" }];
+var tableItems = (prepared, limit) => tableOrder(prepared.drawn).slice(0, limit);
+var hasMarks = (prepared) => prepared.drawn.some((item) => item.mark !== void 0);
+var rowsOf = (prepared, limit) => tableItems(prepared, limit).map((item) => [...hasMarks(prepared) ? [item.mark ?? ""] : [], item.path, formatNumber(item.size), item.colour === null ? "none" : formatNumber(item.colour), bandName(item, prepared.bands)]);
+function columns2(data, prepared) {
+  return [...hasMarks(prepared) ? [{ label: "#", align: "right" }] : [], { label: "Path" }, { label: `Size (${data.sizeLabel})`, align: "right" }, { label: `Colour (${data.colourLabel})`, align: "right" }, { label: "Band", align: "right" }];
 }
 var DEFAULT_TABLE_ROWS = 20;
+var pathColumn = (prepared) => hasMarks(prepared) ? 1 : 0;
 function perBand(prepared) {
   const totals = /* @__PURE__ */ new Map();
   for (const item of prepared.drawn) {
@@ -25729,17 +25775,18 @@ function treemapHtml(data) {
     prepared.drawn.map((item) => ({
       path: item.path,
       size: item.size,
-      band: bandName(item, prepared.bands),
-      value: item.colour === null ? "none" : formatNumber(item.colour),
+      band: `band-${bandName(item, prepared.bands)}`,
+      value: item.colour === null ? "" : formatNumber(item.colour),
       title: `${item.mark === void 0 ? "" : `${item.mark} `}${item.path}: ${formatNumber(item.size)} ${data.sizeLabel}, ${item.colour === null ? "no" : formatNumber(item.colour)} ${data.colourLabel}`,
-      ...item.mark === void 0 ? {} : { mark: item.mark }
+      ...item.mark === void 0 ? {} : { mark: item.mark },
+      ...item.href === void 0 ? {} : { href: item.href }
     }))
   );
   const tableRows = data.tableRows ?? DEFAULT_TABLE_ROWS;
   const left = mapOmissions({ ...prepared.notDrawn, tableRows: Math.min(tableRows, prepared.drawn.length), tableTotal: prepared.drawn.length, bare: map.bare, sizeLabel: data.sizeLabel });
-  const bands = perBand(prepared).map((b) => `<li>${b.band === "none" ? "hatched, no value" : `band ${escapeHtml(b.band)}`}: ${count2(b.items, "item")}, ${formatNumber(b.size)} ${escapeHtml(data.sizeLabel)}</li>`).join("\n");
+  const bands = perBand(prepared).map((b) => `<li>${b.band === "none" ? "grey, no value" : `band ${escapeHtml(b.band)}`}: ${count2(b.items, "item")}, ${formatNumber(b.size)} ${escapeHtml(data.sizeLabel)}</li>`).join("\n");
   const markNote = marked2 === 0 ? "" : ` Outlined tiles are ${escapeHtml(data.markLabel ?? "marked items")} (${marked2}), and each prints its mark.`;
-  const notes4 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in ${bandCountText(prepared.bands)}, and a tile large enough prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.${markNote} The items and ${escapeHtml(data.sizeLabel)} in each band:</p>
+  const notes4 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in ${bandCountText(prepared.bands)}, and a tile large enough prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Grey tiles have no value.${markNote} The items and ${escapeHtml(data.sizeLabel)} in each band:</p>
 <ul class="legend">
 ${bands}
 </ul>
@@ -25752,7 +25799,7 @@ ${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</
     width: map.width,
     height: map.height,
     drawing: map.drawing,
-    table: htmlTable(`${data.title}: ${prepared.drawn.length > tableRows ? "the marked items, then the largest" : "the items drawn, marked first, then largest first"}`, columns2(data), rowsOf(prepared, tableRows).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    table: htmlTable(`${data.title}: ${prepared.drawn.length > tableRows ? "the marked items, then the largest" : "the items drawn, marked first, then largest first"}`, columns2(data, prepared), rowsOf(prepared, tableRows).map((r, k) => r.map((cell, c2) => c2 === pathColumn(prepared) ? linked(escapeHtml(cell), tableItems(prepared, tableRows)[k]?.href) : escapeHtml(cell))), { rowHeaders: true, rowHeaderColumn: pathColumn(prepared) }),
     notes: notes4
   });
 }
@@ -25764,7 +25811,7 @@ function treemapMd(data) {
   return [
     `**${escapeMd(data.title)}** (the items by ${data.sizeLabel}, marked first, then largest first; band is ${data.colourLabel}, ${bandLegend(prepared.bands)}; ${bands})`,
     "",
-    mdTable(columns2(data), rowsOf(prepared, tableRows)),
+    mdTable(columns2(data, prepared), rowsOf(prepared, tableRows)),
     ...left.length === 0 ? [] : ["", `${left.join("; ")}.`]
   ].join("\n");
 }
@@ -25773,10 +25820,11 @@ function treemapMd(data) {
 var DEFAULT_TABLE_ROWS2 = 20;
 function prepare2(data) {
   const { drawn, unsized, beyondLimit } = selectMapItems(data.items, data.maxTiles);
-  const byId = new Map(data.categories.map((c) => [c.id, c]));
+  const byId = new Map(data.categories.map((c2) => [c2.id, c2]));
   return { drawn, unsized, beyondLimit, categoryOf: (item) => item.category === null ? null : byId.get(item.category) ?? null };
 }
-var rows2 = (prepared, limit) => tableOrder(prepared.drawn).slice(0, limit).map((item) => [item.path, formatNumber(item.size), prepared.categoryOf(item)?.label ?? "none"]);
+var tableItems2 = (prepared, limit) => tableOrder(prepared.drawn).slice(0, limit);
+var rows2 = (prepared, limit) => tableItems2(prepared, limit).map((item) => [item.path, formatNumber(item.size), prepared.categoryOf(item)?.label ?? "none"]);
 var columns3 = (data) => [{ label: "Path" }, { label: `Size (${data.sizeLabel})`, align: "right" }, { label: data.categoryLabel }];
 function drawnPerCategory(prepared) {
   const totals = /* @__PURE__ */ new Map();
@@ -25795,19 +25843,20 @@ function categoryTreemapHtml(data) {
       return {
         path: item.path,
         size: item.size,
-        band: category === null ? "none" : String(category.band),
-        value: category?.mark ?? "none",
-        title: `${item.path}: ${formatNumber(item.size)} ${data.sizeLabel}, ${category === null ? `no ${data.categoryLabel}` : `${data.categoryLabel} ${category.label}`}`
+        band: category === null ? "band-none" : `cat-${category.band}`,
+        value: category?.mark ?? "",
+        title: `${item.path}: ${formatNumber(item.size)} ${data.sizeLabel}, ${category === null ? `no ${data.categoryLabel}` : `${data.categoryLabel} ${category.label}`}`,
+        ...item.href === void 0 ? {} : { href: item.href }
       };
     })
   );
   const per = drawnPerCategory(prepared);
   const kind = data.categoryLabel.toLowerCase();
-  const legend2 = data.categories.map((c) => `<li><strong>${escapeHtml(c.mark)}</strong> ${escapeHtml(c.label)}: ${escapeHtml(totalText(data, per.get(c.id)))}</li>`);
-  if (per.has("")) legend2.push(`<li>hatched, no ${escapeHtml(kind)}: ${escapeHtml(totalText(data, per.get("")))}</li>`);
+  const legend2 = data.categories.map((c2) => `<li><strong>${escapeHtml(c2.mark)}</strong> ${escapeHtml(c2.label)}: ${escapeHtml(totalText(data, per.get(c2.id)))}</li>`);
+  if (per.has("")) legend2.push(`<li>grey, no ${escapeHtml(kind)}: ${escapeHtml(totalText(data, per.get("")))}</li>`);
   const tableRows = data.tableRows ?? DEFAULT_TABLE_ROWS2;
   const left = mapOmissions({ beyondLimit: prepared.beyondLimit, unsized: prepared.unsized, tableRows: Math.min(tableRows, prepared.drawn.length), tableTotal: prepared.drawn.length, bare: map.bare, sizeLabel: data.sizeLabel });
-  const notes4 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Every tile is filled by its ${escapeHtml(kind)}, and a tile large enough prints its name and the mark of its ${escapeHtml(kind)}; hatched tiles have none. The marks, with the tiles and ${escapeHtml(data.sizeLabel)} of each:</p>
+  const notes4 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Every tile is filled by its ${escapeHtml(kind)}, and a tile large enough prints its name and the mark of its ${escapeHtml(kind)}; grey tiles have none. The marks, with the tiles and ${escapeHtml(data.sizeLabel)} of each:</p>
 <ul class="legend">
 ${legend2.join("\n")}
 </ul>
@@ -25820,7 +25869,7 @@ ${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</
     width: map.width,
     height: map.height,
     drawing: map.drawing,
-    table: htmlTable(`${data.title}: ${prepared.drawn.length > tableRows ? "the largest items" : "the items drawn, largest first"}`, columns3(data), rows2(prepared, tableRows).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    table: htmlTable(`${data.title}: ${prepared.drawn.length > tableRows ? "the largest items" : "the items drawn, largest first"}`, columns3(data), rows2(prepared, tableRows).map((r, k) => r.map((cell, c2) => c2 === 0 ? linked(escapeHtml(cell), tableItems2(prepared, tableRows)[k]?.href) : escapeHtml(cell))), { rowHeaders: true }),
     notes: notes4
   });
 }
@@ -25829,7 +25878,7 @@ function categoryTreemapMd(data) {
   const tableRows = data.tableRows ?? DEFAULT_TABLE_ROWS2;
   const left = mapOmissions({ beyondLimit: prepared.beyondLimit, unsized: prepared.unsized, tableRows: Math.min(tableRows, prepared.drawn.length), tableTotal: prepared.drawn.length, bare: { tiles: 0, size: 0 }, sizeLabel: data.sizeLabel });
   const per = drawnPerCategory(prepared);
-  const key = [...data.categories.map((c) => `${escapeMd(c.mark)} ${escapeMd(c.label)} (${totalText(data, per.get(c.id))})`), ...per.has("") ? [`none (${totalText(data, per.get(""))})`] : []].join("; ");
+  const key = [...data.categories.map((c2) => `${escapeMd(c2.mark)} ${escapeMd(c2.label)} (${totalText(data, per.get(c2.id))})`), ...per.has("") ? [`none (${totalText(data, per.get(""))})`] : []].join("; ");
   return [
     `**${escapeMd(data.title)}** (the items by ${data.sizeLabel}, largest first; marks: ${key})`,
     "",
@@ -25841,7 +25890,7 @@ function categoryTreemapMd(data) {
 // packages/report/src/components/evidence-list.ts
 var tail = (data) => data.omitted === void 0 || data.omitted <= 0 ? void 0 : `${formatNumber(data.omitted)} more not listed.`;
 function evidenceListHtml(data) {
-  const items = data.items.map((item) => `<li><code>${escapeHtml(item.id)}</code> ${escapeHtml(item.text)}${item.detail === void 0 ? "" : ` <span class="detail">(${escapeHtml(item.detail)})</span>`}</li>`);
+  const items = data.items.map((item) => `<li>${linked(`<code>${escapeHtml(item.id)}</code>`, item.href)} ${escapeHtml(item.text)}${item.detail === void 0 ? "" : ` <span class="detail">(${escapeHtml(item.detail)})</span>`}</li>`);
   const more = tail(data);
   return `<section class="evidence">
 <h3>${escapeHtml(data.title)}</h3>
@@ -25899,7 +25948,7 @@ function functionBarsHtml(data) {
       const y2 = HEADER2 + i2 * ROW;
       const width = b.value * scale;
       const above = b.value > data.guideline;
-      return `<g class="bar ${above ? "above" : "within"}"><text x="${LABEL - 6}" y="${y2 + 17}" text-anchor="end">${escapeHtml(shorten(b.label))}<title>${escapeHtml(b.label)}</title></text><rect x="${LABEL}" y="${y2 + 4}" width="${width.toFixed(1)}" height="${ROW - 8}"/><line x1="${marker.toFixed(1)}" x2="${marker.toFixed(1)}" y1="${y2 + 1}" y2="${y2 + ROW - 1}"/><text x="${(LABEL + Math.max(width, data.guideline * scale) + 8).toFixed(1)}" y="${y2 + 17}">${above ? "▲ " : ""}${formatNumber(b.value)}</text><text x="${REVISIONS_X}" y="${y2 + 17}" text-anchor="end">${figure(b.revisions)}</text><text x="${FIXES_X}" y="${y2 + 17}" text-anchor="end">${figure(b.fixes)}</text></g>`;
+      return linked(`<g class="bar ${above ? "above" : "within"}"><text x="${LABEL - 6}" y="${y2 + 17}" text-anchor="end">${escapeHtml(shorten(b.label))}<title>${escapeHtml(b.label)}</title></text><rect x="${LABEL}" y="${y2 + 4}" width="${width.toFixed(1)}" height="${ROW - 8}"/><line x1="${marker.toFixed(1)}" x2="${marker.toFixed(1)}" y1="${y2 + 1}" y2="${y2 + ROW - 1}"/><text x="${(LABEL + Math.max(width, data.guideline * scale) + 8).toFixed(1)}" y="${y2 + 17}">${above ? "▲ " : ""}${formatNumber(b.value)}</text><text x="${REVISIONS_X}" y="${y2 + 17}" text-anchor="end">${figure(b.revisions)}</text><text x="${FIXES_X}" y="${y2 + 17}" text-anchor="end">${figure(b.fixes)}</text></g>`, b.href);
     })
   ].join("\n");
   const omitted3 = omittedText(data);
@@ -25914,7 +25963,7 @@ function functionBarsHtml(data) {
     width: WIDTH3,
     height: HEADER2 + Math.max(1, data.bars.length) * ROW,
     drawing,
-    table: htmlTable(`${data.title}: ${data.unit}, revisions and fixes`, columns5(data), rows3(data).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    table: htmlTable(`${data.title}: ${data.unit}, revisions and fixes`, columns5(data), rows3(data).map((r, k) => r.map((cell, c2) => c2 === 0 ? linked(escapeHtml(cell), data.bars[k]?.href) : escapeHtml(cell))), { rowHeaders: true }),
     notes: notes4.map((line) => `<p class="legend">${line}</p>
 `).join("")
   });
@@ -26011,7 +26060,7 @@ function histogramMd(data) {
 // packages/report/src/components/judgement.ts
 var isChoice = (entry) => "items" in entry;
 function labelOf(slot, ref) {
-  return slot.choose?.candidates.find((c) => c.ref === ref)?.label ?? ref;
+  return slot.choose?.candidates.find((c2) => c2.ref === ref)?.label ?? ref;
 }
 function leadOf(slot) {
   if (slot.about.kind === "report" || slot.title.includes(slot.about.label)) return void 0;
@@ -26022,16 +26071,18 @@ function parts2(slot, entry) {
   const note = entry;
   return [{ subject: slot.about.label, verdict: note.verdict, text: note.text }];
 }
+var judgementId = (slotId) => targetId("judgement", slotId);
 function judgementHtml(data) {
   const heading = `<h3>${escapeHtml(data.slot.title)}</h3>`;
-  if (data.entry === void 0) return `<section class="judgement unwritten">
+  const id = ` id="${judgementId(data.slot.id)}"`;
+  if (data.entry === void 0) return `<section class="judgement unwritten"${id}>
 ${heading}
 <p class="empty">Judgement not yet written.</p>
 </section>`;
   if (!isChoice(data.entry)) {
     const verdict = data.entry.verdict === void 0 ? "" : `<span class="verdict">Verdict: ${escapeHtml(data.entry.verdict)}.</span> `;
     const lead = leadOf(data.slot);
-    return `<section class="judgement">
+    return `<section class="judgement"${id}>
 ${heading}
 <p>${lead === void 0 ? "" : `<strong class="subject">${escapeHtml(lead)}</strong>: `}${verdict}${escapeHtml(oneLine(data.entry.text))}</p>
 </section>`;
@@ -26039,7 +26090,7 @@ ${heading}
   const items = parts2(data.slot, data.entry).map(
     (p) => `<li><strong class="subject">${escapeHtml(p.subject)}</strong>${p.verdict === void 0 ? "" : ` <span class="verdict">Verdict: ${escapeHtml(p.verdict)}.</span>`} ${escapeHtml(oneLine(p.text))}</li>`
   );
-  return `<section class="judgement">
+  return `<section class="judgement"${id}>
 ${heading}
 <ol>
 ${items.join("\n")}
@@ -26072,6 +26123,10 @@ var LABEL_ANGLE = 35;
 var SPAN_BAR = 18;
 var SPAN_GAP = 4;
 var SPAN_COLOURS = 6;
+var START = "";
+var HREF = "";
+var END = "";
+var linkNames = (line) => escapeHtml(line).replace(new RegExp(`${START}(.*?)${HREF}(.*?)${END}`, "g"), (_, label, href) => href === "" ? label : `<a href="${href}">${label}</a>`);
 var display = (value) => value === null ? "" : formatNumber(value);
 var markOf = (data, i2, j) => {
   const name14 = data.cellMarks?.[i2]?.[j] ?? null;
@@ -26093,36 +26148,52 @@ function markLegend(data) {
   return parts3.length === 0 ? void 0 : `${parts3.join("; ")}.`;
 }
 var usableSpans = (data) => (data.spans ?? []).filter((g) => g.start >= 0 && g.end >= g.start && g.end < data.rows.length).sort((a, b) => a.start - b.start);
-function spanLegend(spans, square) {
+function spanLegend(spans, square, name14 = (g) => g.label) {
   if (spans.length === 0) return void 0;
   const where = square ? "above the columns and left of the rows" : "left of the rows";
-  return `Bars ${where} mark ${count2(spans.length, "span")}: ${spans.map((g) => `${g.label} (${count2(g.end - g.start + 1, "row")})`).join(", ")}.`;
+  return `Bars ${where} mark ${count2(spans.length, "span")}: ${spans.map((g) => `${name14(g)} (${count2(g.end - g.start + 1, "row")})`).join(", ")}.`;
 }
-function groupLegend(groups) {
+function groupLegend(groups, name14 = (g) => g.label) {
   if (groups.length === 0) return void 0;
-  return `Boxes along the diagonal mark ${count2(groups.length, "group")}: ${groups.map((g) => `${g.label} (${count2(g.end - g.start + 1, "row")})`).join(", ")}.`;
+  return `Boxes along the diagonal mark ${count2(groups.length, "group")}: ${groups.map((g) => `${name14(g)} (${count2(g.end - g.start + 1, "row")})`).join(", ")}.`;
 }
 function cellList(data, spans, groups) {
   const square = isSquare(data);
-  const named = spans.length > 0 || groups.length > 0;
+  const named2 = spans.length > 0 || groups.length > 0;
   const namesOf = (i2) => [spans.find((g) => i2 >= g.start && i2 <= g.end)?.label, groups.find((g) => i2 >= g.start && i2 <= g.end)?.label].filter((label) => label !== void 0).join(", ");
   const columns10 = [
     { label: "Row" },
     { label: "Column" },
     { label: "Value", align: "right" },
     { label: "Mark" },
-    ...named ? [{ label: "Row group" }, ...square ? [{ label: "Column group" }] : []] : []
+    ...named2 ? [{ label: "Row group" }, ...square ? [{ label: "Column group" }] : []] : []
   ];
   const rows8 = [];
+  const at2 = [];
+  const symmetric = isSymmetric(data);
+  let blank = 0;
   for (const [i2, r] of data.rows.entries()) {
-    for (const [j, c] of data.columns.entries()) {
+    for (const [j, c2] of data.columns.entries()) {
       const value = data.cells[i2]?.[j] ?? null;
       const mark = markOf(data, i2, j);
-      if (value === null && mark === void 0) continue;
-      rows8.push([r, c, display(value), mark?.text ?? "", ...named ? [namesOf(i2), ...square ? [namesOf(j)] : []] : []]);
+      if (value === null && mark === void 0) {
+        blank++;
+        continue;
+      }
+      if (symmetric && j < i2) continue;
+      at2.push([i2, j]);
+      rows8.push([r, c2, display(value), mark?.text ?? "", ...named2 ? [namesOf(i2), ...square ? [namesOf(j)] : []] : []]);
     }
   }
-  return { columns: columns10, rows: rows8, blank: data.rows.length * data.columns.length - rows8.length };
+  return { columns: columns10, rows: rows8, at: at2, blank, symmetric };
+}
+function isSymmetric(data) {
+  if (!isSquare(data)) return false;
+  for (const i2 of data.rows.keys()) for (const j of data.rows.keys()) {
+    if ((data.cells[i2]?.[j] ?? null) !== (data.cells[j]?.[i2] ?? null)) return false;
+    if ((data.cellMarks?.[i2]?.[j] ?? null) !== (data.cellMarks?.[j]?.[i2] ?? null)) return false;
+  }
+  return true;
 }
 function cellSize(data) {
   let longest = 1;
@@ -26137,7 +26208,7 @@ function matrixHtml(data) {
   const spans = usableSpans(data);
   const square = isSquare(data);
   const rowText = data.rows.map((r) => clip(r, LABEL_CHARS2));
-  const columnText = data.columns.map((c) => clip(c, LABEL_CHARS2));
+  const columnText = data.columns.map((c2) => clip(c2, LABEL_CHARS2));
   const longest = (labels2) => Math.max(0, ...labels2.map((l) => l.length));
   const rowLabel = Math.max(ROW_LABEL, Math.ceil(longest(rowText) * CHAR_W) + 12);
   const rise = longest(columnText) * CHAR_W * Math.sin(LABEL_ANGLE * Math.PI / 180);
@@ -26148,12 +26219,12 @@ function matrixHtml(data) {
   const gridX = left + rowLabel;
   const gridY = top + columnLabel;
   const labels = [
-    ...data.columns.map((c, j) => {
+    ...data.columns.map((c2, j) => {
       const x2 = gridX + j * cell + cell / 2;
       const y2 = gridY - 6;
-      return `<text x="${x2}" y="${y2}" transform="rotate(-${LABEL_ANGLE} ${x2} ${y2})">${escapeHtml(columnText[j])}${columnText[j] === c ? "" : `<title>${escapeHtml(c)}</title>`}</text>`;
+      return linked(`<text x="${x2}" y="${y2}" transform="rotate(-${LABEL_ANGLE} ${x2} ${y2})">${escapeHtml(columnText[j])}${columnText[j] === c2 ? "" : `<title>${escapeHtml(c2)}</title>`}</text>`, data.columnHrefs?.[j]);
     }),
-    ...data.rows.map((r, i2) => `<text x="${gridX - 6}" y="${gridY + i2 * cell + (cell - 2) / 2}" dominant-baseline="central" text-anchor="end">${escapeHtml(rowText[i2])}${rowText[i2] === r ? "" : `<title>${escapeHtml(r)}</title>`}</text>`)
+    ...data.rows.map((r, i2) => linked(`<text x="${gridX - 6}" y="${gridY + i2 * cell + (cell - 2) / 2}" dominant-baseline="central" text-anchor="end">${escapeHtml(rowText[i2])}${rowText[i2] === r ? "" : `<title>${escapeHtml(r)}</title>`}</text>`, data.rowHrefs?.[i2]))
   ];
   const cells = data.rows.flatMap(
     (_, i2) => data.columns.map((_2, j) => {
@@ -26169,18 +26240,18 @@ function matrixHtml(data) {
     const x2 = gridX + g.start * cell - 1;
     const y2 = gridY + g.start * cell - 1;
     const span = g.end - g.start + 1;
-    return `<g class="group"><rect x="${x2}" y="${y2}" width="${span * cell}" height="${span * cell}"><title>${escapeHtml(g.label)}</title></rect></g>`;
+    return linked(`<g class="group"><rect x="${x2}" y="${y2}" width="${span * cell}" height="${span * cell}"><title>${escapeHtml(g.label)}</title></rect></g>`, g.href);
   });
   const bars = spans.flatMap((g, k) => {
     const colour = `span span-${k % SPAN_COLOURS + 1}`;
     const rows8 = g.end - g.start + 1;
     const y2 = gridY + g.start * cell;
     const cy = y2 + (rows8 * cell - 2) / 2;
-    const side = `<g class="${colour}"><rect x="0" y="${y2}" width="${SPAN_BAR}" height="${rows8 * cell - 2}"/><text x="${SPAN_BAR / 2}" y="${cy}" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 ${SPAN_BAR / 2} ${cy})">${escapeHtml(clip(g.label, Math.floor((rows8 * cell - 6) / CHAR_W)))}</text><title>${escapeHtml(g.label)}</title></g>`;
+    const side = linked(`<g class="${colour}"><rect x="0" y="${y2}" width="${SPAN_BAR}" height="${rows8 * cell - 2}"/><text x="${SPAN_BAR / 2}" y="${cy}" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 ${SPAN_BAR / 2} ${cy})">${escapeHtml(clip(g.label, Math.floor((rows8 * cell - 6) / CHAR_W)))}</text><title>${escapeHtml(g.label)}</title></g>`, g.href);
     if (!square) return [side];
     const x2 = gridX + g.start * cell;
     const w = rows8 * cell - 2;
-    return [side, `<g class="${colour}"><rect x="${x2}" y="0" width="${w}" height="${SPAN_BAR}"/><text x="${x2 + w / 2}" y="${SPAN_BAR / 2}" text-anchor="middle" dominant-baseline="central">${escapeHtml(clip(g.label, Math.floor((w - 6) / CHAR_W)))}</text><title>${escapeHtml(g.label)}</title></g>`];
+    return [side, linked(`<g class="${colour}"><rect x="${x2}" y="0" width="${w}" height="${SPAN_BAR}"/><text x="${x2 + w / 2}" y="${SPAN_BAR / 2}" text-anchor="middle" dominant-baseline="central">${escapeHtml(clip(g.label, Math.floor((w - 6) / CHAR_W)))}</text><title>${escapeHtml(g.label)}</title></g>`, g.href)];
   });
   const lines = spans.slice(1).flatMap((g) => {
     const y2 = gridY + g.start * cell - 1;
@@ -26190,11 +26261,12 @@ function matrixHtml(data) {
     return [horizontal, `<line class="span-boundary" x1="${x2}" y1="${top}" x2="${x2}" y2="${gridY + data.rows.length * cell}"/>`];
   });
   const list3 = cellList(data, spans, groups);
+  const marker = (g) => `${START}${g.label}${HREF}${g.href ?? ""}${END}`;
   const notes4 = [
-    `Colour is ${data.valueLabel} in ${bandCountText(bands)}, and each cell prints its value: ${bandLegend(bands)}. Hatched blank cells have no value (${count2(list3.blank, "cell")} of ${count2(data.rows.length * data.columns.length, "cell")}).`,
+    `Colour is ${data.valueLabel} in ${bandCountText(bands)}, and each cell prints its value: ${bandLegend(bands)}. Grey blank cells have no value (${count2(list3.blank, "cell")} of ${count2(data.rows.length * data.columns.length, "cell")}).`,
     markLegend(data),
-    spanLegend(spans, square),
-    groupLegend(groups),
+    spanLegend(spans, square, marker),
+    groupLegend(groups, marker),
     data.orderText
   ].filter((line) => line !== void 0);
   const description = [
@@ -26210,8 +26282,12 @@ function matrixHtml(data) {
     width: Math.ceil(gridX + Math.max(data.columns.length * cell + 40, (data.columns.length - 0.5) * cell + reach + 8)),
     height: gridY + data.rows.length * cell + 4,
     drawing: [...bars, ...labels, ...cells, ...boxes, ...lines].join("\n"),
-    table: htmlTable(`${data.title}: ${data.valueLabel}, the cells that have a value or a mark`, list3.columns, list3.rows.map((row) => row.map(escapeHtml))),
-    notes: `<p class="legend">${notes4.map(escapeHtml).join(" ")}</p>
+    table: htmlTable(
+      `${data.title}: the cells that have a value or a mark${list3.symmetric ? ", each pair once" : ""}`,
+      list3.columns,
+      list3.rows.map((row, k) => row.map((cell2, c2) => c2 === 0 ? linked(escapeHtml(cell2), data.rowHrefs?.[list3.at[k][0]]) : c2 === 1 ? linked(escapeHtml(cell2), data.columnHrefs?.[list3.at[k][1]]) : escapeHtml(cell2)))
+    ),
+    notes: `<p class="legend">${notes4.map(linkNames).join(" ")}</p>
 `
   });
 }
@@ -26221,7 +26297,7 @@ function matrixMd(data) {
   const groups = usableGroups(data);
   const spans = usableSpans(data);
   const list3 = cellList(data, spans, groups);
-  const extra = [`The table lists the cells that have a value or a mark, in row order then column order. Blank cells have no value (${count2(list3.blank, "cell")} of ${count2(data.rows.length * data.columns.length, "cell")}).`, markLegend(data), spanLegend(spans, isSquare(data)), groupLegend(groups), data.orderText].filter((line) => line !== void 0);
+  const extra = [`The table lists the cells that have a value or a mark, in row order then column order${list3.symmetric ? ", each pair once because the matrix is symmetric" : ""}. Blank cells have no value (${count2(list3.blank, "cell")} of ${count2(data.rows.length * data.columns.length, "cell")}).`, markLegend(data), spanLegend(spans, isSquare(data)), groupLegend(groups), data.orderText].filter((line) => line !== void 0);
   return [
     `**${escapeMd(data.title)}** (${escapeMd(data.valueLabel)}; ${bandLegend(bands)})`,
     "",
@@ -26271,26 +26347,32 @@ function treeRows(folders, rootText) {
 function lanesFor(spans) {
   const taken = [];
   return spans.map(([a, b]) => {
-    const lane = taken.findIndex((used) => used.every(([c, d]) => b < c || a > d));
+    const lane = taken.findIndex((used) => used.every(([c2, d]) => b < c2 || a > d));
     const at2 = lane === -1 ? taken.length : lane;
     taken[at2] = [...taken[at2] ?? [], [a, b]];
     return at2;
   });
 }
+var lineText = (line) => line.map((p) => p.text).join("");
 function rowTexts(data, rows8) {
   const word = (kind) => data.kinds.find((k) => k.kind === kind)?.word ?? kind;
   return rows8.map((row) => {
     const parts3 = [];
     for (const edge of data.edges.filter((e) => e.from === row.path)) {
       const value = edge.valueText ?? `${data.valueLabel} ${formatNumber(edge.value)}`;
-      parts3.push(`${word(edge.kind)} ${edge.label} out: ${value}${edge.note === void 0 ? "" : `, ${edge.note}`}`);
+      parts3.push([{ text: `${word(edge.kind)} ${edge.label} out: ${value}${edge.note === void 0 ? "" : `, ${edge.note}`}`, href: edge.href }]);
     }
-    for (const edge of data.edges.filter((e) => e.to === row.path)) parts3.push(`${word(edge.kind)} ${edge.label} in`);
+    for (const edge of data.edges.filter((e) => e.to === row.path)) parts3.push([{ text: `${word(edge.kind)} ${edge.label} in`, href: edge.href }]);
     const kinds2 = [...new Set(data.marks.filter((m) => m.folder === row.path).map((m) => m.kind))];
-    for (const kind of kinds2) parts3.push(`${word(kind)} ${data.marks.filter((m) => m.folder === row.path && m.kind === kind).map((m) => `${m.label}${m.note === void 0 ? "" : ` (${m.note})`}`).join(", ")}`);
+    for (const kind of kinds2) {
+      const here = data.marks.filter((m) => m.folder === row.path && m.kind === kind);
+      parts3.push([{ text: `${word(kind)} ` }, ...here.flatMap((m, k) => [{ text: k === 0 ? "" : ", " }, { text: m.label, href: m.href }, ...m.note === void 0 ? [] : [{ text: ` (${m.note})` }]])]);
+    }
     return parts3;
   });
 }
+var pieceSvg = (piece) => piece.href === void 0 ? escapeHtml(piece.text) : linked(`<tspan>${escapeHtml(piece.text)}</tspan>`, piece.href);
+var labelHref = (data, label) => data.edges.find((e) => e.label === label)?.href ?? data.marks.find((m) => m.label === label && m.href !== void 0)?.href;
 function legendLines(data) {
   const kindLines = data.kinds.map((k) => `${k.word}${k.dashed === true ? " (dashed line)" : ""}: ${k.meaning}`);
   const lines = [
@@ -26333,7 +26415,7 @@ function moveMapHtml(data) {
     const y2 = tops[i2] + 15;
     const x2 = MARGIN + row.depth * INDENT;
     const guide = `<line class="guide" x1="${(x2 + row.label.length * CHAR2).toFixed(1)}" y1="${y2 - 4}" x2="${treeRight.toFixed(1)}" y2="${y2 - 4}"/>`;
-    const notes5 = texts[i2].map((text3, k) => `<text class="row-note" x="${textX.toFixed(1)}" y="${y2 + k * LINE}">${escapeHtml(text3)}</text>`).join("");
+    const notes5 = texts[i2].map((line, k) => `<text class="row-note" x="${textX.toFixed(1)}" y="${y2 + k * LINE}">${line.map(pieceSvg).join("")}</text>`).join("");
     return `<g class="folder-row"><text class="folder-name" x="${x2}" y="${y2}">${escapeHtml(row.label)}</text>${guide}${notes5}</g>`;
   });
   const arrows = edges.map(({ edge, from, to }, i2) => {
@@ -26343,9 +26425,9 @@ function moveMapHtml(data) {
     const width = THIN + edge.value / greatest * (THICK - THIN);
     const style = kindOf3(edge.kind)?.dashed === true ? "dashed" : "solid";
     const tip = treeRight + 1;
-    return `<g class="edge ${escapeHtml(edge.kind)} ${style}"><path d="M${tip + 4} ${y1.toFixed(1)}H${x2}V${y2.toFixed(1)}H${tip + 5}" stroke-width="${width.toFixed(1)}"/><polygon points="${tip},${y2.toFixed(1)} ${tip + 7},${(y2 - 3.5).toFixed(1)} ${tip + 7},${(y2 + 3.5).toFixed(1)}"/><title>${escapeHtml(`${edge.label}: ${edge.from === "" ? data.rootText : edge.from} to ${edge.to === "" ? data.rootText : edge.to}`)}</title></g>`;
+    return linked(`<g class="edge ${escapeHtml(edge.kind)} ${style}"><path d="M${tip + 4} ${y1.toFixed(1)}H${x2}V${y2.toFixed(1)}H${tip + 5}" stroke-width="${width.toFixed(1)}"/><polygon points="${tip},${y2.toFixed(1)} ${tip + 7},${(y2 - 3.5).toFixed(1)} ${tip + 7},${(y2 + 3.5).toFixed(1)}"/><title>${escapeHtml(`${edge.label}: ${edge.from === "" ? data.rootText : edge.from} to ${edge.to === "" ? data.rootText : edge.to}`)}</title></g>`, edge.href);
   });
-  const widest = Math.max(0, ...texts.flat().map((t) => t.length)) * CHAR2;
+  const widest = Math.max(0, ...texts.flat().map((line) => lineText(line).length)) * CHAR2;
   const kindText = data.kinds.map((k) => `${k.word}${k.dashed === true ? " (dashed)" : ""}`).join(", ");
   const notes4 = legendLines(data).map((line) => `<p class="legend">${escapeHtml(line)}</p>`).join("\n");
   return figureHtml({
@@ -26355,7 +26437,7 @@ function moveMapHtml(data) {
     width: Math.ceil(textX + widest + MARGIN),
     height: Math.max(ROW4, heights.reduce((sum, h) => sum + h, 0)),
     drawing: [...lines, ...arrows].join("\n"),
-    table: htmlTable(tableCaption(data), data.table.columns, data.table.rows.map((row) => row.map(escapeHtml)), { rowHeaders: true }),
+    table: htmlTable(tableCaption(data), data.table.columns, data.table.rows.map((row) => row.map((cell, c2) => c2 === 0 ? linked(escapeHtml(cell), labelHref(data, cell)) : escapeHtml(cell))), { rowHeaders: true }),
     notes: `${notes4}
 `
   });
@@ -26428,7 +26510,7 @@ function placeLabels(items) {
         { box: { x: item.cx - w / 2, y: item.cy - 8 - LABEL_H, w, h: LABEL_H }, x: item.cx - w / 2, y: item.cy - 9, anchor: "start" },
         { box: { x: item.cx - w / 2, y: item.cy + 8, w, h: LABEL_H }, x: item.cx - w / 2, y: item.cy + 17, anchor: "start" }
       ];
-      const fit = candidates2.find((c) => inside(c.box) && !taken.some((t) => overlaps(c.box, t)));
+      const fit = candidates2.find((c2) => inside(c2.box) && !taken.some((t) => overlaps(c2.box, t)));
       if (fit !== void 0) {
         taken.push(fit.box);
         return { text: text3, x: fit.x, y: fit.y, anchor: fit.anchor, byNumber };
@@ -26491,13 +26573,13 @@ function scatterHtml(data) {
     ...data.xGuideline === void 0 ? [] : [`<g class="guideline"><line x1="${at2(px(data.xGuideline.value))}" y1="${TOP2}" x2="${at2(px(data.xGuideline.value))}" y2="${TOP2 + PLOT_H}"><title>${escapeHtml(data.xGuideline.name)}</title></line><text x="${at2(px(data.xGuideline.value) + 3)}" y="${TOP2 + PLOT_H - 4}">${formatNumber(data.xGuideline.value)}</text></g>`],
     ...data.yGuideline === void 0 ? [] : [`<g class="guideline"><line x1="${LEFT2}" y1="${at2(py(data.yGuideline.value))}" x2="${LEFT2 + PLOT_W}" y2="${at2(py(data.yGuideline.value))}"><title>${escapeHtml(data.yGuideline.name)}</title></line><text x="${LEFT2 + PLOT_W - 3}" y="${at2(py(data.yGuideline.value) - 3)}" text-anchor="end">${formatNumber(data.yGuideline.value)}</text></g>`]
   ];
-  const named = labelled(data);
-  const dots = data.points.filter((p) => !named.includes(p)).map((p) => p.highlight === true ? `<rect class="point highlight" x="${at2(px(p.x) - 2.5)}" y="${at2(py(p.y) - 2.5)}" width="5" height="5"/>` : `<circle class="point" cx="${at2(px(p.x))}" cy="${at2(py(p.y))}" r="2.2"/>`);
-  const placed = placeLabels(named.map((p, i2) => ({ cx: px(p.x), cy: py(p.y), name: clip(p.short ?? p.label, MAX_NAME), number: String(i2 + 1) })));
-  const marks = named.map((p, i2) => {
+  const named2 = labelled(data);
+  const dots = data.points.filter((p) => !named2.includes(p)).map((p) => p.highlight === true ? `<rect class="point highlight" x="${at2(px(p.x) - 2.5)}" y="${at2(py(p.y) - 2.5)}" width="5" height="5"/>` : `<circle class="point" cx="${at2(px(p.x))}" cy="${at2(py(p.y))}" r="2.2"/>`);
+  const placed = placeLabels(named2.map((p, i2) => ({ cx: px(p.x), cy: py(p.y), name: clip(p.short ?? p.label, MAX_NAME), number: String(i2 + 1) })));
+  const marks = named2.map((p, i2) => {
     const label = placed[i2];
     const text3 = label === null || label === void 0 ? "" : `<text class="name" x="${at2(label.x)}" y="${at2(label.y)}" text-anchor="${label.anchor}">${escapeHtml(label.text)}</text>`;
-    return `<g class="point named"><title>${escapeHtml(`${i2 + 1}. ${p.label}: ${formatNumber(p.x)} ${data.xLabel}, ${formatNumber(p.y)} ${data.yLabel}`)}</title><rect x="${at2(px(p.x) - 4)}" y="${at2(py(p.y) - 4)}" width="8" height="8"/>${text3}</g>`;
+    return linked(`<g class="point named"><title>${escapeHtml(`${i2 + 1}. ${p.label}: ${formatNumber(p.x)} ${data.xLabel}, ${formatNumber(p.y)} ${data.yLabel}`)}</title><rect x="${at2(px(p.x) - 4)}" y="${at2(py(p.y) - 4)}" width="8" height="8"/>${text3}</g>`, p.href);
   });
   const byNumber = placed.filter((p) => p?.byNumber === true).length;
   const unplaced = placed.filter((p) => p === null).length;
@@ -26505,7 +26587,7 @@ function scatterHtml(data) {
     ...byNumber > 0 ? [`${formatNumber(byNumber)} named ${noun(data)} have no free room for their name and print their table number instead.`] : [],
     ...unplaced > 0 ? [`${formatNumber(unplaced)} named ${noun(data)} have no free room for a name or number; the table gives them.`] : []
   ];
-  const description = `A scatter of ${formatNumber(data.points.length)} ${noun(data)}: ${data.xLabel} horizontal, ${data.yLabel} vertical${data.xLog === true || data.yLog === true ? ", on log scales" : ""}${hasQuadrants(data) ? `, split into four quadrants by dashed guideline lines. ${quadrantLine(data)}` : "."} The table below lists the ${formatNumber(named.length)} named points with their values.`;
+  const description = `A scatter of ${formatNumber(data.points.length)} ${noun(data)}: ${data.xLabel} horizontal, ${data.yLabel} vertical${data.xLog === true || data.yLog === true ? ", on log scales" : ""}${hasQuadrants(data) ? `, split into four quadrants by dashed guideline lines. ${quadrantLine(data)}` : "."} The table below lists the ${formatNumber(named2.length)} named points with their values.`;
   return figureHtml({
     kind: "scatter",
     title: data.title,
@@ -26513,7 +26595,7 @@ function scatterHtml(data) {
     width: WIDTH6,
     height: HEIGHT3,
     drawing: [frame, ...lines, ...ticks, ...axisNames, ...dots, ...marks].join("\n"),
-    table: htmlTable(`${data.title}: the named points`, columns8(data), rows6(data).map((r) => r.map(escapeHtml)), { rowHeaders: false }),
+    table: htmlTable(`${data.title}: the named points`, columns8(data), rows6(data).map((r, k) => r.map((cell, c2) => c2 === 1 ? linked(escapeHtml(cell), labelled(data)[k]?.href) : escapeHtml(cell))), { rowHeaders: false }),
     notes: [...notes3(data), ...extra].map((n) => `<p class="legend">${escapeHtml(n)}</p>
 `).join("")
   });
@@ -26619,6 +26701,9 @@ function renderJudgedItems(block, format2, context) {
   return [...head.map(prose), ...rendered, ...tail2.map(prose)].join("\n\n");
 }
 function renderBlock(block, format2, context) {
+  return renderResolved(format2 === "html" ? resolveLinks(block, context.siblings) : block, format2, context);
+}
+function renderResolved(block, format2, context) {
   switch (block.type) {
     case "paragraph":
       return format2 === "html" ? paragraphHtml(block) : paragraphMd(block);
@@ -26662,43 +26747,1118 @@ function renderBlock(block, format2, context) {
   }
 }
 
+// node_modules/d3-color/dist/d3-color.mjs
+function define(constructor, factory, prototype) {
+  constructor.prototype = factory.prototype = prototype;
+  prototype.constructor = constructor;
+}
+function extend(parent, definition) {
+  var prototype = Object.create(parent.prototype);
+  for (var key in definition) prototype[key] = definition[key];
+  return prototype;
+}
+function Color() {
+}
+var darker = 0.7;
+var brighter = 1 / darker;
+var reI = "\\s*([+-]?\\d+)\\s*";
+var reN = "\\s*([+-]?(?:\\d*\\.)?\\d+(?:[eE][+-]?\\d+)?)\\s*";
+var reP = "\\s*([+-]?(?:\\d*\\.)?\\d+(?:[eE][+-]?\\d+)?)%\\s*";
+var reHex = /^#([0-9a-f]{3,8})$/;
+var reRgbInteger = new RegExp(`^rgb\\(${reI},${reI},${reI}\\)$`);
+var reRgbPercent = new RegExp(`^rgb\\(${reP},${reP},${reP}\\)$`);
+var reRgbaInteger = new RegExp(`^rgba\\(${reI},${reI},${reI},${reN}\\)$`);
+var reRgbaPercent = new RegExp(`^rgba\\(${reP},${reP},${reP},${reN}\\)$`);
+var reHslPercent = new RegExp(`^hsl\\(${reN},${reP},${reP}\\)$`);
+var reHslaPercent = new RegExp(`^hsla\\(${reN},${reP},${reP},${reN}\\)$`);
+var named = {
+  aliceblue: 15792383,
+  antiquewhite: 16444375,
+  aqua: 65535,
+  aquamarine: 8388564,
+  azure: 15794175,
+  beige: 16119260,
+  bisque: 16770244,
+  black: 0,
+  blanchedalmond: 16772045,
+  blue: 255,
+  blueviolet: 9055202,
+  brown: 10824234,
+  burlywood: 14596231,
+  cadetblue: 6266528,
+  chartreuse: 8388352,
+  chocolate: 13789470,
+  coral: 16744272,
+  cornflowerblue: 6591981,
+  cornsilk: 16775388,
+  crimson: 14423100,
+  cyan: 65535,
+  darkblue: 139,
+  darkcyan: 35723,
+  darkgoldenrod: 12092939,
+  darkgray: 11119017,
+  darkgreen: 25600,
+  darkgrey: 11119017,
+  darkkhaki: 12433259,
+  darkmagenta: 9109643,
+  darkolivegreen: 5597999,
+  darkorange: 16747520,
+  darkorchid: 10040012,
+  darkred: 9109504,
+  darksalmon: 15308410,
+  darkseagreen: 9419919,
+  darkslateblue: 4734347,
+  darkslategray: 3100495,
+  darkslategrey: 3100495,
+  darkturquoise: 52945,
+  darkviolet: 9699539,
+  deeppink: 16716947,
+  deepskyblue: 49151,
+  dimgray: 6908265,
+  dimgrey: 6908265,
+  dodgerblue: 2003199,
+  firebrick: 11674146,
+  floralwhite: 16775920,
+  forestgreen: 2263842,
+  fuchsia: 16711935,
+  gainsboro: 14474460,
+  ghostwhite: 16316671,
+  gold: 16766720,
+  goldenrod: 14329120,
+  gray: 8421504,
+  green: 32768,
+  greenyellow: 11403055,
+  grey: 8421504,
+  honeydew: 15794160,
+  hotpink: 16738740,
+  indianred: 13458524,
+  indigo: 4915330,
+  ivory: 16777200,
+  khaki: 15787660,
+  lavender: 15132410,
+  lavenderblush: 16773365,
+  lawngreen: 8190976,
+  lemonchiffon: 16775885,
+  lightblue: 11393254,
+  lightcoral: 15761536,
+  lightcyan: 14745599,
+  lightgoldenrodyellow: 16448210,
+  lightgray: 13882323,
+  lightgreen: 9498256,
+  lightgrey: 13882323,
+  lightpink: 16758465,
+  lightsalmon: 16752762,
+  lightseagreen: 2142890,
+  lightskyblue: 8900346,
+  lightslategray: 7833753,
+  lightslategrey: 7833753,
+  lightsteelblue: 11584734,
+  lightyellow: 16777184,
+  lime: 65280,
+  limegreen: 3329330,
+  linen: 16445670,
+  magenta: 16711935,
+  maroon: 8388608,
+  mediumaquamarine: 6737322,
+  mediumblue: 205,
+  mediumorchid: 12211667,
+  mediumpurple: 9662683,
+  mediumseagreen: 3978097,
+  mediumslateblue: 8087790,
+  mediumspringgreen: 64154,
+  mediumturquoise: 4772300,
+  mediumvioletred: 13047173,
+  midnightblue: 1644912,
+  mintcream: 16121850,
+  mistyrose: 16770273,
+  moccasin: 16770229,
+  navajowhite: 16768685,
+  navy: 128,
+  oldlace: 16643558,
+  olive: 8421376,
+  olivedrab: 7048739,
+  orange: 16753920,
+  orangered: 16729344,
+  orchid: 14315734,
+  palegoldenrod: 15657130,
+  palegreen: 10025880,
+  paleturquoise: 11529966,
+  palevioletred: 14381203,
+  papayawhip: 16773077,
+  peachpuff: 16767673,
+  peru: 13468991,
+  pink: 16761035,
+  plum: 14524637,
+  powderblue: 11591910,
+  purple: 8388736,
+  rebeccapurple: 6697881,
+  red: 16711680,
+  rosybrown: 12357519,
+  royalblue: 4286945,
+  saddlebrown: 9127187,
+  salmon: 16416882,
+  sandybrown: 16032864,
+  seagreen: 3050327,
+  seashell: 16774638,
+  sienna: 10506797,
+  silver: 12632256,
+  skyblue: 8900331,
+  slateblue: 6970061,
+  slategray: 7372944,
+  slategrey: 7372944,
+  snow: 16775930,
+  springgreen: 65407,
+  steelblue: 4620980,
+  tan: 13808780,
+  teal: 32896,
+  thistle: 14204888,
+  tomato: 16737095,
+  turquoise: 4251856,
+  violet: 15631086,
+  wheat: 16113331,
+  white: 16777215,
+  whitesmoke: 16119285,
+  yellow: 16776960,
+  yellowgreen: 10145074
+};
+define(Color, color, {
+  copy(channels) {
+    return Object.assign(new this.constructor(), this, channels);
+  },
+  displayable() {
+    return this.rgb().displayable();
+  },
+  hex: color_formatHex,
+  // Deprecated! Use color.formatHex.
+  formatHex: color_formatHex,
+  formatHex8: color_formatHex8,
+  formatHsl: color_formatHsl,
+  formatRgb: color_formatRgb,
+  toString: color_formatRgb
+});
+function color_formatHex() {
+  return this.rgb().formatHex();
+}
+function color_formatHex8() {
+  return this.rgb().formatHex8();
+}
+function color_formatHsl() {
+  return hslConvert(this).formatHsl();
+}
+function color_formatRgb() {
+  return this.rgb().formatRgb();
+}
+function color(format2) {
+  var m, l;
+  format2 = (format2 + "").trim().toLowerCase();
+  return (m = reHex.exec(format2)) ? (l = m[1].length, m = parseInt(m[1], 16), l === 6 ? rgbn(m) : l === 3 ? new Rgb(m >> 8 & 15 | m >> 4 & 240, m >> 4 & 15 | m & 240, (m & 15) << 4 | m & 15, 1) : l === 8 ? rgba(m >> 24 & 255, m >> 16 & 255, m >> 8 & 255, (m & 255) / 255) : l === 4 ? rgba(m >> 12 & 15 | m >> 8 & 240, m >> 8 & 15 | m >> 4 & 240, m >> 4 & 15 | m & 240, ((m & 15) << 4 | m & 15) / 255) : null) : (m = reRgbInteger.exec(format2)) ? new Rgb(m[1], m[2], m[3], 1) : (m = reRgbPercent.exec(format2)) ? new Rgb(m[1] * 255 / 100, m[2] * 255 / 100, m[3] * 255 / 100, 1) : (m = reRgbaInteger.exec(format2)) ? rgba(m[1], m[2], m[3], m[4]) : (m = reRgbaPercent.exec(format2)) ? rgba(m[1] * 255 / 100, m[2] * 255 / 100, m[3] * 255 / 100, m[4]) : (m = reHslPercent.exec(format2)) ? hsla(m[1], m[2] / 100, m[3] / 100, 1) : (m = reHslaPercent.exec(format2)) ? hsla(m[1], m[2] / 100, m[3] / 100, m[4]) : named.hasOwnProperty(format2) ? rgbn(named[format2]) : format2 === "transparent" ? new Rgb(NaN, NaN, NaN, 0) : null;
+}
+function rgbn(n) {
+  return new Rgb(n >> 16 & 255, n >> 8 & 255, n & 255, 1);
+}
+function rgba(r, g, b, a) {
+  if (a <= 0) r = g = b = NaN;
+  return new Rgb(r, g, b, a);
+}
+function rgbConvert(o) {
+  if (!(o instanceof Color)) o = color(o);
+  if (!o) return new Rgb();
+  o = o.rgb();
+  return new Rgb(o.r, o.g, o.b, o.opacity);
+}
+function rgb(r, g, b, opacity) {
+  return arguments.length === 1 ? rgbConvert(r) : new Rgb(r, g, b, opacity == null ? 1 : opacity);
+}
+function Rgb(r, g, b, opacity) {
+  this.r = +r;
+  this.g = +g;
+  this.b = +b;
+  this.opacity = +opacity;
+}
+define(Rgb, rgb, extend(Color, {
+  brighter(k) {
+    k = k == null ? brighter : Math.pow(brighter, k);
+    return new Rgb(this.r * k, this.g * k, this.b * k, this.opacity);
+  },
+  darker(k) {
+    k = k == null ? darker : Math.pow(darker, k);
+    return new Rgb(this.r * k, this.g * k, this.b * k, this.opacity);
+  },
+  rgb() {
+    return this;
+  },
+  clamp() {
+    return new Rgb(clampi(this.r), clampi(this.g), clampi(this.b), clampa(this.opacity));
+  },
+  displayable() {
+    return -0.5 <= this.r && this.r < 255.5 && (-0.5 <= this.g && this.g < 255.5) && (-0.5 <= this.b && this.b < 255.5) && (0 <= this.opacity && this.opacity <= 1);
+  },
+  hex: rgb_formatHex,
+  // Deprecated! Use color.formatHex.
+  formatHex: rgb_formatHex,
+  formatHex8: rgb_formatHex8,
+  formatRgb: rgb_formatRgb,
+  toString: rgb_formatRgb
+}));
+function rgb_formatHex() {
+  return `#${hex(this.r)}${hex(this.g)}${hex(this.b)}`;
+}
+function rgb_formatHex8() {
+  return `#${hex(this.r)}${hex(this.g)}${hex(this.b)}${hex((isNaN(this.opacity) ? 1 : this.opacity) * 255)}`;
+}
+function rgb_formatRgb() {
+  const a = clampa(this.opacity);
+  return `${a === 1 ? "rgb(" : "rgba("}${clampi(this.r)}, ${clampi(this.g)}, ${clampi(this.b)}${a === 1 ? ")" : `, ${a})`}`;
+}
+function clampa(opacity) {
+  return isNaN(opacity) ? 1 : Math.max(0, Math.min(1, opacity));
+}
+function clampi(value) {
+  return Math.max(0, Math.min(255, Math.round(value) || 0));
+}
+function hex(value) {
+  value = clampi(value);
+  return (value < 16 ? "0" : "") + value.toString(16);
+}
+function hsla(h, s, l, a) {
+  if (a <= 0) h = s = l = NaN;
+  else if (l <= 0 || l >= 1) h = s = NaN;
+  else if (s <= 0) h = NaN;
+  return new Hsl(h, s, l, a);
+}
+function hslConvert(o) {
+  if (o instanceof Hsl) return new Hsl(o.h, o.s, o.l, o.opacity);
+  if (!(o instanceof Color)) o = color(o);
+  if (!o) return new Hsl();
+  if (o instanceof Hsl) return o;
+  o = o.rgb();
+  var r = o.r / 255, g = o.g / 255, b = o.b / 255, min = Math.min(r, g, b), max = Math.max(r, g, b), h = NaN, s = max - min, l = (max + min) / 2;
+  if (s) {
+    if (r === max) h = (g - b) / s + (g < b) * 6;
+    else if (g === max) h = (b - r) / s + 2;
+    else h = (r - g) / s + 4;
+    s /= l < 0.5 ? max + min : 2 - max - min;
+    h *= 60;
+  } else {
+    s = l > 0 && l < 1 ? 0 : h;
+  }
+  return new Hsl(h, s, l, o.opacity);
+}
+function hsl(h, s, l, opacity) {
+  return arguments.length === 1 ? hslConvert(h) : new Hsl(h, s, l, opacity == null ? 1 : opacity);
+}
+function Hsl(h, s, l, opacity) {
+  this.h = +h;
+  this.s = +s;
+  this.l = +l;
+  this.opacity = +opacity;
+}
+define(Hsl, hsl, extend(Color, {
+  brighter(k) {
+    k = k == null ? brighter : Math.pow(brighter, k);
+    return new Hsl(this.h, this.s, this.l * k, this.opacity);
+  },
+  darker(k) {
+    k = k == null ? darker : Math.pow(darker, k);
+    return new Hsl(this.h, this.s, this.l * k, this.opacity);
+  },
+  rgb() {
+    var h = this.h % 360 + (this.h < 0) * 360, s = isNaN(h) || isNaN(this.s) ? 0 : this.s, l = this.l, m2 = l + (l < 0.5 ? l : 1 - l) * s, m1 = 2 * l - m2;
+    return new Rgb(
+      hsl2rgb(h >= 240 ? h - 240 : h + 120, m1, m2),
+      hsl2rgb(h, m1, m2),
+      hsl2rgb(h < 120 ? h + 240 : h - 120, m1, m2),
+      this.opacity
+    );
+  },
+  clamp() {
+    return new Hsl(clamph(this.h), clampt(this.s), clampt(this.l), clampa(this.opacity));
+  },
+  displayable() {
+    return (0 <= this.s && this.s <= 1 || isNaN(this.s)) && (0 <= this.l && this.l <= 1) && (0 <= this.opacity && this.opacity <= 1);
+  },
+  formatHsl() {
+    const a = clampa(this.opacity);
+    return `${a === 1 ? "hsl(" : "hsla("}${clamph(this.h)}, ${clampt(this.s) * 100}%, ${clampt(this.l) * 100}%${a === 1 ? ")" : `, ${a})`}`;
+  }
+}));
+function clamph(value) {
+  value = (value || 0) % 360;
+  return value < 0 ? value + 360 : value;
+}
+function clampt(value) {
+  return Math.max(0, Math.min(1, value || 0));
+}
+function hsl2rgb(h, m1, m2) {
+  return (h < 60 ? m1 + (m2 - m1) * h / 60 : h < 180 ? m2 : h < 240 ? m1 + (m2 - m1) * (240 - h) / 60 : m1) * 255;
+}
+var radians = Math.PI / 180;
+var degrees = 180 / Math.PI;
+var K = 18;
+var Xn = 0.96422;
+var Yn = 1;
+var Zn = 0.82521;
+var t0 = 4 / 29;
+var t1 = 6 / 29;
+var t2 = 3 * t1 * t1;
+var t3 = t1 * t1 * t1;
+function labConvert(o) {
+  if (o instanceof Lab) return new Lab(o.l, o.a, o.b, o.opacity);
+  if (o instanceof Hcl) return hcl2lab(o);
+  if (!(o instanceof Rgb)) o = rgbConvert(o);
+  var r = rgb2lrgb(o.r), g = rgb2lrgb(o.g), b = rgb2lrgb(o.b), y2 = xyz2lab((0.2225045 * r + 0.7168786 * g + 0.0606169 * b) / Yn), x2, z;
+  if (r === g && g === b) x2 = z = y2;
+  else {
+    x2 = xyz2lab((0.4360747 * r + 0.3850649 * g + 0.1430804 * b) / Xn);
+    z = xyz2lab((0.0139322 * r + 0.0971045 * g + 0.7141733 * b) / Zn);
+  }
+  return new Lab(116 * y2 - 16, 500 * (x2 - y2), 200 * (y2 - z), o.opacity);
+}
+function lab(l, a, b, opacity) {
+  return arguments.length === 1 ? labConvert(l) : new Lab(l, a, b, opacity == null ? 1 : opacity);
+}
+function Lab(l, a, b, opacity) {
+  this.l = +l;
+  this.a = +a;
+  this.b = +b;
+  this.opacity = +opacity;
+}
+define(Lab, lab, extend(Color, {
+  brighter(k) {
+    return new Lab(this.l + K * (k == null ? 1 : k), this.a, this.b, this.opacity);
+  },
+  darker(k) {
+    return new Lab(this.l - K * (k == null ? 1 : k), this.a, this.b, this.opacity);
+  },
+  rgb() {
+    var y2 = (this.l + 16) / 116, x2 = isNaN(this.a) ? y2 : y2 + this.a / 500, z = isNaN(this.b) ? y2 : y2 - this.b / 200;
+    x2 = Xn * lab2xyz(x2);
+    y2 = Yn * lab2xyz(y2);
+    z = Zn * lab2xyz(z);
+    return new Rgb(
+      lrgb2rgb(3.1338561 * x2 - 1.6168667 * y2 - 0.4906146 * z),
+      lrgb2rgb(-0.9787684 * x2 + 1.9161415 * y2 + 0.033454 * z),
+      lrgb2rgb(0.0719453 * x2 - 0.2289914 * y2 + 1.4052427 * z),
+      this.opacity
+    );
+  }
+}));
+function xyz2lab(t) {
+  return t > t3 ? Math.pow(t, 1 / 3) : t / t2 + t0;
+}
+function lab2xyz(t) {
+  return t > t1 ? t * t * t : t2 * (t - t0);
+}
+function lrgb2rgb(x2) {
+  return 255 * (x2 <= 31308e-7 ? 12.92 * x2 : 1.055 * Math.pow(x2, 1 / 2.4) - 0.055);
+}
+function rgb2lrgb(x2) {
+  return (x2 /= 255) <= 0.04045 ? x2 / 12.92 : Math.pow((x2 + 0.055) / 1.055, 2.4);
+}
+function hclConvert(o) {
+  if (o instanceof Hcl) return new Hcl(o.h, o.c, o.l, o.opacity);
+  if (!(o instanceof Lab)) o = labConvert(o);
+  if (o.a === 0 && o.b === 0) return new Hcl(NaN, 0 < o.l && o.l < 100 ? 0 : NaN, o.l, o.opacity);
+  var h = Math.atan2(o.b, o.a) * degrees;
+  return new Hcl(h < 0 ? h + 360 : h, Math.sqrt(o.a * o.a + o.b * o.b), o.l, o.opacity);
+}
+function hcl(h, c2, l, opacity) {
+  return arguments.length === 1 ? hclConvert(h) : new Hcl(h, c2, l, opacity == null ? 1 : opacity);
+}
+function Hcl(h, c2, l, opacity) {
+  this.h = +h;
+  this.c = +c2;
+  this.l = +l;
+  this.opacity = +opacity;
+}
+function hcl2lab(o) {
+  if (isNaN(o.h)) return new Lab(o.l, 0, 0, o.opacity);
+  var h = o.h * radians;
+  return new Lab(o.l, Math.cos(h) * o.c, Math.sin(h) * o.c, o.opacity);
+}
+define(Hcl, hcl, extend(Color, {
+  brighter(k) {
+    return new Hcl(this.h, this.c, this.l + K * (k == null ? 1 : k), this.opacity);
+  },
+  darker(k) {
+    return new Hcl(this.h, this.c, this.l - K * (k == null ? 1 : k), this.opacity);
+  },
+  rgb() {
+    return hcl2lab(this).rgb();
+  }
+}));
+var A = -0.14861;
+var B = 1.78277;
+var C2 = -0.29227;
+var D = -0.90649;
+var E = 1.97294;
+var ED = E * D;
+var EB = E * B;
+var BC_DA = B * C2 - D * A;
+function cubehelixConvert(o) {
+  if (o instanceof Cubehelix) return new Cubehelix(o.h, o.s, o.l, o.opacity);
+  if (!(o instanceof Rgb)) o = rgbConvert(o);
+  var r = o.r / 255, g = o.g / 255, b = o.b / 255, l = (BC_DA * b + ED * r - EB * g) / (BC_DA + ED - EB), bl = b - l, k = (E * (g - l) - C2 * bl) / D, s = Math.sqrt(k * k + bl * bl) / (E * l * (1 - l)), h = s ? Math.atan2(k, bl) * degrees - 120 : NaN;
+  return new Cubehelix(h < 0 ? h + 360 : h, s, l, o.opacity);
+}
+function cubehelix(h, s, l, opacity) {
+  return arguments.length === 1 ? cubehelixConvert(h) : new Cubehelix(h, s, l, opacity == null ? 1 : opacity);
+}
+function Cubehelix(h, s, l, opacity) {
+  this.h = +h;
+  this.s = +s;
+  this.l = +l;
+  this.opacity = +opacity;
+}
+define(Cubehelix, cubehelix, extend(Color, {
+  brighter(k) {
+    k = k == null ? brighter : Math.pow(brighter, k);
+    return new Cubehelix(this.h, this.s, this.l * k, this.opacity);
+  },
+  darker(k) {
+    k = k == null ? darker : Math.pow(darker, k);
+    return new Cubehelix(this.h, this.s, this.l * k, this.opacity);
+  },
+  rgb() {
+    var h = isNaN(this.h) ? 0 : (this.h + 120) * radians, l = +this.l, a = isNaN(this.s) ? 0 : this.s * l * (1 - l), cosh2 = Math.cos(h), sinh2 = Math.sin(h);
+    return new Rgb(
+      255 * (l + a * (A * cosh2 + B * sinh2)),
+      255 * (l + a * (C2 * cosh2 + D * sinh2)),
+      255 * (l + a * (E * cosh2)),
+      this.opacity
+    );
+  }
+}));
+
+// node_modules/d3-interpolate/dist/d3-interpolate.mjs
+function basis(t12, v0, v1, v2, v3) {
+  var t22 = t12 * t12, t32 = t22 * t12;
+  return ((1 - 3 * t12 + 3 * t22 - t32) * v0 + (4 - 6 * t22 + 3 * t32) * v1 + (1 + 3 * t12 + 3 * t22 - 3 * t32) * v2 + t32 * v3) / 6;
+}
+function basis$1(values) {
+  var n = values.length - 1;
+  return function(t) {
+    var i2 = t <= 0 ? t = 0 : t >= 1 ? (t = 1, n - 1) : Math.floor(t * n), v1 = values[i2], v2 = values[i2 + 1], v0 = i2 > 0 ? values[i2 - 1] : 2 * v1 - v2, v3 = i2 < n - 1 ? values[i2 + 2] : 2 * v2 - v1;
+    return basis((t - i2 / n) * n, v0, v1, v2, v3);
+  };
+}
+function basisClosed(values) {
+  var n = values.length;
+  return function(t) {
+    var i2 = Math.floor(((t %= 1) < 0 ? ++t : t) * n), v0 = values[(i2 + n - 1) % n], v1 = values[i2 % n], v2 = values[(i2 + 1) % n], v3 = values[(i2 + 2) % n];
+    return basis((t - i2 / n) * n, v0, v1, v2, v3);
+  };
+}
+var constant = (x2) => () => x2;
+function linear(a, d) {
+  return function(t) {
+    return a + t * d;
+  };
+}
+function exponential(a, b, y2) {
+  return a = Math.pow(a, y2), b = Math.pow(b, y2) - a, y2 = 1 / y2, function(t) {
+    return Math.pow(a + t * b, y2);
+  };
+}
+function hue$1(a, b) {
+  var d = b - a;
+  return d ? linear(a, d > 180 || d < -180 ? d - 360 * Math.round(d / 360) : d) : constant(isNaN(a) ? b : a);
+}
+function gamma(y2) {
+  return (y2 = +y2) === 1 ? nogamma : function(a, b) {
+    return b - a ? exponential(a, b, y2) : constant(isNaN(a) ? b : a);
+  };
+}
+function nogamma(a, b) {
+  var d = b - a;
+  return d ? linear(a, d) : constant(isNaN(a) ? b : a);
+}
+var rgb2 = (function rgbGamma(y2) {
+  var color2 = gamma(y2);
+  function rgb3(start2, end) {
+    var r = color2((start2 = rgb(start2)).r, (end = rgb(end)).r), g = color2(start2.g, end.g), b = color2(start2.b, end.b), opacity = nogamma(start2.opacity, end.opacity);
+    return function(t) {
+      start2.r = r(t);
+      start2.g = g(t);
+      start2.b = b(t);
+      start2.opacity = opacity(t);
+      return start2 + "";
+    };
+  }
+  rgb3.gamma = rgbGamma;
+  return rgb3;
+})(1);
+function rgbSpline(spline) {
+  return function(colors2) {
+    var n = colors2.length, r = new Array(n), g = new Array(n), b = new Array(n), i2, color2;
+    for (i2 = 0; i2 < n; ++i2) {
+      color2 = rgb(colors2[i2]);
+      r[i2] = color2.r || 0;
+      g[i2] = color2.g || 0;
+      b[i2] = color2.b || 0;
+    }
+    r = spline(r);
+    g = spline(g);
+    b = spline(b);
+    color2.opacity = 1;
+    return function(t) {
+      color2.r = r(t);
+      color2.g = g(t);
+      color2.b = b(t);
+      return color2 + "";
+    };
+  };
+}
+var rgbBasis = rgbSpline(basis$1);
+var rgbBasisClosed = rgbSpline(basisClosed);
+function number(a, b) {
+  return a = +a, b = +b, function(t) {
+    return a * (1 - t) + b * t;
+  };
+}
+var reA = /[-+]?(?:\d+\.?\d*|\.?\d+)(?:[eE][-+]?\d+)?/g;
+var reB = new RegExp(reA.source, "g");
+var degrees2 = 180 / Math.PI;
+var identity = {
+  translateX: 0,
+  translateY: 0,
+  rotate: 0,
+  skewX: 0,
+  scaleX: 1,
+  scaleY: 1
+};
+function decompose(a, b, c2, d, e, f) {
+  var scaleX, scaleY, skewX;
+  if (scaleX = Math.sqrt(a * a + b * b)) a /= scaleX, b /= scaleX;
+  if (skewX = a * c2 + b * d) c2 -= a * skewX, d -= b * skewX;
+  if (scaleY = Math.sqrt(c2 * c2 + d * d)) c2 /= scaleY, d /= scaleY, skewX /= scaleY;
+  if (a * d < b * c2) a = -a, b = -b, skewX = -skewX, scaleX = -scaleX;
+  return {
+    translateX: e,
+    translateY: f,
+    rotate: Math.atan2(b, a) * degrees2,
+    skewX: Math.atan(skewX) * degrees2,
+    scaleX,
+    scaleY
+  };
+}
+var svgNode;
+function parseCss(value) {
+  const m = new (typeof DOMMatrix === "function" ? DOMMatrix : WebKitCSSMatrix)(value + "");
+  return m.isIdentity ? identity : decompose(m.a, m.b, m.c, m.d, m.e, m.f);
+}
+function parseSvg(value) {
+  if (value == null) return identity;
+  if (!svgNode) svgNode = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  svgNode.setAttribute("transform", value);
+  if (!(value = svgNode.transform.baseVal.consolidate())) return identity;
+  value = value.matrix;
+  return decompose(value.a, value.b, value.c, value.d, value.e, value.f);
+}
+function interpolateTransform(parse2, pxComma, pxParen, degParen) {
+  function pop(s) {
+    return s.length ? s.pop() + " " : "";
+  }
+  function translate(xa, ya, xb, yb, s, q) {
+    if (xa !== xb || ya !== yb) {
+      var i2 = s.push("translate(", null, pxComma, null, pxParen);
+      q.push({ i: i2 - 4, x: number(xa, xb) }, { i: i2 - 2, x: number(ya, yb) });
+    } else if (xb || yb) {
+      s.push("translate(" + xb + pxComma + yb + pxParen);
+    }
+  }
+  function rotate(a, b, s, q) {
+    if (a !== b) {
+      if (a - b > 180) b += 360;
+      else if (b - a > 180) a += 360;
+      q.push({ i: s.push(pop(s) + "rotate(", null, degParen) - 2, x: number(a, b) });
+    } else if (b) {
+      s.push(pop(s) + "rotate(" + b + degParen);
+    }
+  }
+  function skewX(a, b, s, q) {
+    if (a !== b) {
+      q.push({ i: s.push(pop(s) + "skewX(", null, degParen) - 2, x: number(a, b) });
+    } else if (b) {
+      s.push(pop(s) + "skewX(" + b + degParen);
+    }
+  }
+  function scale(xa, ya, xb, yb, s, q) {
+    if (xa !== xb || ya !== yb) {
+      var i2 = s.push(pop(s) + "scale(", null, ",", null, ")");
+      q.push({ i: i2 - 4, x: number(xa, xb) }, { i: i2 - 2, x: number(ya, yb) });
+    } else if (xb !== 1 || yb !== 1) {
+      s.push(pop(s) + "scale(" + xb + "," + yb + ")");
+    }
+  }
+  return function(a, b) {
+    var s = [], q = [];
+    a = parse2(a), b = parse2(b);
+    translate(a.translateX, a.translateY, b.translateX, b.translateY, s, q);
+    rotate(a.rotate, b.rotate, s, q);
+    skewX(a.skewX, b.skewX, s, q);
+    scale(a.scaleX, a.scaleY, b.scaleX, b.scaleY, s, q);
+    a = b = null;
+    return function(t) {
+      var i2 = -1, n = q.length, o;
+      while (++i2 < n) s[(o = q[i2]).i] = o.x(t);
+      return s.join("");
+    };
+  };
+}
+var interpolateTransformCss = interpolateTransform(parseCss, "px, ", "px)", "deg)");
+var interpolateTransformSvg = interpolateTransform(parseSvg, ", ", ")", ")");
+var epsilon2 = 1e-12;
+function cosh(x2) {
+  return ((x2 = Math.exp(x2)) + 1 / x2) / 2;
+}
+function sinh(x2) {
+  return ((x2 = Math.exp(x2)) - 1 / x2) / 2;
+}
+function tanh(x2) {
+  return ((x2 = Math.exp(2 * x2)) - 1) / (x2 + 1);
+}
+var zoom = (function zoomRho(rho, rho2, rho4) {
+  function zoom2(p0, p1) {
+    var ux0 = p0[0], uy0 = p0[1], w0 = p0[2], ux1 = p1[0], uy1 = p1[1], w1 = p1[2], dx = ux1 - ux0, dy = uy1 - uy0, d2 = dx * dx + dy * dy, i2, S;
+    if (d2 < epsilon2) {
+      S = Math.log(w1 / w0) / rho;
+      i2 = function(t) {
+        return [
+          ux0 + t * dx,
+          uy0 + t * dy,
+          w0 * Math.exp(rho * t * S)
+        ];
+      };
+    } else {
+      var d1 = Math.sqrt(d2), b0 = (w1 * w1 - w0 * w0 + rho4 * d2) / (2 * w0 * rho2 * d1), b1 = (w1 * w1 - w0 * w0 - rho4 * d2) / (2 * w1 * rho2 * d1), r0 = Math.log(Math.sqrt(b0 * b0 + 1) - b0), r1 = Math.log(Math.sqrt(b1 * b1 + 1) - b1);
+      S = (r1 - r0) / rho;
+      i2 = function(t) {
+        var s = t * S, coshr0 = cosh(r0), u = w0 / (rho2 * d1) * (coshr0 * tanh(rho * s + r0) - sinh(r0));
+        return [
+          ux0 + u * dx,
+          uy0 + u * dy,
+          w0 * coshr0 / cosh(rho * s + r0)
+        ];
+      };
+    }
+    i2.duration = Math.abs(S) * 1e3 * rho / Math.SQRT2;
+    return i2;
+  }
+  zoom2.rho = function(_) {
+    var _1 = Math.max(1e-3, +_), _2 = _1 * _1, _4 = _2 * _2;
+    return zoomRho(_1, _2, _4);
+  };
+  return zoom2;
+})(Math.SQRT2, 2, 4);
+function hsl2(hue) {
+  return function(start2, end) {
+    var h = hue((start2 = hsl(start2)).h, (end = hsl(end)).h), s = nogamma(start2.s, end.s), l = nogamma(start2.l, end.l), opacity = nogamma(start2.opacity, end.opacity);
+    return function(t) {
+      start2.h = h(t);
+      start2.s = s(t);
+      start2.l = l(t);
+      start2.opacity = opacity(t);
+      return start2 + "";
+    };
+  };
+}
+var hsl_default = hsl2(hue$1);
+var hslLong = hsl2(nogamma);
+function hcl2(hue) {
+  return function(start2, end) {
+    var h = hue((start2 = hcl(start2)).h, (end = hcl(end)).h), c2 = nogamma(start2.c, end.c), l = nogamma(start2.l, end.l), opacity = nogamma(start2.opacity, end.opacity);
+    return function(t) {
+      start2.h = h(t);
+      start2.c = c2(t);
+      start2.l = l(t);
+      start2.opacity = opacity(t);
+      return start2 + "";
+    };
+  };
+}
+var hcl_default = hcl2(hue$1);
+var hclLong = hcl2(nogamma);
+function cubehelix2(hue) {
+  return (function cubehelixGamma(y2) {
+    y2 = +y2;
+    function cubehelix4(start2, end) {
+      var h = hue((start2 = cubehelix(start2)).h, (end = cubehelix(end)).h), s = nogamma(start2.s, end.s), l = nogamma(start2.l, end.l), opacity = nogamma(start2.opacity, end.opacity);
+      return function(t) {
+        start2.h = h(t);
+        start2.s = s(t);
+        start2.l = l(Math.pow(t, y2));
+        start2.opacity = opacity(t);
+        return start2 + "";
+      };
+    }
+    cubehelix4.gamma = cubehelixGamma;
+    return cubehelix4;
+  })(1);
+}
+var cubehelix_default = cubehelix2(hue$1);
+var cubehelixLong = cubehelix2(nogamma);
+
+// node_modules/d3-scale-chromatic/dist/d3-scale-chromatic.mjs
+function colors(specifier) {
+  var n = specifier.length / 6 | 0, colors2 = new Array(n), i2 = 0;
+  while (i2 < n) colors2[i2] = "#" + specifier.slice(i2 * 6, ++i2 * 6);
+  return colors2;
+}
+var category10 = colors("1f77b4ff7f0e2ca02cd627289467bd8c564be377c27f7f7fbcbd2217becf");
+var Accent = colors("7fc97fbeaed4fdc086ffff99386cb0f0027fbf5b17666666");
+var Dark2 = colors("1b9e77d95f027570b3e7298a66a61ee6ab02a6761d666666");
+var observable10 = colors("4269d0efb118ff725c6cc5b03ca951ff8ab7a463f297bbf59c6b4e9498a0");
+var Paired = colors("a6cee31f78b4b2df8a33a02cfb9a99e31a1cfdbf6fff7f00cab2d66a3d9affff99b15928");
+var Pastel1 = colors("fbb4aeb3cde3ccebc5decbe4fed9a6ffffcce5d8bdfddaecf2f2f2");
+var Pastel2 = colors("b3e2cdfdcdaccbd5e8f4cae4e6f5c9fff2aef1e2cccccccc");
+var Set1 = colors("e41a1c377eb84daf4a984ea3ff7f00ffff33a65628f781bf999999");
+var Set2 = colors("66c2a5fc8d628da0cbe78ac3a6d854ffd92fe5c494b3b3b3");
+var Set3 = colors("8dd3c7ffffb3bebadafb807280b1d3fdb462b3de69fccde5d9d9d9bc80bdccebc5ffed6f");
+var Tableau10 = colors("4e79a7f28e2ce1575976b7b259a14fedc949af7aa1ff9da79c755fbab0ab");
+var ramp$1 = (scheme2) => rgbBasis(scheme2[scheme2.length - 1]);
+var scheme$q = new Array(3).concat(
+  "d8b365f5f5f55ab4ac",
+  "a6611adfc27d80cdc1018571",
+  "a6611adfc27df5f5f580cdc1018571",
+  "8c510ad8b365f6e8c3c7eae55ab4ac01665e",
+  "8c510ad8b365f6e8c3f5f5f5c7eae55ab4ac01665e",
+  "8c510abf812ddfc27df6e8c3c7eae580cdc135978f01665e",
+  "8c510abf812ddfc27df6e8c3f5f5f5c7eae580cdc135978f01665e",
+  "5430058c510abf812ddfc27df6e8c3c7eae580cdc135978f01665e003c30",
+  "5430058c510abf812ddfc27df6e8c3f5f5f5c7eae580cdc135978f01665e003c30"
+).map(colors);
+var BrBG = ramp$1(scheme$q);
+var scheme$p = new Array(3).concat(
+  "af8dc3f7f7f77fbf7b",
+  "7b3294c2a5cfa6dba0008837",
+  "7b3294c2a5cff7f7f7a6dba0008837",
+  "762a83af8dc3e7d4e8d9f0d37fbf7b1b7837",
+  "762a83af8dc3e7d4e8f7f7f7d9f0d37fbf7b1b7837",
+  "762a839970abc2a5cfe7d4e8d9f0d3a6dba05aae611b7837",
+  "762a839970abc2a5cfe7d4e8f7f7f7d9f0d3a6dba05aae611b7837",
+  "40004b762a839970abc2a5cfe7d4e8d9f0d3a6dba05aae611b783700441b",
+  "40004b762a839970abc2a5cfe7d4e8f7f7f7d9f0d3a6dba05aae611b783700441b"
+).map(colors);
+var PRGn = ramp$1(scheme$p);
+var scheme$o = new Array(3).concat(
+  "e9a3c9f7f7f7a1d76a",
+  "d01c8bf1b6dab8e1864dac26",
+  "d01c8bf1b6daf7f7f7b8e1864dac26",
+  "c51b7de9a3c9fde0efe6f5d0a1d76a4d9221",
+  "c51b7de9a3c9fde0eff7f7f7e6f5d0a1d76a4d9221",
+  "c51b7dde77aef1b6dafde0efe6f5d0b8e1867fbc414d9221",
+  "c51b7dde77aef1b6dafde0eff7f7f7e6f5d0b8e1867fbc414d9221",
+  "8e0152c51b7dde77aef1b6dafde0efe6f5d0b8e1867fbc414d9221276419",
+  "8e0152c51b7dde77aef1b6dafde0eff7f7f7e6f5d0b8e1867fbc414d9221276419"
+).map(colors);
+var PiYG = ramp$1(scheme$o);
+var scheme$n = new Array(3).concat(
+  "998ec3f7f7f7f1a340",
+  "5e3c99b2abd2fdb863e66101",
+  "5e3c99b2abd2f7f7f7fdb863e66101",
+  "542788998ec3d8daebfee0b6f1a340b35806",
+  "542788998ec3d8daebf7f7f7fee0b6f1a340b35806",
+  "5427888073acb2abd2d8daebfee0b6fdb863e08214b35806",
+  "5427888073acb2abd2d8daebf7f7f7fee0b6fdb863e08214b35806",
+  "2d004b5427888073acb2abd2d8daebfee0b6fdb863e08214b358067f3b08",
+  "2d004b5427888073acb2abd2d8daebf7f7f7fee0b6fdb863e08214b358067f3b08"
+).map(colors);
+var PuOr = ramp$1(scheme$n);
+var scheme$m = new Array(3).concat(
+  "ef8a62f7f7f767a9cf",
+  "ca0020f4a58292c5de0571b0",
+  "ca0020f4a582f7f7f792c5de0571b0",
+  "b2182bef8a62fddbc7d1e5f067a9cf2166ac",
+  "b2182bef8a62fddbc7f7f7f7d1e5f067a9cf2166ac",
+  "b2182bd6604df4a582fddbc7d1e5f092c5de4393c32166ac",
+  "b2182bd6604df4a582fddbc7f7f7f7d1e5f092c5de4393c32166ac",
+  "67001fb2182bd6604df4a582fddbc7d1e5f092c5de4393c32166ac053061",
+  "67001fb2182bd6604df4a582fddbc7f7f7f7d1e5f092c5de4393c32166ac053061"
+).map(colors);
+var RdBu = ramp$1(scheme$m);
+var scheme$l = new Array(3).concat(
+  "ef8a62ffffff999999",
+  "ca0020f4a582bababa404040",
+  "ca0020f4a582ffffffbababa404040",
+  "b2182bef8a62fddbc7e0e0e09999994d4d4d",
+  "b2182bef8a62fddbc7ffffffe0e0e09999994d4d4d",
+  "b2182bd6604df4a582fddbc7e0e0e0bababa8787874d4d4d",
+  "b2182bd6604df4a582fddbc7ffffffe0e0e0bababa8787874d4d4d",
+  "67001fb2182bd6604df4a582fddbc7e0e0e0bababa8787874d4d4d1a1a1a",
+  "67001fb2182bd6604df4a582fddbc7ffffffe0e0e0bababa8787874d4d4d1a1a1a"
+).map(colors);
+var RdGy = ramp$1(scheme$l);
+var scheme$k = new Array(3).concat(
+  "fc8d59ffffbf91bfdb",
+  "d7191cfdae61abd9e92c7bb6",
+  "d7191cfdae61ffffbfabd9e92c7bb6",
+  "d73027fc8d59fee090e0f3f891bfdb4575b4",
+  "d73027fc8d59fee090ffffbfe0f3f891bfdb4575b4",
+  "d73027f46d43fdae61fee090e0f3f8abd9e974add14575b4",
+  "d73027f46d43fdae61fee090ffffbfe0f3f8abd9e974add14575b4",
+  "a50026d73027f46d43fdae61fee090e0f3f8abd9e974add14575b4313695",
+  "a50026d73027f46d43fdae61fee090ffffbfe0f3f8abd9e974add14575b4313695"
+).map(colors);
+var RdYlBu = ramp$1(scheme$k);
+var scheme$j = new Array(3).concat(
+  "fc8d59ffffbf91cf60",
+  "d7191cfdae61a6d96a1a9641",
+  "d7191cfdae61ffffbfa6d96a1a9641",
+  "d73027fc8d59fee08bd9ef8b91cf601a9850",
+  "d73027fc8d59fee08bffffbfd9ef8b91cf601a9850",
+  "d73027f46d43fdae61fee08bd9ef8ba6d96a66bd631a9850",
+  "d73027f46d43fdae61fee08bffffbfd9ef8ba6d96a66bd631a9850",
+  "a50026d73027f46d43fdae61fee08bd9ef8ba6d96a66bd631a9850006837",
+  "a50026d73027f46d43fdae61fee08bffffbfd9ef8ba6d96a66bd631a9850006837"
+).map(colors);
+var RdYlGn = ramp$1(scheme$j);
+var scheme$i = new Array(3).concat(
+  "fc8d59ffffbf99d594",
+  "d7191cfdae61abdda42b83ba",
+  "d7191cfdae61ffffbfabdda42b83ba",
+  "d53e4ffc8d59fee08be6f59899d5943288bd",
+  "d53e4ffc8d59fee08bffffbfe6f59899d5943288bd",
+  "d53e4ff46d43fdae61fee08be6f598abdda466c2a53288bd",
+  "d53e4ff46d43fdae61fee08bffffbfe6f598abdda466c2a53288bd",
+  "9e0142d53e4ff46d43fdae61fee08be6f598abdda466c2a53288bd5e4fa2",
+  "9e0142d53e4ff46d43fdae61fee08bffffbfe6f598abdda466c2a53288bd5e4fa2"
+).map(colors);
+var Spectral = ramp$1(scheme$i);
+var scheme$h = new Array(3).concat(
+  "e5f5f999d8c92ca25f",
+  "edf8fbb2e2e266c2a4238b45",
+  "edf8fbb2e2e266c2a42ca25f006d2c",
+  "edf8fbccece699d8c966c2a42ca25f006d2c",
+  "edf8fbccece699d8c966c2a441ae76238b45005824",
+  "f7fcfde5f5f9ccece699d8c966c2a441ae76238b45005824",
+  "f7fcfde5f5f9ccece699d8c966c2a441ae76238b45006d2c00441b"
+).map(colors);
+var BuGn = ramp$1(scheme$h);
+var scheme$g = new Array(3).concat(
+  "e0ecf49ebcda8856a7",
+  "edf8fbb3cde38c96c688419d",
+  "edf8fbb3cde38c96c68856a7810f7c",
+  "edf8fbbfd3e69ebcda8c96c68856a7810f7c",
+  "edf8fbbfd3e69ebcda8c96c68c6bb188419d6e016b",
+  "f7fcfde0ecf4bfd3e69ebcda8c96c68c6bb188419d6e016b",
+  "f7fcfde0ecf4bfd3e69ebcda8c96c68c6bb188419d810f7c4d004b"
+).map(colors);
+var BuPu = ramp$1(scheme$g);
+var scheme$f = new Array(3).concat(
+  "e0f3dba8ddb543a2ca",
+  "f0f9e8bae4bc7bccc42b8cbe",
+  "f0f9e8bae4bc7bccc443a2ca0868ac",
+  "f0f9e8ccebc5a8ddb57bccc443a2ca0868ac",
+  "f0f9e8ccebc5a8ddb57bccc44eb3d32b8cbe08589e",
+  "f7fcf0e0f3dbccebc5a8ddb57bccc44eb3d32b8cbe08589e",
+  "f7fcf0e0f3dbccebc5a8ddb57bccc44eb3d32b8cbe0868ac084081"
+).map(colors);
+var GnBu = ramp$1(scheme$f);
+var scheme$e = new Array(3).concat(
+  "fee8c8fdbb84e34a33",
+  "fef0d9fdcc8afc8d59d7301f",
+  "fef0d9fdcc8afc8d59e34a33b30000",
+  "fef0d9fdd49efdbb84fc8d59e34a33b30000",
+  "fef0d9fdd49efdbb84fc8d59ef6548d7301f990000",
+  "fff7ecfee8c8fdd49efdbb84fc8d59ef6548d7301f990000",
+  "fff7ecfee8c8fdd49efdbb84fc8d59ef6548d7301fb300007f0000"
+).map(colors);
+var OrRd = ramp$1(scheme$e);
+var scheme$d = new Array(3).concat(
+  "ece2f0a6bddb1c9099",
+  "f6eff7bdc9e167a9cf02818a",
+  "f6eff7bdc9e167a9cf1c9099016c59",
+  "f6eff7d0d1e6a6bddb67a9cf1c9099016c59",
+  "f6eff7d0d1e6a6bddb67a9cf3690c002818a016450",
+  "fff7fbece2f0d0d1e6a6bddb67a9cf3690c002818a016450",
+  "fff7fbece2f0d0d1e6a6bddb67a9cf3690c002818a016c59014636"
+).map(colors);
+var PuBuGn = ramp$1(scheme$d);
+var scheme$c = new Array(3).concat(
+  "ece7f2a6bddb2b8cbe",
+  "f1eef6bdc9e174a9cf0570b0",
+  "f1eef6bdc9e174a9cf2b8cbe045a8d",
+  "f1eef6d0d1e6a6bddb74a9cf2b8cbe045a8d",
+  "f1eef6d0d1e6a6bddb74a9cf3690c00570b0034e7b",
+  "fff7fbece7f2d0d1e6a6bddb74a9cf3690c00570b0034e7b",
+  "fff7fbece7f2d0d1e6a6bddb74a9cf3690c00570b0045a8d023858"
+).map(colors);
+var PuBu = ramp$1(scheme$c);
+var scheme$b = new Array(3).concat(
+  "e7e1efc994c7dd1c77",
+  "f1eef6d7b5d8df65b0ce1256",
+  "f1eef6d7b5d8df65b0dd1c77980043",
+  "f1eef6d4b9dac994c7df65b0dd1c77980043",
+  "f1eef6d4b9dac994c7df65b0e7298ace125691003f",
+  "f7f4f9e7e1efd4b9dac994c7df65b0e7298ace125691003f",
+  "f7f4f9e7e1efd4b9dac994c7df65b0e7298ace125698004367001f"
+).map(colors);
+var PuRd = ramp$1(scheme$b);
+var scheme$a = new Array(3).concat(
+  "fde0ddfa9fb5c51b8a",
+  "feebe2fbb4b9f768a1ae017e",
+  "feebe2fbb4b9f768a1c51b8a7a0177",
+  "feebe2fcc5c0fa9fb5f768a1c51b8a7a0177",
+  "feebe2fcc5c0fa9fb5f768a1dd3497ae017e7a0177",
+  "fff7f3fde0ddfcc5c0fa9fb5f768a1dd3497ae017e7a0177",
+  "fff7f3fde0ddfcc5c0fa9fb5f768a1dd3497ae017e7a017749006a"
+).map(colors);
+var RdPu = ramp$1(scheme$a);
+var scheme$9 = new Array(3).concat(
+  "edf8b17fcdbb2c7fb8",
+  "ffffcca1dab441b6c4225ea8",
+  "ffffcca1dab441b6c42c7fb8253494",
+  "ffffccc7e9b47fcdbb41b6c42c7fb8253494",
+  "ffffccc7e9b47fcdbb41b6c41d91c0225ea80c2c84",
+  "ffffd9edf8b1c7e9b47fcdbb41b6c41d91c0225ea80c2c84",
+  "ffffd9edf8b1c7e9b47fcdbb41b6c41d91c0225ea8253494081d58"
+).map(colors);
+var YlGnBu = ramp$1(scheme$9);
+var scheme$8 = new Array(3).concat(
+  "f7fcb9addd8e31a354",
+  "ffffccc2e69978c679238443",
+  "ffffccc2e69978c67931a354006837",
+  "ffffccd9f0a3addd8e78c67931a354006837",
+  "ffffccd9f0a3addd8e78c67941ab5d238443005a32",
+  "ffffe5f7fcb9d9f0a3addd8e78c67941ab5d238443005a32",
+  "ffffe5f7fcb9d9f0a3addd8e78c67941ab5d238443006837004529"
+).map(colors);
+var YlGn = ramp$1(scheme$8);
+var scheme$7 = new Array(3).concat(
+  "fff7bcfec44fd95f0e",
+  "ffffd4fed98efe9929cc4c02",
+  "ffffd4fed98efe9929d95f0e993404",
+  "ffffd4fee391fec44ffe9929d95f0e993404",
+  "ffffd4fee391fec44ffe9929ec7014cc4c028c2d04",
+  "ffffe5fff7bcfee391fec44ffe9929ec7014cc4c028c2d04",
+  "ffffe5fff7bcfee391fec44ffe9929ec7014cc4c02993404662506"
+).map(colors);
+var YlOrBr = ramp$1(scheme$7);
+var scheme$6 = new Array(3).concat(
+  "ffeda0feb24cf03b20",
+  "ffffb2fecc5cfd8d3ce31a1c",
+  "ffffb2fecc5cfd8d3cf03b20bd0026",
+  "ffffb2fed976feb24cfd8d3cf03b20bd0026",
+  "ffffb2fed976feb24cfd8d3cfc4e2ae31a1cb10026",
+  "ffffccffeda0fed976feb24cfd8d3cfc4e2ae31a1cb10026",
+  "ffffccffeda0fed976feb24cfd8d3cfc4e2ae31a1cbd0026800026"
+).map(colors);
+var YlOrRd = ramp$1(scheme$6);
+var scheme$5 = new Array(3).concat(
+  "deebf79ecae13182bd",
+  "eff3ffbdd7e76baed62171b5",
+  "eff3ffbdd7e76baed63182bd08519c",
+  "eff3ffc6dbef9ecae16baed63182bd08519c",
+  "eff3ffc6dbef9ecae16baed64292c62171b5084594",
+  "f7fbffdeebf7c6dbef9ecae16baed64292c62171b5084594",
+  "f7fbffdeebf7c6dbef9ecae16baed64292c62171b508519c08306b"
+).map(colors);
+var Blues = ramp$1(scheme$5);
+var scheme$4 = new Array(3).concat(
+  "e5f5e0a1d99b31a354",
+  "edf8e9bae4b374c476238b45",
+  "edf8e9bae4b374c47631a354006d2c",
+  "edf8e9c7e9c0a1d99b74c47631a354006d2c",
+  "edf8e9c7e9c0a1d99b74c47641ab5d238b45005a32",
+  "f7fcf5e5f5e0c7e9c0a1d99b74c47641ab5d238b45005a32",
+  "f7fcf5e5f5e0c7e9c0a1d99b74c47641ab5d238b45006d2c00441b"
+).map(colors);
+var Greens = ramp$1(scheme$4);
+var scheme$3 = new Array(3).concat(
+  "f0f0f0bdbdbd636363",
+  "f7f7f7cccccc969696525252",
+  "f7f7f7cccccc969696636363252525",
+  "f7f7f7d9d9d9bdbdbd969696636363252525",
+  "f7f7f7d9d9d9bdbdbd969696737373525252252525",
+  "fffffff0f0f0d9d9d9bdbdbd969696737373525252252525",
+  "fffffff0f0f0d9d9d9bdbdbd969696737373525252252525000000"
+).map(colors);
+var Greys = ramp$1(scheme$3);
+var scheme$2 = new Array(3).concat(
+  "efedf5bcbddc756bb1",
+  "f2f0f7cbc9e29e9ac86a51a3",
+  "f2f0f7cbc9e29e9ac8756bb154278f",
+  "f2f0f7dadaebbcbddc9e9ac8756bb154278f",
+  "f2f0f7dadaebbcbddc9e9ac8807dba6a51a34a1486",
+  "fcfbfdefedf5dadaebbcbddc9e9ac8807dba6a51a34a1486",
+  "fcfbfdefedf5dadaebbcbddc9e9ac8807dba6a51a354278f3f007d"
+).map(colors);
+var Purples = ramp$1(scheme$2);
+var scheme$1 = new Array(3).concat(
+  "fee0d2fc9272de2d26",
+  "fee5d9fcae91fb6a4acb181d",
+  "fee5d9fcae91fb6a4ade2d26a50f15",
+  "fee5d9fcbba1fc9272fb6a4ade2d26a50f15",
+  "fee5d9fcbba1fc9272fb6a4aef3b2ccb181d99000d",
+  "fff5f0fee0d2fcbba1fc9272fb6a4aef3b2ccb181d99000d",
+  "fff5f0fee0d2fcbba1fc9272fb6a4aef3b2ccb181da50f1567000d"
+).map(colors);
+var Reds = ramp$1(scheme$1);
+var scheme = new Array(3).concat(
+  "fee6cefdae6be6550d",
+  "feeddefdbe85fd8d3cd94701",
+  "feeddefdbe85fd8d3ce6550da63603",
+  "feeddefdd0a2fdae6bfd8d3ce6550da63603",
+  "feeddefdd0a2fdae6bfd8d3cf16913d948018c2d04",
+  "fff5ebfee6cefdd0a2fdae6bfd8d3cf16913d948018c2d04",
+  "fff5ebfee6cefdd0a2fdae6bfd8d3cf16913d94801a636037f2704"
+).map(colors);
+var Oranges = ramp$1(scheme);
+var cubehelix3 = cubehelixLong(cubehelix(300, 0.5, 0), cubehelix(-240, 0.5, 1));
+var warm = cubehelixLong(cubehelix(-100, 0.75, 0.35), cubehelix(80, 1.5, 0.8));
+var cool = cubehelixLong(cubehelix(260, 0.75, 0.35), cubehelix(80, 1.5, 0.8));
+var c$1 = cubehelix();
+var c = rgb();
+var pi_1_3 = Math.PI / 3;
+var pi_2_3 = Math.PI * 2 / 3;
+function ramp(range) {
+  var n = range.length;
+  return function(t) {
+    return range[Math.max(0, Math.min(n - 1, Math.floor(t * n)))];
+  };
+}
+var viridis = ramp(colors("44015444025645045745055946075a46085c460a5d460b5e470d60470e6147106347116447136548146748166848176948186a481a6c481b6d481c6e481d6f481f70482071482173482374482475482576482677482878482979472a7a472c7a472d7b472e7c472f7d46307e46327e46337f463480453581453781453882443983443a83443b84433d84433e85423f854240864241864142874144874045884046883f47883f48893e49893e4a893e4c8a3d4d8a3d4e8a3c4f8a3c508b3b518b3b528b3a538b3a548c39558c39568c38588c38598c375a8c375b8d365c8d365d8d355e8d355f8d34608d34618d33628d33638d32648e32658e31668e31678e31688e30698e306a8e2f6b8e2f6c8e2e6d8e2e6e8e2e6f8e2d708e2d718e2c718e2c728e2c738e2b748e2b758e2a768e2a778e2a788e29798e297a8e297b8e287c8e287d8e277e8e277f8e27808e26818e26828e26828e25838e25848e25858e24868e24878e23888e23898e238a8d228b8d228c8d228d8d218e8d218f8d21908d21918c20928c20928c20938c1f948c1f958b1f968b1f978b1f988b1f998a1f9a8a1e9b8a1e9c891e9d891f9e891f9f881fa0881fa1881fa1871fa28720a38620a48621a58521a68522a78522a88423a98324aa8325ab8225ac8226ad8127ad8128ae8029af7f2ab07f2cb17e2db27d2eb37c2fb47c31b57b32b67a34b67935b77937b87838b9773aba763bbb753dbc743fbc7340bd7242be7144bf7046c06f48c16e4ac16d4cc26c4ec36b50c46a52c56954c56856c66758c7655ac8645cc8635ec96260ca6063cb5f65cb5e67cc5c69cd5b6ccd5a6ece5870cf5773d05675d05477d1537ad1517cd2507fd34e81d34d84d44b86d54989d5488bd6468ed64590d74393d74195d84098d83e9bd93c9dd93ba0da39a2da37a5db36a8db34aadc32addc30b0dd2fb2dd2db5de2bb8de29bade28bddf26c0df25c2df23c5e021c8e020cae11fcde11dd0e11cd2e21bd5e21ad8e219dae319dde318dfe318e2e418e5e419e7e419eae51aece51befe51cf1e51df4e61ef6e620f8e621fbe723fde725"));
+var magma = ramp(colors("00000401000501010601010802010902020b02020d03030f03031204041405041606051806051a07061c08071e0907200a08220b09240c09260d0a290e0b2b100b2d110c2f120d31130d34140e36150e38160f3b180f3d19103f1a10421c10441d11471e114920114b21114e22115024125325125527125829115a2a115c2c115f2d11612f116331116533106734106936106b38106c390f6e3b0f703d0f713f0f72400f74420f75440f764510774710784910784a10794c117a4e117b4f127b51127c52137c54137d56147d57157e59157e5a167e5c167f5d177f5f187f601880621980641a80651a80671b80681c816a1c816b1d816d1d816e1e81701f81721f817320817521817621817822817922827b23827c23827e24828025828125818326818426818627818827818928818b29818c29818e2a81902a81912b81932b80942c80962c80982d80992d809b2e7f9c2e7f9e2f7fa02f7fa1307ea3307ea5317ea6317da8327daa337dab337cad347cae347bb0357bb2357bb3367ab5367ab73779b83779ba3878bc3978bd3977bf3a77c03a76c23b75c43c75c53c74c73d73c83e73ca3e72cc3f71cd4071cf4070d0416fd2426fd3436ed5446dd6456cd8456cd9466bdb476adc4869de4968df4a68e04c67e24d66e34e65e44f64e55064e75263e85362e95462ea5661eb5760ec5860ed5a5fee5b5eef5d5ef05f5ef1605df2625df2645cf3655cf4675cf4695cf56b5cf66c5cf66e5cf7705cf7725cf8745cf8765cf9785df9795df97b5dfa7d5efa7f5efa815ffb835ffb8560fb8761fc8961fc8a62fc8c63fc8e64fc9065fd9266fd9467fd9668fd9869fd9a6afd9b6bfe9d6cfe9f6dfea16efea36ffea571fea772fea973feaa74feac76feae77feb078feb27afeb47bfeb67cfeb77efeb97ffebb81febd82febf84fec185fec287fec488fec68afec88cfeca8dfecc8ffecd90fecf92fed194fed395fed597fed799fed89afdda9cfddc9efddea0fde0a1fde2a3fde3a5fde5a7fde7a9fde9aafdebacfcecaefceeb0fcf0b2fcf2b4fcf4b6fcf6b8fcf7b9fcf9bbfcfbbdfcfdbf"));
+var inferno = ramp(colors("00000401000501010601010802010a02020c02020e03021004031204031405041706041907051b08051d09061f0a07220b07240c08260d08290e092b10092d110a30120a32140b34150b37160b39180c3c190c3e1b0c411c0c431e0c451f0c48210c4a230c4c240c4f260c51280b53290b552b0b572d0b592f0a5b310a5c320a5e340a5f3609613809623909633b09643d09653e0966400a67420a68440a68450a69470b6a490b6a4a0c6b4c0c6b4d0d6c4f0d6c510e6c520e6d540f6d550f6d57106e59106e5a116e5c126e5d126e5f136e61136e62146e64156e65156e67166e69166e6a176e6c186e6d186e6f196e71196e721a6e741a6e751b6e771c6d781c6d7a1d6d7c1d6d7d1e6d7f1e6c801f6c82206c84206b85216b87216b88226a8a226a8c23698d23698f24699025689225689326679526679727669827669a28659b29649d29649f2a63a02a63a22b62a32c61a52c60a62d60a82e5fa92e5eab2f5ead305dae305cb0315bb1325ab3325ab43359b63458b73557b93556ba3655bc3754bd3853bf3952c03a51c13a50c33b4fc43c4ec63d4dc73e4cc83f4bca404acb4149cc4248ce4347cf4446d04545d24644d34743d44842d54a41d74b3fd84c3ed94d3dda4e3cdb503bdd513ade5238df5337e05536e15635e25734e35933e45a31e55c30e65d2fe75e2ee8602de9612bea632aeb6429eb6628ec6726ed6925ee6a24ef6c23ef6e21f06f20f1711ff1731df2741cf3761bf37819f47918f57b17f57d15f67e14f68013f78212f78410f8850ff8870ef8890cf98b0bf98c0af98e09fa9008fa9207fa9407fb9606fb9706fb9906fb9b06fb9d07fc9f07fca108fca309fca50afca60cfca80dfcaa0ffcac11fcae12fcb014fcb216fcb418fbb61afbb81dfbba1ffbbc21fbbe23fac026fac228fac42afac62df9c72ff9c932f9cb35f8cd37f8cf3af7d13df7d340f6d543f6d746f5d949f5db4cf4dd4ff4df53f4e156f3e35af3e55df2e661f2e865f2ea69f1ec6df1ed71f1ef75f1f179f2f27df2f482f3f586f3f68af4f88ef5f992f6fa96f8fb9af9fc9dfafda1fcffa4"));
+var plasma = ramp(colors("0d088710078813078916078a19068c1b068d1d068e20068f2206902406912605912805922a05932c05942e05952f059631059733059735049837049938049a3a049a3c049b3e049c3f049c41049d43039e44039e46039f48039f4903a04b03a14c02a14e02a25002a25102a35302a35502a45601a45801a45901a55b01a55c01a65e01a66001a66100a76300a76400a76600a76700a86900a86a00a86c00a86e00a86f00a87100a87201a87401a87501a87701a87801a87a02a87b02a87d03a87e03a88004a88104a78305a78405a78606a68707a68808a68a09a58b0aa58d0ba58e0ca48f0da4910ea3920fa39410a29511a19613a19814a099159f9a169f9c179e9d189d9e199da01a9ca11b9ba21d9aa31e9aa51f99a62098a72197a82296aa2395ab2494ac2694ad2793ae2892b02991b12a90b22b8fb32c8eb42e8db52f8cb6308bb7318ab83289ba3388bb3488bc3587bd3786be3885bf3984c03a83c13b82c23c81c33d80c43e7fc5407ec6417dc7427cc8437bc9447aca457acb4679cc4778cc4977cd4a76ce4b75cf4c74d04d73d14e72d24f71d35171d45270d5536fd5546ed6556dd7566cd8576bd9586ada5a6ada5b69db5c68dc5d67dd5e66de5f65de6164df6263e06363e16462e26561e26660e3685fe4695ee56a5de56b5de66c5ce76e5be76f5ae87059e97158e97257ea7457eb7556eb7655ec7754ed7953ed7a52ee7b51ef7c51ef7e50f07f4ff0804ef1814df1834cf2844bf3854bf3874af48849f48948f58b47f58c46f68d45f68f44f79044f79143f79342f89441f89540f9973ff9983ef99a3efa9b3dfa9c3cfa9e3bfb9f3afba139fba238fca338fca537fca636fca835fca934fdab33fdac33fdae32fdaf31fdb130fdb22ffdb42ffdb52efeb72dfeb82cfeba2cfebb2bfebd2afebe2afec029fdc229fdc328fdc527fdc627fdc827fdca26fdcb26fccd25fcce25fcd025fcd225fbd324fbd524fbd724fad824fada24f9dc24f9dd25f8df25f8e125f7e225f7e425f6e626f6e826f5e926f5eb27f4ed27f3ee27f3f027f2f227f1f426f1f525f0f724f0f921"));
+
 // packages/report/src/theme.ts
+var INK = "#1c1c1c";
+var WHITE = "#ffffff";
+var SEQUENTIAL = scheme$7[5];
+var CATEGORICAL = [0, 3, 4, 6, 2, 7].map((i2) => Tableau10[i2]);
+function luminance(hex2) {
+  const channel = (i2) => {
+    const c2 = parseInt(hex2.slice(i2, i2 + 2), 16) / 255;
+    return c2 <= 0.03928 ? c2 / 12.92 : ((c2 + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
+}
+var contrast = (a, b) => {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x2, y2) => y2 - x2);
+  return (hi + 0.05) / (lo + 0.05);
+};
+var textOn = (fill) => contrast(fill, INK) >= contrast(fill, WHITE) ? INK : WHITE;
+var fills = (name14, colours, indent = "  ") => colours.map((c2, i2) => `--${name14}-${i2 + 1}: ${c2}; --on-${name14}-${i2 + 1}: ${textOn(c2)};`).join(`
+${indent}`);
 var themeCss = `
 :root {
   color-scheme: light dark;
-  --bg: #ffffff; --text: #16181d; --muted: #4a4f5c; --rule: #c9ced8; --panel: #f4f6fa;
-  --link: #0b4fb3; --focus: #0b4fb3;
-  --band-1: #eef3fb; --on-band-1: #12233f;
-  --band-2: #cfdff5; --on-band-2: #12233f;
-  --band-3: #9fbfe8; --on-band-3: #0d1f3a;
-  --band-4: #3f78c4; --on-band-4: #ffffff;
-  --band-5: #1c4587; --on-band-5: #ffffff;
-  --span-1: #f4c7c3; --on-span-1: #3b0d0a;
-  --span-2: #fbe0a6; --on-span-2: #3b2a00;
-  --span-3: #c9e7c2; --on-span-3: #0f2f0a;
-  --span-4: #bfe3ea; --on-span-4: #0a2f38;
-  --span-5: #d8cbf0; --on-span-5: #25104a;
-  --span-6: #f3cbe3; --on-span-6: #3f0d2b;
-  --bar: #3f78c4; --bar-above: #1c4587; --marker: #16181d;
-  --notice-bg: #fff8e1; --notice-rule: #8a6100;
+  --bg: #ffffff; --text: ${INK}; --muted: #575757; --rule: #d6d6d3; --panel: #f3f3f1; --empty: #ececea;
+  --link: #1a5fb4; --focus: #1a5fb4;
+  ${fills("band", SEQUENTIAL)}
+  ${fills("cat", CATEGORICAL)}
+  --bar: #6b6b68; --bar-above: ${SEQUENTIAL[3]}; --marker: ${INK}; --point: #6b6b68;
+  --notice-bg: #f3f3f1; --notice-rule: #b07800;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #12151b; --text: #e8eaf0; --muted: #b4bac8; --rule: #3a4150; --panel: #1b2029;
-    --link: #8db8ff; --focus: #8db8ff;
-    --band-1: #1b2535; --on-band-1: #dbe6f7;
-    --band-2: #25406a; --on-band-2: #e8f0fc;
-    --band-3: #3566a8; --on-band-3: #ffffff;
-    --band-4: #7ba6e0; --on-band-4: #0b1830;
-    --band-5: #b9d3f5; --on-band-5: #0b1830;
-    --span-1: #6b2a27; --on-span-1: #ffe3e0;
-    --span-2: #6a4d0a; --on-span-2: #fff0cc;
-    --span-3: #2b5a24; --on-span-3: #e0f6dc;
-    --span-4: #1f5662; --on-span-4: #d7f2f8;
-    --span-5: #4a3a7a; --on-span-5: #ece4ff;
-    --span-6: #703055; --on-span-6: #ffe3f2;
-    --bar: #7ba6e0; --bar-above: #b9d3f5; --marker: #e8eaf0;
-    --notice-bg: #2a2310; --notice-rule: #e0b84a;
+    --bg: #1e1e1e; --text: #e9e9e6; --muted: #ababa6; --rule: #42423f; --panel: #282826; --empty: #2f2f2d;
+    --link: #8cb8f5; --focus: #8cb8f5;
+    ${fills("band", [...SEQUENTIAL].reverse(), "    ")}
+    --bar: #9a9a96; --bar-above: ${SEQUENTIAL[2]}; --marker: #e9e9e6; --point: #9a9a96;
+    --notice-bg: #282826; --notice-rule: #e0b84a;
   }
 }
 * { box-sizing: border-box; }
@@ -26721,20 +27881,21 @@ nav { padding-top: .75rem; padding-bottom: .75rem; }
 nav ul { display: flex; flex-wrap: wrap; gap: .25rem 1rem; list-style: none; margin: 0; padding: 0; }
 main { overflow-wrap: anywhere; padding-bottom: 2rem; }
 table { border-collapse: collapse; margin: .5rem 0; max-width: 100%; }
-caption { text-align: left; font-weight: 600; padding: .25rem 0; }
-th, td { border: 1px solid var(--rule); padding: .25rem .6rem; text-align: left; vertical-align: top; }
-thead th { background: var(--panel); }
-th[scope="row"] { font-weight: 600; background: var(--panel); }
+caption { text-align: left; font-weight: 600; padding: .25rem 0 .4rem; }
+th, td { border-bottom: 1px solid var(--rule); padding: .3rem .75rem .3rem 0; text-align: left; vertical-align: top; }
+th:last-child, td:last-child { padding-right: 0; }
+thead th { border-bottom: 2px solid var(--text); font-weight: 600; vertical-align: bottom; }
+th[scope="row"] { font-weight: 600; }
 .number { text-align: right; font-variant-numeric: tabular-nums; }
 .legend, .omitted { color: var(--muted); font-size: .9rem; margin: .25rem 0 1rem; }
 .empty { color: var(--muted); font-style: italic; }
 .marker { white-space: nowrap; }
 figure.chart { margin: 1rem 0; }
 figure.chart figcaption { font-weight: 600; margin-bottom: .25rem; }
-figure.chart svg { display: block; width: 100%; height: auto; max-width: 60rem; font: 11px system-ui, sans-serif; }
+figure.chart svg { display: block; max-width: 100%; height: auto; font: 11px system-ui, sans-serif; }
 figure.sparkline svg { max-width: 16rem; }
-figure.chart svg text { fill: var(--text); }
-svg .folder rect { fill: none; stroke: var(--rule); }
+svg text { fill: var(--text); }
+svg .folder rect { fill: none; stroke: var(--muted); stroke-width: .75; }
 svg .folder text { fill: var(--muted); }
 svg .tile rect, svg .cell rect { stroke: var(--bg); stroke-width: 1; }
 svg .tile.marked rect { stroke: var(--text); stroke-width: 2; }
@@ -26743,13 +27904,13 @@ svg .band-2 rect { fill: var(--band-2); } svg .band-2 text { fill: var(--on-band
 svg .band-3 rect { fill: var(--band-3); } svg .band-3 text { fill: var(--on-band-3); }
 svg .band-4 rect { fill: var(--band-4); } svg .band-4 text { fill: var(--on-band-4); }
 svg .band-5 rect { fill: var(--band-5); } svg .band-5 text { fill: var(--on-band-5); }
-svg .band-none rect { fill: var(--panel); stroke: var(--muted); stroke-dasharray: 3 2; }
-svg .span-1 rect { fill: var(--span-1); } svg .span-1 text { fill: var(--on-span-1); }
-svg .span-2 rect { fill: var(--span-2); } svg .span-2 text { fill: var(--on-span-2); }
-svg .span-3 rect { fill: var(--span-3); } svg .span-3 text { fill: var(--on-span-3); }
-svg .span-4 rect { fill: var(--span-4); } svg .span-4 text { fill: var(--on-span-4); }
-svg .span-5 rect { fill: var(--span-5); } svg .span-5 text { fill: var(--on-span-5); }
-svg .span-6 rect { fill: var(--span-6); } svg .span-6 text { fill: var(--on-span-6); }
+svg .band-none rect { fill: var(--empty); stroke: var(--bg); } svg .band-none text { fill: var(--muted); }
+svg .span-1 rect, svg .cat-1 rect { fill: var(--cat-1); } svg .span-1 text, svg .cat-1 text { fill: var(--on-cat-1); }
+svg .span-2 rect, svg .cat-2 rect { fill: var(--cat-2); } svg .span-2 text, svg .cat-2 text { fill: var(--on-cat-2); }
+svg .span-3 rect, svg .cat-3 rect { fill: var(--cat-3); } svg .span-3 text, svg .cat-3 text { fill: var(--on-cat-3); }
+svg .span-4 rect, svg .cat-4 rect { fill: var(--cat-4); } svg .span-4 text, svg .cat-4 text { fill: var(--on-cat-4); }
+svg .span-5 rect, svg .cat-5 rect { fill: var(--cat-5); } svg .span-5 text, svg .cat-5 text { fill: var(--on-cat-5); }
+svg .span-6 rect, svg .cat-6 rect { fill: var(--cat-6); } svg .span-6 text, svg .cat-6 text { fill: var(--on-cat-6); }
 svg .span text { font-weight: 600; }
 svg .span-boundary { stroke: var(--marker); stroke-width: 1; }
 svg .group rect { fill: none; stroke: var(--marker); stroke-width: 2; }
@@ -26763,9 +27924,13 @@ svg .bar rect { fill: var(--bar); } svg .bar.above rect { fill: var(--bar-above)
 svg .bar line { stroke: var(--marker); stroke-width: 2; }
 svg .frame { fill: none; stroke: var(--rule); }
 svg .guideline line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 6 4; } svg .guideline text, svg .tick { fill: var(--muted); }
-svg circle.point { fill: var(--bar); fill-opacity: .4; }
+svg circle.point { fill: var(--point); fill-opacity: .45; }
 svg rect.point, svg .point.named rect { fill: var(--bar-above); stroke: var(--bg); stroke-width: 1; }
 svg .point.named text { paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
+svg a:hover text { text-decoration: underline; }
+svg a > text, svg a > tspan { fill: var(--link); text-decoration: underline; }
+svg a:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+svg a .tile rect, svg a .tile.marked rect { stroke: var(--link); stroke-width: 2; }
 svg polyline { fill: none; stroke: var(--bar-above); stroke-width: 2; } svg circle { fill: var(--bar-above); }
 .notice { border-left: 4px solid var(--notice-rule); background: var(--notice-bg); padding: .5rem .75rem; margin: .75rem 0; }
 .judgement { border: 1px solid var(--rule); border-left: 4px solid var(--link); background: var(--panel); padding: .25rem 1rem .5rem; margin: 1rem 0; }
@@ -26802,12 +27967,12 @@ function headerFacts(report) {
 ${rows8.map(([term, value]) => `<dt>${term}</dt><dd>${value}</dd>`).join("\n")}
 </dl>`;
 }
-function section(s, report, notes4) {
+function section(s, report, notes4, siblings) {
   const empty = emptySection(s);
   if (empty !== void 0) return `<section id="${escapeHtml(s.id)}" aria-labelledby="${escapeHtml(s.id)}-heading">
 <p class="empty"><strong id="${escapeHtml(s.id)}-heading">${escapeHtml(s.heading)}:</strong> ${inlineHtml(empty)}</p>
 </section>`;
-  const body2 = s.blocks.map((block) => renderBlock(block, "html", { slots: report.slots, notes: notes4 })).join("\n");
+  const body2 = s.blocks.map((block) => renderBlock(block, "html", { slots: report.slots, notes: notes4, ...siblings === void 0 ? {} : { siblings } })).join("\n");
   return `<section id="${escapeHtml(s.id)}" aria-labelledby="${escapeHtml(s.id)}-heading">
 <h2 id="${escapeHtml(s.id)}-heading">${escapeHtml(s.heading)}</h2>
 ${body2}
@@ -26825,7 +27990,7 @@ ${fixed}
 `}${judged}
 </section>`;
 }
-function htmlPage(report, notes4) {
+function htmlPage(report, notes4, siblings) {
   const ids = [...report.sections.map((s) => [s.id, s.heading]), ["limits", "Limits"]];
   const nav = `<nav aria-label="Sections">
 <ul>
@@ -26850,7 +28015,7 @@ ${headerFacts(report)}
 </header>`,
     nav,
     '<main id="main">',
-    ...report.sections.map((s) => section(s, report, notes4)),
+    ...report.sections.map((s) => section(s, report, notes4, siblings)),
     limitsSection(report, notes4),
     "</main>",
     `<footer>
@@ -26904,7 +28069,7 @@ function markdownPage(report, notes4, options2 = {}) {
 function renderReport(report, format2, notes4, options2 = {}) {
   if (format2 === "html") {
     if (notes4 === void 0) throw new ReportError("html needs notes: run --slots, write the notes file, then render with --notes FILE --format html");
-    return htmlPage(report, notes4);
+    return htmlPage(report, notes4, options2.siblings);
   }
   return markdownPage(report, notes4, options2);
 }
@@ -27094,6 +28259,32 @@ ${after.other}`),
   return stored;
 }
 
+// packages/cli-kit/src/report-siblings.ts
+import { existsSync as existsSync16, readFileSync as readFileSync12 } from "node:fs";
+import { dirname as dirname5, join as join16 } from "node:path";
+var SUITE_REPORT_KINDS = ["overview", "hotspots", "coupling", "knowledge", "change", "structure", "locality", "xray"];
+var unescapeHtml = (text3) => text3.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+function readSiblings(out2, ownKind, commit) {
+  const pages = /* @__PURE__ */ new Map();
+  if (out2 === void 0) return pages;
+  const folder = dirname5(out2);
+  for (const kind of SUITE_REPORT_KINDS) {
+    if (kind === ownKind) continue;
+    const file = join16(folder, `${kind}.html`);
+    if (!existsSync16(file)) continue;
+    let html;
+    try {
+      html = readFileSync12(file, "utf8");
+    } catch {
+      continue;
+    }
+    if (!html.includes(`for commit <code>${commit.slice(0, 12)}</code>`)) continue;
+    const title = /<title>([^<]*)<\/title>/.exec(html)?.[1];
+    if (title !== void 0) pages.set(kind, unescapeHtml(title));
+  }
+  return pages;
+}
+
 // packages/cli-kit/src/report-command.ts
 var protocolOptions = {
   slots: { type: "boolean" },
@@ -27142,7 +28333,7 @@ function reportCommand(kinds2) {
         const text3 = request.slots ? serialise(slotsDocument(report)) : produce(report, request, context.cwd);
         if (request.out === void 0) return { results: [], text: text3 };
         const file = resolve2(context.cwd, request.out);
-        mkdirSync5(dirname5(file), { recursive: true });
+        mkdirSync5(dirname6(file), { recursive: true });
         writeFileSync5(file, text3);
         return { results: [], text: `wrote ${request.out}
 ` };
@@ -27174,15 +28365,16 @@ function readRequest(context) {
   return request;
 }
 function produce(report, request, cwd) {
+  const siblings = readSiblings(request.out === void 0 ? void 0 : resolve2(cwd, request.out), report.kind, report.header.commit);
   const format2 = request.format ?? "md";
   if (request.notes === void 0) return renderReport(report, format2, void 0, { compact: request.compact });
-  let document;
+  let document2;
   try {
-    document = JSON.parse(readFileSync12(resolve2(cwd, request.notes), "utf8"));
+    document2 = JSON.parse(readFileSync13(resolve2(cwd, request.notes), "utf8"));
   } catch (error) {
     throw new ReportError(`cannot read the notes file ${request.notes}: ${error instanceof Error ? error.message : String(error)}`);
   }
-  return renderReport(report, format2, validateNotes(report, document), { compact: request.compact });
+  return renderReport(report, format2, validateNotes(report, document2), { compact: request.compact, siblings });
 }
 function repoName(root) {
   return root.split(/[\\/]/).filter(Boolean).pop() ?? root;
@@ -27338,7 +28530,13 @@ function matrixLabels(modules) {
     return cut.indexOf(label) === cut.lastIndexOf(label) ? label : `${label} #${n}`;
   });
 }
-function dsmBlocks(dsm, layered) {
+var cycleId2 = (n) => `cycle-${n}`;
+var hubId = (file) => targetId("hub", file);
+function cycleLink(label, listed) {
+  const n = /^cycle (\d+)$/.exec(label)?.[1];
+  return n !== void 0 && Number(n) <= listed ? { href: pageHref(cycleId2(Number(n))) } : {};
+}
+function dsmBlocks(dsm, layered, hubs = /* @__PURE__ */ new Set(), cyclesShown = 0) {
   if (dsm === null || dsm === void 0) return [{ type: "notice", level: "notice", text: "No module depends on another at the default level, so there is no dependency structure matrix." }];
   const drawn = dsm.modules.length;
   const labels = matrixLabels(dsm.modules);
@@ -27364,12 +28562,15 @@ function dsmBlocks(dsm, layered) {
       rows: labels,
       columns: labels,
       cells: dsm.cells,
+      // A module that is a registration hub in the hubs table links to its row there.
+      rowHrefs: dsm.modules.map((m) => hubs.has(m) ? pageHref(hubId(m)) : null),
+      columnHrefs: dsm.modules.map((m) => hubs.has(m) ? pageHref(hubId(m)) : null),
       marks: {
         against: { symbol: "!", text: "a dependency against the order: below the diagonal, inside an import cycle" },
         ...layered ? { layer: { symbol: "L", text: "an import the configured layer rules forbid" }, both: { symbol: "!L", text: "against the order and forbidden by the layer rules" } } : {}
       },
       cellMarks,
-      groups: dsm.groups.map((g) => ({ label: g.size > g.end - g.start + 1 ? `${g.label}, ${g.end - g.start + 1} of ${g.size} modules drawn` : g.label, start: g.start, end: g.end })),
+      groups: dsm.groups.map((g) => ({ label: g.size > g.end - g.start + 1 ? `${g.label}, ${g.end - g.start + 1} of ${g.size} modules drawn` : g.label, start: g.start, end: g.end, ...cycleLink(g.label, cyclesShown) })),
       orderText: `A row is a module and the cells in it are the modules it depends on. Rows are ordered by layer, top first: a module comes after every module that depends on it, so in a layered design every cell is above the diagonal. The members of one cycle stay together in a box labelled as in the cycles table, ordered so that only the edges of its breaking set lie below the diagonal. Names are cut from the left to ${LABEL_CHARS3} characters; the cycles table gives them whole.${layered && dsm.layerViolations.length === 0 ? " No drawn import breaks a layer rule." : ""}`
     },
     {
@@ -27380,7 +28581,7 @@ function dsmBlocks(dsm, layered) {
 }
 function projectFolderCyclesText(cycles) {
   if (cycles.count === 0) return "No folder cycle lies inside one C# project (structure.csharpFolderCycles is true).";
-  const largest = cycles.largest.map((c) => `${nameList(c.nodes, NODES_PER_CYCLE)} in ${c.project}`).join("; ");
+  const largest = cycles.largest.map((c2) => `${nameList(c2.nodes, NODES_PER_CYCLE)} in ${c2.project}`).join("; ");
   return `${plural(cycles.count, "folder cycle")} lie${cycles.count === 1 ? "s" : ""} inside one C# project and ${cycles.count === 1 ? "is" : "are"} not in the table (structure.csharpFolderCycles is true). Largest: ${largest}.`;
 }
 function cycleBlocks(rows8, projectFolderCycles) {
@@ -27397,6 +28598,13 @@ function cycleBlocks(rows8, projectFolderCycles) {
       noun: "cycles",
       total: rows8.length,
       emptyText: "No import cycle at the default level.",
+      rowIds: shown2.map((_, i2) => cycleId2(i2 + 1)),
+      // The cycle's breaking set and judgement follow the table.
+      cellHrefs: shown2.map((_, i2) => ({ modules: pageHref(judgementId(`cycle-${i2 + 1}`)) })),
+      seeAlso: [
+        { href: reportHref("coupling"), text: "The coupling report lists the files that change together, which the changes touching two members of a cycle count." },
+        ...shown2.some((row) => row.unblockedGain !== null) ? [{ href: reportHref("locality"), text: "The locality report lists the moves that resolving a cycle unblocks." }] : []
+      ],
       columns: [
         { key: "modules", label: "Modules in the cycle" },
         { key: "size", label: "Size", align: "right" },
@@ -27585,6 +28793,7 @@ function hubBlocks(rows8, notices) {
       noun: "hubs",
       total: rows8.length,
       emptyText: notices.join(" "),
+      rowIds: rows8.slice(0, TOP_HUBS).map((hub) => hubId(hub.file)),
       columns: [
         { key: "file", label: "File" },
         { key: "reached", label: "Signals reached of 4", align: "right" },
@@ -27692,7 +28901,7 @@ var structure = {
               { label: "Packages", value: String(results.packages.length) }
             ]
           },
-          ...dsmBlocks(results.extra.dsm, results.layerViolations !== null),
+          ...dsmBlocks(results.extra.dsm, results.layerViolations !== null, new Set(results.hubs.slice(0, TOP_HUBS).map((hub) => hub.file)), Math.min(results.cycles.length, TOP_CYCLES)),
           { type: "judgement", slot: "summary" }
         ]
       },
