@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import type { ReportBuild } from "@code-health/report/report-model";
+import { codeIdentity } from "./code-identity.ts";
 import type { CommandContext } from "./run-cli.ts";
 
 /**
@@ -12,7 +13,7 @@ import type { CommandContext } from "./run-cli.ts";
  *
  * - the kind, its positional arguments, its option values (`--slots`, `--notes`, `--format`, `--out` and `--no-cache` left out), the
  *   directory the command ran from, and `ReportKind.dependsOn`: the file name of the entry;
- * - HEAD, the config hash, and the program that built it (the size and modification time of the running script);
+ * - HEAD, the config hash, and the code that built it (`codeIdentity`: a content hash of the bundle files, or the size and modification time of the source files);
  * - a clean working tree: no edit to a tracked file and no untracked file that is not ignored (except the files
  *   named by `--notes` and `--out`), because the analyses read the files on disk when there is uncommitted work.
  *   A run on an unclean tree neither reads nor stores a build;
@@ -79,10 +80,7 @@ export function dependencyState(root: string): { written: string; other: string 
 
 const digest = (value: string): string => createHash("sha256").update(value).digest("hex");
 
-function programId(): string {
-  const script = process.argv[1];
-  return script === undefined ? "-" : stat(script);
-}
+const programId = codeIdentity;
 
 /** The text of a value with its keys sorted, so equal values give equal text. */
 function canonical(value: unknown): string {

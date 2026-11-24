@@ -61,6 +61,8 @@ export interface WriteReportOptions {
    * prints go in `meta.printed`.
    */
   replayable?: boolean;
+  /** The code that computed the result (`codeIdentity`), stored as `codeIdentity` so a reader can refuse a result that other code wrote. */
+  codeIdentity?: string;
 }
 
 /**
@@ -112,6 +114,7 @@ export async function writeReport(
     inputs: output.inputs,
     extra: {
       ...output.extra,
+      ...(options.codeIdentity === undefined ? {} : { codeIdentity: options.codeIdentity }),
       ...(Object.keys(builtin).length === 0 ? {} : { omittedByBuiltinExcludes: builtin }),
       ...(Object.keys(dropped).length === 0 ? {} : { dropped }),
     },

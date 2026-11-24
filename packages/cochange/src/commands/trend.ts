@@ -1,5 +1,6 @@
 import { usageError } from "@code-health/cli-kit/errors";
-import { blobSize, readBlob } from "@code-health/history/tree";
+import { runGit } from "@code-health/history/git";
+import { blobSize, readBlob, readBlobAt } from "@code-health/history/tree";
 import { indentationComplexity } from "@code-health/lexical/indentation-complexity";
 import { analysisCommand } from "../analysis-command.ts";
 import { integerOption } from "../coupled-pairs.ts";
@@ -74,20 +75,38 @@ export const command = analysisCommand(name, {
     }
     if (revisions.length === 0) throw usageError(`no revisions of "${requested}" in the analysed history`);
 
-    const rows = await Promise.all(
+    const measureText = (text: string, path: string) => {
+      const binary = text.includes("\0");
+      return {
+        complexity: binary ? null : indentationComplexity(text, path),
+        lines: binary ? null : text === "" ? 0 : text.replace(/\n$/, "").split("\n").length,
+      };
+    };
+    const sampled = await Promise.all(
       pickSamples(revisions, samples).map(async (revision) => {
         const [text, bytes] = await Promise.all([readBlob(context.repo.root, revision.blob), blobSize(context.repo.root, revision.blob)]);
-        const binary = text.includes("\0");
         return {
-          commit: revision.commit,
-          date: isoDate(revision.committerDate),
-          path: revision.path,
-          complexity: binary ? null : indentationComplexity(text, revision.path),
-          lines: binary ? null : text === "" ? 0 : text.replace(/\n$/, "").split("\n").length,
-          bytes,
+          text,
+          row: {
+            commit: revision.commit,
+            date: isoDate(revision.committerDate),
+            path: revision.path,
+            ...measureText(text, revision.path),
+            bytes,
+          },
         };
       }),
     );
+    const rows: ((typeof sampled)[number]["row"] & { atHead?: true })[] = sampled.map((s) => s.row);
+
+    // The filtered history leaves out the changes over the changeset size limit and the other noise filters, so the file at HEAD can
+    // differ from its last sample. HEAD is then added as the last sample, so the series ends at the file as it is.
+    const headSha = history.view.headSha;
+    const headText = await readBlobAt(context.repo.root, headSha, file);
+    if (headText !== undefined && headText !== sampled.at(-1)!.text) {
+      const date = (await runGit(context.repo.root, ["show", "-s", "--format=%ct", headSha])).trim();
+      rows.push({ commit: headSha, date: isoDate(Number(date)), path: file, ...measureText(headText, file), bytes: Buffer.byteLength(headText), atHead: true });
+    }
 
     const first = rows[0]!;
     const last = rows.at(-1)!;

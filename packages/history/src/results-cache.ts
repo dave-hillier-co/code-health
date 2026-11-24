@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import { codeIdentity } from "@code-health/cli-kit/code-identity";
 import { restoreBuiltinOmissions } from "@code-health/cli-kit/builtin-excludes";
 import { restoreDropped } from "@code-health/cli-kit/dropped-files";
 import type { OptionSpec } from "@code-health/cli-kit/args";
@@ -8,8 +9,9 @@ import { canonical, reportPath, skipReport, variantOf, writeReport, type ReportI
 /**
  * Results computed on demand and kept in `.cache/code-health/reports/`. A stored result is reused when it was
  * computed from the same commit and the same effective config (the stamps every report carries), for the same
- * stated inputs of the command (its file name, see `variantOf`), and for the same extra inputs the result
- * depends on (`expect`). Anything else is recomputed and stored in its place.
+ * stated inputs of the command (its file name, see `variantOf`), for the same extra inputs the result
+ * depends on (`expect`), and by the same code (`codeIdentity`: a content hash of the running bundle, so a rebuilt
+ * plugin recomputes instead of reading what the earlier build stored). Anything else is recomputed and stored in its place.
  */
 
 export const noCacheOption = { "no-cache": { type: "boolean" } } satisfies OptionSpec;
@@ -43,7 +45,7 @@ export interface CachedInput {
   config: string;
 }
 
-const ENVELOPE = new Set(["schemaVersion", "tool", "command", "repo", "config", "inputs", "results", "truncated", "meta", "dropped", "omittedByBuiltinExcludes"]);
+const ENVELOPE = new Set(["schemaVersion", "codeIdentity", "tool", "command", "repo", "config", "inputs", "results", "truncated", "meta", "dropped", "omittedByBuiltinExcludes"]);
 
 /** Stored inputs are written with sorted keys, so they are compared that way: the order a run builds its expected inputs in must not decide a hit. */
 const same = (a: unknown, b: unknown): boolean => canonical(a ?? null) === canonical(b ?? null);
@@ -68,6 +70,7 @@ export function readStored(context: CommandContext, stored: StoredResult): Hit |
   const repo = document.repo as { head?: unknown; dirty?: unknown } | undefined;
   if (document.tool !== stored.identity.tool || document.command !== stored.command) return undefined;
   if (document.schemaVersion !== stored.identity.schemaVersion) return undefined;
+  if (document.codeIdentity !== codeIdentity()) return undefined;
   if (repo?.head !== stored.head || repo?.dirty !== false) return undefined;
   if (document.config !== context.config.hash || !Array.isArray(document.results)) return undefined;
   const inputs = (document.inputs ?? {}) as Record<string, unknown>;
@@ -113,6 +116,7 @@ export function storeCached(context: CommandContext, stored: StoredResult, outpu
     variant: variantOf(stored.stated),
     describesCommit: stored.describesCommit,
     replayable: true,
+    codeIdentity: codeIdentity(),
   });
 }
 

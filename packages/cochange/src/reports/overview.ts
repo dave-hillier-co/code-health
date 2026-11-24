@@ -15,7 +15,7 @@ import type { Evidence } from "@code-health/history/evidence";
 import type { FiltersApplied } from "@code-health/history/noise";
 import { noCacheOption } from "@code-health/history/results-cache";
 import { command as hotspotsCommand } from "../commands/hotspots.ts";
-import type { HotspotRow } from "../hotspot-ranking.ts";
+import { orderedHotspots, type HotspotRow } from "../hotspot-ranking.ts";
 import { readSiblingResult, type SiblingResult } from "../sibling-reports.ts";
 import { windowOptions } from "../window-options.ts";
 
@@ -97,7 +97,10 @@ function fixBlocks(convention: FixConvention): Block[] {
         { label: "Landed changes with a Conventional Commits type (feat, fix, chore and the others, so more than the fixes)", value: String(convention.forms.conventionalCommits) },
         { label: "Landed changes whose title starts with a fix verb", value: String(convention.forms.fixVerb) },
         { label: "Landed changes whose title has a closing keyword and an issue reference", value: String(convention.forms.issueReference) },
-        { label: "Convention followed", value: convention.followsConvention ? "yes" : "no" },
+        {
+          label: "Fix convention used for this repository (decided by whether at least one landed change uses a fix form, not by the share of fixes)",
+          value: `${convention.followsConvention ? "yes" : "no"}: Conventional Commits types on ${convention.forms.conventionalCommits}, fix verbs in titles on ${convention.forms.fixVerb}, issue references on ${convention.forms.issueReference} of ${convention.landedChanges} landed changes`,
+        },
       ],
     },
     ...(convention.note === null ? [] : [{ type: "notice" as const, level: "notice" as const, text: convention.note }]),
@@ -363,7 +366,7 @@ export const overview: ReportKind = {
     const extra = output.extra as { evidence: Evidence; filtersApplied: FiltersApplied; fixConvention: FixConvention; complexitySource: unknown; window: { since: string; until: string }; contributors?: Contributors };
     const { evidence } = extra;
     const contributors = extra.contributors ?? { people: evidence.activeContributors, agents: 0 };
-    const rows = output.results as HotspotRow[];
+    const rows = orderedHotspots(output);
     const root = context.repo.root;
     const head = context.repo.head;
     const results = [

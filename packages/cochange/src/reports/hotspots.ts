@@ -13,6 +13,7 @@ import type { Block } from "@code-health/report/block";
 import type { Cell } from "@code-health/report/components/ranked-table";
 import { dropEmptySlots } from "@code-health/report/empty-block";
 import { capRows } from "@code-health/report/table-cap";
+import { codeSpan } from "@code-health/report/text";
 import { reportPath } from "@code-health/history/reports";
 import { statSync } from "node:fs";
 import type { ExcludedCount, Slot } from "@code-health/report/protocol";
@@ -21,7 +22,7 @@ import { FLAG_VERDICTS, xrayBlocks, type XrayData, type XrayFunction } from "@co
 import { command as hotspotsCommand } from "../commands/hotspots.ts";
 import { command as trendCommand, TREND_GUIDELINE } from "../commands/trend.ts";
 import { readSettings } from "../config.ts";
-import type { HotspotRow } from "../hotspot-ranking.ts";
+import { orderedHotspots, type HotspotRow } from "../hotspot-ranking.ts";
 import { readSiblingResult, type SiblingResult } from "../sibling-reports.ts";
 import { windowOptions } from "../window-options.ts";
 
@@ -197,7 +198,7 @@ function frictionBlocks(friction: readonly Friction[], shown: readonly Friction[
 interface Trend {
   path: string;
   revisions: number;
-  samples: { date: string; complexity: number | null; lines: number | null }[];
+  samples: { date: string; complexity: number | null; lines: number | null; atHead?: boolean }[];
   summary: { direction: string; changeRatio: number | null; peak: { complexity: number; date: string } | null; lines: { first: number | null; last: number | null } };
 }
 
@@ -242,6 +243,14 @@ function historyBlocks(trends: readonly (Trend | undefined)[], paths: readonly s
   for (const t of found.slice(0, SPARKLINES)) {
     const points = t.samples.flatMap((s) => (s.complexity === null ? [] : [{ label: s.date.slice(0, 10), value: s.complexity }]));
     if (points.length > 0) blocks.push({ type: "sparkline", title: `${t.path}: indentation complexity across its history`, unit: "indentation complexity", points });
+  }
+  const atHead = found.filter((t) => t.samples.at(-1)?.atHead === true);
+  if (atHead.length > 0) {
+    blocks.push({
+      type: "notice",
+      level: "notice",
+      text: `For ${atHead.length} of these files the last sample is the file at HEAD, added because the file at HEAD differs from the file at its last change in the analysed history, so a later change is not in the history (a noise filter or a limit left it out) (${atHead.map((t) => codeSpan(t.path)).join(", ")}).`,
+    });
   }
   const missing = paths.length - found.length;
   if (missing > 0) blocks.push({ type: "notice", level: "limit", text: `${missing} of these files have no history to sample, so they are not drawn.` });
@@ -377,7 +386,7 @@ export const hotspots: ReportKind = {
     const excluded = excludedCounts((output.extra as { filtersApplied: FiltersApplied }).filtersApplied, droppedCounts(), builtinOmissions());
     const extra = output.extra as { evidence: Evidence; filtersApplied: FiltersApplied; complexitySource: string; window: { since: string; until: string } };
     const { evidence } = extra;
-    const rows = [...(output.results as HotspotRow[])].sort(byScore);
+    const rows = orderedHotspots(output);
     const root = context.repo.root;
     const head = context.repo.head;
     const settings = readSettings(context.config);

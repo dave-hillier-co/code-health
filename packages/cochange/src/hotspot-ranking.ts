@@ -9,6 +9,7 @@ import type { By, Unit } from "./file-statistics.ts";
 import type { LoadedHistory } from "./history-access.ts";
 import { siblingTestOf } from "./sibling-test.ts";
 import { midRankPercentiles, shareStrictlyAbove } from "@code-health/cli-kit/ranking";
+import { shapeResults } from "@code-health/cli-kit/results";
 import { SECONDS_PER_DAY, isoDate, loadUnits } from "./units.ts";
 import { testClassifier } from "@code-health/parse/test-files";
 
@@ -134,4 +135,14 @@ async function testDrift(root: string, history: LoadedHistory, paths: readonly s
 function fileFindings(unit: Unit, isHotspot: boolean, sibling: SiblingEvidence | null, minSupport: number) {
   const drift = sibling !== null && sibling.together === 0 && unit.revisions >= minSupport;
   return { siblingTest: sibling?.test ?? null, findings: [...(isHotspot ? ["hotspot"] : []), ...(drift ? ["test-drift"] : [])] };
+}
+
+/**
+ * The rows of a hotspot command output in the order the command prints them (ranking ratio, then score, then
+ * path; unchanged when the output is presorted). A run that computed the ranking returns its rows unordered and a
+ * run that read the stored ranking returns them in stored order, so a report takes the rows through this
+ * function and lists the same files either way.
+ */
+export function orderedHotspots(output: { results: unknown; presorted?: boolean }): HotspotRow[] {
+  return shapeResults(output.results, { limit: Infinity, presorted: output.presorted }).results as HotspotRow[];
 }

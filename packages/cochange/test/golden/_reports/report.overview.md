@@ -52,7 +52,7 @@
 | Landed changes with a Conventional Commits type (feat, fix, chore and the others, so more than the fixes) | 0 |
 | Landed changes whose title starts with a fix verb | 0 |
 | Landed changes whose title has a closing keyword and an issue reference | 0 |
-| Convention followed | no |
+| Fix convention used for this repository (decided by whether at least one landed change uses a fix form, not by the share of fixes) | no: Conventional Commits types on 0, fix verbs in titles on 0, issue references on 0 of 6 landed changes |
 
 > **Notice:** The commit messages probably do not follow a convention this can use: none of the 6 landed changes uses a recognisable fix form (a Conventional Commits type, a leading Fix or Fixes, or an issue reference).
 

@@ -141,8 +141,8 @@
                 "value": "0"
               },
               {
-                "label": "Convention followed",
-                "value": "no"
+                "label": "Fix convention used for this repository (decided by whether at least one landed change uses a fix form, not by the share of fixes)",
+                "value": "no: Conventional Commits types on 0, fix verbs in titles on 0, issue references on 0 of 6 landed changes"
               }
             ],
             "type": "facts"

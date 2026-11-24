@@ -57,6 +57,26 @@ test("--no-cache computes again, stores the new result, and a later run reads it
   expect(cacheOf(await run("hotspots"))).toHaveLength(1);
 });
 
+test("a stored result written by different code is not read, and the result stored in its place is", async () => {
+  await run("hotspots");
+  const file = reportPath(repo.path, "hotspots");
+  const stored = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
+  expect(typeof stored.codeIdentity).toBe("string");
+  writeFileSync(file, JSON.stringify({ ...stored, codeIdentity: "another-build" }));
+  expect(cacheOf(await run("hotspots"))).toBeUndefined();
+  expect(JSON.parse(readFileSync(file, "utf8")).codeIdentity).toBe(stored.codeIdentity);
+  expect(cacheOf(await run("hotspots"))).toHaveLength(1);
+});
+
+test("a stored result with no code identity is not read", async () => {
+  await run("hotspots");
+  const file = reportPath(repo.path, "hotspots");
+  const stored = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
+  delete stored.codeIdentity;
+  writeFileSync(file, JSON.stringify(stored));
+  expect(cacheOf(await run("hotspots"))).toBeUndefined();
+});
+
 test("a stored result that is not whole is computed again", async () => {
   await run("hotspots");
   writeFileSync(reportPath(repo.path, "hotspots"), '{"tool":"cochange"');
