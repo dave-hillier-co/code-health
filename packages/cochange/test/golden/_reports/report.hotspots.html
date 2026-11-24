@@ -153,7 +153,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">src/core/util.ts</th><td class="number">1</td><td class="number">5</td><td class="number">2</td></tr>
 </tbody>
 </table>
-<p class="legend">Area is lines. Colour is revisions in the window in five bands, and each tile prints its value: band 1: 2 to 5, band 2: 5 to 6, band 3: 6 to 7, band 4: 7 to 8, band 5: 8 to 8. Hatched tiles have no value.</p>
+<p class="legend">Area is lines. Colour is revisions in the window in five bands, and each tile prints its value: band 1: 2 to 5, band 2: 5 to 6, band 3: 6 to 7, band 4: 7 to 8, band 5: 8. Hatched tiles have no value.</p>
 </figure>
 <p>Colour bands are rank steps of the files shown: the band edges sit at the 50th, 75th, 90th and 97th percentile of their revisions, so band 5 is the most changed and says nothing about good or bad.</p>
 </section>
@@ -180,13 +180,13 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <section id="history" aria-labelledby="history-heading">
 <h2 id="history-heading">History of the top files</h2>
 <table class="ranked">
-<caption>Complexity and size of the first friction files across their history (cochange trend)</caption>
-<thead><tr><th scope="col" class="number">#</th><th scope="col">File</th><th scope="col" class="number">Revisions in history</th><th scope="col">Direction</th><th scope="col" class="number">Change in complexity (%)</th><th scope="col" class="number">Peak complexity</th><th scope="col" class="number">Lines at first sample</th><th scope="col" class="number">Lines at last sample</th></tr></thead>
+<caption>Complexity and size of the first friction files across their history (cochange trend). The direction compares the first sample with the last sample only: worsening is a rise of at least the guideline, improving a fall of at least the guideline, and a fall in the last step does not change it</caption>
+<thead><tr><th scope="col" class="number">#</th><th scope="col">File</th><th scope="col" class="number">Revisions in history</th><th scope="col">Direction, first sample to last sample</th><th scope="col" class="number">Change in complexity, first sample to last sample (%)</th><th scope="col" class="number">Peak complexity</th><th scope="col" class="number">Lines at first sample</th><th scope="col" class="number">Lines at last sample</th></tr></thead>
 <tbody>
 <tr><td class="number">1</td><td>src/core/engine.ts</td><td class="number">6</td><td>stable</td><td class="number">0</td><td class="number">36</td><td class="number">13</td><td class="number">13</td></tr>
 </tbody>
 </table>
-<p class="legend">Guidelines order and label the rows and decide nothing. Change in complexity (%) 20 (the trend guideline for worsening), ▲ marks a value above it.</p>
+<p class="legend">Guidelines order and label the rows and decide nothing. Change in complexity, first sample to last sample (%) 20 (the trend guideline for worsening), ▲ marks a value above it.</p>
 <figure class="chart sparkline">
 <figcaption>src/core/engine.ts: indentation complexity across its history</figcaption>
 <svg role="img" aria-labelledby="src-core-engine-ts-indentation-complexity-across-its-history-695a99-title src-core-engine-ts-indentation-complexity-across-its-history-695a99-desc" viewBox="0 0 240 48" preserveAspectRatio="xMinYMin meet">

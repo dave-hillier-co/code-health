@@ -1,5 +1,5 @@
 /** Why a coupled pair says little. */
-export type ExpectedReason = "test" | "two-tests" | "fixture-or-golden" | "header-and-source" | "build-manifests" | "same-format-data";
+export type ExpectedReason = "test" | "two-tests" | "fixture-or-golden" | "header-and-source" | "build-manifests" | "same-format-data" | "non-code-file";
 
 /** What each reason prints in the report. */
 export const EXPECTED_LABEL: Record<ExpectedReason, string> = {
@@ -9,10 +9,11 @@ export const EXPECTED_LABEL: Record<ExpectedReason, string> = {
   "header-and-source": "a C or C++ header and its source file",
   "build-manifests": "two build or packaging manifests of one toolchain",
   "same-format-data": "two data or configuration files of one format",
+  "non-code-file": "a file that is not code, such as documentation or configuration, and another file",
 };
 
 /** The order the reasons are checked and counted in. */
-export const EXPECTED_REASONS: readonly ExpectedReason[] = ["test", "two-tests", "fixture-or-golden", "header-and-source", "build-manifests", "same-format-data"];
+export const EXPECTED_REASONS: readonly ExpectedReason[] = ["test", "two-tests", "fixture-or-golden", "header-and-source", "build-manifests", "same-format-data", "non-code-file"];
 
 const FIXTURE_FOLDER = /(^|\/)(testdata|test-data|fixtures?|__fixtures__|__snapshots__|__mocks__|snapshots?|goldens?|golden-files)\//i;
 const FIXTURE_NAME = /[._-](golden|snap|approved|received)(\.[^/.]+)?$/i;
@@ -76,8 +77,8 @@ interface Side {
  * ("two-tests"), when either side is a
  * test (by naming convention and the shared `testPatterns`, passed as `isTest`), when either side is a fixture or a
  * golden file, when the two sides are a C or C++ header and its source file (same path apart from the extension; a
- * declaration and its definition change together by construction), when both sides are build or packaging manifests of one toolchain (`go.mod` and `go.work`, `Dockerfile` and `Dockerfile.release`, `package.json` and its lockfile, two `CMakeLists.txt`, a `.csproj` and `Directory.Build.props`; they change together because a dependency or a file was added, not because of a design link), or when both sides are non-code files of one format, such as two workflow files, two scene files or
- * a compose file and its variant. Expected pairs are listed apart from the others, never dropped.
+ * declaration and its definition change together by construction), when both sides are build or packaging manifests of one toolchain (`go.mod` and `go.work`, `Dockerfile` and `Dockerfile.release`, `package.json` and its lockfile, two `CMakeLists.txt`, a `.csproj` and `Directory.Build.props`; they change together because a dependency or a file was added, not because of a design link), when both sides are non-code files of one format, such as two workflow files, two scene files or
+ * a compose file and its variant, or when either side is not code, such as a documentation file or a configuration file (production pairs are pairs of code files, as in the hotspots report). Expected pairs are listed apart from the others, never dropped.
  */
 export function expectedReason(a: Side, b: Side, isTest: (path: string) => boolean): ExpectedReason | null {
   if (isTest(a.path) && isTest(b.path)) return "two-tests";
@@ -87,6 +88,7 @@ export function expectedReason(a: Side, b: Side, isTest: (path: string) => boole
   const family = manifestFamily(a.path);
   if (family !== null && family === manifestFamily(b.path)) return "build-manifests";
   if (!a.code && !b.code && extension(a.path) === extension(b.path)) return "same-format-data";
+  if (!a.code || !b.code) return "non-code-file";
   return null;
 }
 

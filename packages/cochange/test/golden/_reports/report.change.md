@@ -152,7 +152,7 @@ _Guidelines order and label the rows and decide nothing. Confidence (%) 80 (coch
 | Band | low |
 | Guideline | share: above 1 is high, with no moderate band: the moderate and high cutoffs are the same value |
 
-**Hot files the change touches, by revisions in the window**
+**Hot files the change touches, by revisions in the window ending at the base commit (the change itself is not counted)**
 
 | # | File | Revisions |
 | ---: | --- | ---: |

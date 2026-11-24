@@ -155,7 +155,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </section>
 <aside class="notice notice" role="note"><strong>Notice:</strong> 1 pair is an expected pair (1 a test and the code it tests). Expected pairs are not judged; the table below lists them.</aside>
 <table class="ranked">
-<caption>Expected pairs, listed apart and not judged: two test files, a test, fixture or golden file with what it checks, a C or C++ header with its source file, two build manifests of one toolchain, or two data files of one format. Sorted by degree, then shared changes, then path; pairs under the degree guideline come after the others.</caption>
+<caption>Expected pairs, listed apart and not judged: two test files, a test, fixture or golden file with what it checks, a C or C++ header with its source file, two build manifests of one toolchain, two data files of one format, or a file that is not code (documentation, configuration) with any other file. Sorted by degree, then shared changes, then path; pairs under the degree guideline come after the others.</caption>
 <thead><tr><th scope="col" class="number">#</th><th scope="col">File</th><th scope="col">Changes with</th><th scope="col">Why expected</th><th scope="col" class="number">Degree (%)</th><th scope="col" class="number">Shared changes</th></tr></thead>
 <tbody>
 <tr><td class="number">1</td><td>src/billing/ledger.test.ts</td><td>src/billing/ledger.ts</td><td>a test and the code it tests</td><td class="number">70 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">7</td></tr>
@@ -224,9 +224,9 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </table>
 <figure class="chart matrix">
 <figcaption>Shared changes between the top 6 files by sum of coupling</figcaption>
-<svg role="img" aria-labelledby="shared-changes-between-the-top-6-files-by-sum-of-coupling-db42fd-title shared-changes-between-the-top-6-files-by-sum-of-coupling-db42fd-desc" viewBox="0 0 604 250" preserveAspectRatio="xMinYMin meet">
-<title id="shared-changes-between-the-top-6-files-by-sum-of-coupling-db42fd-title">Shared changes between the top 6 files by sum of coupling</title>
-<desc id="shared-changes-between-the-top-6-files-by-sum-of-coupling-db42fd-desc">A grid of 6 rows by 6 columns holding shared changes (none where the pair shares fewer than 5, the support floor). Each cell prints its value; the table below lists the same values.</desc>
+<svg role="img" aria-labelledby="shared-changes-between-the-top-6-files-by-sum-of-coupling-65c548-title shared-changes-between-the-top-6-files-by-sum-of-coupling-65c548-desc" viewBox="0 0 604 250" preserveAspectRatio="xMinYMin meet">
+<title id="shared-changes-between-the-top-6-files-by-sum-of-coupling-65c548-title">Shared changes between the top 6 files by sum of coupling</title>
+<desc id="shared-changes-between-the-top-6-files-by-sum-of-coupling-65c548-desc">A grid of 6 rows by 6 columns holding shared changes (none where the pair shares fewer than 5, the support floor). Each cell prints its value; the table below lists the same values.</desc>
 <text x="212" y="84" transform="rotate(-35 212 84)">src/api/orders.ts</text>
 <text x="276" y="84" transform="rotate(-35 276 84)">src/web/orders-view.ts</text>
 <text x="340" y="84" transform="rotate(-35 340 84)">src/config/flags.ts</text>
@@ -240,12 +240,12 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <text x="174" y="211" text-anchor="end">src/search/index.ts</text>
 <text x="174" y="237" text-anchor="end">src/search/ranking.ts</text>
 <g class="cell band-none"><rect x="180" y="90" width="62" height="24"/><text x="211" y="106" text-anchor="middle">none</text></g>
-<g class="cell band-5"><rect x="244" y="90" width="62" height="24"/><text x="275" y="106" text-anchor="middle">8</text></g>
+<g class="cell band-2"><rect x="244" y="90" width="62" height="24"/><text x="275" y="106" text-anchor="middle">8</text></g>
 <g class="cell band-none"><rect x="308" y="90" width="62" height="24"/><text x="339" y="106" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="372" y="90" width="62" height="24"/><text x="403" y="106" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="436" y="90" width="62" height="24"/><text x="467" y="106" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="500" y="90" width="62" height="24"/><text x="531" y="106" text-anchor="middle">none</text></g>
-<g class="cell band-5"><rect x="180" y="116" width="62" height="24"/><text x="211" y="132" text-anchor="middle">8</text></g>
+<g class="cell band-2"><rect x="180" y="116" width="62" height="24"/><text x="211" y="132" text-anchor="middle">8</text></g>
 <g class="cell band-none"><rect x="244" y="116" width="62" height="24"/><text x="275" y="132" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="308" y="116" width="62" height="24"/><text x="339" y="132" text-anchor="middle">none</text></g>
 <g class="cell band-none"><rect x="372" y="116" width="62" height="24"/><text x="403" y="132" text-anchor="middle">none</text></g>
@@ -288,7 +288,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">src/search/ranking.ts</th><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">5</td><td class="number">none</td></tr>
 </tbody>
 </table>
-<p class="legend">Colour is shared changes (none where the pair shares fewer than 5, the support floor) in five bands, and each cell prints its value: band 1: 5 to 5.6, band 2: 5.6 to 6.2, band 3: 6.2 to 6.8, band 4: 6.8 to 7.4, band 5: 7.4 to 8. Hatched cells have no value.</p>
+<p class="legend">Colour is shared changes (none where the pair shares fewer than 5, the support floor) in two bands, and each cell prints its value: band 1: 5, band 2: 8. Hatched cells have no value.</p>
 </figure>
 </section>
 <section id="clusters" aria-labelledby="clusters-heading">

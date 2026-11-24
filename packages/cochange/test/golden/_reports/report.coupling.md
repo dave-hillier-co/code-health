@@ -43,7 +43,7 @@ _Guidelines order and label the rows and decide nothing. Degree (%) 30 (cochange
 
 > **Notice:** 1 pair is an expected pair (1 a test and the code it tests). Expected pairs are not judged; the table below lists them.
 
-**Expected pairs, listed apart and not judged: two test files, a test, fixture or golden file with what it checks, a C or C++ header with its source file, two build manifests of one toolchain, or two data files of one format. Sorted by degree, then shared changes, then path; pairs under the degree guideline come after the others.**
+**Expected pairs, listed apart and not judged: two test files, a test, fixture or golden file with what it checks, a C or C++ header with its source file, two build manifests of one toolchain, two data files of one format, or a file that is not code (documentation, configuration) with any other file. Sorted by degree, then shared changes, then path; pairs under the degree guideline come after the others.**
 
 | # | File | Changes with | Why expected | Degree (%) | Shared changes |
 | ---: | --- | --- | --- | ---: | ---: |
@@ -90,7 +90,7 @@ _Guidelines order and label the rows and decide nothing. Degree (%) 30 (cochange
 | 5 | src/search/index.ts | 5 | 1 | 100 |
 | 6 | src/search/ranking.ts | 5 | 1 | 100 |
 
-**Shared changes between the top 6 files by sum of coupling** (shared changes (none where the pair shares fewer than 5, the support floor); band 1: 5 to 5.6, band 2: 5.6 to 6.2, band 3: 6.2 to 6.8, band 4: 6.8 to 7.4, band 5: 7.4 to 8)
+**Shared changes between the top 6 files by sum of coupling** (shared changes (none where the pair shares fewer than 5, the support floor); band 1: 5, band 2: 8)
 
 |  | src/api/orders.ts | src/web/orders-view.ts | src/config/flags.ts | src/runtime/flags.ts | src/search/index.ts | src/search/ranking.ts |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |

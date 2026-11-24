@@ -17,7 +17,7 @@ Nesting and change meet in one file, and the history is short.
 
 ## Map of the code
 
-**The 4 largest files, nested by folder: size is lines, colour is revisions in the window** (the items by lines, largest first; band is revisions in the window, band 1: 2 to 5, band 2: 5 to 6, band 3: 6 to 7, band 4: 7 to 8, band 5: 8 to 8)
+**The 4 largest files, nested by folder: size is lines, colour is revisions in the window** (the items by lines, largest first; band is revisions in the window, band 1: 2 to 5, band 2: 5 to 6, band 3: 6 to 7, band 4: 7 to 8, band 5: 8)
 
 | Path | Size (lines) | Colour (revisions in the window) | Band |
 | --- | ---: | ---: | ---: |
@@ -50,13 +50,13 @@ Verdict: refactor. The file changes often and is deeply nested.
 
 ## History of the top files
 
-**Complexity and size of the first friction files across their history (cochange trend)**
+**Complexity and size of the first friction files across their history (cochange trend). The direction compares the first sample with the last sample only: worsening is a rise of at least the guideline, improving a fall of at least the guideline, and a fall in the last step does not change it**
 
-| # | File | Revisions in history | Direction | Change in complexity (%) | Peak complexity | Lines at first sample | Lines at last sample |
+| # | File | Revisions in history | Direction, first sample to last sample | Change in complexity, first sample to last sample (%) | Peak complexity | Lines at first sample | Lines at last sample |
 | ---: | --- | ---: | --- | ---: | ---: | ---: | ---: |
 | 1 | src/core/engine.ts | 6 | stable | 0 | 36 | 13 | 13 |
 
-_Guidelines order and label the rows and decide nothing. Change in complexity (%) 20 (the trend guideline for worsening), ▲ marks a value above it._
+_Guidelines order and label the rows and decide nothing. Change in complexity, first sample to last sample (%) 20 (the trend guideline for worsening), ▲ marks a value above it._
 
 **src/core/engine.ts: indentation complexity across its history** (indentation complexity, oldest first)
 

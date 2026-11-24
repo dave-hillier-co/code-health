@@ -83,7 +83,7 @@ function evidenceItems(records: Record<string, unknown>[], total: number = recor
 function findingItem(finding: Finding): Item {
   const files = finding.evidence.flatMap((record) => text(record.file) ?? text(record.path) ?? []);
   const label = clip(files.length === 0 ? finding.summary : `${finding.summary}: ${files.slice(0, 3).join(", ")}${files.length > 3 ? ", ..." : ""}`, 220);
-  const { items, omitted } = evidenceItems(finding.evidence);
+  const { items, omitted } = evidenceItems(finding.evidence, finding.evidenceTotal);
   return {
     slot: itemSlot(
       `finding-${finding.id}`,
@@ -226,7 +226,7 @@ function factorBlocks(assessed: Assessed, compact: boolean): Block[] {
         { key: "guideline", label: "Guideline" },
         { key: "evidence", label: "Evidence items", align: "right" },
       ],
-      rows: factors.map((f): Record<string, Cell> => ({ factor: f.name, band: bandText(f), value: valueText(f), guideline: guidelineText(f), evidence: f.evidence.length })),
+      rows: factors.map((f): Record<string, Cell> => ({ factor: f.name, band: bandText(f), value: valueText(f), guideline: guidelineText(f), evidence: f.evidenceTotal ?? f.evidence.length })),
     },
   ];
   const unavailable = factors.filter((f) => f.status !== "ok");
@@ -413,7 +413,7 @@ function hotspotBlocks(assessed: Assessed): Block[] {
   ];
   blocks.push({
     type: "ranked-table",
-    caption: "Hot files the change touches, by revisions in the window",
+    caption: "Hot files the change touches, by revisions in the window ending at the base commit (the change itself is not counted)",
     noun: "files",
     total: factor.evidenceTotal ?? factor.evidence.length,
     emptyText: "The change touches no hot file.",

@@ -277,7 +277,7 @@ test("a repository with one contributor says that bus-factor and turnover figure
     expect(stdout).toContain("The repository has one contributor in the window, so bus-factor and turnover figures do not apply.");
     expect(stdout).not.toContain("## Bus factor of the top hotspots");
     expect(stdout).not.toContain("## Simulated turnover");
-    expect(stdout).toContain("Simulated turnover: not listed. The repository has one contributor in the window");
+    expect(stdout).toContain("**Simulated turnover:** not listed. The repository has one contributor in the window");
   } finally {
     solo.dispose();
   }

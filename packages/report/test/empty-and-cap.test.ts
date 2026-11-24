@@ -42,11 +42,12 @@ describe("a section of empty blocks", () => {
   const section = { id: "hubs", heading: "Hubs", blocks: [table(0), chart(0)] };
 
   it("is one line", () => {
-    expect(emptySection(section)).toBe("Hubs: no rows. Stability: 0 of 5 packages have both instability and abstractness; a chart needs at least 3.");
+    expect(emptySection(section)).toBe("no rows. Stability: 0 of 5 packages have both instability and abstractness; a chart needs at least 3.");
     expect(emptySection({ ...section, blocks: [table(0), table(2)] })).toBeUndefined();
     expect(emptySection({ ...section, blocks: [table(0), { type: "judgement", slot: "j" }] })).toBeUndefined();
     expect(emptySection({ id: "x", heading: "X", blocks: [{ type: "notice", level: "notice", text: "t" }] })).toBeUndefined();
-    expect(emptySection({ ...section, blocks: [table(0), { type: "notice", level: "limit", text: "Omitted 2 files." }] })).toBe("Hubs: no rows. Omitted 2 files.");
+    expect(emptySection({ ...section, blocks: [table(0), { type: "notice", level: "limit", text: "Omitted 2 files." }] })).toBe("no rows. Omitted 2 files.");
+    expect(emptySection({ ...section, blocks: [table(0, { emptyText: "No file is a hub." })] })).toBe("No file is a hub.");
   });
 
   it("renders as one line in both formats and keeps the anchor", () => {
@@ -60,7 +61,7 @@ describe("a section of empty blocks", () => {
     };
     const report: Report = { ...build, kind: "k", header: { repo: "r", commit: "c".repeat(40), date: "2025-01-01", configHash: "h", ...build.header }, stamp: makeStamp("k", "c", "h", {}) };
     const md = markdownPage(report, {});
-    expect(md).toContain("**Hubs:** Hubs: no rows.");
+    expect(md).toContain("**Hubs:** no rows.");
     expect(md).not.toContain("## Hubs");
     expect(md).toContain("## Full");
     const html = htmlPage(report, {});
@@ -129,5 +130,16 @@ describe("compact header", () => {
     const md = markdownPage(report, {}, { compact: true });
     expect(md).toContain("Repository ``we`ird`` at");
     expect(md).toContain("- Excluded: 5 in total across 2 kinds; the full report lists each");
+  });
+});
+
+describe("band legends", () => {
+  it("uses one band per distinct value when there are fewer distinct values than bands", async () => {
+    const { matrixMd } = await import("../src/components/matrix.ts");
+    const same = matrixMd({ title: "M", valueLabel: "shared changes", rows: ["a", "b"], columns: ["a", "b"], cells: [[null, 5], [5, null]] });
+    expect(same).toContain("band 1: 5)");
+    expect(same).not.toContain("5 to 5");
+    const three = matrixMd({ title: "M", valueLabel: "shared changes", rows: ["a", "b"], columns: ["a", "b"], cells: [[1, 5], [9, 5]] });
+    expect(three).toContain("band 1: 1, band 2: 5, band 3: 9");
   });
 });

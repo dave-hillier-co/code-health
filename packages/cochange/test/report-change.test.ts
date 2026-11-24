@@ -246,7 +246,7 @@ test("hotspots touched need attention when the factor's band is moderate or high
   expect(document.slots.map((s: Slot) => s.id)).toEqual(["hotspots-touched", "guidance", "limits"]);
   expect(document.slots[0].about).toMatchObject({ kind: "finding", ref: "risk:hotspots-touched" });
   const { stdout } = await run("main..complete", "--notes", writeJson("notes-hot.json", fullNotes(document)), "--format", "md");
-  expect(stdout).toContain("**Hot files the change touches, by revisions in the window**");
+  expect(stdout).toContain("**Hot files the change touches, by revisions in the window ending at the base commit (the change itself is not counted)**");
   expect(stdout).toContain("src/billing/invoice.ts");
 });
 

@@ -483,6 +483,7 @@
             "file": "src/app/calc.ts"
           }
         ],
+        "evidenceTotal": 1,
         "factor": "complexity-delta",
         "fromPlacement": false,
         "id": "complexity-delta",
@@ -499,6 +500,7 @@
             "kind": "cycle"
           }
         ],
+        "evidenceTotal": 1,
         "factor": "structure-delta",
         "fromPlacement": false,
         "id": "structure-delta",

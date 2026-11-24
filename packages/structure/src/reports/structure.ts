@@ -123,6 +123,7 @@ function cycleBlocks(rows: readonly CycleRow[], projectFolderCycles: ProjectFold
       caption: "Import cycles, largest first",
       noun: "cycles",
       total: rows.length,
+      emptyText: "No import cycle at the default level.",
       columns: [
         { key: "modules", label: "Modules in the cycle" },
         { key: "size", label: "Size", align: "right" },
@@ -175,7 +176,6 @@ function cycleBlocks(rows: readonly CycleRow[], projectFolderCycles: ProjectFold
       maxChars: 400,
     });
   });
-  if (rows.length === 0) blocks.push({ type: "notice", level: "notice", text: "No import cycle at the default level." });
   if (projectFolderCycles !== undefined) blocks.push({ type: "notice", level: "notice", text: projectFolderCyclesText(projectFolderCycles) });
   return { blocks, slots };
 }
@@ -319,6 +319,7 @@ function hubBlocks(rows: readonly Hub[], notices: readonly string[]): Block[] {
       caption: "Registration hubs: files every feature edits",
       noun: "hubs",
       total: rows.length,
+      emptyText: notices.join(" "),
       columns: [
         { key: "file", label: "File" },
         { key: "reached", label: "Signals reached of 4", align: "right" },
@@ -334,7 +335,7 @@ function hubBlocks(rows: readonly Hub[], notices: readonly string[]): Block[] {
         revisions: hub.revisions,
       })),
     },
-    ...notices.map((text): Block => ({ type: "notice", level: "notice", text })),
+    ...(rows.length === 0 ? [] : notices.map((text): Block => ({ type: "notice", level: "notice", text }))),
   ];
 }
 
