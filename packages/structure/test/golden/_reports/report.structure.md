@@ -21,6 +21,31 @@
 | Registration hubs | 0 |
 | Packages | 5 |
 
+**Module dependency matrix** (file imports from the row module into the column module; band 1: 1)
+
+|  | …kages/p1/src/use.ts | packages/p1/src/x.ts | …ges/p4/src/ports.ts | src/c.ts | src/d.ts | src/e.ts | src/leaf.ts | src/ui/view.ts | packages/p2/src/y.ts | …ges/p3/src/types.ts | …ges/p5/src/model.ts | src/b.ts | src/a.ts | src/core/model.ts | packages/p1/src/z.ts | src/ui/format.ts |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| …kages/p1/src/use.ts | none | none | none | none | none | none | none | none | none | 1 | 1 | none | none | none | none | none |
+| packages/p1/src/x.ts | none | none | none | none | none | none | none | none | 1 | none | none | none | none | none | none | none |
+| …ges/p4/src/ports.ts | none | none | none | none | none | none | none | none | none | 1 | none | none | none | none | none | none |
+| src/c.ts (cycle 1) | none | none | none | none | 1 | none | none | none | none | none | none | none | none | none | none | none |
+| src/d.ts (cycle 1) | none | none | none | none | none | 1 | none | none | none | none | none | none | none | none | none | none |
+| src/e.ts (cycle 1) | none | none | none | 1 ! | none | none | none | none | none | none | none | none | none | none | none | none |
+| src/leaf.ts | none | none | none | none | none | none | none | none | none | none | none | none | 1 | none | none | none |
+| src/ui/view.ts | none | none | none | none | none | none | none | none | none | none | none | none | none | 1 | none | none |
+| packages/p2/src/y.ts | none | none | none | none | none | none | none | none | none | none | none | none | none | none | 1 | none |
+| …ges/p3/src/types.ts | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none |
+| …ges/p5/src/model.ts | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none |
+| src/b.ts (cycle 2) | none | none | none | none | none | none | none | none | none | none | none | none | 1 | none | none | none |
+| src/a.ts (cycle 2) | none | none | none | none | none | none | none | none | none | none | none | 1 ! | none | none | none | none |
+| src/core/model.ts | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none | 1 L |
+| packages/p1/src/z.ts | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none |
+| src/ui/format.ts | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none |
+
+! is a dependency against the order: below the diagonal, inside an import cycle (2 cells); L is an import the configured layer rules forbid (1 cell). Boxes along the diagonal mark 2 groups: cycle 1 (3 rows), cycle 2 (2 rows). A row is a module and the cells in it are the modules it depends on. Rows are ordered by layer, top first: a module comes after every module that depends on it, so in a layered design every cell is above the diagonal. The members of one cycle stay together in a box labelled as in the cycles table, ordered so that only the edges of its breaking set lie below the diagonal. Names are cut from the left to 20 characters; the cycles table gives them whole.
+
+The matrix draws all 16 modules of typescript, the language with the most modules at the default level.
+
 **Judgement: what to look at first**
 
 The cycles are small and the history is short, so little can be said with confidence.

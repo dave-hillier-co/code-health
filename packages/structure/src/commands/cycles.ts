@@ -1,6 +1,8 @@
 import type { Rule } from "@code-health/cli-kit/run-cli";
 import { analysisCommand } from "../analysis-command.ts";
 import { findCycles, findProjectFolderCycles } from "../cycles.ts";
+import { buildDsm } from "../dsm.ts";
+import { findLayerViolations } from "../layers.ts";
 import { buildModel } from "../model.ts";
 import { readLevel, type Level } from "../modules.ts";
 
@@ -53,6 +55,7 @@ export const command = analysisCommand(name, {
       columns: ["id", "size", "method", "nested", "nodes", "breakingSet", "coChangeAcross", "unblockedGain"],
       extra: {
         population: { modules: model.graph.graph.size, eligibleChanges: model.activity.eligibleChanges },
+        ...(level === "default" ? { dsm: buildDsm(model.graph, rows, findLayerViolations(model.project, history.settings.layers)) ?? null } : {}),
         ...(history.settings.csharpFolderCycles && level === "default" ? { projectFolderCycles: findProjectFolderCycles(model.project, history.settings) } : {}),
       },
     };

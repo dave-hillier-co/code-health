@@ -37,9 +37,12 @@ export interface MatrixData {
   groups?: MatrixGroup[];
   /** How the rows are ordered, printed under the chart, such as "Rows are ordered by cluster, then by sum of coupling". */
   orderText?: string;
+  /** For a matrix that is mostly empty, such as a dependency matrix: narrower cells, and an empty cell draws no text (its table cell still says "none"). */
+  sparse?: boolean;
 }
 
 const CELL_W = 64;
+const SPARSE_CELL_W = 44;
 const CELL_H = 26;
 const ROW_LABEL = 180;
 const COLUMN_LABEL = 90;
@@ -82,8 +85,9 @@ export function matrixHtml(data: MatrixData): string {
   const present = data.cells.flat().flatMap((v) => (v === null ? [] : [v]));
   const bands = makeBands(present, data.breaks);
   const groups = usableGroups(data);
+  const cellW = data.sparse ? SPARSE_CELL_W : CELL_W;
   const labels = [
-    ...data.columns.map((c, j) => `<text x="${ROW_LABEL + j * CELL_W + CELL_W / 2}" y="${COLUMN_LABEL - 6}" transform="rotate(-35 ${ROW_LABEL + j * CELL_W + CELL_W / 2} ${COLUMN_LABEL - 6})">${escapeHtml(c)}</text>`),
+    ...data.columns.map((c, j) => `<text x="${ROW_LABEL + j * cellW + cellW / 2}" y="${COLUMN_LABEL - 6}" transform="rotate(-35 ${ROW_LABEL + j * cellW + cellW / 2} ${COLUMN_LABEL - 6})">${escapeHtml(c)}</text>`),
     ...data.rows.map((r, i) => `<text x="${ROW_LABEL - 6}" y="${COLUMN_LABEL + i * CELL_H + 17}" text-anchor="end">${escapeHtml(r)}</text>`),
   ];
   const cells = data.rows.flatMap((_, i) =>
@@ -91,16 +95,16 @@ export function matrixHtml(data: MatrixData): string {
       const value = data.cells[i]?.[j] ?? null;
       const name = data.cellMarks?.[i]?.[j] ?? null;
       const markClass = name !== null && data.marks?.[name] !== undefined ? ` mark-${name}` : "";
-      const x = ROW_LABEL + j * CELL_W;
+      const x = ROW_LABEL + j * cellW;
       const y = COLUMN_LABEL + i * CELL_H;
-      return `<g class="cell band-${value === null ? "none" : bands.of(value)}${markClass}"><rect x="${x}" y="${y}" width="${CELL_W - 2}" height="${CELL_H - 2}"/><text x="${x + CELL_W / 2 - 1}" y="${y + 16}" text-anchor="middle">${escapeHtml(cellText(data, i, j))}</text></g>`;
+      return `<g class="cell band-${value === null ? "none" : bands.of(value)}${markClass}"><rect x="${x}" y="${y}" width="${cellW - 2}" height="${CELL_H - 2}"/><text x="${x + cellW / 2 - 1}" y="${y + 16}" text-anchor="middle">${data.sparse && value === null && markOf(data, i, j) === undefined ? "" : escapeHtml(cellText(data, i, j))}</text></g>`;
     }),
   );
   const boxes = groups.map((g) => {
-    const x = ROW_LABEL + g.start * CELL_W - 1;
+    const x = ROW_LABEL + g.start * cellW - 1;
     const y = COLUMN_LABEL + g.start * CELL_H - 1;
     const span = g.end - g.start + 1;
-    return `<g class="group"><rect x="${x}" y="${y}" width="${span * CELL_W}" height="${span * CELL_H}"><title>${escapeHtml(g.label)}</title></rect></g>`;
+    return `<g class="group"><rect x="${x}" y="${y}" width="${span * cellW}" height="${span * CELL_H}"><title>${escapeHtml(g.label)}</title></rect></g>`;
   });
   const notes = [
     `Colour is ${data.valueLabel} in ${bandCountText(bands)}, and each cell prints its value: ${bandLegend(bands)}. Hatched cells have no value.`,
@@ -122,7 +126,7 @@ export function matrixHtml(data: MatrixData): string {
     kind: "matrix",
     title: data.title,
     description,
-    width: ROW_LABEL + data.columns.length * CELL_W + 40,
+    width: ROW_LABEL + data.columns.length * cellW + (data.sparse ? 100 : 40),
     height: COLUMN_LABEL + data.rows.length * CELL_H + 4,
     drawing: [...labels, ...cells, ...boxes].join("\n"),
     table: htmlTable(`${data.title}: ${data.valueLabel}`, [{ label: "" }, ...data.columns.map((c) => ({ label: c, align: "right" as const }))], data.rows.map((r, i) => [escapeHtml(rowLabel(r, i)), ...data.columns.map((_, j) => escapeHtml(cellText(data, i, j)))]), { rowHeaders: true }),

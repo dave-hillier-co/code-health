@@ -136,7 +136,8 @@ test("the html page is accessible: every chart has its table, every table a capt
   const document = await slots();
   const { stdout } = await run("--notes", writeNotes("notes-a.json", fullNotes(document)), "--format", "html");
   expect(accessibilityProblems(stdout)).toEqual([]);
-  expect((stdout.match(/<svg/g) ?? []).length).toBe(1);
+  expect((stdout.match(/<svg/g) ?? []).length).toBe(2);
+  expect(stdout.indexOf("Module dependency matrix")).toBeLessThan(stdout.indexOf("Zone of pain"));
   expect(stdout).toContain("Zone of pain");
   expect(stdout).toContain("Zone of uselessness");
   expect(stdout).toContain("Main sequence");

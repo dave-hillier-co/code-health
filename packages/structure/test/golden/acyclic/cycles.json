@@ -1,6 +1,35 @@
 {
   "command": "cycles",
   "config": "0000000000000000",
+  "dsm": {
+    "againstOrder": [],
+    "cells": [
+      [
+        null,
+        1
+      ],
+      [
+        null,
+        null
+      ]
+    ],
+    "connectedModules": 2,
+    "cycleModules": 0,
+    "groups": [],
+    "language": "typescript",
+    "languages": [
+      {
+        "language": "typescript",
+        "modules": 2
+      }
+    ],
+    "layerViolations": [],
+    "modules": [
+      "src/a.ts",
+      "src/b.ts"
+    ],
+    "totalModules": 2
+  },
   "evidence": {
     "activeContributors": 1,
     "commitSize": {
