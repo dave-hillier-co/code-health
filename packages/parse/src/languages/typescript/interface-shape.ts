@@ -2,7 +2,7 @@ import type { Node } from "web-tree-sitter";
 import { parameterCounts } from "./metric-rules.ts";
 
 /**
- * What the interface depth signal needs of a unit (complexity.md, Interface depth): the size of its
+ * What the interface depth signal needs of a unit (the complexity skill's references/metrics.md, Interface depth): the size of its
  * implementation in syntax nodes, the size of its interface, and whether its whole body forwards to one
  * other call. All of it depends only on the syntax tree, so it is cached with the file's facts.
  *

@@ -16,6 +16,21 @@
 
 Knowledge sits with a few people and the history is short.
 
+**The code, nested by folder: size is lines, fill is knowledge-risk pattern** (the items by lines, largest first; marks: SOH Single-owner hotspot (1 tile, 10 lines); CFC Complex code by former contributors (3 tiles, 30 lines); SO Single owner (2 tiles, 20 lines); MAD Many active developers (0 tiles, 0 lines); INC Inconclusive (1 tile, 10 lines); none (1 tile, 10 lines))
+
+| Path | Size (lines) | First pattern |
+| --- | ---: | --- |
+| src/api/auth.ts | 10 | Single-owner hotspot |
+| src/api/routes.ts | 10 | none |
+| src/core/engine.ts | 10 | Complex code by former contributors |
+| src/core/lexer.ts | 10 | Complex code by former contributors |
+| src/core/parser.ts | 10 | Complex code by former contributors |
+| src/gen/deps.ts | 10 | Inconclusive |
+| src/ui/view.ts | 10 | Single owner |
+| src/util/log.ts | 10 | Single owner |
+
+> **Notice:** The map draws all 8 production code files at HEAD (80 lines), the same files at the same places as the map in the hotspots report. The tables below list files of every kind by pattern, hottest first.
+
 ## Knowledge-risk patterns
 
 **Guidelines the patterns use (cochange.knowledge, each a judgement call that labels and orders files and hides none)**
@@ -41,21 +56,6 @@ Knowledge sits with a few people and the history is short.
 | Many active developers | At least 5 active developers each hold at least 5% of the lines held by people | 0 | 0 |
 | Inconclusive | Lines of bots, services, agents, unknown commits and unmapped identities are at least 50% of the file's lines, or its blame is not known | 1 | 1 |
 | No pattern | None of the above applies | 1 | 1 |
-
-**Files by lines held by people, marked by knowledge-risk pattern** (the items by lines held by people, largest first; marks: SOH Single-owner hotspot (1 tile); CFC Complex code by former contributors (3 tiles); SO Single owner (2 tiles); MAD Many active developers (0 tiles); INC Inconclusive (1 tile))
-
-| Path | Size (lines held by people) | First pattern |
-| --- | ---: | --- |
-| src/api/auth.ts | 10 | Single-owner hotspot |
-| src/api/routes.ts | 10 | none |
-| src/core/engine.ts | 10 | Complex code by former contributors |
-| src/core/lexer.ts | 10 | Complex code by former contributors |
-| src/core/parser.ts | 10 | Complex code by former contributors |
-| src/ui/view.ts | 10 | Single owner |
-| src/util/log.ts | 10 | Single owner |
-| src/gen/deps.ts | 5 | Inconclusive |
-
-> **Notice:** The treemap draws the 8 production code files with the most lines held by people, of 8. The tables below list files of every kind by pattern, hottest first.
 
 **Top files whose first pattern is single-owner hotspot, hottest first**
 

@@ -147,12 +147,12 @@ test("the matrix opens the page, is ordered by cluster, boxes each cluster and m
   const { stdout } = await run("--notes", writeNotes("notes-matrix.json", fullNotes(document)), "--format", "md");
   expect(stdout.indexOf("**Co-change between")).toBeGreaterThan(stdout.indexOf("## What the coupling says"));
   expect(stdout.indexOf("**Co-change between")).toBeLessThan(stdout.indexOf("## Coupled pairs"));
-  expect(stdout).toContain("(cluster 1)");
+  expect(stdout).toContain("| src/api/orders.ts | src/web/orders-view.ts | 80 |  | cluster 1 | cluster 1 |");
   expect(stdout).toContain("Boxes along the diagonal mark 4 groups: cluster 1 (2 rows)");
   expect(stdout).toContain("Rows and columns are ordered by cluster");
   expect(stdout).toContain("Draws 8 files and 4 of 4 clusters");
-  expect(stdout).toContain("src/billing/ledger.test.ts (cluster ");
-  expect(stdout).toMatch(/\| [0-9.]+ e \|/);
+  expect(stdout).toContain("| src/billing/ledger.test.ts | src/billing/ledger.ts | 70 | an expected pair");
+  expect(stdout).toMatch(/\| [0-9.]+ \| an expected pair/);
   expect(stdout).toContain("e is an expected pair");
   const clusters = document.data.sections.find((s: { id: string }) => s.id === "clusters").blocks[0];
   expect(clusters.total).toBe(4);
@@ -166,7 +166,7 @@ test("the first figure is the co-change matrix of components, grouped by tree, a
   const document = await slots();
   const { stdout } = await run("--notes", writeNotes("notes-components.json", fullNotes(document)), "--format", "md");
   expect(stdout.indexOf("**Co-change between the 7 components")).toBeLessThan(stdout.indexOf("**Co-change between the 8 files"));
-  expect(stdout).toContain("| api (src) | none | none | none | none | 80 |");
+  expect(stdout).toContain("| api | web | 80 |  | src | src |");
   expect(stdout).toContain("Bars above the columns and left of the rows mark 2 spans: src (6 rows), top level (1 row).");
   expect(stdout).toContain("The component map is inferred from folders");
   expect(stdout).toContain("0 production code files are in no component");

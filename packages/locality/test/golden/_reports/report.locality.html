@@ -15,6 +15,12 @@
   --band-3: #9fbfe8; --on-band-3: #0d1f3a;
   --band-4: #3f78c4; --on-band-4: #ffffff;
   --band-5: #1c4587; --on-band-5: #ffffff;
+  --span-1: #f4c7c3; --on-span-1: #3b0d0a;
+  --span-2: #fbe0a6; --on-span-2: #3b2a00;
+  --span-3: #c9e7c2; --on-span-3: #0f2f0a;
+  --span-4: #bfe3ea; --on-span-4: #0a2f38;
+  --span-5: #d8cbf0; --on-span-5: #25104a;
+  --span-6: #f3cbe3; --on-span-6: #3f0d2b;
   --bar: #3f78c4; --bar-above: #1c4587; --marker: #16181d;
   --notice-bg: #fff8e1; --notice-rule: #8a6100;
 }
@@ -27,6 +33,12 @@
     --band-3: #3566a8; --on-band-3: #ffffff;
     --band-4: #7ba6e0; --on-band-4: #0b1830;
     --band-5: #b9d3f5; --on-band-5: #0b1830;
+    --span-1: #6b2a27; --on-span-1: #ffe3e0;
+    --span-2: #6a4d0a; --on-span-2: #fff0cc;
+    --span-3: #2b5a24; --on-span-3: #e0f6dc;
+    --span-4: #1f5662; --on-span-4: #d7f2f8;
+    --span-5: #4a3a7a; --on-span-5: #ece4ff;
+    --span-6: #703055; --on-span-6: #ffe3f2;
     --bar: #7ba6e0; --bar-above: #b9d3f5; --marker: #e8eaf0;
     --notice-bg: #2a2310; --notice-rule: #e0b84a;
   }
@@ -67,17 +79,35 @@ figure.chart svg text { fill: var(--text); }
 svg .folder rect { fill: none; stroke: var(--rule); }
 svg .folder text { fill: var(--muted); }
 svg .tile rect, svg .cell rect { stroke: var(--bg); stroke-width: 1; }
+svg .tile.marked rect { stroke: var(--text); stroke-width: 2; }
 svg .band-1 rect { fill: var(--band-1); } svg .band-1 text { fill: var(--on-band-1); }
 svg .band-2 rect { fill: var(--band-2); } svg .band-2 text { fill: var(--on-band-2); }
 svg .band-3 rect { fill: var(--band-3); } svg .band-3 text { fill: var(--on-band-3); }
 svg .band-4 rect { fill: var(--band-4); } svg .band-4 text { fill: var(--on-band-4); }
 svg .band-5 rect { fill: var(--band-5); } svg .band-5 text { fill: var(--on-band-5); }
 svg .band-none rect { fill: var(--panel); stroke: var(--muted); stroke-dasharray: 3 2; }
+svg .span-1 rect { fill: var(--span-1); } svg .span-1 text { fill: var(--on-span-1); }
+svg .span-2 rect { fill: var(--span-2); } svg .span-2 text { fill: var(--on-span-2); }
+svg .span-3 rect { fill: var(--span-3); } svg .span-3 text { fill: var(--on-span-3); }
+svg .span-4 rect { fill: var(--span-4); } svg .span-4 text { fill: var(--on-span-4); }
+svg .span-5 rect { fill: var(--span-5); } svg .span-5 text { fill: var(--on-span-5); }
+svg .span-6 rect { fill: var(--span-6); } svg .span-6 text { fill: var(--on-span-6); }
+svg .span text { font-weight: 600; }
+svg .span-boundary { stroke: var(--marker); stroke-width: 1; }
 svg .group rect { fill: none; stroke: var(--marker); stroke-width: 2; }
 svg .cell[class*="mark-"] text { font-weight: 700; }
+svg .folder-row .folder-name { font-weight: 600; } svg .folder-row .row-note { fill: var(--muted); }
+svg .folder-row .guide { stroke: var(--rule); stroke-dasharray: 1 3; }
+svg .edge path { fill: none; stroke: var(--bar-above); } svg .edge polygon { fill: var(--bar-above); }
+svg .edge.dashed path { stroke-dasharray: 6 4; }
 svg .bin rect { fill: var(--bar); }
 svg .bar rect { fill: var(--bar); } svg .bar.above rect { fill: var(--bar-above); }
 svg .bar line { stroke: var(--marker); stroke-width: 2; }
+svg .frame { fill: none; stroke: var(--rule); }
+svg .guideline line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 6 4; } svg .guideline text, svg .tick { fill: var(--muted); }
+svg circle.point { fill: var(--bar); fill-opacity: .4; }
+svg rect.point, svg .point.named rect { fill: var(--bar-above); stroke: var(--bg); stroke-width: 1; }
+svg .point.named text { paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
 svg polyline { fill: none; stroke: var(--bar-above); stroke-width: 2; } svg circle { fill: var(--bar-above); }
 .notice { border-left: 4px solid var(--notice-rule); background: var(--notice-bg); padding: .5rem .75rem; margin: .75rem 0; }
 .judgement { border: 1px solid var(--rule); border-left: 4px solid var(--link); background: var(--panel); padding: .25rem 1rem .5rem; margin: 1rem 0; }
@@ -138,6 +168,57 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <h3>Judgement: what this report says</h3>
 <p>The helpers sit far from their consumers.</p>
 </section>
+<figure class="chart move-map">
+<figcaption>Where the top candidates would move</figcaption>
+<svg role="img" aria-labelledby="where-the-top-candidates-would-move-c04108-title where-the-top-candidates-would-move-c04108-desc" viewBox="0 0 577 337" preserveAspectRatio="xMinYMin meet">
+<title id="where-the-top-candidates-would-move-c04108-title">Where the top candidates would move</title>
+<desc id="where-the-top-candidates-would-move-c04108-desc">A folder tree of 10 rows with 5 arrows from a unit's folder to its target folder and 12 markers. Kinds: move, blocked move (dashed), blocked unit, review, split, inline, consumers of. Each arrow is numbered and its row prints its gain; the table below lists every arrow and marker.</desc>
+<g class="folder-row"><text class="folder-name" x="8" y="15">src</text><line class="guide" x1="26.6" y1="11" x2="94.0" y2="11"/><text class="row-note" x="190.0" y="15">move 2 in</text><text class="row-note" x="190.0" y="28">move 5 in</text><text class="row-note" x="190.0" y="41">review R3</text></g>
+<g class="folder-row"><text class="folder-name" x="22" y="63">billing</text><line class="guide" x1="65.4" y1="59" x2="94.0" y2="59"/><text class="row-note" x="190.0" y="63">move 4 in</text><text class="row-note" x="190.0" y="76">inline R4</text><text class="row-note" x="190.0" y="89">consumers of 2, 5</text></g>
+<g class="folder-row"><text class="folder-name" x="22" y="111">lib/kernel</text><line class="guide" x1="84.0" y1="107" x2="94.0" y2="107"/><text class="row-note" x="190.0" y="111">blocked unit B1 (blocked by core.ts)</text></g>
+<g class="folder-row"><text class="folder-name" x="22" y="133">orders</text><line class="guide" x1="59.2" y1="129" x2="94.0" y2="129"/><text class="row-note" x="190.0" y="133">move 3 in</text><text class="row-note" x="190.0" y="146">inline R5</text><text class="row-note" x="190.0" y="159">consumers of 2, 5</text></g>
+<g class="folder-row"><text class="folder-name" x="22" y="181">reports</text><line class="guide" x1="65.4" y1="177" x2="94.0" y2="177"/><text class="row-note" x="190.0" y="181">move 1 in</text></g>
+<g class="folder-row"><text class="folder-name" x="22" y="203">shared</text><line class="guide" x1="59.2" y1="199" x2="94.0" y2="199"/><text class="row-note" x="190.0" y="203">move 5 out: gain 2</text></g>
+<g class="folder-row"><text class="folder-name" x="36" y="225">cycle</text><line class="guide" x1="67.0" y1="221" x2="94.0" y2="221"/><text class="row-note" x="190.0" y="225">move 3 out: gain 3</text></g>
+<g class="folder-row"><text class="folder-name" x="36" y="247">helpers</text><line class="guide" x1="79.4" y1="243" x2="94.0" y2="243"/><text class="row-note" x="190.0" y="247">split R1</text></g>
+<g class="folder-row"><text class="folder-name" x="36" y="269">pair</text><line class="guide" x1="60.8" y1="265" x2="94.0" y2="265"/><text class="row-note" x="190.0" y="269">move 1 out: gain 6</text><text class="row-note" x="190.0" y="282">blocked unit B2 (blocked by core.ts), B3 (blocked by core.ts)</text></g>
+<g class="folder-row"><text class="folder-name" x="36" y="304">utils</text><line class="guide" x1="67.0" y1="300" x2="94.0" y2="300"/><text class="row-note" x="190.0" y="304">move 2 out: gain 4</text><text class="row-note" x="190.0" y="317">move 4 out: gain 3</text><text class="row-note" x="190.0" y="330">inline R2</text></g>
+<g class="edge move solid"><path d="M99 271.5H112V177.0H100" stroke-width="4.5"/><polygon points="95,177.0 102,173.5 102,180.5"/><title>1: src/shared/pair to src/reports</title></g>
+<g class="edge move solid"><path d="M99 311.0H124V22.0H100" stroke-width="3.5"/><polygon points="95,22.0 102,18.5 102,25.5"/><title>2: src/shared/utils to src</title></g>
+<g class="edge move solid"><path d="M99 221.0H136V142.0H100" stroke-width="3.0"/><polygon points="95,142.0 102,138.5 102,145.5"/><title>3: src/shared/cycle to src/orders</title></g>
+<g class="edge move solid"><path d="M99 315.0H148V72.0H100" stroke-width="3.0"/><polygon points="95,72.0 102,68.5 102,75.5"/><title>4: src/shared/utils to src/billing</title></g>
+<g class="edge move solid"><path d="M99 199.0H160V26.0H100" stroke-width="2.5"/><polygon points="95,26.0 102,22.5 102,29.5"/><title>5: src/shared to src</title></g>
+</svg>
+<table>
+<caption>Where the top candidates would move: each arrow and marker</caption>
+<thead><tr><th scope="col">#</th><th scope="col">Unit</th><th scope="col">From folder</th><th scope="col">To folder</th><th scope="col" class="number">Gain</th><th scope="col">Status</th></tr></thead>
+<tbody>
+<tr><th scope="row">1</th><td>src/shared/pair</td><td>src/shared/pair</td><td>src/reports</td><td class="number">6</td><td>move: the planner can plan it</td></tr>
+<tr><th scope="row">2</th><td>src/shared/utils/money.ts</td><td>src/shared/utils</td><td>src</td><td class="number">4</td><td>move: the planner can plan it</td></tr>
+<tr><th scope="row">3</th><td>src/shared/cycle/a.ts</td><td>src/shared/cycle</td><td>src/orders</td><td class="number">3</td><td>move: the planner can plan it</td></tr>
+<tr><th scope="row">4</th><td>src/shared/utils/invoice.ts</td><td>src/shared/utils</td><td>src/billing</td><td class="number">3</td><td>move: the planner can plan it</td></tr>
+<tr><th scope="row">5</th><td>src/shared/log.ts</td><td>src/shared</td><td>src</td><td class="number">2</td><td>move: the planner can plan it</td></tr>
+<tr><th scope="row">B1</th><td>src/lib/kernel/tool.ts</td><td>src/lib/kernel</td><td>none: its own folder is its best until the blockers are resolved</td><td class="number">4</td><td>blocked unit, marker on its folder; gain if unblocked; blocked by src/lib/kernel/core.ts</td></tr>
+<tr><th scope="row">B2</th><td>src/shared/pair/a.ts</td><td>src/shared/pair</td><td>none: its own folder is its best until the blockers are resolved</td><td class="number">3</td><td>blocked unit, marker on its folder; gain if unblocked; blocked by src/shared/pair/core.ts</td></tr>
+<tr><th scope="row">B3</th><td>src/shared/pair/b.ts</td><td>src/shared/pair</td><td>none: its own folder is its best until the blockers are resolved</td><td class="number">3</td><td>blocked unit, marker on its folder; gain if unblocked; blocked by src/shared/pair/core.ts</td></tr>
+<tr><th scope="row">R1</th><td>src/shared/helpers/mixed.ts</td><td>src/shared/helpers</td><td>no single target</td><td class="number">4</td><td>split: marker on its folder, no arrow</td></tr>
+<tr><th scope="row">R2</th><td>src/shared/utils/slug.ts</td><td>src/shared/utils</td><td>no single target</td><td class="number">3</td><td>inline: marker on its folder, no arrow</td></tr>
+<tr><th scope="row">R3</th><td>src/orders/place.ts</td><td>src</td><td>no single target</td><td class="number">2</td><td>review: marker on its folder, no arrow</td></tr>
+<tr><th scope="row">R4</th><td>src/billing/index.ts</td><td>src/billing</td><td>no single target</td><td class="number">0</td><td>inline: marker on its folder, no arrow</td></tr>
+<tr><th scope="row">R5</th><td>src/orders/audit.ts</td><td>src/orders</td><td>no single target</td><td class="number">0</td><td>inline: marker on its folder, no arrow</td></tr>
+</tbody>
+</table>
+<p class="legend">Each folder is a row, indented under its parent. A folder with nothing of its own and one child is joined to that child.</p>
+<p class="legend">An arrow runs from the folder a unit is in to the folder it moves to. Its number is the unit's number in the table, its thickness grows with gain, and the row text prints the number and gain. A solid line and a dashed line are told apart by the word in the row text as well as by the dash.</p>
+<p class="legend">move: a unit of kind move with no blockers, which the planner can plan without --reason. Its number is its row in the moves table.</p>
+<p class="legend">blocked move (dashed line): a unit of kind move held back by blockers, drawn to its target folder with the gain it would have if they were resolved. B numbers are rows of the blocked table.</p>
+<p class="legend">blocked unit: a unit held back by blockers whose own folder is its best folder now, so there is no target to draw: a marker on its folder, with its first blocker. B numbers are rows of the blocked table.</p>
+<p class="legend">review: a unit of kind review: no single target, so a marker on its folder and no arrow. R numbers are rows of the reviews, splits and inlines table.</p>
+<p class="legend">split: a unit of kind split: no single target, so a marker on its folder and no arrow.</p>
+<p class="legend">inline: a unit of kind inline: no single target, so a marker on its folder and no arrow.</p>
+<p class="legend">consumers of: a folder with a file that uses the unit with that number</p>
+<p class="legend">Not drawn: 0 of 5 moves, 0 of 3 blocked units, 0 of 5 reviews, splits and inlines (the map draws the top 10 moves, 5 blocked units and 5 reviews, splits and inlines). Scrutinise units propose no move and are not drawn. Gain is net distance removed, against the locality.minDistance guideline of 2.</p>
+</figure>
 </section>
 <section id="candidates" aria-labelledby="candidates-heading">
 <h2 id="candidates-heading">Candidates</h2>

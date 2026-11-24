@@ -79,7 +79,7 @@ export const structureConfig: PluginConfigSpec = {
     base: null,
     /** When true, `cycles` also counts the folder cycles inside one C# project and lists the largest few. They are never the headline: folders of one project are one compilation unit. */
     csharpFolderCycles: false,
-    /** The packaging skill's settings; see docs/specs/packaging.md. */
+    /** The packaging skill's settings; see the packaging skill's references. */
     packages: packagesDefaults,
   },
 };

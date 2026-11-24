@@ -79,6 +79,7 @@ figure.chart svg text { fill: var(--text); }
 svg .folder rect { fill: none; stroke: var(--rule); }
 svg .folder text { fill: var(--muted); }
 svg .tile rect, svg .cell rect { stroke: var(--bg); stroke-width: 1; }
+svg .tile.marked rect { stroke: var(--text); stroke-width: 2; }
 svg .band-1 rect { fill: var(--band-1); } svg .band-1 text { fill: var(--on-band-1); }
 svg .band-2 rect { fill: var(--band-2); } svg .band-2 text { fill: var(--on-band-2); }
 svg .band-3 rect { fill: var(--band-3); } svg .band-3 text { fill: var(--on-band-3); }
@@ -95,9 +96,18 @@ svg .span text { font-weight: 600; }
 svg .span-boundary { stroke: var(--marker); stroke-width: 1; }
 svg .group rect { fill: none; stroke: var(--marker); stroke-width: 2; }
 svg .cell[class*="mark-"] text { font-weight: 700; }
+svg .folder-row .folder-name { font-weight: 600; } svg .folder-row .row-note { fill: var(--muted); }
+svg .folder-row .guide { stroke: var(--rule); stroke-dasharray: 1 3; }
+svg .edge path { fill: none; stroke: var(--bar-above); } svg .edge polygon { fill: var(--bar-above); }
+svg .edge.dashed path { stroke-dasharray: 6 4; }
 svg .bin rect { fill: var(--bar); }
 svg .bar rect { fill: var(--bar); } svg .bar.above rect { fill: var(--bar-above); }
 svg .bar line { stroke: var(--marker); stroke-width: 2; }
+svg .frame { fill: none; stroke: var(--rule); }
+svg .guideline line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 6 4; } svg .guideline text, svg .tick { fill: var(--muted); }
+svg circle.point { fill: var(--bar); fill-opacity: .4; }
+svg rect.point, svg .point.named rect { fill: var(--bar-above); stroke: var(--bg); stroke-width: 1; }
+svg .point.named text { paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
 svg polyline { fill: none; stroke: var(--bar-above); stroke-width: 2; } svg circle { fill: var(--bar-above); }
 .notice { border-left: 4px solid var(--notice-rule); background: var(--notice-bg); padding: .5rem .75rem; margin: .75rem 0; }
 .judgement { border: 1px solid var(--rule); border-left: 4px solid var(--link); background: var(--panel); padding: .25rem 1rem .5rem; margin: 1rem 0; }
@@ -177,7 +187,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <g class="tile band-1"><title>docs/guide.md: 60 lines, 1 revisions</title><rect x="895.8" y="16.0" width="62.2" height="502.0"/><text x="898.8" y="28.0">guide.md</text><text x="898.8" y="41.0">1</text></g>
 </svg>
 <table>
-<caption>Files by lines and revisions: the items drawn, largest first</caption>
+<caption>Files by lines and revisions: the items drawn, marked first, then largest first</caption>
 <thead><tr><th scope="col">Path</th><th scope="col" class="number">Size (lines)</th><th scope="col" class="number">Colour (revisions)</th><th scope="col" class="number">Band</th></tr></thead>
 <tbody>
 <tr><th scope="row">src/core/engine.ts</th><td class="number">400</td><td class="number">12</td><td class="number">4</td></tr>
@@ -187,7 +197,14 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">docs/guide.md</th><td class="number">60</td><td class="number">1</td><td class="number">1</td></tr>
 </tbody>
 </table>
-<p class="legend">Area is lines. Colour is revisions in four bands, and each tile prints its value: band 1: 1, band 2: 3, band 3: 7, band 4: 12. Hatched tiles have no value.</p>
+<p class="legend">Area is lines. Colour is revisions in four bands, and a tile large enough prints its value: band 1: 1, band 2: 3, band 3: 7, band 4: 12. Hatched tiles have no value. The items and lines in each band:</p>
+<ul class="legend">
+<li>band 1: 1 item, 60 lines</li>
+<li>band 2: 1 item, 120 lines</li>
+<li>band 3: 1 item, 200 lines</li>
+<li>band 4: 1 item, 400 lines</li>
+<li>hatched, no value: 1 item, 90 lines</li>
+</ul>
 <p class="omitted">1 item of no size not drawn.</p>
 </figure>
 <figure class="chart sparkline">
@@ -226,32 +243,127 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </tbody>
 </table>
 </figure>
-<figure class="chart matrix">
-<figcaption>Shared changes</figcaption>
-<svg role="img" aria-labelledby="shared-changes-4d76fd-title shared-changes-4d76fd-desc" viewBox="0 0 412 146" preserveAspectRatio="xMinYMin meet">
-<title id="shared-changes-4d76fd-title">Shared changes</title>
-<desc id="shared-changes-4d76fd-desc">A grid of 2 rows by 3 columns holding shared changes. Each cell prints its value; the table below lists the same values.</desc>
-<text x="212" y="84" transform="rotate(-35 212 84)">a.ts</text>
-<text x="276" y="84" transform="rotate(-35 276 84)">b.ts</text>
-<text x="340" y="84" transform="rotate(-35 340 84)">c.ts</text>
-<text x="174" y="107" text-anchor="end">a.ts</text>
-<text x="174" y="133" text-anchor="end">b.ts</text>
-<g class="cell band-none"><rect x="180" y="90" width="62" height="24"/><text x="211" y="106" text-anchor="middle">none</text></g>
-<g class="cell band-2"><rect x="244" y="90" width="62" height="24"/><text x="275" y="106" text-anchor="middle">5</text></g>
-<g class="cell band-1"><rect x="308" y="90" width="62" height="24"/><text x="339" y="106" text-anchor="middle">1</text></g>
-<g class="cell band-2"><rect x="180" y="116" width="62" height="24"/><text x="211" y="132" text-anchor="middle">5</text></g>
-<g class="cell band-none"><rect x="244" y="116" width="62" height="24"/><text x="275" y="132" text-anchor="middle">none</text></g>
-<g class="cell band-3"><rect x="308" y="116" width="62" height="24"/><text x="339" y="132" text-anchor="middle">9</text></g>
+<figure class="chart scatter">
+<figcaption>Revisions against complexity</figcaption>
+<svg role="img" aria-labelledby="revisions-against-complexity-d229d6-title revisions-against-complexity-d229d6-desc" viewBox="0 0 680 440" preserveAspectRatio="xMinYMin meet">
+<title id="revisions-against-complexity-d229d6-title">Revisions against complexity</title>
+<desc id="revisions-against-complexity-d229d6-desc">A scatter of 7 files: Revisions horizontal, Complexity vertical, on log scales, split into four quadrants by dashed guideline lines. Of 7 files: 3 look first, 1 complex, stable, 1 busy, simple, 2 quiet. The table below lists the 2 named points with their values.</desc>
+<rect class="frame" x="64" y="12" width="596" height="372"/>
+<g class="guideline"><line x1="333.1" y1="12" x2="333.1" y2="384"><title>the 75th percentile of revisions</title></line><text x="336.1" y="380">8</text></g>
+<g class="guideline"><line x1="64" y1="185.3" x2="660" y2="185.3"><title>the 75th percentile of complexity</title></line><text x="657" y="182.3" text-anchor="end">40</text></g>
+<text class="tick" x="64.0" y="400" text-anchor="middle">1</text>
+<text class="tick" x="362.0" y="400" text-anchor="middle">10</text>
+<text class="tick" x="660.0" y="400" text-anchor="middle">100</text>
+<text class="tick" x="56" y="388.0" text-anchor="end">1</text>
+<text class="tick" x="56" y="264.0" text-anchor="end">10</text>
+<text class="tick" x="56" y="140.0" text-anchor="end">100</text>
+<text class="tick" x="56" y="16.0" text-anchor="end">1000</text>
+<text class="axis" x="362.0" y="432" text-anchor="middle">Revisions (log scale)</text>
+<text class="axis" transform="rotate(-90 14 198.0)" x="14" y="198.0" text-anchor="middle">Complexity (log scale)</text>
+<rect class="point highlight" x="345.9" y="170.8" width="5" height="5"/>
+<circle class="point" cx="153.7" cy="297.3" r="2.2"/>
+<circle class="point" cx="64.0" cy="384.0" r="2.2"/>
+<circle class="point" cx="206.2" cy="126.2" r="2.2"/>
+<circle class="point" cx="451.7" cy="260.0" r="2.2"/>
+<g class="point named"><title>1. src/core/engine.ts: 40 Revisions, 300 Complexity</title><rect x="537.4" y="72.8" width="8" height="8"/><text class="name" x="548.4" y="72.8" text-anchor="start">engine.ts</text></g>
+<g class="point named"><title>2. src/ui/page.ts: 12 Revisions, 90 Complexity</title><rect x="381.6" y="137.7" width="8" height="8"/><text class="name" x="392.6" y="137.7" text-anchor="start">page.ts</text></g>
 </svg>
 <table>
-<caption>Shared changes: shared changes</caption>
-<thead><tr><th scope="col"></th><th scope="col" class="number">a.ts</th><th scope="col" class="number">b.ts</th><th scope="col" class="number">c.ts</th></tr></thead>
+<caption>Revisions against complexity: the named points</caption>
+<thead><tr><th scope="col" class="number">#</th><th scope="col">Point</th><th scope="col" class="number">Revisions</th><th scope="col" class="number">Complexity</th><th scope="col">Quadrant</th></tr></thead>
 <tbody>
-<tr><th scope="row">a.ts</th><td class="number">none</td><td class="number">5</td><td class="number">1</td></tr>
-<tr><th scope="row">b.ts</th><td class="number">5</td><td class="number">none</td><td class="number">9</td></tr>
+<tr><td class="number">1</td><td>src/core/engine.ts</td><td class="number">40</td><td class="number">300</td><td>look first</td></tr>
+<tr><td class="number">2</td><td>src/ui/page.ts</td><td class="number">12</td><td class="number">90</td><td>look first</td></tr>
 </tbody>
 </table>
-<p class="legend">Colour is shared changes in three bands, and each cell prints its value: band 1: 1, band 2: 5, band 3: 9. Hatched cells have no value.</p>
+<p class="legend">Log scale on Revisions (horizontal) and Complexity (vertical): each tick is ten times the one before, because the values have a long tail.</p>
+<p class="legend">1 files have a value below 1 on a log axis and are drawn on the axis minimum, 1.</p>
+<p class="legend">Guidelines: vertical dashed line at 8: the 75th percentile of revisions; horizontal dashed line at 40: the 75th percentile of complexity. A guideline orders and labels results; it decides nothing.</p>
+<p class="legend">Of 7 files: 3 look first, 1 complex, stable, 1 busy, simple, 2 quiet.</p>
+<p class="legend">Squares are highlighted files. The table lists 2 of 3 highlighted files, in the order given, and the drawing names them; 1 are not listed and are drawn as squares without a name.</p>
+</figure>
+<figure class="chart matrix">
+<figcaption>Shared changes</figcaption>
+<svg role="img" aria-labelledby="shared-changes-ee541c-title shared-changes-ee541c-desc" viewBox="0 0 292 142" preserveAspectRatio="xMinYMin meet">
+<title id="shared-changes-ee541c-title">Shared changes</title>
+<desc id="shared-changes-ee541c-desc">A grid of 2 rows by 3 columns holding shared changes. Each cell prints its value; the table below lists every cell that has a value or a mark.</desc>
+<text x="192" y="84" transform="rotate(-35 192 84)">a.ts</text>
+<text x="216" y="84" transform="rotate(-35 216 84)">b.ts</text>
+<text x="240" y="84" transform="rotate(-35 240 84)">c.ts</text>
+<text x="174" y="101" dominant-baseline="central" text-anchor="end">a.ts</text>
+<text x="174" y="125" dominant-baseline="central" text-anchor="end">b.ts</text>
+<g class="cell band-none"><rect x="180" y="90" width="22" height="22"/></g>
+<g class="cell band-2"><rect x="204" y="90" width="22" height="22"/><text x="215" y="101" text-anchor="middle" dominant-baseline="central">5</text></g>
+<g class="cell band-1"><rect x="228" y="90" width="22" height="22"/><text x="239" y="101" text-anchor="middle" dominant-baseline="central">1</text></g>
+<g class="cell band-2"><rect x="180" y="114" width="22" height="22"/><text x="191" y="125" text-anchor="middle" dominant-baseline="central">5</text></g>
+<g class="cell band-none"><rect x="204" y="114" width="22" height="22"/></g>
+<g class="cell band-3"><rect x="228" y="114" width="22" height="22"/><text x="239" y="125" text-anchor="middle" dominant-baseline="central">9</text></g>
+</svg>
+<table>
+<caption>Shared changes: shared changes, the cells that have a value or a mark</caption>
+<thead><tr><th scope="col">Row</th><th scope="col">Column</th><th scope="col" class="number">Value</th><th scope="col">Mark</th></tr></thead>
+<tbody>
+<tr><td>a.ts</td><td>b.ts</td><td class="number">5</td><td></td></tr>
+<tr><td>a.ts</td><td>c.ts</td><td class="number">1</td><td></td></tr>
+<tr><td>b.ts</td><td>a.ts</td><td class="number">5</td><td></td></tr>
+<tr><td>b.ts</td><td>c.ts</td><td class="number">9</td><td></td></tr>
+</tbody>
+</table>
+<p class="legend">Colour is shared changes in three bands, and each cell prints its value: band 1: 1, band 2: 5, band 3: 9. Hatched blank cells have no value (2 cells of 6 cells).</p>
+</figure>
+<figure class="chart function-bars">
+<figcaption>Functions by cognitive complexity</figcaption>
+<svg role="img" aria-labelledby="functions-by-cognitive-complexity-27a062-title functions-by-cognitive-complexity-27a062-desc" viewBox="0 0 760 100" preserveAspectRatio="xMinYMin meet">
+<title id="functions-by-cognitive-complexity-27a062-title">Functions by cognitive complexity</title>
+<desc id="functions-by-cognitive-complexity-27a062-desc">3 functions by cognitive complexity, each with its revisions and fixes in the history window. A bar longer than the guideline marker is above guideline, shown with a triangle and the words in the table.</desc>
+<g class="column-heads"><text x="244" y="14" text-anchor="end">Function</text><text x="250" y="14">cognitive complexity</text><text x="660" y="14" text-anchor="end">Revisions</text><text x="740" y="14" text-anchor="end">Fixes</text></g>
+<g class="bar above"><text x="244" y="39" text-anchor="end">parse<title>parse</title></text><rect x="250" y="26" width="260.0" height="18"/><line x1="380.0" x2="380.0" y1="23" y2="47"/><text x="518.0" y="39">▲ 30</text><text x="660" y="39" text-anchor="end">12</text><text x="740" y="39" text-anchor="end">4</text></g>
+<g class="bar within"><text x="244" y="65" text-anchor="end">format<title>format</title></text><rect x="250" y="52" width="86.7" height="18"/><line x1="380.0" x2="380.0" y1="49" y2="73"/><text x="388.0" y="65">10</text><text x="660" y="65" text-anchor="end">3</text><text x="740" y="65" text-anchor="end">0</text></g>
+<g class="bar within"><text x="244" y="91" text-anchor="end">plain<title>plain</title></text><rect x="250" y="78" width="43.3" height="18"/><line x1="380.0" x2="380.0" y1="75" y2="99"/><text x="388.0" y="91">5</text><text x="660" y="91" text-anchor="end">none</text><text x="740" y="91" text-anchor="end">none</text></g>
+</svg>
+<table>
+<caption>Functions by cognitive complexity: cognitive complexity, revisions and fixes</caption>
+<thead><tr><th scope="col">Function</th><th scope="col" class="number">cognitive complexity</th><th scope="col" class="number">Guideline</th><th scope="col">Position</th><th scope="col" class="number">Revisions</th><th scope="col" class="number">Fixes</th></tr></thead>
+<tbody>
+<tr><th scope="row">parse</th><td class="number">30</td><td class="number">15</td><td>above guideline</td><td class="number">12</td><td class="number">4</td></tr>
+<tr><th scope="row">format</th><td class="number">10</td><td class="number">15</td><td>below guideline</td><td class="number">3</td><td class="number">0</td></tr>
+<tr><th scope="row">plain</th><td class="number">5</td><td class="number">15</td><td>below guideline</td><td class="number">none</td><td class="number">none</td></tr>
+</tbody>
+</table>
+<p class="legend">The vertical line marks the guideline of 15 and ▲ marks a function above it. A guideline orders and labels results; it decides nothing. Guideline from a judgement call.</p>
+<p class="legend">The chart omits 2 functions: the least complex of the file.</p>
+</figure>
+<figure class="chart move-map">
+<figcaption>Moves of units to their target folders</figcaption>
+<svg role="img" aria-labelledby="moves-of-units-to-their-target-folders-0956ac-title moves-of-units-to-their-target-folders-0956ac-desc" viewBox="0 0 543 167" preserveAspectRatio="xMinYMin meet">
+<title id="moves-of-units-to-their-target-folders-0956ac-title">Moves of units to their target folders</title>
+<desc id="moves-of-units-to-their-target-folders-0956ac-desc">A folder tree of 7 rows with 2 arrows from a unit's folder to its target folder and 2 markers. Kinds: move, blocked move (dashed), review, consumer of. Each arrow is numbered and its row prints its gain; the table below lists every arrow and marker.</desc>
+<g class="folder-row"><text class="folder-name" x="8" y="15">docs</text><line class="guide" x1="32.8" y1="11" x2="70.8" y2="11"/><text class="row-note" x="118.8" y="15">review R1</text></g>
+<g class="folder-row"><text class="folder-name" x="8" y="37">src</text><line class="guide" x1="26.6" y1="33" x2="70.8" y2="33"/></g>
+<g class="folder-row"><text class="folder-name" x="22" y="59">a</text><line class="guide" x1="28.2" y1="55" x2="70.8" y2="55"/><text class="row-note" x="118.8" y="59">move 1 in</text></g>
+<g class="folder-row"><text class="folder-name" x="36" y="81">util</text><line class="guide" x1="60.8" y1="77" x2="70.8" y2="77"/><text class="row-note" x="118.8" y="81">move 1 out: gain 12</text></g>
+<g class="folder-row"><text class="folder-name" x="22" y="103">b</text><line class="guide" x1="28.2" y1="99" x2="70.8" y2="99"/></g>
+<g class="folder-row"><text class="folder-name" x="36" y="125">core</text><line class="guide" x1="60.8" y1="121" x2="70.8" y2="121"/><text class="row-note" x="118.8" y="125">blocked move B1 in</text></g>
+<g class="folder-row"><text class="folder-name" x="36" y="147">web</text><line class="guide" x1="54.6" y1="143" x2="70.8" y2="143"/><text class="row-note" x="118.8" y="147">blocked move B1 out: gain if unblocked 6, blocked by src/b/web/x.ts</text><text class="row-note" x="118.8" y="160">consumer of 1</text></g>
+<g class="edge move solid"><path d="M75.8 77.0H88.8V55.0H76.8" stroke-width="4.5"/><polygon points="71.8,55.0 78.8,51.5 78.8,58.5"/><title>1: src/a/util to src/a</title></g>
+<g class="edge blocked dashed"><path d="M75.8 149.5H88.8V121.0H76.8" stroke-width="3.0"/><polygon points="71.8,121.0 78.8,117.5 78.8,124.5"/><title>B1: src/b/web to src/b/core</title></g>
+</svg>
+<table>
+<caption>Moves of units to their target folders: each arrow and marker</caption>
+<thead><tr><th scope="col">#</th><th scope="col">Unit</th><th scope="col">From</th><th scope="col">To</th><th scope="col" class="number">Gain</th><th scope="col">Status</th></tr></thead>
+<tbody>
+<tr><th scope="row">1</th><td>src/a/util/x.ts</td><td>src/a/util</td><td>src/a</td><td class="number">12</td><td>move</td></tr>
+<tr><th scope="row">B1</th><td>src/b/web/y.ts</td><td>src/b/web</td><td>src/b/core</td><td class="number">6</td><td>blocked by src/b/web/x.ts</td></tr>
+<tr><th scope="row">R1</th><td>docs/z.md</td><td>docs</td><td></td><td class="number"></td><td>review</td></tr>
+</tbody>
+</table>
+<p class="legend">Each folder is a row, indented under its parent. A folder with nothing of its own and one child is joined to that child.</p>
+<p class="legend">An arrow runs from the folder a unit is in to the folder it moves to. Its number is the unit's number in the table, its thickness grows with gain, and the row text prints the number and gain. A solid line and a dashed line are told apart by the word in the row text as well as by the dash.</p>
+<p class="legend">move: the planner can plan it</p>
+<p class="legend">blocked move (dashed line): a dependency that stays behind holds it back</p>
+<p class="legend">review: a unit with no single target</p>
+<p class="legend">consumer of: a folder with a file that uses unit N</p>
+<p class="legend">3 more moves are not drawn: the map draws the top 10.</p>
 </figure>
 <figure class="chart guideline-bars">
 <figcaption>Against guidelines</figcaption>

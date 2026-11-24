@@ -21,6 +21,28 @@
 | Registration hubs | 0 |
 | Packages | 5 |
 
+**Module dependency matrix** (file imports from the row module into the column module; band 1: 1)
+
+| Row | Column | Value | Mark | Row group | Column group |
+| --- | --- | ---: | --- | --- | --- |
+| …kages/p1/src/use.ts | …ges/p3/src/types.ts | 1 |  |  |  |
+| …kages/p1/src/use.ts | …ges/p5/src/model.ts | 1 |  |  |  |
+| packages/p1/src/x.ts | packages/p2/src/y.ts | 1 |  |  |  |
+| …ges/p4/src/ports.ts | …ges/p3/src/types.ts | 1 |  |  |  |
+| src/c.ts | src/d.ts | 1 |  | cycle 1 | cycle 1 |
+| src/d.ts | src/e.ts | 1 |  | cycle 1 | cycle 1 |
+| src/e.ts | src/c.ts | 1 | a dependency against the order: below the diagonal, inside an import cycle | cycle 1 | cycle 1 |
+| src/leaf.ts | src/a.ts | 1 |  |  | cycle 2 |
+| src/ui/view.ts | src/core/model.ts | 1 |  |  |  |
+| packages/p2/src/y.ts | packages/p1/src/z.ts | 1 |  |  |  |
+| src/b.ts | src/a.ts | 1 |  | cycle 2 | cycle 2 |
+| src/a.ts | src/b.ts | 1 | a dependency against the order: below the diagonal, inside an import cycle | cycle 2 | cycle 2 |
+| src/core/model.ts | src/ui/format.ts | 1 | an import the configured layer rules forbid |  |  |
+
+The table lists the cells that have a value or a mark, in row order then column order. Blank cells have no value (243 cells of 256 cells). ! is a dependency against the order: below the diagonal, inside an import cycle (2 cells); L is an import the configured layer rules forbid (1 cell). Boxes along the diagonal mark 2 groups: cycle 1 (3 rows), cycle 2 (2 rows). A row is a module and the cells in it are the modules it depends on. Rows are ordered by layer, top first: a module comes after every module that depends on it, so in a layered design every cell is above the diagonal. The members of one cycle stay together in a box labelled as in the cycles table, ordered so that only the edges of its breaking set lie below the diagonal. Names are cut from the left to 20 characters; the cycles table gives them whole.
+
+The matrix draws all 16 modules of typescript, the language with the most modules at the default level.
+
 **Judgement: what to look at first**
 
 The cycles are small and the history is short, so little can be said with confidence.

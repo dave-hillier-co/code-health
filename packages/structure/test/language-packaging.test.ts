@@ -7,7 +7,7 @@ import { adapterById, overrideSupportedAdapters, registeredAdapters } from "@cod
 import { runStructure } from "./support/run.ts";
 
 /**
- * The packaging half of structure's conformance (suite.md, Testing): each folder under
+ * The packaging half of structure's conformance (CONTRIBUTING.md, Conformance): each folder under
  * `fixtures/languages/<id>/packaging` is a small workspace, committed to a real git repository and run through
  * `structure packages`. Its expected.json holds what was read off the workspace by hand: the packages with
  * their ecosystem, exported types and abstractness, and the boundary findings.

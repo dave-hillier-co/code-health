@@ -14,7 +14,7 @@ export interface PackagingLanguage {
   checks: readonly { ecosystem: Ecosystem; undeclared: boolean; unused: boolean }[];
   /**
    * The entry files of every package of this language's ecosystems that has code the adapter reads,
-   * by package id: the files outside the language's internals marker (packaging.md, Languages). Packages it
+   * by package id: the files outside the language's internals marker (docs/languages.md, Packages). Packages it
    * cannot read are left out and reported as unavailable.
    */
   readEntries(model: PackageModel): Promise<Map<string, PackageEntries>>;

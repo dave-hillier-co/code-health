@@ -19,6 +19,22 @@
 | Functions changed in the window | 2 |
 | Commits analysed | 11 of 11 in the window |
 
+**Functions of src/billing.ts by cognitive complexity** (cognitive complexity against a guideline of 15, with revisions and fixes. The guideline is complexity.guidelines, the warn level. Revisions and fixes count landed changes in the history window.)
+
+| Function | cognitive complexity | Guideline | Position | Revisions | Fixes |
+| --- | ---: | ---: | --- | ---: | ---: |
+| priceOrder | 8 | 15 | below guideline | 5 | 2 |
+| describe | 1 | 15 | below guideline | 2 | 1 |
+
+**Changes shared by the most changed functions of src/billing.ts** (shared changes; band 1: 1)
+
+| Row | Column | Value | Mark |
+| --- | --- | ---: | --- |
+| priceOrder | describe | 1 |  |
+| describe | priceOrder | 1 |  |
+
+The table lists the cells that have a value or a mark, in row order then column order. Blank cells have no value (2 cells of 4 cells). Rows and columns are the 2 functions with the most revisions (at least 2), most first. A cell is the number of landed changes in the window that touched both functions; the diagonal is empty.
+
 **Judgement: the file as a whole**
 
 **src/billing.ts**: The pricing function holds most of the complexity and most of the fixes.

@@ -8,8 +8,8 @@ import { excludedCounts, historyWindowText, isoDate } from "@code-health/history
 import type { Evidence } from "@code-health/history/evidence";
 import type { FiltersApplied } from "@code-health/history/noise";
 import { noCacheOption } from "@code-health/history/results-cache";
-import { readBlobAt } from "@code-health/history/tree";
 import type { Block } from "@code-health/report/block";
+import type { TreemapItem } from "@code-health/report/components/treemap";
 import type { Cell } from "@code-health/report/components/ranked-table";
 import { dropEmptySlots } from "@code-health/report/empty-block";
 import { capRows } from "@code-health/report/table-cap";
@@ -19,6 +19,7 @@ import { statSync } from "node:fs";
 import type { ExcludedCount, Slot } from "@code-health/report/protocol";
 import type { ReportBuild, Section } from "@code-health/report/report-model";
 import { FLAG_VERDICTS, xrayBlocks, type XrayData, type XrayFunction } from "@code-health/report/xray";
+import { readCodeMapFiles, type CodeMapFiles } from "../code-map.ts";
 import { command as hotspotsCommand } from "../commands/hotspots.ts";
 import { command as trendCommand, TREND_GUIDELINE } from "../commands/trend.ts";
 import { readSettings } from "../config.ts";
@@ -34,8 +35,8 @@ const TREND_FILES = 5;
 const XRAY_FILES = 3;
 /** Functions each X-Ray section lists. */
 const XRAY_ROWS = 8;
-/** Files in the treemap data. The treemap draws the largest of them and counts the rest. */
-const MAP_FILES = 20;
+/** Rows in the table under the map: the friction list's files, then the largest. */
+const MAP_TABLE_ROWS = 20;
 const TREND_SAMPLES = 10;
 /** Friction files whose history is drawn as a sparkline; the history table lists all `TREND_FILES`. */
 const SPARKLINES = 1;
@@ -95,22 +96,6 @@ function frictionOf(rows: readonly HotspotRow[], percentile: number, above: Read
   return { all: all.sort((a, b) => byScore(a.row, b.row)), basis: above === undefined ? "percentile" : "functions" };
 }
 
-/** Physical lines of each file at HEAD, for the files that are text. */
-async function linesOf(root: string, head: string, paths: readonly string[]): Promise<Map<string, number>> {
-  const lines = new Map<string, number>();
-  const batch = 32;
-  for (let start = 0; start < paths.length; start += batch) {
-    const slice = paths.slice(start, start + batch);
-    const texts = await Promise.all(slice.map((path) => readBlobAt(root, head, path)));
-    slice.forEach((path, i) => {
-      const text = texts[i];
-      if (text === undefined || text.includes("\0")) return;
-      lines.set(path, text === "" ? 0 : text.replace(/\n$/, "").split("\n").length);
-    });
-  }
-  return lines;
-}
-
 /** Four strictly ascending values at the 50th, 75th, 90th and 97th percentile of the values, so the bands show where change concentrates. */
 function bandBreaks(values: readonly number[]): number[] {
   const sorted = [...values].sort((a, b) => a - b);
@@ -120,22 +105,38 @@ function bandBreaks(values: readonly number[]): number[] {
   return breaks;
 }
 
-function mapBlocks(rows: readonly HotspotRow[], lines: ReadonlyMap<string, number>): Block[] {
-  const sized = rows.flatMap((row) => (lines.has(row.path) ? [{ path: row.path, size: lines.get(row.path)!, colour: row.frequency }] : []));
-  const largest = [...sized].sort((a, b) => b.size - a.size || (a.path < b.path ? -1 : 1)).slice(0, MAP_FILES);
+/**
+ * The map of the code: every production code file of the tree at HEAD, sized by its lines and coloured by its
+ * revisions in the window (0 for a file nothing in the window changed). The friction list's files are marked with
+ * their position in it. `readCodeMapFiles` gives the same files to the knowledge report, so the two maps match.
+ */
+function mapBlocks(rows: readonly HotspotRow[], code: CodeMapFiles, marked: readonly Friction[]): Block[] {
+  const revisions = new Map(rows.map((row) => [row.path, row.frequency]));
+  const rank = new Map(marked.map(({ row }, i) => [row.path, String(i + 1)]));
+  const items: TreemapItem[] = code.files.map((file) => ({ path: file.path, size: file.lines, colour: revisions.get(file.path) ?? 0, ...(rank.has(file.path) ? { mark: rank.get(file.path)! } : {}) }));
+  const changed = items.flatMap((item) => (item.colour! > 0 ? [item.colour!] : []));
+  const lines = items.reduce((sum, item) => sum + item.size, 0);
   const blocks: Block[] = [
     {
       type: "treemap",
-      title: `The ${largest.length} largest files, nested by folder: size is lines, colour is revisions in the window`,
+      title: "The code, nested by folder: size is lines, colour is revisions in the window, outlined tiles are the friction list",
       sizeLabel: "lines",
       colourLabel: "revisions in the window",
-      items: largest,
-      breaks: bandBreaks(largest.map((item) => item.colour)),
+      items,
+      breaks: bandBreaks(changed),
+      tableRows: MAP_TABLE_ROWS,
+      markLabel: "the files of the friction list below, each marked with its position in it",
+    },
+    {
+      type: "paragraph",
+      text: `The map draws all ${items.length} production code files at HEAD (${lines} lines), including ${items.length - changed.length} that nothing in the window changed (0 revisions). The band edges sit at the 50th, 75th, 90th and 97th percentile of the revisions of the ${changed.length} files that changed, so band 5 is the most changed and says nothing about good or bad.`,
     },
   ];
-  blocks.push({ type: "paragraph", text: "Colour bands are rank steps of the files shown: the band edges sit at the 50th, 75th, 90th and 97th percentile of their revisions, so band 5 is the most changed and says nothing about good or bad." });
-  if (sized.length > largest.length) blocks.push({ type: "notice", level: "limit", text: `The map and its table show the ${largest.length} files with the most lines of ${sized.length} ranked files; the ${sized.length - largest.length} smaller files are not in it.` });
-  if (rows.length > sized.length) blocks.push({ type: "notice", level: "limit", text: `${rows.length - sized.length} ranked files have no text lines to size and are not in the map.` });
+  if (code.excluded.files > 0) blocks.push({ type: "notice", level: "limit", text: `${code.excluded.files} production code files at HEAD (${code.excluded.lines} lines) are left out of the map by the exclude globs, lockfile names, and the generated and vendored file rules, the same filters the rankings use.` });
+  if (code.unsized > 0) blocks.push({ type: "notice", level: "limit", text: `${code.unsized} production code files at HEAD are empty or binary and have no lines to size, so they are not drawn.` });
+  const drawn = new Set(code.files.map((file) => file.path));
+  const absent = rows.filter((row) => !drawn.has(row.path)).length;
+  if (absent > 0) blocks.push({ type: "notice", level: "limit", text: `${absent} ranked files have no text lines to size and are not in the map.` });
   return blocks;
 }
 
@@ -382,6 +383,8 @@ export const hotspots: ReportKind = {
   async build(context: CommandContext): Promise<ReportBuild> {
     const limit = top(context);
     const output = await hotspotsCommand.run(context);
+    // Before the counts below: reading the map's files records the generated and vendored files it meets.
+    const code = await readCodeMapFiles(context, context.repo.head);
     // Read what the ranking left out before the history commands below record their own drops.
     const excluded = excludedCounts((output.extra as { filtersApplied: FiltersApplied }).filtersApplied, droppedCounts(), builtinOmissions());
     const extra = output.extra as { evidence: Evidence; filtersApplied: FiltersApplied; complexitySource: string; window: { since: string; until: string } };
@@ -397,7 +400,6 @@ export const hotspots: ReportKind = {
     const { all: friction, basis } = frictionOf(rows, percentile, cognitiveAbove(analyse));
     const shown = friction.slice(0, limit);
     const judged = shown.slice(0, settings.hotspotJudged);
-    const lines = await linesOf(root, head, rows.map((row) => row.path));
 
     const trendPaths = shown.slice(0, TREND_FILES).map((f) => f.row.path);
     const trends = await Promise.all(trendPaths.map((path) => trendOf(context, path)));
@@ -408,7 +410,7 @@ export const hotspots: ReportKind = {
 
     const sections: Section[] = [
       { id: "summary", heading: "What the picture says", blocks: [{ type: "judgement", slot: "summary" }] },
-      { id: "map", heading: "Map of the code", blocks: mapBlocks(rows, lines) },
+      { id: "map", heading: "Map of the code", blocks: mapBlocks(rows, code, shown) },
       {
         id: "friction",
         heading: "Friction list",

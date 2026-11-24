@@ -3,7 +3,7 @@ import type { ConstructMap, MetricRules, RecursionScope } from "../../metric-rul
 
 /**
  * The Rust mapping onto the metric engine. The definitions are in unit-metrics.ts, with these readings of
- * Rust's constructs (suite.md, Metric definitions per language):
+ * Rust's constructs (docs/languages.md, Metric definitions per language):
  *
  * - `if` and `if let` are one decision each, and `else if` is an `if`. `while let` is a `while`. `loop` is a loop.
  * - `match` is a `switch`. Every arm is a case, the wildcard arm included, because a `match` must be

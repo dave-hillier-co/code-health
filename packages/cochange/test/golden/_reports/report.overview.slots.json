@@ -31,6 +31,43 @@
           {
             "slot": "first-look",
             "type": "judgement"
+          },
+          {
+            "emptyText": "No production code file has both revisions and a complexity, so there is no scatter.",
+            "maxLabels": 12,
+            "noun": "files",
+            "points": [
+              {
+                "highlight": false,
+                "label": "src/billing/invoice.ts",
+                "short": "invoice.ts",
+                "x": 4,
+                "y": 0
+              },
+              {
+                "highlight": false,
+                "label": "src/reporting/summary.ts",
+                "short": "summary.ts",
+                "x": 3,
+                "y": 0
+              }
+            ],
+            "quadrantNames": {
+              "lowerLeft": "changed less often and less complex",
+              "lowerRight": "changed often, less complex",
+              "upperLeft": "complex, changed less often",
+              "upperRight": "changed often and complex (look here first)"
+            },
+            "title": "Revisions against complexity, 2 production code files",
+            "type": "scatter",
+            "xLabel": "Revisions in the window",
+            "xLog": true,
+            "yLabel": "Complexity",
+            "yLog": true
+          },
+          {
+            "text": "Both lines are at the 90th percentile (cochange.hotspotPercentile), a rank among the files shown, so they move when files are added. This is the split the hotspots friction list uses when no stored complexity analyse result covers the commit; with one, `cochange report hotspots` calls a file complex when it has a function above the cognitive guideline instead, so its list can differ from the upper right here.",
+            "type": "paragraph"
           }
         ],
         "heading": "What to look at first",
@@ -296,53 +333,6 @@
             ],
             "total": 2,
             "type": "ranked-table"
-          },
-          {
-            "bins": [
-              {
-                "count": 0,
-                "label": "0.0 to 0.1"
-              },
-              {
-                "count": 1,
-                "label": "0.1 to 0.2"
-              },
-              {
-                "count": 0,
-                "label": "0.2 to 0.3"
-              },
-              {
-                "count": 1,
-                "label": "0.3 to 0.4"
-              },
-              {
-                "count": 0,
-                "label": "0.4 to 0.5"
-              },
-              {
-                "count": 0,
-                "label": "0.5 to 0.6"
-              },
-              {
-                "count": 0,
-                "label": "0.6 to 0.7"
-              },
-              {
-                "count": 0,
-                "label": "0.7 to 0.8"
-              },
-              {
-                "count": 0,
-                "label": "0.8 to 0.9"
-              },
-              {
-                "count": 0,
-                "label": "0.9 to 1.0"
-              }
-            ],
-            "title": "Distribution of hotspot scores",
-            "type": "histogram",
-            "unit": "files"
           },
           {
             "level": "notice",

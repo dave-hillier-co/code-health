@@ -2,7 +2,7 @@ import type { Node } from "web-tree-sitter";
 import type { ConstructMap, MetricRules, RecursionScope } from "../../metric-rules.ts";
 
 /**
- * The Go mapping onto the metric engine (suite.md, Metric definitions per language). The definitions are in
+ * The Go mapping onto the metric engine (docs/languages.md, Metric definitions per language). The definitions are in
  * unit-metrics.ts, and Go differs from them in what it has, not in how it counts:
  *
  * - `switch`, the type switch and `select` are switches, and each `case` (an expression, a type or a

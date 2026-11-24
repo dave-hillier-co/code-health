@@ -2,7 +2,7 @@ import type { Node } from "web-tree-sitter";
 import { countParameters, declaratorName, functionDeclarator } from "./metric-rules.ts";
 
 /**
- * What the interface depth signal needs of a C++ unit (complexity.md, Interface depth), on the same terms as
+ * What the interface depth signal needs of a C++ unit (the complexity skill's references/metrics.md, Interface depth), on the same terms as
  * the other languages:
  *
  * - Nodes: named nodes of the unit, itself included, comments left out.

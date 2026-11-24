@@ -2,7 +2,7 @@ import type { Node } from "web-tree-sitter";
 import { bodyOf, parameterCounts } from "./metric-rules.ts";
 
 /**
- * What the interface depth signal needs of a unit (complexity.md, Interface depth), for C#.
+ * What the interface depth signal needs of a unit (the complexity skill's references/metrics.md, Interface depth), for C#.
  *
  * - Nodes: named nodes of the unit, itself included, comments left out. Attributes and the names of a
  *   declaration count, because a long signature is part of what a reader takes in.

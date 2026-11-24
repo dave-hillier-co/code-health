@@ -243,10 +243,10 @@ function loadConfig(root, spec) {
   }
   const pluginDefaults = { ...spec.section, ...Object.fromEntries(historyKeys.map((key) => [key, historyDefaults[key]])) };
   const defaults = { ...sharedDefaults, [spec.plugin]: pluginDefaults };
-  const rows7 = /* @__PURE__ */ new Map();
+  const rows9 = /* @__PURE__ */ new Map();
   const effective = {};
   for (const key of Object.keys(defaults)) {
-    effective[key] = merge(defaults[key], document?.[key], key, rows7);
+    effective[key] = merge(defaults[key], document?.[key], key, rows9);
   }
   readHistory(effective.history, "history");
   const pluginDocument = document?.[spec.plugin];
@@ -255,10 +255,10 @@ function loadConfig(root, spec) {
   const section2 = effective[spec.plugin];
   for (const key of historyKeys) {
     section2[key] = overlay(effective.history[key], pluginDocument?.[key]);
-    inheritSources(rows7, spec.plugin, key);
+    inheritSources(rows9, spec.plugin, key);
   }
   const sources = {};
-  for (const row of rows7.values()) sources[row.path] = row.source;
+  for (const row of rows9.values()) sources[row.path] = row.source;
   const hash2 = createHash("sha256").update(serialise(effective)).digest("hex").slice(0, 16);
   return { file: document ? file : null, effective, hash: hash2, sources };
 }
@@ -269,13 +269,13 @@ function overlay(shared, own) {
   }
   return own;
 }
-function inheritSources(rows7, plugin, key) {
+function inheritSources(rows9, plugin, key) {
   const own = `${plugin}.${key}`;
-  for (const row of [...rows7.values()]) {
+  for (const row of [...rows9.values()]) {
     if (row.path !== own && !row.path.startsWith(`${own}.`)) continue;
     if (row.source === "file") continue;
-    const shared = rows7.get(`history${row.path.slice(plugin.length)}`);
-    if (shared !== void 0) rows7.set(row.path, { ...row, source: shared.source });
+    const shared = rows9.get(`history${row.path.slice(plugin.length)}`);
+    if (shared !== void 0) rows9.set(row.path, { ...row, source: shared.source });
   }
 }
 function readHistory(history, where) {
@@ -313,12 +313,12 @@ function readLanguages(value) {
   return mapped;
 }
 function explainConfig(config) {
-  const rows7 = [];
+  const rows9 = [];
   flatten(config.effective, "", (path, value) => {
-    rows7.push({ path, value, source: config.sources[path] ?? "default" });
+    rows9.push({ path, value, source: config.sources[path] ?? "default" });
   });
-  BUILTIN_EXCLUDE_ENTRIES.forEach((entry, index) => rows7.push({ path: `exclude.built-in[${index}]`, value: entry, source: "built-in" }));
-  return rows7.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  BUILTIN_EXCLUDE_ENTRIES.forEach((entry, index) => rows9.push({ path: `exclude.built-in[${index}]`, value: entry, source: "built-in" }));
+  return rows9.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 }
 function parseDocument(file) {
   let parsed;
@@ -330,15 +330,15 @@ function parseDocument(file) {
   if (!isPlainObject(parsed)) throw configError(`${CONFIG_FILE} must be a JSON object`);
   return parsed;
 }
-function merge(defaultValue, fileValue, path, rows7) {
+function merge(defaultValue, fileValue, path, rows9) {
   if (fileValue === void 0) {
-    flatten(defaultValue, path, (leaf, value) => rows7.set(leaf, { path: leaf, value, source: "default" }));
+    flatten(defaultValue, path, (leaf, value) => rows9.set(leaf, { path: leaf, value, source: "default" }));
     return defaultValue;
   }
   if (isPlainObject(defaultValue)) {
     if (!isPlainObject(fileValue)) throw configError(`${CONFIG_FILE}: ${path} must be an object`);
     if (Object.keys(defaultValue).length === 0) {
-      flatten(fileValue, path, (leaf, value) => rows7.set(leaf, { path: leaf, value, source: "file" }));
+      flatten(fileValue, path, (leaf, value) => rows9.set(leaf, { path: leaf, value, source: "file" }));
       return fileValue;
     }
     for (const key of Object.keys(fileValue)) {
@@ -346,14 +346,14 @@ function merge(defaultValue, fileValue, path, rows7) {
     }
     const merged = {};
     for (const key of Object.keys(defaultValue)) {
-      merged[key] = merge(defaultValue[key], fileValue[key], `${path}.${key}`, rows7);
+      merged[key] = merge(defaultValue[key], fileValue[key], `${path}.${key}`, rows9);
     }
     return merged;
   }
   if (defaultValue !== null && kindOf(fileValue) !== kindOf(defaultValue)) {
     throw configError(`${CONFIG_FILE}: ${path} must be ${article(kindOf(defaultValue))}`);
   }
-  rows7.set(path, { path, value: fileValue, source: "file" });
+  rows9.set(path, { path, value: fileValue, source: "file" });
   return fileValue;
 }
 var removedSettings = {
@@ -490,11 +490,11 @@ function git(cwd, ...args2) {
 // packages/cli-kit/src/results.ts
 function shapeResults(results, options) {
   if (!Array.isArray(results)) return { results, truncated: { limit: null, total: null, cut: 0 } };
-  const { limit, fields, columns: columns8 } = options;
-  if (fields && columns8 && columns8.length > 0) {
-    const unknown = fields.filter((field6) => !columns8.includes(field6));
+  const { limit, fields, columns: columns10 } = options;
+  if (fields && columns10 && columns10.length > 0) {
+    const unknown = fields.filter((field6) => !columns10.includes(field6));
     if (unknown.length > 0) {
-      throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${columns8.join(", ")}`);
+      throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${columns10.join(", ")}`);
     }
   }
   const sorted = options.presorted === true ? results : [...results].sort(byScoreThenPath);
@@ -535,13 +535,13 @@ function runNotes() {
 }
 
 // packages/cli-kit/src/table.ts
-function renderTable(rows7, columns8, truncated) {
-  if (rows7.length === 0) return "No results.\n";
-  const cells = rows7.map((row) => columns8.map((column) => format(row[column])));
-  const numeric = columns8.map((column) => rows7.every((row) => row[column] == null || typeof row[column] === "number"));
-  const widths = columns8.map((column, i2) => Math.max(column.length, ...cells.map((line) => line[i2]?.length ?? 0)));
+function renderTable(rows9, columns10, truncated) {
+  if (rows9.length === 0) return "No results.\n";
+  const cells = rows9.map((row) => columns10.map((column) => format(row[column])));
+  const numeric = columns10.map((column) => rows9.every((row) => row[column] == null || typeof row[column] === "number"));
+  const widths = columns10.map((column, i2) => Math.max(column.length, ...cells.map((line) => line[i2]?.length ?? 0)));
   const render = (line) => line.map((cell, i2) => numeric[i2] ? cell.padStart(widths[i2] ?? 0) : cell.padEnd(widths[i2] ?? 0)).join("  ").trimEnd();
-  const lines2 = [render(columns8), ...cells.map(render)];
+  const lines2 = [render(columns10), ...cells.map(render)];
   if (truncated.cut > 0) lines2.push(`${truncated.cut} more not shown (use --limit N or --limit all)`);
   return lines2.join("\n") + "\n";
 }
@@ -621,8 +621,8 @@ async function execute(cli2, io) {
 `);
   for (const note of noted) if (note.warning !== void 0) io.stderr.write(`${note.warning}
 `);
-  const columns8 = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
-  const { results, truncated } = shapeResults(output.results, { limit: args2.limit, fields: args2.fields, columns: columns8, presorted: output.presorted });
+  const columns10 = output.columns ?? (Array.isArray(output.results) ? Object.keys(output.results[0] ?? {}) : []);
+  const { results, truncated } = shapeResults(output.results, { limit: args2.limit, fields: args2.fields, columns: columns10, presorted: output.presorted });
   if (args2.json || !io.stdout.isTTY) {
     io.stdout.write(
       serialise(
@@ -652,7 +652,7 @@ async function execute(cli2, io) {
       )
     );
   } else if (Array.isArray(results)) {
-    io.stdout.write(renderTable(results, args2.fields ?? columns8, truncated));
+    io.stdout.write(renderTable(results, args2.fields ?? columns10, truncated));
     for (const notice of output.notices ?? []) io.stdout.write(`Notice: ${notice}.
 `);
     for (const note of noted) if (note.notice !== void 0) io.stdout.write(`Notice: ${note.notice}.
@@ -664,8 +664,8 @@ async function execute(cli2, io) {
     }
     const left = Object.entries(leftOut);
     if (left.length > 0) {
-      const names = { generated: "generated", vendored: "vendored", nonCode: "non-code", tests: "test" };
-      io.stdout.write(`Notice: omitted ${left.map(([kind, count4]) => `${count4} ${names[kind]} ${count4 === 1 ? "file" : "files"}`).join(", ")}.
+      const names2 = { generated: "generated", vendored: "vendored", nonCode: "non-code", tests: "test" };
+      io.stdout.write(`Notice: omitted ${left.map(([kind, count4]) => `${count4} ${names2[kind]} ${count4 === 1 ? "file" : "files"}`).join(", ")}.
 `);
     }
     if (context.report?.stored === false) io.stdout.write(`No report stored for other plugins: ${context.report.reason}.
@@ -996,12 +996,12 @@ async function readPathAttributes(repoPath, ref, paths, treeFiles) {
   if (!hasAttributes || paths.length === 0) return result;
   const input = paths.join("\0") + "\0";
   const base = ["check-attr", "-z", "--stdin"];
-  const names = ["linguist-generated", "linguist-vendored"];
+  const names2 = ["linguist-generated", "linguist-vendored"];
   let out2;
   try {
-    out2 = await runGit(repoPath, ref === void 0 ? [...base, ...names] : [...base, `--source=${ref}`, ...names], { input });
+    out2 = await runGit(repoPath, ref === void 0 ? [...base, ...names2] : [...base, `--source=${ref}`, ...names2], { input });
   } catch {
-    out2 = await runGit(repoPath, [...base, ...names], { input });
+    out2 = await runGit(repoPath, [...base, ...names2], { input });
   }
   const tokens2 = out2.split("\0");
   for (let i2 = 0; i2 + 2 < tokens2.length; i2 += 3) {
@@ -1835,12 +1835,12 @@ function setMeta(db, key, value) {
   );
 }
 function storedShas(db) {
-  const rows7 = db.prepare("SELECT sha FROM commits").all();
-  return new Set(rows7.map((r) => r.sha));
+  const rows9 = db.prepare("SELECT sha FROM commits").all();
+  return new Set(rows9.map((r) => r.sha));
 }
 function storedBoundaryShas(db) {
-  const rows7 = db.prepare("SELECT sha FROM commits WHERE boundary = 1").all();
-  return rows7.map((r) => r.sha);
+  const rows9 = db.prepare("SELECT sha FROM commits WHERE boundary = 1").all();
+  return rows9.map((r) => r.sha);
 }
 function deleteCommits(db, shas) {
   const statements = ["commits", "commit_parents", "changes"].map((t) => db.prepare(`DELETE FROM ${t} WHERE sha = ?`));
@@ -1961,28 +1961,28 @@ var RenameMap = class {
   edges = /* @__PURE__ */ new Map();
   deletions = /* @__PURE__ */ new Map();
   /** Records `from` -> `to` made by the commit at `position`. Call in position order. */
-  add(from, to, position) {
+  add(from, to, position2) {
     const list2 = this.edges.get(from);
-    if (list2) list2.push({ position, to });
-    else this.edges.set(from, [{ position, to }]);
+    if (list2) list2.push({ position: position2, to });
+    else this.edges.set(from, [{ position: position2, to }]);
   }
   /** Records that the file at `path` was deleted by the commit at `position`. Call in position order. */
-  delete(path, position) {
+  delete(path, position2) {
     const list2 = this.deletions.get(path);
-    if (list2) list2.push(position);
-    else this.deletions.set(path, [position]);
+    if (list2) list2.push(position2);
+    else this.deletions.set(path, [position2]);
   }
   get size() {
     return this.edges.size;
   }
   /** The stable identity of `path` as touched by the commit at `position`. */
-  resolve(path, position) {
+  resolve(path, position2) {
     let current = path;
-    let at2 = position;
+    let at2 = position2;
     for (; ; ) {
       const next = this.edges.get(current)?.find((edge) => edge.position > at2);
       if (!next) return current;
-      const deletedAt = this.deletions.get(current)?.find((position2) => position2 >= at2);
+      const deletedAt = this.deletions.get(current)?.find((position3) => position3 >= at2);
       if (deletedAt !== void 0 && deletedAt <= next.position) return current;
       current = next.to;
       at2 = next.position;
@@ -2047,7 +2047,7 @@ async function applyMailmap(repoRoot, view, mailmapFile) {
 function select(db, ref, headSha, firstParent) {
   const head = db.prepare("SELECT committer_date FROM commits WHERE sha = ?").get(headSha);
   if (!head) throw new NoCacheError(`Commit ${headSha} is not in the history cache. Run refresh first.`);
-  const rows7 = db.prepare(`${REACH(firstParent)} SELECT c.* FROM commits c JOIN reach ON reach.sha = c.sha`).all(headSha);
+  const rows9 = db.prepare(`${REACH(firstParent)} SELECT c.* FROM commits c JOIN reach ON reach.sha = c.sha`).all(headSha);
   const changeRows = db.prepare(
     `${REACH(firstParent)}
        SELECT ch.* FROM changes ch JOIN reach ON reach.sha = ch.sha ORDER BY ch.sha, ch.idx`
@@ -2069,21 +2069,21 @@ function select(db, ref, headSha, firstParent) {
     if (list2) list2.push(row);
     else changesBySha.set(row.sha, [row]);
   }
-  const ordered = topologicalOrder(rows7, parents);
+  const ordered = topologicalOrder(rows9, parents);
   const renames = new RenameMap();
   const commits = [];
   for (const row of ordered) {
     const rawChanges = changesBySha.get(row.sha) ?? [];
     const isMerge = row.parent_count > 1;
     if (isMerge) continue;
-    const position = commits.length;
+    const position2 = commits.length;
     for (const ch of rawChanges) {
-      if (ch.status === "R" && ch.old_path) renames.add(ch.old_path, ch.path, position);
-      else if (ch.status === "D") renames.delete(ch.path, position);
+      if (ch.status === "R" && ch.old_path) renames.add(ch.old_path, ch.path, position2);
+      else if (ch.status === "D") renames.delete(ch.path, position2);
     }
     commits.push({
       sha: row.sha,
-      position,
+      position: position2,
       authorName: row.author_name,
       authorEmail: row.author_email,
       mappedName: row.author_name,
@@ -2111,9 +2111,9 @@ function select(db, ref, headSha, firstParent) {
   }
   return { ref, headSha, headDate: head.committer_date, firstParent, commits, renames };
 }
-function topologicalOrder(rows7, parents) {
-  const bySha = new Map(rows7.map((r) => [r.sha, r]));
-  const sorted = [...rows7].sort((a, b) => a.committer_date - b.committer_date || (a.sha < b.sha ? -1 : 1));
+function topologicalOrder(rows9, parents) {
+  const bySha = new Map(rows9.map((r) => [r.sha, r]));
+  const sorted = [...rows9].sort((a, b) => a.committer_date - b.committer_date || (a.sha < b.sha ? -1 : 1));
   const done = /* @__PURE__ */ new Set();
   const out2 = [];
   for (const start2 of sorted) {
@@ -2978,7 +2978,7 @@ var kotlin = {
     charLiteral
   ],
   branchKeywords: [...cBranchKeywords, "when"],
-  // The elvis operator is null-coalescing, not a decision (suite.md, Metric definitions per language).
+  // The elvis operator is null-coalescing, not a decision (docs/languages.md, Metric definitions per language).
   shortCircuitOperators: ["&&", "\\|\\|"],
   bumpOpeners: [...cBumpOpeners, "when"],
   headerNoise: annotationNoise,
@@ -3161,15 +3161,15 @@ var element = (text3, name11) => new RegExp(`<${name11}>\\s*([^<]*?)\\s*</${name
 var childOf = (dir, name11) => dir === "." ? name11 : `${dir}/${name11}`;
 function gradleProjects(settings, text3) {
   const base = posix.dirname(settings);
-  const names = /* @__PURE__ */ new Map();
+  const names2 = /* @__PURE__ */ new Map();
   const code = text3.replace(/\/\/.*$/gm, "");
   for (const statement of code.matchAll(/\binclude\b\s*\(?((?:\s*["'][^"']+["']\s*,?)+)/g)) {
     for (const quoted of statement[1].matchAll(/["']([^"']+)["']/g)) {
       const project = quoted[1];
-      names.set(childOf(base, project.replace(/^:/, "").replaceAll(":", "/")), project.startsWith(":") ? project : `:${project}`);
+      names2.set(childOf(base, project.replace(/^:/, "").replaceAll(":", "/")), project.startsWith(":") ? project : `:${project}`);
     }
   }
-  return names;
+  return names2;
 }
 var jvmBoundaries = {
   isManifest,
@@ -3676,17 +3676,17 @@ var Measurer = class {
 };
 function codeRowsOf(root, rules5) {
   const comments2 = rules5.constructs.commentTypes;
-  const rows7 = new Array(root.endPosition.row + 1).fill(false);
+  const rows9 = new Array(root.endPosition.row + 1).fill(false);
   const walk = (node) => {
     if (comments2.has(node.type)) return;
     if (node.childCount === 0) {
-      for (let row = node.startPosition.row; row <= node.endPosition.row; row++) rows7[row] = true;
+      for (let row = node.startPosition.row; row <= node.endPosition.row; row++) rows9[row] = true;
       return;
     }
     for (let i2 = 0; i2 < node.childCount; i2++) walk(node.child(i2));
   };
   walk(root);
-  return rows7;
+  return rows9;
 }
 function measureFunction(fn, options, rules5) {
   const measurer = new Measurer(options, rules5, rules5.recursionScope(fn, options.name));
@@ -3978,9 +3978,9 @@ function enclosingClassName2(fn) {
 function recursionScope2(fn, name11) {
   if (fn.type !== "method_declaration") return { bare: /* @__PURE__ */ new Set(), member: /* @__PURE__ */ new Set() };
   const own = fn.childForFieldName("name")?.text ?? name11;
-  const names = new Set(own === void 0 ? [] : [own]);
+  const names2 = new Set(own === void 0 ? [] : [own]);
   const owner = enclosingClassName2(fn);
-  return { bare: names, member: names, ...owner === void 0 ? {} : { owner } };
+  return { bare: names2, member: names2, ...owner === void 0 ? {} : { owner } };
 }
 function isRecursiveCall2(call, scope) {
   const method = call.childForFieldName("name")?.text;
@@ -4092,13 +4092,13 @@ function passThroughOf2(fn, parameters) {
   return object === null ? name11 : `${object.text}.${name11}`;
 }
 function parameterNames(fn) {
-  const names = /* @__PURE__ */ new Set();
+  const names2 = /* @__PURE__ */ new Set();
   const list2 = fn.childForFieldName("parameters");
   for (const parameter of list2?.namedChildren ?? []) {
     const name11 = parameter.type === "spread_parameter" ? parameter.namedChildren.find((child) => child.type === "variable_declarator")?.childForFieldName("name") : parameter.childForFieldName("name");
-    if (name11 !== null && name11 !== void 0) names.add(name11.text);
+    if (name11 !== null && name11 !== void 0) names2.add(name11.text);
   }
-  return names;
+  return names2;
 }
 var Extractor = class {
   units = [];
@@ -4308,13 +4308,13 @@ function lastName(node) {
   }
 }
 function annotation(node) {
-  const names = /* @__PURE__ */ new Set();
+  const names2 = /* @__PURE__ */ new Set();
   const visit2 = (current) => {
-    if (current.type === "type_identifier") names.add(current.text);
+    if (current.type === "type_identifier") names2.add(current.text);
     for (const child of current.namedChildren) visit2(child);
   };
   if (node !== null) visit2(node);
-  return { callback: false, names: [...names].sort() };
+  return { callback: false, names: [...names2].sort() };
 }
 function parametersOf(list2) {
   const out2 = [];
@@ -4523,9 +4523,9 @@ function enclosingClassName3(fn) {
 function recursionScope3(fn, name11) {
   if (fn.type !== "function_declaration") return { bare: /* @__PURE__ */ new Set(), member: /* @__PURE__ */ new Set() };
   const own = fn.childForFieldName("name")?.text ?? name11;
-  const names = new Set(own === void 0 ? [] : [own]);
+  const names2 = new Set(own === void 0 ? [] : [own]);
   const owner = enclosingClassName3(fn);
-  return { bare: names, member: names, ...owner === void 0 ? {} : { owner } };
+  return { bare: names2, member: names2, ...owner === void 0 ? {} : { owner } };
 }
 function isRecursiveCall3(call, scope) {
   const callee = call.namedChildren[0];
@@ -4649,14 +4649,14 @@ function typeShape2(declaration) {
   return { nodes: nodeCount(declaration, isComment2), interfaceSize: Math.max(1, interfaceSize) };
 }
 function parameterNames2(fn) {
-  const names = /* @__PURE__ */ new Set();
+  const names2 = /* @__PURE__ */ new Set();
   for (const list2 of fn.namedChildren.filter((child) => child.type === "function_value_parameters")) {
     for (const parameter of list2.namedChildren) {
       const name11 = parameter.type === "parameter" ? parameter.namedChildren.find((child) => child.type === "identifier") : void 0;
-      if (name11 !== void 0) names.add(name11.text);
+      if (name11 !== void 0) names2.add(name11.text);
     }
   }
-  return names;
+  return names2;
 }
 function unwrap3(node) {
   let current = node;
@@ -4904,15 +4904,15 @@ function lastName2(node) {
   }
 }
 function annotation2(node) {
-  const names = /* @__PURE__ */ new Set();
+  const names2 = /* @__PURE__ */ new Set();
   let callback = false;
   const visit2 = (current) => {
-    if (current.type === "user_type") for (const name11 of identifiersOf(current).slice(-1)) names.add(name11);
+    if (current.type === "user_type") for (const name11 of identifiersOf(current).slice(-1)) names2.add(name11);
     if (current.type === "function_type") callback = true;
     for (const child of current.namedChildren) visit2(child);
   };
   if (node !== null) visit2(node);
-  return { callback, names: [...names].sort() };
+  return { callback, names: [...names2].sort() };
 }
 function typeOf(parameter) {
   return parameter.namedChildren.find((child) => ["user_type", "nullable_type", "function_type", "parenthesized_type"].includes(child.type)) ?? null;
@@ -5153,16 +5153,16 @@ function lastName3(node) {
   }
 }
 function annotation3(node) {
-  const names = /* @__PURE__ */ new Set();
+  const names2 = /* @__PURE__ */ new Set();
   let callback = false;
   const visit2 = (current, insideObject) => {
-    if (current.type === "type_identifier") names.add(current.text);
+    if (current.type === "type_identifier") names2.add(current.text);
     if (current.type === "function_type" && !insideObject) callback = true;
     const nested = insideObject || current.type === "object_type";
     for (const child of current.namedChildren) visit2(child, nested);
   };
   if (node) visit2(node, false);
-  return { callback, names: [...names].sort() };
+  return { callback, names: [...names2].sort() };
 }
 function parametersOf3(list2) {
   const out2 = [];
@@ -5411,9 +5411,9 @@ function declarationKinds(root) {
         return;
       case "lexical_declaration":
       case "variable_declaration": {
-        const names = [];
-        declaredNames(node, names);
-        for (const declared of names) kinds.set(declared, "variable");
+        const names2 = [];
+        declaredNames(node, names2);
+        for (const declared of names2) kinds.set(declared, "variable");
         return;
       }
       default:
@@ -5492,9 +5492,9 @@ var Extractor3 = class {
       this.visit(child, child.type === "decorator" ? outer : inner2, node, node.fieldNameForChild(i2));
     }
   }
-  withShadow(context, names) {
-    if (names.length === 0) return context;
-    return { unit: context.unit, shadow: /* @__PURE__ */ new Set([...context.shadow, ...names]) };
+  withShadow(context, names2) {
+    if (names2.length === 0) return context;
+    return { unit: context.unit, shadow: /* @__PURE__ */ new Set([...context.shadow, ...names2]) };
   }
   visit(node, context, parent, field6) {
     switch (node.type) {
@@ -5547,27 +5547,27 @@ var Extractor3 = class {
       case "statement_block":
       case "class_static_block":
       case "switch_body": {
-        const names = [];
-        blockNames(node, names);
-        this.visitChildren(node, this.withShadow(context, names));
+        const names2 = [];
+        blockNames(node, names2);
+        this.visitChildren(node, this.withShadow(context, names2));
         return;
       }
       case "for_in_statement":
       case "for_statement": {
-        const names = [];
+        const names2 = [];
         if (node.type === "for_statement") {
           const initializer = node.childForFieldName("initializer");
-          if (initializer) declaredNames(initializer, names);
+          if (initializer) declaredNames(initializer, names2);
         } else if (node.childForFieldName("kind")) {
-          patternNames(node.childForFieldName("left"), names);
+          patternNames(node.childForFieldName("left"), names2);
         }
-        this.visitChildren(node, this.withShadow(context, names));
+        this.visitChildren(node, this.withShadow(context, names2));
         return;
       }
       case "catch_clause": {
-        const names = [];
-        patternNames(node.childForFieldName("parameter"), names);
-        this.visitChildren(node, this.withShadow(context, names));
+        const names2 = [];
+        patternNames(node.childForFieldName("parameter"), names2);
+        this.visitChildren(node, this.withShadow(context, names2));
         return;
       }
       case "internal_module":
@@ -5683,9 +5683,9 @@ var Extractor3 = class {
       }, typescriptMetricRules);
       unit.metrics = measured.metrics;
       unit.shape = functionShape(fn, measured.metrics.parameters);
-      const names = [];
-      parameterNames3(fn.childForFieldName("parameters") ?? fn.childForFieldName("parameter"), names);
-      const forwarded = passThroughOf(fn, new Set(names));
+      const names2 = [];
+      parameterNames3(fn.childForFieldName("parameters") ?? fn.childForFieldName("parameter"), names2);
+      const forwarded = passThroughOf(fn, new Set(names2));
       if (forwarded !== void 0) unit.passThrough = forwarded;
       if (measured.recursive) unit.recursive = true;
       if (node.children.some((child) => child.type === "override_modifier")) unit.override = true;
@@ -5696,15 +5696,15 @@ var Extractor3 = class {
   }
   /** Visits a function-like node's parameters and body with its own names in scope. */
   functionBody(node, context) {
-    const names = [];
-    parameterNames3(node.childForFieldName("parameters") ?? node.childForFieldName("parameter"), names);
+    const names2 = [];
+    parameterNames3(node.childForFieldName("parameters") ?? node.childForFieldName("parameter"), names2);
     if (node.type === "function_expression" || node.type === "generator_function") {
       const own = node.childForFieldName("name");
-      if (own) names.push(own.text);
+      if (own) names2.push(own.text);
     }
     const body2 = node.childForFieldName("body");
-    if (body2?.type === "statement_block") blockNames(body2, names);
-    this.visitChildren(node, this.withShadow(context, names));
+    if (body2?.type === "statement_block") blockNames(body2, names2);
+    this.visitChildren(node, this.withShadow(context, names2));
   }
   declaration(node, context, parent) {
     const declarators = node.namedChildren.filter((child) => child.type === "variable_declarator");
@@ -5899,12 +5899,12 @@ var Extractor3 = class {
   }
   exportedDeclaration(statement, declaration, isDefault, context, line) {
     const named = declaration.type === "ambient_declaration" ? declaration.namedChildren.find((child) => child.type !== "comment") ?? declaration : declaration;
-    const names = [];
-    declaredNames(named, names);
+    const names2 = [];
+    declaredNames(named, names2);
     const name11 = named.childForFieldName("name");
-    if (names.length === 0 && name11) names.push(name11.text);
+    if (names2.length === 0 && name11) names2.push(name11.text);
     const alias = named.type === "import_alias" ? named.namedChildren.find((c) => c.type === "identifier") : void 0;
-    if (names.length === 0 && alias) names.push(alias.text);
+    if (names2.length === 0 && alias) names2.push(alias.text);
     if (isDefault) {
       const anonymous = functionTypes.has(declaration.type) || classTypes.has(declaration.type);
       const unitName2 = name11?.text ?? "default";
@@ -5917,7 +5917,7 @@ var Extractor3 = class {
         return;
       }
     } else {
-      for (const exported of names) this.exports.push({ exported, local: exported, line });
+      for (const exported of names2) this.exports.push({ exported, local: exported, line });
     }
     this.visit(declaration, context, statement, "declaration");
   }
@@ -6575,11 +6575,11 @@ function recursionScope4(fn, name11) {
   const optional = parameters.filter((parameter) => parameter.hasDefault).length;
   const callable = fn.type === "method_declaration" || fn.type === "local_function_statement";
   const own = callable ? fn.childForFieldName("name")?.text ?? name11 : void 0;
-  const names = new Set(own === void 0 ? [] : [own]);
+  const names2 = new Set(own === void 0 ? [] : [own]);
   const owner = fn.type === "method_declaration" ? enclosingTypeName(fn) : void 0;
   return {
-    bare: names,
-    member: names,
+    bare: names2,
+    member: names2,
     ...owner === void 0 ? {} : { owner },
     arity: { min: params ? 0 : parameters.length - optional, max: params ? Number.POSITIVE_INFINITY : parameters.length }
   };
@@ -7015,10 +7015,10 @@ var Extractor4 = class {
     const first = chain[0];
     if (first === void 0) return;
     const aliased = this.aliases.get(first);
-    const names = aliased === void 0 ? chain : [...aliased, ...chain.slice(1)];
+    const names2 = aliased === void 0 ? chain : [...aliased, ...chain.slice(1)];
     const base = aliased === void 0 ? 0 : aliased.length - 1;
-    for (let length = base + 1; length <= names.length; length++) {
-      const reference = { name: names.slice(0, length).join("."), kind, line };
+    for (let length = base + 1; length <= names2.length; length++) {
+      const reference = { name: names2.slice(0, length).join("."), kind, line };
       if (unit !== void 0) reference.inUnit = unit;
       this.references.push(reference);
     }
@@ -7187,9 +7187,9 @@ function parametersOf4(list2) {
     if (parameter.type !== "parameter") continue;
     const type = parameter.childForFieldName("type");
     if (type === null) continue;
-    const names = /* @__PURE__ */ new Set();
-    typeNames(type, names);
-    out2.push({ name: parameter.childForFieldName("name")?.text ?? "", type: { callback: false, names: [...names].sort() } });
+    const names2 = /* @__PURE__ */ new Set();
+    typeNames(type, names2);
+    out2.push({ name: parameter.childForFieldName("name")?.text ?? "", type: { callback: false, names: [...names2].sort() } });
   }
   return out2;
 }
@@ -7307,9 +7307,9 @@ function extractFileCensus4(root) {
   return facts;
 }
 function isDictionary(node, type) {
-  const names = /* @__PURE__ */ new Set();
-  typeNames(type, names);
-  if ([...names].some((name11) => dictionaryTypes.test(name11))) return true;
+  const names2 = /* @__PURE__ */ new Set();
+  typeNames(type, names2);
+  if ([...names2].some((name11) => dictionaryTypes.test(name11))) return true;
   const created = node.descendantsOfType("object_creation_expression")[0];
   const createdName = created === void 0 ? void 0 : lastNameOf(created.childForFieldName("type"));
   return createdName !== void 0 && dictionaryTypes.test(createdName);
@@ -7711,9 +7711,9 @@ function recursionScope5(fn, name11) {
   if (fn.type === "lambda_expression") return { bare: /* @__PURE__ */ new Set(), member: /* @__PURE__ */ new Set() };
   const named = declaratorName(functionDeclarator(fn));
   const own = named?.name ?? name11;
-  const names = new Set(own === void 0 ? [] : [own]);
+  const names2 = new Set(own === void 0 ? [] : [own]);
   const owner = named === null ? void 0 : ownerOf(fn, named.qualifier);
-  return { bare: names, member: names, ...owner === void 0 ? {} : { owner } };
+  return { bare: names2, member: names2, ...owner === void 0 ? {} : { owner } };
 }
 function isRecursiveCall5(call, scope) {
   const callee = call.childForFieldName("function");
@@ -7817,18 +7817,18 @@ function lastName4(node) {
   }
 }
 function typeFact(type, functionPointer) {
-  const names = /* @__PURE__ */ new Set();
+  const names2 = /* @__PURE__ */ new Set();
   let callback = functionPointer;
   const visit2 = (current) => {
     if (current.type === "type_identifier") {
-      names.add(current.text);
+      names2.add(current.text);
       if (current.text === "function" && current.parent?.type === "template_type") callback = true;
     }
     if (current.type === "abstract_function_declarator" || current.type === "function_declarator") callback = true;
     for (const child of current.namedChildren) visit2(child);
   };
   if (type !== null) visit2(type);
-  return { callback, names: [...names].sort() };
+  return { callback, names: [...names2].sort() };
 }
 function parameterFacts(list2) {
   const out2 = [];
@@ -8502,12 +8502,12 @@ var Extractor5 = class {
   }
   parameterNames(declarator) {
     const list2 = declarator?.childForFieldName("parameters");
-    const names = [];
+    const names2 = [];
     for (const parameter of list2?.namedChildren ?? []) {
       const name11 = declaredIdentifier(parameter.childForFieldName("declarator"));
-      if (name11 !== null) names.push(name11);
+      if (name11 !== null) names2.push(name11);
     }
-    return names;
+    return names2;
   }
   parameterTypes(declarator, outer) {
     const list2 = declarator.childForFieldName("parameters");
@@ -8523,7 +8523,7 @@ var Extractor5 = class {
   /** Reads a function's parameters, initialisers and body, with its locals' types noted as they are declared. */
   functionBody(fn, context) {
     const types = new Map(context.types);
-    const names = new Set(context.locals);
+    const names2 = new Set(context.locals);
     const declares = /* @__PURE__ */ new Set(["declaration", "for_range_loop", "parameter_declaration", "optional_parameter_declaration"]);
     const walk = (node) => {
       if (declares.has(node.type)) {
@@ -8532,14 +8532,14 @@ var Extractor5 = class {
           if (node.fieldNameForChild(i2) !== "declarator") continue;
           const name11 = declaredIdentifier(node.child(i2));
           if (name11 === null) continue;
-          names.add(name11);
+          names2.add(name11);
           if (type !== null) types.set(name11, type);
         }
       }
       for (const child of node.namedChildren) walk(child);
     };
     walk(fn);
-    this.visitChildren(fn, { ...context, types, locals: names });
+    this.visitChildren(fn, { ...context, types, locals: names2 });
   }
   declaration(node, context) {
     const type = node.childForFieldName("type");
@@ -9464,10 +9464,10 @@ function rebinds2(fn, name11) {
 }
 function recursionScope6(fn, name11) {
   const own = fn.childForFieldName("name")?.text;
-  const names = [...new Set([name11, own].filter((candidate) => candidate !== void 0))];
+  const names2 = [...new Set([name11, own].filter((candidate) => candidate !== void 0))];
   const owner = enclosingClass(fn);
-  const member = new Set(names);
-  const bare = new Set(owner === null ? names.filter((candidate) => !rebinds2(fn, candidate)) : []);
+  const member = new Set(names2);
+  const bare = new Set(owner === null ? names2.filter((candidate) => !rebinds2(fn, candidate)) : []);
   const ownerName = owner?.childForFieldName("name")?.text;
   return { bare, member, ...ownerName === void 0 ? {} : { owner: ownerName } };
 }
@@ -9549,13 +9549,13 @@ function isForwarded4(argument, parameters) {
   return literalTypes6.has(argument.type);
 }
 function boundParameterNames(fn) {
-  const names = /* @__PURE__ */ new Set();
+  const names2 = /* @__PURE__ */ new Set();
   const list2 = fn.childForFieldName("parameters");
   for (const entry of list2?.namedChildren ?? []) {
     const name11 = parameterName(entry);
-    if (name11 !== void 0) names.add(name11);
+    if (name11 !== void 0) names2.add(name11);
   }
-  return names;
+  return names2;
 }
 function passThroughOf6(fn) {
   const body2 = fn.childForFieldName("body");
@@ -9644,16 +9644,16 @@ function boundNames(scope, out2) {
           continue;
         case "assignment":
         case "augmented_assignment": {
-          const names = [];
-          targetNames(child.childForFieldName("left"), names);
-          for (const name11 of names) out2.add(name11);
+          const names2 = [];
+          targetNames(child.childForFieldName("left"), names2);
+          for (const name11 of names2) out2.add(name11);
           break;
         }
         case "for_statement":
         case "for_in_clause": {
-          const names = [];
-          targetNames(child.childForFieldName("left"), names);
-          if (child.type === "for_statement") for (const name11 of names) out2.add(name11);
+          const names2 = [];
+          targetNames(child.childForFieldName("left"), names2);
+          if (child.type === "for_statement") for (const name11 of names2) out2.add(name11);
           break;
         }
         case "as_pattern_target":
@@ -9681,9 +9681,9 @@ function boundNames(scope, out2) {
   for (const name11 of globals) out2.delete(name11);
 }
 function comprehensionNames(node) {
-  const names = [];
-  for (const clause of node.namedChildren) if (clause.type === "for_in_clause") targetNames(clause.childForFieldName("left"), names);
-  return names;
+  const names2 = [];
+  for (const clause of node.namedChildren) if (clause.type === "for_in_clause") targetNames(clause.childForFieldName("left"), names2);
+  return names2;
 }
 function importedModules(node) {
   if (node.type === "import_statement") {
@@ -9802,9 +9802,9 @@ var Extractor6 = class {
           case "expression_statement": {
             const assignment = definition.namedChildren[0];
             if (assignment?.type !== "assignment") break;
-            const names = [];
-            targetNames(assignment.childForFieldName("left"), names);
-            for (const name11 of names) add(name11, line, "variable");
+            const names2 = [];
+            targetNames(assignment.childForFieldName("left"), names2);
+            for (const name11 of names2) add(name11, line, "variable");
             break;
           }
           case "type_alias_statement": {
@@ -9899,8 +9899,8 @@ var Extractor6 = class {
       case "set_comprehension":
       case "dictionary_comprehension":
       case "generator_expression": {
-        const names = comprehensionNames(node);
-        this.visitChildren(node, names.length === 0 ? context : { unit: context.unit, shadow: /* @__PURE__ */ new Set([...context.shadow, ...names]) });
+        const names2 = comprehensionNames(node);
+        this.visitChildren(node, names2.length === 0 ? context : { unit: context.unit, shadow: /* @__PURE__ */ new Set([...context.shadow, ...names2]) });
         return;
       }
       case "for_in_clause":
@@ -9938,13 +9938,13 @@ var Extractor6 = class {
   }
   /** The chain of an attribute expression as written (`a.b.c` gives `[a, b, c]`), or undefined when it does not start at a name. */
   chain(node) {
-    const names = [];
+    const names2 = [];
     let current = node;
     while (current !== null && current.type === "attribute") {
-      names.unshift(current.childForFieldName("attribute")?.text ?? "");
+      names2.unshift(current.childForFieldName("attribute")?.text ?? "");
       current = current.childForFieldName("object");
     }
-    return current?.type === "identifier" ? { root: current, names: [current.text, ...names] } : void 0;
+    return current?.type === "identifier" ? { root: current, names: [current.text, ...names2] } : void 0;
   }
   /** `object.member` as a use of `object` remembering the member for namespace imports, or of a dotted import (`a.b.c.member`). */
   member(node, context, kind) {
@@ -10017,9 +10017,9 @@ var Extractor6 = class {
     if (superclasses !== null) this.visit(superclasses, context, node, "superclasses");
     const body2 = node.childForFieldName("body");
     if (body2 === null) return;
-    const names = /* @__PURE__ */ new Set();
-    boundNames(body2, names);
-    const own = { unit: inner2.unit, shadow: /* @__PURE__ */ new Set([...inner2.shadow, ...names]) };
+    const names2 = /* @__PURE__ */ new Set();
+    boundNames(body2, names2);
+    const own = { unit: inner2.unit, shadow: /* @__PURE__ */ new Set([...inner2.shadow, ...names2]) };
     for (const statement of body2.namedChildren) {
       const definition = statement.type === "decorated_definition" ? statement.childForFieldName("definition") : statement;
       const scope = definition?.type === "function_definition" || definition?.type === "class_definition" ? inner2 : own;
@@ -10028,10 +10028,10 @@ var Extractor6 = class {
   }
   /** Visits a function-like node's parameters and body with its own names in scope. */
   functionBody(node, context) {
-    const names = new Set(boundParameterNames(node));
+    const names2 = new Set(boundParameterNames(node));
     const body2 = node.childForFieldName("body");
-    if (node.type === "function_definition" && body2 !== null) boundNames(body2, names);
-    const inner2 = { unit: context.unit, shadow: /* @__PURE__ */ new Set([...context.shadow, ...names]) };
+    if (node.type === "function_definition" && body2 !== null) boundNames(body2, names2);
+    const inner2 = { unit: context.unit, shadow: /* @__PURE__ */ new Set([...context.shadow, ...names2]) };
     for (const child of node.namedChildren) if (child.id !== node.childForFieldName("name")?.id) this.visit(child, inner2, node, null);
   }
   declareUnit(name11, kind, extent, context, fn) {
@@ -10094,17 +10094,17 @@ function receiverName2(node) {
   }
 }
 function annotation4(node) {
-  const names = /* @__PURE__ */ new Set();
+  const names2 = /* @__PURE__ */ new Set();
   let callback = false;
   const visit2 = (current) => {
     if (current.type === "identifier") {
-      names.add(current.text);
+      names2.add(current.text);
       if (current.text === "Callable") callback = true;
     }
     for (const child of current.namedChildren) visit2(child);
   };
   if (node !== null) visit2(node);
-  return { callback, names: [...names].sort() };
+  return { callback, names: [...names2].sort() };
 }
 function parametersOf5(fn) {
   const out2 = [];
@@ -10119,19 +10119,19 @@ function parametersOf5(fn) {
 }
 function constructorTypes(declaration) {
   const body2 = field4(declaration, "body");
-  const names = [];
+  const names2 = [];
   const decorated = declaration.parent?.type === "decorated_definition" ? declaration.parent : null;
   const isDataclass = decorated?.namedChildren.some((child) => child.type === "decorator" && dataclassDecorators.has(lastName5(child.namedChildren[0] ?? null) ?? "")) === true;
   for (const statement of body2?.namedChildren ?? []) {
     if (statement.type === "function_definition" && field4(statement, "name")?.text === "__init__") {
-      names.push(...parametersOf5(statement).flatMap((parameter) => parameter.type.names));
+      names2.push(...parametersOf5(statement).flatMap((parameter) => parameter.type.names));
     } else if (isDataclass && statement.type === "expression_statement") {
       const assignment = statement.namedChildren[0];
       const type = assignment?.type === "assignment" ? field4(assignment, "type") : null;
-      if (type !== null && type !== void 0) names.push(...annotation4(type).names);
+      if (type !== null && type !== void 0) names2.push(...annotation4(type).names);
     }
   }
-  return names;
+  return names2;
 }
 function holdsMap(value, type) {
   if (value?.type === "dictionary" || value?.type === "dictionary_comprehension") return true;
@@ -10688,25 +10688,25 @@ function lastName6(node) {
   }
 }
 function annotation5(node) {
-  const names = /* @__PURE__ */ new Set();
+  const names2 = /* @__PURE__ */ new Set();
   let callback = false;
   const visit2 = (current, inside) => {
-    if (current.type === "type_identifier") names.add(current.text);
+    if (current.type === "type_identifier") names2.add(current.text);
     if (current.type === "function_type" && !inside) callback = true;
     const nested = inside || current.type === "struct_type" || current.type === "interface_type";
     for (const child of current.namedChildren) visit2(child, nested);
   };
   if (node !== null) visit2(node, false);
-  return { callback, names: [...names].sort() };
+  return { callback, names: [...names2].sort() };
 }
 function parametersOf6(list2) {
   const out2 = [];
   for (const parameter of list2?.namedChildren ?? []) {
     if (parameter.type !== "parameter_declaration" && parameter.type !== "variadic_parameter_declaration") continue;
     const type = annotation5(parameter.childForFieldName("type"));
-    const names = parameter.childrenForFieldName("name");
-    if (names.length === 0) out2.push({ name: "", type });
-    else for (const name11 of names) out2.push({ name: name11.text, type });
+    const names2 = parameter.childrenForFieldName("name");
+    if (names2.length === 0) out2.push({ name: "", type });
+    else for (const name11 of names2) out2.push({ name: name11.text, type });
   }
   return out2;
 }
@@ -10939,11 +10939,11 @@ function typeShape4(declaration, type, exportedMethods) {
   let size = 0;
   if (type.type === "struct_type") {
     for (const field6 of type.descendantsOfType("field_declaration")) {
-      const names = field6.childrenForFieldName("name");
-      if (names.length === 0) {
+      const names2 = field6.childrenForFieldName("name");
+      if (names2.length === 0) {
         if (isExported(embeddedName(field6.childForFieldName("type")))) size++;
       } else {
-        size += names.filter((name11) => isExported(name11.text)).length;
+        size += names2.filter((name11) => isExported(name11.text)).length;
       }
     }
     size += exportedMethods;
@@ -10977,11 +10977,11 @@ function isForwarded5(argument, parameters) {
   return literalTypes7.has(argument.type);
 }
 function parameterNames4(fn) {
-  const names = /* @__PURE__ */ new Set();
+  const names2 = /* @__PURE__ */ new Set();
   for (const parameter of fn.childForFieldName("parameters")?.namedChildren ?? []) {
-    for (const name11 of parameter.childrenForFieldName("name")) names.add(name11.text);
+    for (const name11 of parameter.childrenForFieldName("name")) names2.add(name11.text);
   }
-  return names;
+  return names2;
 }
 function passThroughOf7(fn) {
   const body2 = fn.childForFieldName("body");
@@ -11079,19 +11079,19 @@ function receiverTypeParameters(method) {
   return (type.childForFieldName("type_arguments")?.descendantsOfType("type_identifier") ?? []).map((name11) => name11.text);
 }
 function declaredIn(fn) {
-  const names = /* @__PURE__ */ new Set();
+  const names2 = /* @__PURE__ */ new Set();
   const add = (node) => {
-    for (const identifier of node?.type === "identifier" ? [node] : node?.namedChildren ?? []) if (identifier.type === "identifier") names.add(identifier.text);
+    for (const identifier of node?.type === "identifier" ? [node] : node?.namedChildren ?? []) if (identifier.type === "identifier") names2.add(identifier.text);
   };
   const addParameters = (list2) => {
-    for (const parameter of list2?.namedChildren ?? []) for (const name11 of parameter.childrenForFieldName("name")) names.add(name11.text);
+    for (const parameter of list2?.namedChildren ?? []) for (const name11 of parameter.childrenForFieldName("name")) names2.add(name11.text);
   };
   addParameters(fn.childForFieldName("receiver"));
   addParameters(fn.childForFieldName("parameters"));
   const result = fn.childForFieldName("result");
   if (result?.type === "parameter_list") addParameters(result);
-  for (const parameter of fn.childForFieldName("type_parameters")?.namedChildren ?? []) for (const name11 of parameter.childrenForFieldName("name")) names.add(name11.text);
-  for (const name11 of fn.type === "method_declaration" ? receiverTypeParameters(fn) : []) names.add(name11);
+  for (const parameter of fn.childForFieldName("type_parameters")?.namedChildren ?? []) for (const name11 of parameter.childrenForFieldName("name")) names2.add(name11.text);
+  for (const name11 of fn.type === "method_declaration" ? receiverTypeParameters(fn) : []) names2.add(name11);
   const walk = (node) => {
     for (const child of node.namedChildren) {
       switch (child.type) {
@@ -11113,12 +11113,12 @@ function declaredIn(fn) {
           break;
         case "var_spec":
         case "const_spec":
-          for (const name11 of child.childrenForFieldName("name")) names.add(name11.text);
+          for (const name11 of child.childrenForFieldName("name")) names2.add(name11.text);
           break;
         case "type_spec":
         case "type_alias": {
           const name11 = child.childForFieldName("name");
-          if (name11 !== null) names.add(name11.text);
+          if (name11 !== null) names2.add(name11.text);
           break;
         }
         default:
@@ -11128,7 +11128,7 @@ function declaredIn(fn) {
   };
   const body2 = fn.childForFieldName("body");
   if (body2 !== null) walk(body2);
-  return names;
+  return names2;
 }
 var Extractor7 = class {
   units = [];
@@ -11294,18 +11294,18 @@ var Extractor7 = class {
     const specs = node.descendantsOfType(node.type === "var_declaration" ? "var_spec" : "const_spec");
     const sole = specs.length === 1;
     for (const spec of specs) {
-      const names = spec.childrenForFieldName("name");
+      const names2 = spec.childrenForFieldName("name");
       const values = spec.childForFieldName("value")?.namedChildren ?? [];
       const type = spec.childForFieldName("type");
       if (type !== null) this.walk(type, context, spec, "type");
-      names.forEach((name11, index) => {
+      names2.forEach((name11, index) => {
         const value = values[index];
-        const bound = value?.type === "func_literal" && names.length === values.length;
+        const bound = value?.type === "func_literal" && names2.length === values.length;
         if (packageLevel && name11.text !== "_") this.addDeclaration(name11.text, bound ? "function" : "variable", bound ? name11.text : void 0, name11.startPosition.row + 1);
         if (bound && value !== void 0) this.functionUnit(name11.text, value, sole ? node : spec, void 0, context, "function");
       });
       values.forEach((value, index) => {
-        if (!(value.type === "func_literal" && names.length === values.length && names[index] !== void 0)) this.walk(value, context, spec, "value");
+        if (!(value.type === "func_literal" && names2.length === values.length && names2[index] !== void 0)) this.walk(value, context, spec, "value");
       });
     }
   }
@@ -11773,9 +11773,9 @@ var ModuleTree = class {
     if (root !== void 0) {
       const dir = posix14.dirname(root);
       const relative = dir === "." ? file : file.slice(dir.length + 1);
-      const names = file === root ? [] : relative.slice(0, -3).split("/");
-      if (names.at(-1) === "mod") names.pop();
-      place = { root, path: names, crate };
+      const names2 = file === root ? [] : relative.slice(0, -3).split("/");
+      if (names2.at(-1) === "mod") names2.pop();
+      place = { root, path: names2, crate };
     }
     this.places.set(file, place);
     return place;
@@ -11793,12 +11793,12 @@ var ModuleTree = class {
    * name that starts with a capital is an item, which ends the walk. `consumed` counts the names up to the
    * last file reached, so the rest name items of that file.
    */
-  walk(from, names) {
+  walk(from, names2) {
     let file = from.file;
     let directory = moduleDirectory(file, from.root);
     let consumed = 0;
-    for (let index = 0; index < names.length; index++) {
-      const name11 = names[index];
+    for (let index = 0; index < names2.length; index++) {
+      const name11 = names2[index];
       const found = this.child(directory, name11);
       if (found !== void 0) {
         file = found;
@@ -11874,12 +11874,12 @@ function patternNames2(pattern, out2) {
   else if (pattern.type !== "type_identifier" && pattern.type !== "scoped_identifier") for (const child of pattern.namedChildren) patternNames2(child, out2);
 }
 function parameterNames5(fn) {
-  const names = [];
+  const names2 = [];
   for (const entry of fn.childForFieldName("parameters")?.namedChildren ?? []) {
-    if (entry.type === "parameter") patternNames2(entry.childForFieldName("pattern"), names);
-    else if (entry.type === "identifier") names.push(entry.text);
+    if (entry.type === "parameter") patternNames2(entry.childForFieldName("pattern"), names2);
+    else if (entry.type === "identifier") names2.push(entry.text);
   }
-  return names;
+  return names2;
 }
 function passThroughOf8(fn, parameters) {
   const body2 = fn.childForFieldName("body");
@@ -11969,9 +11969,9 @@ function typeName(type) {
 function recursionScope8(fn, name11) {
   const own = fn.childForFieldName("name")?.text ?? name11;
   const owner = ownerOf2(fn);
-  const names = own === void 0 || fn.type !== "function_item" ? [] : [own];
+  const names2 = own === void 0 || fn.type !== "function_item" ? [] : [own];
   const isMember = owner !== void 0;
-  return { bare: new Set(isMember ? [] : names), member: new Set(names), ...owner === void 0 ? {} : { owner } };
+  return { bare: new Set(isMember ? [] : names2), member: new Set(names2), ...owner === void 0 ? {} : { owner } };
 }
 function isRecursiveCall8(call, scope) {
   let callee = call.childForFieldName("function");
@@ -12164,10 +12164,10 @@ var Extractor8 = class {
     this.root = root;
     inlineModulesOf(root, [], this.inlineModules);
     this.visitScope(root, { unit: void 0, mods: [], owner: void 0, exposed: true, localMods: /* @__PURE__ */ new Set() });
-    const names = new Set(this.exports.map((exported) => exported.exported));
+    const names2 = new Set(this.exports.map((exported) => exported.exported));
     for (const inner2 of this.innerExports) {
-      if (names.has(inner2.exported)) continue;
-      names.add(inner2.exported);
+      if (names2.has(inner2.exported)) continue;
+      names2.add(inner2.exported);
       this.exports.push(inner2);
     }
     const locals = /* @__PURE__ */ new Set();
@@ -12218,14 +12218,14 @@ var Extractor8 = class {
   }
   /** The modules a scope declares, so a path that starts with one is relative to the scope. */
   declaredMods(scope) {
-    const names = /* @__PURE__ */ new Set();
+    const names2 = /* @__PURE__ */ new Set();
     for (const child of scope.namedChildren) {
       if (child.type === "mod_item") {
         const name11 = child.childForFieldName("name")?.text;
-        if (name11 !== void 0) names.add(name11);
+        if (name11 !== void 0) names2.add(name11);
       }
     }
-    return names;
+    return names2;
   }
   visitScope(scope, context) {
     const inner2 = { ...context, localMods: this.declaredMods(scope) };
@@ -12603,31 +12603,31 @@ function nameOf2(node) {
   return node === null ? null : typeName(node) ?? lastName7(node);
 }
 function annotation6(node, callbackParameters) {
-  const names = /* @__PURE__ */ new Set();
+  const names2 = /* @__PURE__ */ new Set();
   let callback = false;
   const visit2 = (current) => {
     if (current.type === "type_identifier") {
-      names.add(current.text);
+      names2.add(current.text);
       if (callbackParameters.has(current.text)) callback = true;
     }
     if (current.type === "function_type") callback = true;
     for (const child of current.namedChildren) visit2(child);
   };
   if (node !== null) visit2(node);
-  return { callback, names: [...names].sort() };
+  return { callback, names: [...names2].sort() };
 }
 function callbackGenerics(fn) {
-  const names = /* @__PURE__ */ new Set();
+  const names2 = /* @__PURE__ */ new Set();
   for (const parameter of field5(fn, "type_parameters")?.namedChildren ?? []) {
     const bounds = field5(parameter, "bounds");
     const name11 = field5(parameter, "name")?.text;
-    if (name11 !== void 0 && bounds?.descendantsOfType("function_type").length) names.add(name11);
+    if (name11 !== void 0 && bounds?.descendantsOfType("function_type").length) names2.add(name11);
   }
   for (const predicate of fn.namedChildren.filter((child) => child.type === "where_clause").flatMap((clause) => clause.namedChildren)) {
     const name11 = field5(predicate, "left")?.text;
-    if (name11 !== void 0 && field5(predicate, "bounds")?.descendantsOfType("function_type").length) names.add(name11);
+    if (name11 !== void 0 && field5(predicate, "bounds")?.descendantsOfType("function_type").length) names2.add(name11);
   }
-  return names;
+  return names2;
 }
 function parametersOf7(fn) {
   const generics = callbackGenerics(fn);
@@ -12782,10 +12782,10 @@ var PathResolver = class {
       return this.tree.has(target2) ? { kind: "file", path: target2 } : { kind: "not-found" };
     }
     const place = this.tree.placeOf(from);
-    const names = declaration.split("::");
-    const name11 = names.pop();
+    const names2 = declaration.split("::");
+    const name11 = names2.pop();
     let directory = moduleDirectory(from, place?.root ?? from);
-    for (const inline of names) directory = posix15.join(directory, inline);
+    for (const inline of names2) directory = posix15.join(directory, inline);
     const file = this.tree.child(directory, name11);
     return file === void 0 ? { kind: "not-found" } : { kind: "file", path: file };
   }
@@ -13361,11 +13361,11 @@ function findBracedBlocks(lines2, profile) {
     const kept = [...header2, { line: line.number, text: before }];
     const classification = classifyHeader(kept, profile);
     if (classification.kind !== "function") return false;
-    const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
+    const names2 = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
     const block = { startLine: classification.line, endLine: -1, source: "lexical" };
     if (classification.name !== void 0) {
       block.name = classification.name;
-      block.qualifiedName = qualify(names, classification.name);
+      block.qualifiedName = qualify(names2, classification.name);
     }
     arrow = { block, scopes: stack.length, lastLine: line.number, declaration: false };
     return true;
@@ -13398,11 +13398,11 @@ function findBracedBlocks(lines2, profile) {
       break;
     }
     if (!matched) return false;
-    const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
+    const names2 = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
     const block = { startLine: kept[0].line, endLine: -1, source: "lexical" };
     if (name11 !== void 0) {
       block.name = cleanName(name11);
-      block.qualifiedName = qualify(names, block.name);
+      block.qualifiedName = qualify(names2, block.name);
     }
     arrow = { block, scopes: stack.length, lastLine: line.number, declaration: inDeclaration || keywordAssignment.test(text3) };
     return true;
@@ -13467,7 +13467,7 @@ function findBracedBlocks(lines2, profile) {
           continue;
         }
         const classification = classifyHeader(header2, profile);
-        const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
+        const names2 = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
         let block;
         let name11;
         if (classification.kind === "function") {
@@ -13475,7 +13475,7 @@ function findBracedBlocks(lines2, profile) {
           block = { startLine: classification.line, endLine: -1, source: "lexical" };
           if (name11 !== void 0) {
             block.name = name11;
-            block.qualifiedName = qualify(names, name11);
+            block.qualifiedName = qualify(names2, name11);
           }
         } else if (classification.kind === "type") name11 = classification.name;
         const typeOnly = /^(?:export\s+)?(?:declare\s+)?(?:interface|type)\b/.test(headerText(""));
@@ -13554,13 +13554,13 @@ function findIndentedBlocks(lines2, profile) {
     while (stack.length > 0 && stack[stack.length - 1].level >= level) close(stack.pop());
     const classification = classifyHeader([{ line: line.number, text: line.code }], profile);
     if (classification.kind !== "other") {
-      const names = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
+      const names2 = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
       let block;
       if (classification.kind === "function") {
         block = { startLine: line.number, endLine: -1, source: "lexical" };
         if (classification.name !== void 0) {
           block.name = classification.name;
-          block.qualifiedName = qualify(names, classification.name);
+          block.qualifiedName = qualify(names2, classification.name);
         }
       }
       stack.push({ level, name: classification.name, block });
@@ -18210,10 +18210,10 @@ function parseLayer(value) {
 }
 function parseMetrics(value, settings) {
   if (value === void 0) return settings.metrics;
-  const names = String(value).split(",").map((name11) => name11.trim());
-  const unknown = names.filter((name11) => !isMetricId(name11));
+  const names2 = String(value).split(",").map((name11) => name11.trim());
+  const unknown = names2.filter((name11) => !isMetricId(name11));
   if (unknown.length > 0) throw usageError(`unknown metric ${unknown.join(", ")}; metrics: ${metricIds.join(", ")}`);
-  return metricIds.filter((metric) => names.includes(metric));
+  return metricIds.filter((metric) => names2.includes(metric));
 }
 async function measureCurrent(context, layer) {
   const settings = readSettings(context.config);
@@ -18669,11 +18669,14 @@ async function measureFixes(root, settings, exclude, current, request) {
     };
   };
   const units = /* @__PURE__ */ new Map();
+  const changes = /* @__PURE__ */ new Map();
   const deleted = [];
   for (const [key, entry] of aggregates) {
     const row = build(key, entry);
-    if (key.startsWith("c:")) units.set(row.id, row);
-    else deleted.push(row);
+    if (key.startsWith("c:")) {
+      units.set(row.id, row);
+      changes.set(row.id, entry.changes);
+    } else deleted.push(row);
   }
   deleted.sort(byFixes(settings.fixes.minRevisions));
   const outsideByFile = /* @__PURE__ */ new Map();
@@ -18695,6 +18698,7 @@ async function measureFixes(root, settings, exclude, current, request) {
     files: { analysed: analysedFiles, skipped },
     cache: cacheStats,
     units,
+    changes,
     deleted,
     outside: {
       fixCommits: new Set(outsideTouches.filter((touch) => touch.fix).map((touch) => touch.changeId)).size,
@@ -18712,12 +18716,12 @@ var includeTestsHelp = "list test code in the same ranking as production code (d
 var wantsTests = (context) => context.values["include-tests"] === true;
 var roleOfTest = (test) => test ? "test" : "production";
 var TEST_ROWS_LISTED = 10;
-function splitRoles(rows7, include) {
-  if (include) return { listed: [...rows7], tests: null };
-  const tests = rows7.filter((row) => row.role === "test");
+function splitRoles(rows9, include) {
+  if (include) return { listed: [...rows9], tests: null };
+  const tests = rows9.filter((row) => row.role === "test");
   const shown2 = tests.slice(0, TEST_ROWS_LISTED);
   return {
-    listed: rows7.filter((row) => row.role === "production"),
+    listed: rows9.filter((row) => row.role === "production"),
     tests: { count: tests.length, listed: shown2.length, omitted: tests.length - shown2.length, rows: shown2 }
   };
 }
@@ -18743,12 +18747,12 @@ function exportedTopLevel(file) {
 function depthRows(file, shallow) {
   if (file.interfaces === void 0) return [];
   const exported = exportedUnits(file);
-  const rows7 = [];
+  const rows9 = [];
   const add = (row) => {
     const { shallowCandidate, ...rest } = row;
     const depth = round(row.nodes / row.interface, 2);
     const labels = [...row.passThrough === null ? [] : ["pass-through"], ...shallowCandidate && row.nodes / row.interface < shallow ? ["shallow"] : []];
-    rows7.push({
+    rows9.push({
       path: file.path,
       ...rest,
       depth,
@@ -18789,7 +18793,7 @@ function depthRows(file, shallow) {
       shallowCandidate: true
     });
   }
-  return rows7;
+  return rows9;
 }
 function meanDepth(file) {
   const units = exportedTopLevel(file);
@@ -19014,9 +19018,9 @@ function rankUnits(units, selected, changes, by = "max-percentile") {
       if (!selected.includes(metric)) continue;
       const having = members2.filter((index) => units[index].values[metric] !== void 0);
       const percentiles = midRankPercentiles(having.map((index) => units[index].values[metric]));
-      having.forEach((index, position) => {
+      having.forEach((index, position2) => {
         const entry = ranked[index];
-        const percentile = percentiles[position];
+        const percentile = percentiles[position2];
         entry.percentiles[metric] = percentile;
         if (entry.dominant === null || percentile > entry.complexityScore) {
           entry.complexityScore = percentile;
@@ -19207,7 +19211,7 @@ async function compute(context, paths) {
   const { listed: unitRows, tests } = splitRoles(allRows, wantsTests(context));
   const withFixes = context.values["with-fixes"] === true;
   const fixes = withFixes ? await measureFixesFor(context, settings, current) : void 0;
-  const rows7 = fixes === void 0 ? unitRows : unitRows.map((row) => ({ ...row, ...fixFigures(fixes.stats.units.get(row.id)) }));
+  const rows9 = fixes === void 0 ? unitRows : unitRows.map((row) => ({ ...row, ...fixFigures(fixes.stats.units.get(row.id)) }));
   const layers = { structural: 0, lexical: 0, none: 0 };
   for (const file of measurement.files) layers[file.source ?? "none"]++;
   const agreement = Object.fromEntries(
@@ -19263,7 +19267,7 @@ async function compute(context, paths) {
       skippedFiles: measurement.skippedFiles,
       ...fixes === void 0 ? {} : { fixes: fixHeader(fixes.stats, fixes.request, settings) }
     },
-    results: rows7,
+    results: rows9,
     notices: [
       `sorted by ${keys.join(", then ")}`,
       ...tests === null || tests.count === 0 ? [] : [`${tests.count} test functions are not listed (--include-tests lists them with the production code, and the JSON has the first ${tests.listed} in \`tests\`)`],
@@ -19366,7 +19370,7 @@ var command2 = {
     const target2 = uncommitted ? { kind: "working-tree" } : { kind: "revision", revision: { rev: "HEAD", sha: context.repo.head } };
     const comparison = await compareToBase(context, settings, base, target2);
     const summary = { compared: 0, added: 0, changed: 0, removed: 0, moved: 0, findings: 0 };
-    const rows7 = [];
+    const rows9 = [];
     for (const match of comparison.matches) {
       const { before, after } = match;
       if (after === void 0) {
@@ -19383,7 +19387,7 @@ var command2 = {
         const was = before?.values[metric];
         const limit = limitOf(guidelines, metric);
         if (before !== void 0 && now - (was ?? 0) <= settings.delta) continue;
-        rows7.push({
+        rows9.push({
           path: after.path,
           unit: unitName(after),
           id: after.id,
@@ -19402,13 +19406,13 @@ var command2 = {
         });
       }
     }
-    summary.findings = rows7.length;
+    summary.findings = rows9.length;
     return {
       inputs: { base, against: uncommitted ? "working-tree" : "head", delta: settings.delta },
       extra: { summary, changedFiles: comparison.changedFiles, unsupportedFiles: comparison.unsupportedFiles },
-      results: rows7,
+      results: rows9,
       columns: ["path", "unit", "finding", "metric", "before", "after", "guideline", "ratio", "delta"],
-      failed: rows7.length > 0
+      failed: rows9.length > 0
     };
   }
 };
@@ -19435,20 +19439,20 @@ var command3 = {
     const inPaths = pathSelector(paths);
     const files = measurement.files.filter((file) => inPaths(file.path));
     const all = files.flatMap((file) => depthRows(file, settings.shallowDepth)).sort((a, b) => b.score - a.score || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
-    const { listed: rows7, tests } = splitRoles(all, wantsTests(context));
+    const { listed: rows9, tests } = splitRoles(all, wantsTests(context));
     const summary = {
       files: files.filter((file) => file.interfaces !== void 0).length,
       filesWithoutAdapter: files.filter((file) => file.interfaces === void 0).length,
-      rows: rows7.length,
-      shallow: rows7.filter((row) => row.labels.includes("shallow")).length,
-      passThrough: rows7.filter((row) => row.passThrough !== null).length,
+      rows: rows9.length,
+      shallow: rows9.filter((row) => row.labels.includes("shallow")).length,
+      passThrough: rows9.filter((row) => row.passThrough !== null).length,
       /** Pass-through functions with no row because the language does not export them. */
       passThroughNotExported: files.reduce((sum, file) => sum + passThroughCount(file), 0) - all.filter((row) => row.passThrough !== null && row.kind !== "module").length
     };
     const output = {
       inputs: { tree: current.kind, paths, shallow: settings.shallowDepth, includeTests: wantsTests(context) },
       extra: { summary, ...tests === null ? {} : { tests }, skippedFiles: measurement.skippedFiles },
-      results: rows7,
+      results: rows9,
       columns: ["path", "unit", "kind", "role", "exported", "nodes", "interface", "depth", "passThrough", "labels"],
       notices: tests === null || tests.count === 0 ? [] : [`${tests.count} test rows are not listed (--include-tests lists them with the production code, and the JSON has the first ${tests.listed} in \`tests\`)`]
     };
@@ -19492,7 +19496,7 @@ var command4 = {
       head === void 0 ? { kind: "working-tree" } : { kind: "revision", revision: head }
     );
     const summary = { added: 0, changed: 0, removed: 0, moved: 0, unchanged: 0 };
-    const rows7 = [];
+    const rows9 = [];
     for (const match of comparison.matches) {
       const { before, after } = match;
       if (after === void 0) {
@@ -19507,7 +19511,7 @@ var command4 = {
         continue;
       }
       const guidelines = guidelinesFor(settings, after.path);
-      rows7.push({
+      rows9.push({
         path: after.path,
         unit: unitName(after),
         id: after.id,
@@ -19529,7 +19533,7 @@ var command4 = {
         against: head === void 0 ? "working-tree" : "revision"
       },
       extra: { summary, changedFiles: comparison.changedFiles, unsupportedFiles: comparison.unsupportedFiles },
-      results: rows7,
+      results: rows9,
       columns: ["path", "unit", "change", "score", "before", "after", "delta", "labels"]
     };
   }
@@ -19692,13 +19696,13 @@ var language8 = {
 // packages/complexity/src/language.ts
 var complexityLanguages = Object.values(registered_languages_exports).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 function explainRule(rule, explanation) {
-  const notes3 = complexityLanguages.flatMap((language9) => {
+  const notes4 = complexityLanguages.flatMap((language9) => {
     const lines2 = language9.ruleNotes[rule];
     const name11 = adapterById(language9.id)?.name ?? language9.id;
     return lines2 === void 0 || lines2.length === 0 ? [] : [`${name11}: ${lines2.join(" ")}`];
   });
-  return notes3.length === 0 ? explanation : `${explanation}
-${notes3.join("\n")}`;
+  return notes4.length === 0 ? explanation : `${explanation}
+${notes4.join("\n")}`;
 }
 
 // packages/complexity/src/commands/explain.ts
@@ -19748,7 +19752,7 @@ async function breakdown(context, current, text3, path, wanted) {
     throw usageError(`${path} has no function "${wanted}"; functions: ${known.join(", ") || "none"}${functions.length > known.length ? ", ..." : ""}`);
   }
   const source = text3.split("\n");
-  const rows7 = unit.increments.filter((increment) => increment.switchMode === void 0 || increment.switchMode === settings.cyclomaticSwitch).map((increment, index) => ({ increment, index })).sort(
+  const rows9 = unit.increments.filter((increment) => increment.switchMode === void 0 || increment.switchMode === settings.cyclomaticSwitch).map((increment, index) => ({ increment, index })).sort(
     (a, b) => a.increment.line - b.increment.line || metricOrder[a.increment.metric] - metricOrder[b.increment.metric] || a.index - b.index
   ).map(({ increment }) => ({
     line: increment.line,
@@ -19772,7 +19776,7 @@ async function breakdown(context, current, text3, path, wanted) {
         cyclomaticSwitch: settings.cyclomaticSwitch
       }
     },
-    results: rows7,
+    results: rows9,
     columns: ["line", "metric", "construct", "amount", "nesting", "code"]
   };
 }
@@ -19804,10 +19808,10 @@ var command6 = {
     const layer = parseLayer(context.values.layer);
     const paths = normalisePaths(context.positionals);
     const all = await cachedAnalysis(context, name7, { layer: context.values.layer, paths: paths.length === 0 ? void 0 : paths }, () => compute2(context, layer, paths));
-    const rows7 = all.results;
-    const listed = wantsTests(context) ? rows7 : rows7.filter((row) => row.role === "production");
-    if (listed.length < rows7.length) {
-      for (const row of rows7) if (row.role === "test") recordDropped("tests", row.path);
+    const rows9 = all.results;
+    const listed = wantsTests(context) ? rows9 : rows9.filter((row) => row.role === "production");
+    if (listed.length < rows9.length) {
+      for (const row of rows9) if (row.role === "test") recordDropped("tests", row.path);
     }
     return { ...all, inputs: { ...all.inputs, includeTests: wantsTests(context) }, results: listed };
   }
@@ -19815,7 +19819,7 @@ var command6 = {
 async function compute2(context, layer, paths) {
   const { settings, current, measurement } = await measureCurrent(context, layer);
   const inPaths = pathSelector(paths);
-  const rows7 = measurement.files.filter((file) => inPaths(file.path)).filter((file) => {
+  const rows9 = measurement.files.filter((file) => inPaths(file.path)).filter((file) => {
     if (isCodePath(file.path, settings.languageProfiles)) return true;
     recordDropped("nonCode", file.path);
     return false;
@@ -19823,7 +19827,7 @@ async function compute2(context, layer, paths) {
   return {
     inputs: { tree: current.kind, layer, paths, includeTests: true },
     extra: { skippedFiles: measurement.skippedFiles },
-    results: rows7,
+    results: rows9,
     columns: ["path", "complexity", "functions", "aboveGuideline", "source", "profile", "role", "codeLines"]
   };
 }
@@ -21313,8 +21317,8 @@ async function measureOutcome(root, settings, exclude, options) {
     rank,
     gamingCheck: { actedOn: shape, suspected },
     difference: {
-      linesChurnedPerChange: groupDelta((figure) => figure.linesChurnedPerChange),
-      fixCommitRate: groupDelta((figure) => figure.fixCommitRate),
+      linesChurnedPerChange: groupDelta((figure2) => figure2.linesChurnedPerChange),
+      fixCommitRate: groupDelta((figure2) => figure2.fixCommitRate),
       changes: changesDelta(changeCost.actedOn) - changesDelta(changeCost.comparison),
       meanScore: gap(delta2(rank.actedOn.before.meanScore, rank.actedOn.after.meanScore), delta2(rank.comparison.before.meanScore, rank.comparison.after.meanScore))
     },
@@ -21526,11 +21530,11 @@ function noticeMd(data) {
 }
 
 // packages/report/src/tables.ts
-function htmlTable(caption, columns8, rows7, options = {}) {
-  const head = columns8.map((c) => `<th scope="col"${c.align === "right" ? ' class="number"' : ""}>${escapeHtml(c.label)}</th>`).join("");
-  const body2 = rows7.map((row) => {
+function htmlTable(caption, columns10, rows9, options = {}) {
+  const head = columns10.map((c) => `<th scope="col"${c.align === "right" ? ' class="number"' : ""}>${escapeHtml(c.label)}</th>`).join("");
+  const body2 = rows9.map((row) => {
     const cells = row.map((cell, i2) => {
-      const number2 = columns8[i2]?.align === "right" ? ' class="number"' : "";
+      const number2 = columns10[i2]?.align === "right" ? ' class="number"' : "";
       return i2 === 0 && options.rowHeaders === true ? `<th scope="row">${cell}</th>` : `<td${number2}>${cell}</td>`;
     });
     return `<tr>${cells.join("")}</tr>`;
@@ -21543,10 +21547,10 @@ ${body2}
 </tbody>
 </table>`;
 }
-function mdTable(columns8, rows7) {
-  const head = `| ${columns8.map((c) => escapeMd(c.label)).join(" | ")} |`;
-  const rule = `| ${columns8.map((c) => c.align === "right" ? "---:" : "---").join(" | ")} |`;
-  const body2 = rows7.map((row) => `| ${row.map((cell) => escapeMd(cell)).join(" | ")} |`);
+function mdTable(columns10, rows9) {
+  const head = `| ${columns10.map((c) => escapeMd(c.label)).join(" | ")} |`;
+  const rule = `| ${columns10.map((c) => c.align === "right" ? "---:" : "---").join(" | ")} |`;
+  const body2 = rows9.map((row) => `| ${row.map((cell) => escapeMd(cell)).join(" | ")} |`);
   return [head, rule, ...body2].join("\n");
 }
 
@@ -21587,21 +21591,21 @@ function rankedTableHtml(data) {
     const side = column.guideline?.direction === "below" ? "below" : "above";
     return `${shown2} <span class="marker ${side}" title="${side} guideline">${MARK[side]}<span class="visually-hidden"> ${side} guideline</span></span>`;
   };
-  const columns8 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
-  const rows7 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c) => cell(c, row[c.key] ?? null))]);
-  const table3 = htmlTable(data.caption, columns8, rows7, { rowHeaders: data.numbered === false, className: "ranked" });
-  const notes3 = [legend(data), omitted2(data)].flatMap((n) => n === void 0 ? [] : [`<p class="legend">${inlineHtml(n)}</p>`]);
-  return [table3, ...notes3].join("\n");
+  const columns10 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
+  const rows9 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c) => cell(c, row[c.key] ?? null))]);
+  const table3 = htmlTable(data.caption, columns10, rows9, { rowHeaders: data.numbered === false, className: "ranked" });
+  const notes4 = [legend(data), omitted2(data)].flatMap((n) => n === void 0 ? [] : [`<p class="legend">${inlineHtml(n)}</p>`]);
+  return [table3, ...notes4].join("\n");
 }
 function rankedTableMd(data) {
   const empty = rankedTableEmpty(data);
   if (empty !== void 0) return noticeMd({ level: "notice", text: empty });
-  const columns8 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
-  const rows7 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c) => `${text2(row[c.key] ?? null)}${marked(c, row[c.key] ?? null) ? ` ${MARK[c.guideline?.direction === "below" ? "below" : "above"]}` : ""}`)]);
+  const columns10 = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
+  const rows9 = data.rows.map((row, i2) => [...rankCell(data, i2), ...data.columns.map((c) => `${text2(row[c.key] ?? null)}${marked(c, row[c.key] ?? null) ? ` ${MARK[c.guideline?.direction === "below" ? "below" : "above"]}` : ""}`)]);
   return [
     `**${escapeMd(data.caption)}**`,
     "",
-    mdTable(columns8, rows7),
+    mdTable(columns10, rows9),
     ...[legend(data), omitted2(data)].flatMap((n) => n === void 0 ? [] : ["", `_${escapeMd(n)}_`])
   ].join("\n");
 }
@@ -21626,8 +21630,8 @@ var DEFAULT_MAX_POINTS = 40;
 var MIN_POINTS = 3;
 function stabilityChartEmpty(data) {
   if (data.points.length >= MIN_POINTS) return void 0;
-  const noun = data.noun ?? "packages";
-  return data.emptyText ?? `${data.title}: ${formatNumber(data.points.length)} of ${formatNumber(data.total)} ${noun} have both instability and abstractness; a chart needs at least ${MIN_POINTS}.`;
+  const noun2 = data.noun ?? "packages";
+  return data.emptyText ?? `${data.title}: ${formatNumber(data.points.length)} of ${formatNumber(data.total)} ${noun2} have both instability and abstractness; a chart needs at least ${MIN_POINTS}.`;
 }
 function positionOf(point, zoneDistance) {
   const sum = point.instability + point.abstractness;
@@ -21674,7 +21678,7 @@ function positionCounts(data) {
   return counts;
 }
 function notes2(data) {
-  const noun = data.noun ?? "packages";
+  const noun2 = data.noun ?? "packages";
   const left = data.total - shown(data).length;
   const unplotted = data.total - data.points.length;
   const cut = data.points.length - shown(data).length;
@@ -21683,8 +21687,8 @@ function notes2(data) {
   const counts = positionCounts(data);
   return [
     `The dashed diagonal is the main sequence, where A + I = 1. A zone starts ${formatNumber(data.zoneDistance)} from it${data.zoneSource === void 0 ? "" : ` (${data.zoneSource})`}: the zone of pain is concrete and stable (A + I at most ${formatNumber(1 - data.zoneDistance)}) and the zone of uselessness is abstract and unstable (A + I at least ${formatNumber(1 + data.zoneDistance)}). Square points are inside a zone, round points are not, and the table gives each position in words. A guideline orders and labels results; it decides nothing.`,
-    `Of the ${formatNumber(data.points.length)} measured ${noun}, ${formatNumber(counts["zone of pain"])} are in the zone of pain, ${formatNumber(counts["zone of uselessness"])} in the zone of uselessness and ${formatNumber(counts["outside the zones"])} outside the zones.`,
-    `The table lists ${formatNumber(shown(data).length)} of ${formatNumber(data.total)} ${noun}, furthest from the main sequence first; ${formatNumber(left)} not listed${left > 0 ? `: ${[why, drawn].filter((s) => s !== "").join("; ")}` : ""}.`
+    `Of the ${formatNumber(data.points.length)} measured ${noun2}, ${formatNumber(counts["zone of pain"])} are in the zone of pain, ${formatNumber(counts["zone of uselessness"])} in the zone of uselessness and ${formatNumber(counts["outside the zones"])} outside the zones.`,
+    `The table lists ${formatNumber(shown(data).length)} of ${formatNumber(data.total)} ${noun2}, furthest from the main sequence first; ${formatNumber(left)} not listed${left > 0 ? `: ${[why, drawn].filter((s) => s !== "").join("; ")}` : ""}.`
   ];
 }
 function stabilityChartHtml(data) {
@@ -21932,7 +21936,7 @@ function treemapHtml(data) {
     })
   ].join("\n");
   const left = omissions(prepared);
-  const notes3 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in ${bandCountText(prepared.bands)}, and each tile prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.</p>
+  const notes4 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in ${bandCountText(prepared.bands)}, and each tile prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.</p>
 ${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>
 `}`;
   return figureHtml({
@@ -21943,7 +21947,7 @@ ${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</
     height: HEIGHT2,
     drawing,
     table: htmlTable(`${data.title}: the items drawn, largest first`, columns2(data), rows2(prepared).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
-    notes: notes3
+    notes: notes4
   });
 }
 function treemapMd(data) {
@@ -22001,7 +22005,7 @@ function categoryTreemapHtml(data) {
   const per = drawnPerCategory(prepared);
   const legend2 = data.categories.map((c) => `<li><strong>${escapeHtml(c.mark)}</strong> ${escapeHtml(c.label)}: ${count3(per.get(c.id) ?? 0, "tile")}</li>`).join("\n");
   const left = omissions2(prepared);
-  const notes3 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Each tile prints its name and the mark of its ${escapeHtml(data.categoryLabel.toLowerCase())}; hatched tiles have none. The marks are:</p>
+  const notes4 = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Each tile prints its name and the mark of its ${escapeHtml(data.categoryLabel.toLowerCase())}; hatched tiles have none. The marks are:</p>
 <ul class="legend">
 ${legend2}
 </ul>
@@ -22015,7 +22019,7 @@ ${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</
     height: HEIGHT3,
     drawing,
     table: htmlTable(`${data.title}: the items drawn, largest first`, columns3(data), rows3(prepared).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
-    notes: notes3
+    notes: notes4
   });
 }
 function categoryTreemapMd(data) {
@@ -22059,11 +22063,74 @@ function factsMd(data) {
   return [`**${escapeMd(data.caption)}**`, "", mdTable(columns4, data.facts.map((f) => [f.label, f.value]))].join("\n");
 }
 
+// packages/report/src/components/function-bars.ts
+var WIDTH4 = 760;
+var HEADER2 = 22;
+var ROW = 26;
+var LABEL = 250;
+var BAR_MAX = 260;
+var REVISIONS_X = 660;
+var FIXES_X = 740;
+var LABEL_CHARS = 36;
+var shorten = (text3) => text3.length <= LABEL_CHARS ? text3 : `…${text3.slice(text3.length - LABEL_CHARS + 1)}`;
+var figure = (value) => value === null ? "none" : formatNumber(value);
+var position = (bar, guideline) => bar.value > guideline ? "above guideline" : bar.value === guideline ? "at guideline" : "below guideline";
+var columns5 = (data) => [
+  { label: "Function" },
+  { label: data.unit, align: "right" },
+  { label: "Guideline", align: "right" },
+  { label: "Position" },
+  { label: "Revisions", align: "right" },
+  { label: "Fixes", align: "right" }
+];
+var rows4 = (data) => data.bars.map((b) => [b.label, formatNumber(b.value), formatNumber(data.guideline), position(b, data.guideline), figure(b.revisions), figure(b.fixes)]);
+var omittedText = (data) => data.omitted === void 0 || data.omitted.count === 0 ? void 0 : `The chart omits ${count3(data.omitted.count, "function")}: ${data.omitted.reason}.`;
+function functionBarsHtml(data) {
+  const greatest = Math.max(1, data.guideline, ...data.bars.map((b) => b.value));
+  const scale = BAR_MAX / greatest;
+  const marker = LABEL + data.guideline * scale;
+  const header2 = `<g class="column-heads"><text x="${LABEL - 6}" y="14" text-anchor="end">Function</text><text x="${LABEL}" y="14">${escapeHtml(data.unit)}</text><text x="${REVISIONS_X}" y="14" text-anchor="end">Revisions</text><text x="${FIXES_X}" y="14" text-anchor="end">Fixes</text></g>`;
+  const drawing = [
+    header2,
+    ...data.bars.map((b, i2) => {
+      const y2 = HEADER2 + i2 * ROW;
+      const width = b.value * scale;
+      const above = b.value > data.guideline;
+      return `<g class="bar ${above ? "above" : "within"}"><text x="${LABEL - 6}" y="${y2 + 17}" text-anchor="end">${escapeHtml(shorten(b.label))}<title>${escapeHtml(b.label)}</title></text><rect x="${LABEL}" y="${y2 + 4}" width="${width.toFixed(1)}" height="${ROW - 8}"/><line x1="${marker.toFixed(1)}" x2="${marker.toFixed(1)}" y1="${y2 + 1}" y2="${y2 + ROW - 1}"/><text x="${(LABEL + Math.max(width, data.guideline * scale) + 8).toFixed(1)}" y="${y2 + 17}">${above ? "▲ " : ""}${formatNumber(b.value)}</text><text x="${REVISIONS_X}" y="${y2 + 17}" text-anchor="end">${figure(b.revisions)}</text><text x="${FIXES_X}" y="${y2 + 17}" text-anchor="end">${figure(b.fixes)}</text></g>`;
+    })
+  ].join("\n");
+  const omitted3 = omittedText(data);
+  const notes4 = [
+    `The vertical line marks the guideline of ${formatNumber(data.guideline)} and ▲ marks a function above it. A guideline orders and labels results; it decides nothing.${data.source === void 0 ? "" : ` ${escapeHtml(data.source)}`}`,
+    ...omitted3 === void 0 ? [] : [escapeHtml(omitted3)]
+  ];
+  return figureHtml({
+    kind: "function-bars",
+    title: data.title,
+    description: `${count3(data.bars.length, "function")} by ${data.unit}, each with its revisions and fixes in the history window. A bar longer than the guideline marker is above guideline, shown with a triangle and the words in the table.`,
+    width: WIDTH4,
+    height: HEADER2 + Math.max(1, data.bars.length) * ROW,
+    drawing,
+    table: htmlTable(`${data.title}: ${data.unit}, revisions and fixes`, columns5(data), rows4(data).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    notes: notes4.map((line) => `<p class="legend">${line}</p>
+`).join("")
+  });
+}
+function functionBarsMd(data) {
+  const omitted3 = omittedText(data);
+  return [
+    `**${escapeMd(data.title)}** (${escapeMd(data.unit)} against a guideline of ${formatNumber(data.guideline)}, with revisions and fixes${data.source === void 0 ? "" : `. ${escapeMd(data.source)}`})`,
+    "",
+    mdTable(columns5(data), rows4(data)),
+    ...omitted3 === void 0 ? [] : ["", escapeMd(omitted3)]
+  ].join("\n");
+}
+
 // packages/report/src/components/guideline-bar.ts
-var WIDTH4 = 720;
-var ROW = 28;
-var LABEL = 200;
-var BAR_MAX = 360;
+var WIDTH5 = 720;
+var ROW2 = 28;
+var LABEL2 = 200;
+var BAR_MAX2 = 360;
 function positionOf2(bar) {
   return bar.value > bar.guideline ? "above guideline" : bar.value === bar.guideline ? "at guideline" : "below guideline";
 }
@@ -22074,68 +22141,68 @@ var ratioText = (bar) => {
   const ratio = ratioOf2(bar);
   return ratio === null ? "none" : `${Number(ratio.toPrecision(2))}x`;
 };
-var columns5 = (data) => [{ label: "Item" }, { label: data.unit, align: "right" }, { label: "Guideline", align: "right" }, { label: "Ratio", align: "right" }, { label: "Position" }];
-var rows4 = (data) => data.bars.map((b) => [b.label, formatNumber(b.value), formatNumber(b.guideline), ratioText(b), positionOf2(b)]);
+var columns6 = (data) => [{ label: "Item" }, { label: data.unit, align: "right" }, { label: "Guideline", align: "right" }, { label: "Ratio", align: "right" }, { label: "Position" }];
+var rows5 = (data) => data.bars.map((b) => [b.label, formatNumber(b.value), formatNumber(b.guideline), ratioText(b), positionOf2(b)]);
 function guidelineBarsHtml(data) {
   const greatest = Math.max(1, ...data.bars.flatMap((b) => [b.value, b.guideline]));
-  const scale = BAR_MAX / greatest;
+  const scale = BAR_MAX2 / greatest;
   const drawing = data.bars.map((b, i2) => {
-    const y2 = i2 * ROW;
+    const y2 = i2 * ROW2;
     const width = b.value * scale;
-    const marker = LABEL + b.guideline * scale;
+    const marker = LABEL2 + b.guideline * scale;
     const above = b.value > b.guideline;
-    return `<g class="bar ${above ? "above" : "within"}"><text x="${LABEL - 6}" y="${y2 + 18}" text-anchor="end">${escapeHtml(b.label)}</text><rect x="${LABEL}" y="${y2 + 5}" width="${width.toFixed(1)}" height="${ROW - 10}"/><line x1="${marker.toFixed(1)}" x2="${marker.toFixed(1)}" y1="${y2 + 2}" y2="${y2 + ROW - 2}"/><text x="${(LABEL + Math.max(width, b.guideline * scale) + 8).toFixed(1)}" y="${y2 + 18}">${above ? "▲ " : ""}${formatNumber(b.value)} (guideline ${formatNumber(b.guideline)})</text></g>`;
+    return `<g class="bar ${above ? "above" : "within"}"><text x="${LABEL2 - 6}" y="${y2 + 18}" text-anchor="end">${escapeHtml(b.label)}</text><rect x="${LABEL2}" y="${y2 + 5}" width="${width.toFixed(1)}" height="${ROW2 - 10}"/><line x1="${marker.toFixed(1)}" x2="${marker.toFixed(1)}" y1="${y2 + 2}" y2="${y2 + ROW2 - 2}"/><text x="${(LABEL2 + Math.max(width, b.guideline * scale) + 8).toFixed(1)}" y="${y2 + 18}">${above ? "▲ " : ""}${formatNumber(b.value)} (guideline ${formatNumber(b.guideline)})</text></g>`;
   }).join("\n");
   return figureHtml({
     kind: "guideline-bars",
     title: data.title,
     description: `${data.bars.length} values of ${data.unit}, each against its guideline. A bar longer than its marker is above guideline, shown with a triangle and the words in the table.`,
-    width: WIDTH4,
-    height: Math.max(ROW, data.bars.length * ROW),
+    width: WIDTH5,
+    height: Math.max(ROW2, data.bars.length * ROW2),
     drawing,
-    table: htmlTable(`${data.title}: each value against its guideline`, columns5(data), rows4(data).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    table: htmlTable(`${data.title}: each value against its guideline`, columns6(data), rows5(data).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
     notes: `<p class="legend">The vertical line marks the guideline and ▲ marks a value above it. A guideline orders and labels results; it decides nothing.${data.source === void 0 ? "" : ` ${escapeHtml(data.source)}`}</p>
 `
   });
 }
 function guidelineBarsMd(data) {
-  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, each against its guideline${data.source === void 0 ? "" : `. ${escapeMd(data.source)}`})`, "", mdTable(columns5(data), rows4(data))].join("\n");
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, each against its guideline${data.source === void 0 ? "" : `. ${escapeMd(data.source)}`})`, "", mdTable(columns6(data), rows5(data))].join("\n");
 }
 
 // packages/report/src/components/histogram.ts
-var WIDTH5 = 640;
-var ROW2 = 22;
-var LABEL2 = 150;
-var BAR_MAX2 = 400;
-var columns6 = (data) => [{ label: "Bin" }, { label: `Count (${data.unit})`, align: "right" }, { label: "Share", align: "right" }];
+var WIDTH6 = 640;
+var ROW3 = 22;
+var LABEL3 = 150;
+var BAR_MAX3 = 400;
+var columns7 = (data) => [{ label: "Bin" }, { label: `Count (${data.unit})`, align: "right" }, { label: "Share", align: "right" }];
 function shares(data) {
   const total = data.bins.reduce((sum, bin) => sum + bin.count, 0);
   return data.bins.map((bin) => total === 0 ? "0%" : `${formatNumber(bin.count / total * 100)}%`);
 }
-var rows5 = (data) => {
+var rows6 = (data) => {
   const share = shares(data);
   return data.bins.map((bin, i2) => [bin.label, formatNumber(bin.count), share[i2]]);
 };
 function histogramHtml(data) {
   const greatest = Math.max(1, ...data.bins.map((bin) => bin.count));
   const drawing = data.bins.map((bin, i2) => {
-    const y2 = i2 * ROW2;
-    const width = bin.count / greatest * BAR_MAX2;
-    return `<g class="bin"><text x="${LABEL2 - 6}" y="${y2 + 15}" text-anchor="end">${escapeHtml(bin.label)}</text><rect x="${LABEL2}" y="${y2 + 3}" width="${width.toFixed(1)}" height="${ROW2 - 6}"/><text x="${(LABEL2 + width + 6).toFixed(1)}" y="${y2 + 15}">${formatNumber(bin.count)}</text></g>`;
+    const y2 = i2 * ROW3;
+    const width = bin.count / greatest * BAR_MAX3;
+    return `<g class="bin"><text x="${LABEL3 - 6}" y="${y2 + 15}" text-anchor="end">${escapeHtml(bin.label)}</text><rect x="${LABEL3}" y="${y2 + 3}" width="${width.toFixed(1)}" height="${ROW3 - 6}"/><text x="${(LABEL3 + width + 6).toFixed(1)}" y="${y2 + 15}">${formatNumber(bin.count)}</text></g>`;
   }).join("\n");
   const total = data.bins.reduce((sum, bin) => sum + bin.count, 0);
   return figureHtml({
     kind: "histogram",
     title: data.title,
     description: `${formatNumber(total)} ${data.unit} in ${data.bins.length} bins. Each bar prints its count; the table below lists the same counts.`,
-    width: WIDTH5,
-    height: Math.max(ROW2, data.bins.length * ROW2),
+    width: WIDTH6,
+    height: Math.max(ROW3, data.bins.length * ROW3),
     drawing,
-    table: htmlTable(`${data.title}: ${data.unit} per bin`, columns6(data), rows5(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
+    table: htmlTable(`${data.title}: ${data.unit} per bin`, columns7(data), rows6(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
   });
 }
 function histogramMd(data) {
-  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)} per bin)`, "", mdTable(columns6(data), rows5(data))].join("\n");
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)} per bin)`, "", mdTable(columns7(data), rows6(data))].join("\n");
 }
 
 // packages/report/src/components/judgement.ts
@@ -22192,44 +22259,101 @@ function judgedLineMd(slot, entry) {
 
 // packages/report/src/components/matrix.ts
 var CELL_W = 64;
+var SPARSE_CELL_W = 44;
 var CELL_H = 26;
 var ROW_LABEL = 180;
 var COLUMN_LABEL = 90;
 var display = (value) => value === null ? "none" : formatNumber(value);
+var markOf = (data, i2, j) => {
+  const name11 = data.cellMarks?.[i2]?.[j] ?? null;
+  return name11 === null ? void 0 : data.marks?.[name11];
+};
+function cellText(data, i2, j) {
+  const value = data.cells[i2]?.[j] ?? null;
+  const mark = markOf(data, i2, j);
+  if (mark === void 0) return display(value);
+  return value === null ? mark.symbol : `${formatNumber(value)} ${mark.symbol}`;
+}
+var isSquare = (data) => data.rows.length === data.columns.length && data.rows.every((r, i2) => r === data.columns[i2]);
+var usableGroups = (data) => isSquare(data) ? (data.groups ?? []).filter((g) => g.start >= 0 && g.end >= g.start && g.end < data.rows.length) : [];
+function markLegend(data) {
+  if (data.marks === void 0 || data.cellMarks === void 0) return void 0;
+  const counts = /* @__PURE__ */ new Map();
+  for (const row of data.cellMarks) for (const name11 of row) if (name11 !== null && data.marks[name11] !== void 0) counts.set(name11, (counts.get(name11) ?? 0) + 1);
+  const parts3 = Object.entries(data.marks).filter(([name11]) => counts.has(name11)).map(([name11, mark]) => `${mark.symbol} is ${mark.text} (${count3(counts.get(name11), "cell")})`);
+  return parts3.length === 0 ? void 0 : `${parts3.join("; ")}.`;
+}
+function groupLegend(groups) {
+  if (groups.length === 0) return void 0;
+  return `Boxes along the diagonal mark ${count3(groups.length, "group")}: ${groups.map((g) => `${g.label} (${count3(g.end - g.start + 1, "row")})`).join(", ")}.`;
+}
 function matrixHtml(data) {
   const present = data.cells.flat().flatMap((v) => v === null ? [] : [v]);
   const bands = makeBands(present, data.breaks);
+  const groups = usableGroups(data);
+  const cellW = data.sparse ? SPARSE_CELL_W : CELL_W;
   const labels = [
-    ...data.columns.map((c, j) => `<text x="${ROW_LABEL + j * CELL_W + CELL_W / 2}" y="${COLUMN_LABEL - 6}" transform="rotate(-35 ${ROW_LABEL + j * CELL_W + CELL_W / 2} ${COLUMN_LABEL - 6})">${escapeHtml(c)}</text>`),
+    ...data.columns.map((c, j) => `<text x="${ROW_LABEL + j * cellW + cellW / 2}" y="${COLUMN_LABEL - 6}" transform="rotate(-35 ${ROW_LABEL + j * cellW + cellW / 2} ${COLUMN_LABEL - 6})">${escapeHtml(c)}</text>`),
     ...data.rows.map((r, i2) => `<text x="${ROW_LABEL - 6}" y="${COLUMN_LABEL + i2 * CELL_H + 17}" text-anchor="end">${escapeHtml(r)}</text>`)
   ];
   const cells = data.rows.flatMap(
     (_, i2) => data.columns.map((_2, j) => {
       const value = data.cells[i2]?.[j] ?? null;
-      const x2 = ROW_LABEL + j * CELL_W;
+      const name11 = data.cellMarks?.[i2]?.[j] ?? null;
+      const markClass = name11 !== null && data.marks?.[name11] !== void 0 ? ` mark-${name11}` : "";
+      const x2 = ROW_LABEL + j * cellW;
       const y2 = COLUMN_LABEL + i2 * CELL_H;
-      return `<g class="cell band-${value === null ? "none" : bands.of(value)}"><rect x="${x2}" y="${y2}" width="${CELL_W - 2}" height="${CELL_H - 2}"/><text x="${x2 + CELL_W / 2 - 1}" y="${y2 + 16}" text-anchor="middle">${display(value)}</text></g>`;
+      return `<g class="cell band-${value === null ? "none" : bands.of(value)}${markClass}"><rect x="${x2}" y="${y2}" width="${cellW - 2}" height="${CELL_H - 2}"/><text x="${x2 + cellW / 2 - 1}" y="${y2 + 16}" text-anchor="middle">${data.sparse && value === null && markOf(data, i2, j) === void 0 ? "" : escapeHtml(cellText(data, i2, j))}</text></g>`;
     })
   );
+  const boxes = groups.map((g) => {
+    const x2 = ROW_LABEL + g.start * cellW - 1;
+    const y2 = COLUMN_LABEL + g.start * CELL_H - 1;
+    const span = g.end - g.start + 1;
+    return `<g class="group"><rect x="${x2}" y="${y2}" width="${span * cellW}" height="${span * CELL_H}"><title>${escapeHtml(g.label)}</title></rect></g>`;
+  });
+  const notes4 = [
+    `Colour is ${data.valueLabel} in ${bandCountText(bands)}, and each cell prints its value: ${bandLegend(bands)}. Hatched cells have no value.`,
+    markLegend(data),
+    groupLegend(groups),
+    data.orderText
+  ].filter((line) => line !== void 0);
+  const description = [
+    `A grid of ${data.rows.length} rows by ${data.columns.length} columns holding ${data.valueLabel}.`,
+    groups.length > 0 ? `${count3(groups.length, "box", "boxes")} along the diagonal mark groups of rows.` : void 0,
+    "Each cell prints its value; the table below lists the same values."
+  ].filter((line) => line !== void 0).join(" ");
+  const groupOf = (i2) => groups.find((g) => i2 >= g.start && i2 <= g.end)?.label;
+  const rowLabel = (r, i2) => {
+    const group = groupOf(i2);
+    return group === void 0 ? r : `${r} (${group})`;
+  };
   return figureHtml({
     kind: "matrix",
     title: data.title,
-    description: `A grid of ${data.rows.length} rows by ${data.columns.length} columns holding ${data.valueLabel}. Each cell prints its value; the table below lists the same values.`,
-    width: ROW_LABEL + data.columns.length * CELL_W + 40,
+    description,
+    width: ROW_LABEL + data.columns.length * cellW + (data.sparse ? 100 : 40),
     height: COLUMN_LABEL + data.rows.length * CELL_H + 4,
-    drawing: [...labels, ...cells].join("\n"),
-    table: htmlTable(`${data.title}: ${data.valueLabel}`, [{ label: "" }, ...data.columns.map((c) => ({ label: c, align: "right" }))], data.rows.map((r, i2) => [escapeHtml(r), ...data.columns.map((_, j) => escapeHtml(display(data.cells[i2]?.[j] ?? null)))]), { rowHeaders: true }),
-    notes: `<p class="legend">Colour is ${escapeHtml(data.valueLabel)} in ${bandCountText(bands)}, and each cell prints its value: ${escapeHtml(bandLegend(bands))}. Hatched cells have no value.</p>
+    drawing: [...labels, ...cells, ...boxes].join("\n"),
+    table: htmlTable(`${data.title}: ${data.valueLabel}`, [{ label: "" }, ...data.columns.map((c) => ({ label: c, align: "right" }))], data.rows.map((r, i2) => [escapeHtml(rowLabel(r, i2)), ...data.columns.map((_, j) => escapeHtml(cellText(data, i2, j)))]), { rowHeaders: true }),
+    notes: `<p class="legend">${notes4.map(escapeHtml).join(" ")}</p>
 `
   });
 }
 function matrixMd(data) {
   const present = data.cells.flat().flatMap((v) => v === null ? [] : [v]);
   const bands = makeBands(present, data.breaks);
+  const groups = usableGroups(data);
+  const groupOf = (i2) => groups.find((g) => i2 >= g.start && i2 <= g.end)?.label;
+  const extra = [markLegend(data), groupLegend(groups), data.orderText].filter((line) => line !== void 0);
   return [
     `**${escapeMd(data.title)}** (${escapeMd(data.valueLabel)}; ${bandLegend(bands)})`,
     "",
-    mdTable([{ label: "" }, ...data.columns.map((c) => ({ label: c, align: "right" }))], data.rows.map((r, i2) => [r, ...data.columns.map((_, j) => display(data.cells[i2]?.[j] ?? null))]))
+    mdTable([{ label: "" }, ...data.columns.map((c) => ({ label: c, align: "right" }))], data.rows.map((r, i2) => {
+      const group = groupOf(i2);
+      return [group === void 0 ? r : `${r} (${group})`, ...data.columns.map((_, j) => cellText(data, i2, j))];
+    })),
+    ...extra.length === 0 ? [] : ["", escapeMd(extra.join(" "))]
   ].join("\n");
 }
 
@@ -22237,20 +22361,182 @@ function matrixMd(data) {
 var paragraphHtml = (data) => `<p>${inlineHtml(data.text)}</p>`;
 var paragraphMd = (data) => escapeMd(data.text);
 
+// packages/report/src/components/scatter.ts
+var DEFAULT_MAX_LABELS = 12;
+var WIDTH7 = 680;
+var HEIGHT4 = 440;
+var LEFT2 = 64;
+var RIGHT = 20;
+var TOP2 = 12;
+var BOTTOM = 56;
+var PLOT_W = WIDTH7 - LEFT2 - RIGHT;
+var PLOT_H = HEIGHT4 - TOP2 - BOTTOM;
+var CHAR_W = 5.9;
+var LABEL_H = 11;
+var MAX_NAME = 30;
+var DEFAULT_NAMES = { upperRight: "upper right", upperLeft: "upper left", lowerRight: "lower right", lowerLeft: "lower left" };
+var names = (data) => ({ ...DEFAULT_NAMES, ...data.quadrantNames });
+var noun = (data) => data.noun ?? "points";
+var hasQuadrants = (data) => data.xGuideline !== void 0 && data.yGuideline !== void 0;
+function quadrantOf(data, point) {
+  const right = point.x >= data.xGuideline.value;
+  const upper2 = point.y >= data.yGuideline.value;
+  return upper2 ? right ? "upperRight" : "upperLeft" : right ? "lowerRight" : "lowerLeft";
+}
+function quadrantCounts(data) {
+  const counts = { upperRight: 0, upperLeft: 0, lowerRight: 0, lowerLeft: 0 };
+  if (!hasQuadrants(data)) return counts;
+  for (const point of data.points) counts[quadrantOf(data, point)]++;
+  return counts;
+}
+var labelled = (data) => data.points.filter((p) => p.highlight === true).slice(0, data.maxLabels ?? DEFAULT_MAX_LABELS);
+var highlighted = (data) => data.points.filter((p) => p.highlight === true).length;
+function niceMax(value) {
+  const power = 10 ** Math.floor(Math.log10(Math.max(value, 1)));
+  const step = [1, 2, 2.5, 5, 10].find((s) => s * power >= value) ?? 10;
+  return step * power;
+}
+function axisOf(values, log, guideline) {
+  const greatest = Math.max(1, ...values, guideline ?? 0);
+  if (log) {
+    const top = Math.max(1, Math.ceil(Math.log10(greatest)));
+    const ticks = Array.from({ length: top + 1 }, (_, i2) => 10 ** i2);
+    return { log, ticks, at: (v) => Math.log10(Math.max(v, 1)) / top };
+  }
+  const max = niceMax(greatest);
+  return { log, ticks: [0, 1, 2, 3, 4].map((i2) => max * i2 / 4), at: (v) => Math.max(0, v) / max };
+}
+var overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+function placeLabels(items) {
+  const taken = items.map((i2) => ({ x: i2.cx - 5, y: i2.cy - 5, w: 10, h: 10 }));
+  const inside = (b) => b.x >= LEFT2 && b.x + b.w <= WIDTH7 - RIGHT + 4 && b.y >= TOP2 && b.y + b.h <= TOP2 + PLOT_H;
+  return items.map((item) => {
+    for (const [text3, byNumber] of [[item.name, false], [item.number, true]]) {
+      const w = text3.length * CHAR_W;
+      const candidates = [
+        { box: { x: item.cx + 7, y: item.cy - LABEL_H - 1, w, h: LABEL_H }, x: item.cx + 7, y: item.cy - 4, anchor: "start" },
+        { box: { x: item.cx + 7, y: item.cy + 1, w, h: LABEL_H }, x: item.cx + 7, y: item.cy + 10, anchor: "start" },
+        { box: { x: item.cx - 7 - w, y: item.cy - LABEL_H - 1, w, h: LABEL_H }, x: item.cx - 7, y: item.cy - 4, anchor: "end" },
+        { box: { x: item.cx - 7 - w, y: item.cy + 1, w, h: LABEL_H }, x: item.cx - 7, y: item.cy + 10, anchor: "end" },
+        { box: { x: item.cx - w / 2, y: item.cy - 8 - LABEL_H, w, h: LABEL_H }, x: item.cx - w / 2, y: item.cy - 9, anchor: "start" },
+        { box: { x: item.cx - w / 2, y: item.cy + 8, w, h: LABEL_H }, x: item.cx - w / 2, y: item.cy + 17, anchor: "start" }
+      ];
+      const fit = candidates.find((c) => inside(c.box) && !taken.some((t) => overlaps(c.box, t)));
+      if (fit !== void 0) {
+        taken.push(fit.box);
+        return { text: text3, x: fit.x, y: fit.y, anchor: fit.anchor, byNumber };
+      }
+    }
+    return null;
+  });
+}
+var tickText = (v) => formatNumber(Math.round(v * 100) / 100);
+function notes3(data) {
+  const n = noun(data);
+  const out2 = [];
+  const scales = [data.xLog === true ? `${data.xLabel} (horizontal)` : null, data.yLog === true ? `${data.yLabel} (vertical)` : null].filter((s) => s !== null);
+  if (scales.length > 0) out2.push(`Log scale on ${scales.join(" and ")}: each tick is ten times the one before, because the values have a long tail.`);
+  const below = data.points.filter((p) => data.xLog === true && p.x < 1 || data.yLog === true && p.y < 1).length;
+  if (below > 0) out2.push(`${formatNumber(below)} ${n} have a value below 1 on a log axis and are drawn on the axis minimum, 1.`);
+  const lines2 = [data.xGuideline === void 0 ? null : `vertical dashed line at ${formatNumber(data.xGuideline.value)}: ${data.xGuideline.name}`, data.yGuideline === void 0 ? null : `horizontal dashed line at ${formatNumber(data.yGuideline.value)}: ${data.yGuideline.name}`].filter((s) => s !== null);
+  if (lines2.length > 0) out2.push(`Guidelines: ${lines2.join("; ")}. A guideline orders and labels results; it decides nothing.`);
+  if (hasQuadrants(data)) out2.push(quadrantLine(data));
+  const total = highlighted(data);
+  const listed = labelled(data).length;
+  if (total > 0) out2.push(`Squares are highlighted ${n}. The table lists ${formatNumber(listed)} of ${formatNumber(total)} highlighted ${n}, in the order given, and the drawing names them; ${formatNumber(total - listed)} are not listed and are drawn as squares without a name.`);
+  return out2;
+}
+function quadrantLine(data) {
+  const q = quadrantCounts(data);
+  const nm = names(data);
+  return `Of ${formatNumber(data.points.length)} ${noun(data)}: ${["upperRight", "upperLeft", "lowerRight", "lowerLeft"].map((k) => `${formatNumber(q[k])} ${nm[k]}`).join(", ")}.`;
+}
+var columns8 = (data) => [
+  { label: "#", align: "right" },
+  { label: "Point" },
+  { label: data.xLabel, align: "right" },
+  { label: data.yLabel, align: "right" },
+  ...hasQuadrants(data) ? [{ label: "Quadrant" }] : []
+];
+function rows7(data) {
+  const nm = names(data);
+  return labelled(data).map((p, i2) => [String(i2 + 1), p.label, formatNumber(p.x), formatNumber(p.y), ...hasQuadrants(data) ? [nm[quadrantOf(data, p)]] : []]);
+}
+var emptyOf = (data) => data.points.length === 0 ? data.emptyText ?? `${data.title}: no ${noun(data)} to draw.` : void 0;
+function scatterHtml(data) {
+  const empty = emptyOf(data);
+  if (empty !== void 0) return noticeHtml({ level: "notice", text: empty });
+  const ax = axisOf(data.points.map((p) => p.x), data.xLog === true, data.xGuideline?.value);
+  const ay = axisOf(data.points.map((p) => p.y), data.yLog === true, data.yGuideline?.value);
+  const px = (v) => LEFT2 + ax.at(v) * PLOT_W;
+  const py = (v) => TOP2 + (1 - ay.at(v)) * PLOT_H;
+  const at2 = (v) => v.toFixed(1);
+  const frame = `<rect class="frame" x="${LEFT2}" y="${TOP2}" width="${PLOT_W}" height="${PLOT_H}"/>`;
+  const ticks = [
+    ...ax.ticks.map((v) => `<text class="tick" x="${at2(px(v))}" y="${TOP2 + PLOT_H + 16}" text-anchor="middle">${tickText(v)}</text>`),
+    ...ay.ticks.map((v) => `<text class="tick" x="${LEFT2 - 8}" y="${at2(py(v) + 4)}" text-anchor="end">${tickText(v)}</text>`)
+  ];
+  const axisNames = [
+    `<text class="axis" x="${at2(LEFT2 + PLOT_W / 2)}" y="${HEIGHT4 - 8}" text-anchor="middle">${escapeHtml(data.xLabel)}${data.xLog === true ? " (log scale)" : ""}</text>`,
+    `<text class="axis" transform="rotate(-90 14 ${at2(TOP2 + PLOT_H / 2)})" x="14" y="${at2(TOP2 + PLOT_H / 2)}" text-anchor="middle">${escapeHtml(data.yLabel)}${data.yLog === true ? " (log scale)" : ""}</text>`
+  ];
+  const lines2 = [
+    ...data.xGuideline === void 0 ? [] : [`<g class="guideline"><line x1="${at2(px(data.xGuideline.value))}" y1="${TOP2}" x2="${at2(px(data.xGuideline.value))}" y2="${TOP2 + PLOT_H}"><title>${escapeHtml(data.xGuideline.name)}</title></line><text x="${at2(px(data.xGuideline.value) + 3)}" y="${TOP2 + PLOT_H - 4}">${formatNumber(data.xGuideline.value)}</text></g>`],
+    ...data.yGuideline === void 0 ? [] : [`<g class="guideline"><line x1="${LEFT2}" y1="${at2(py(data.yGuideline.value))}" x2="${LEFT2 + PLOT_W}" y2="${at2(py(data.yGuideline.value))}"><title>${escapeHtml(data.yGuideline.name)}</title></line><text x="${LEFT2 + PLOT_W - 3}" y="${at2(py(data.yGuideline.value) - 3)}" text-anchor="end">${formatNumber(data.yGuideline.value)}</text></g>`]
+  ];
+  const named = labelled(data);
+  const dots = data.points.filter((p) => !named.includes(p)).map((p) => p.highlight === true ? `<rect class="point highlight" x="${at2(px(p.x) - 2.5)}" y="${at2(py(p.y) - 2.5)}" width="5" height="5"/>` : `<circle class="point" cx="${at2(px(p.x))}" cy="${at2(py(p.y))}" r="2.2"/>`);
+  const placed = placeLabels(named.map((p, i2) => ({ cx: px(p.x), cy: py(p.y), name: clip(p.short ?? p.label, MAX_NAME), number: String(i2 + 1) })));
+  const marks = named.map((p, i2) => {
+    const label = placed[i2];
+    const text3 = label === null || label === void 0 ? "" : `<text class="name" x="${at2(label.x)}" y="${at2(label.y)}" text-anchor="${label.anchor}">${escapeHtml(label.text)}</text>`;
+    return `<g class="point named"><title>${escapeHtml(`${i2 + 1}. ${p.label}: ${formatNumber(p.x)} ${data.xLabel}, ${formatNumber(p.y)} ${data.yLabel}`)}</title><rect x="${at2(px(p.x) - 4)}" y="${at2(py(p.y) - 4)}" width="8" height="8"/>${text3}</g>`;
+  });
+  const byNumber = placed.filter((p) => p?.byNumber === true).length;
+  const unplaced = placed.filter((p) => p === null).length;
+  const extra = [
+    ...byNumber > 0 ? [`${formatNumber(byNumber)} named ${noun(data)} have no free room for their name and print their table number instead.`] : [],
+    ...unplaced > 0 ? [`${formatNumber(unplaced)} named ${noun(data)} have no free room for a name or number; the table gives them.`] : []
+  ];
+  const description = `A scatter of ${formatNumber(data.points.length)} ${noun(data)}: ${data.xLabel} horizontal, ${data.yLabel} vertical${data.xLog === true || data.yLog === true ? ", on log scales" : ""}${hasQuadrants(data) ? `, split into four quadrants by dashed guideline lines. ${quadrantLine(data)}` : "."} The table below lists the ${formatNumber(named.length)} named points with their values.`;
+  return figureHtml({
+    kind: "scatter",
+    title: data.title,
+    description,
+    width: WIDTH7,
+    height: HEIGHT4,
+    drawing: [frame, ...lines2, ...ticks, ...axisNames, ...dots, ...marks].join("\n"),
+    table: htmlTable(`${data.title}: the named points`, columns8(data), rows7(data).map((r) => r.map(escapeHtml)), { rowHeaders: false }),
+    notes: [...notes3(data), ...extra].map((n) => `<p class="legend">${escapeHtml(n)}</p>
+`).join("")
+  });
+}
+function scatterMd(data) {
+  const empty = emptyOf(data);
+  if (empty !== void 0) return noticeMd({ level: "notice", text: empty });
+  const body2 = rows7(data);
+  return [
+    `**${escapeMd(data.title)}** (${escapeMd(data.xLabel)} against ${escapeMd(data.yLabel)})`,
+    "",
+    ...body2.length === 0 ? [] : [mdTable(columns8(data), body2.map((r) => r.map((cell, i2) => i2 === 1 ? clip(cell, 80) : cell))), ""],
+    notes3(data).map((n) => `_${escapeMd(n)}_`).join("\n\n")
+  ].join("\n");
+}
+
 // packages/report/src/components/sparkline.ts
-var WIDTH6 = 240;
-var HEIGHT4 = 48;
+var WIDTH8 = 240;
+var HEIGHT5 = 48;
 var MARGIN = 6;
-var columns7 = (data) => [{ label: "Period" }, { label: data.unit, align: "right" }];
-var rows6 = (data) => data.points.map((p) => [p.label, formatNumber(p.value)]);
+var columns9 = (data) => [{ label: "Period" }, { label: data.unit, align: "right" }];
+var rows8 = (data) => data.points.map((p) => [p.label, formatNumber(p.value)]);
 function sparklineCoordinates(points) {
   const values = points.map((p) => p.value);
   const least = Math.min(...values);
   const greatest = Math.max(...values);
   const span = greatest - least;
   return points.map((p, i2) => [
-    points.length === 1 ? WIDTH6 / 2 : MARGIN + i2 * (WIDTH6 - 2 * MARGIN) / (points.length - 1),
-    span === 0 ? HEIGHT4 / 2 : HEIGHT4 - MARGIN - (p.value - least) * (HEIGHT4 - 2 * MARGIN) / span
+    points.length === 1 ? WIDTH8 / 2 : MARGIN + i2 * (WIDTH8 - 2 * MARGIN) / (points.length - 1),
+    span === 0 ? HEIGHT5 / 2 : HEIGHT5 - MARGIN - (p.value - least) * (HEIGHT5 - 2 * MARGIN) / span
   ]);
 }
 function sparklineHtml(data) {
@@ -22264,14 +22550,14 @@ function sparklineHtml(data) {
     kind: "sparkline",
     title: data.title,
     description: `${data.unit} over ${data.points.length} periods, ${range}. The table below lists every value.`,
-    width: WIDTH6,
-    height: HEIGHT4,
+    width: WIDTH8,
+    height: HEIGHT5,
     drawing: `${line}${end}`,
-    table: htmlTable(`${data.title}: ${data.unit} by period`, columns7(data), rows6(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
+    table: htmlTable(`${data.title}: ${data.unit} by period`, columns9(data), rows8(data).map((r) => r.map(escapeHtml)), { rowHeaders: true })
   });
 }
 function sparklineMd(data) {
-  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, oldest first)`, "", mdTable(columns7(data), rows6(data))].join("\n");
+  return [`**${escapeMd(data.title)}** (${escapeMd(data.unit)}, oldest first)`, "", mdTable(columns9(data), rows8(data))].join("\n");
 }
 
 // packages/report/src/components/trend-marker.ts
@@ -22343,8 +22629,12 @@ function renderBlock(block, format2, context) {
       return format2 === "html" ? histogramHtml(block) : histogramMd(block);
     case "matrix":
       return format2 === "html" ? matrixHtml(block) : matrixMd(block);
+    case "function-bars":
+      return format2 === "html" ? functionBarsHtml(block) : functionBarsMd(block);
     case "guideline-bars":
       return format2 === "html" ? guidelineBarsHtml(block) : guidelineBarsMd(block);
+    case "scatter":
+      return format2 === "html" ? scatterHtml(block) : scatterMd(block);
     case "stability-chart":
       return format2 === "html" ? stabilityChartHtml(block) : stabilityChartMd(block);
     case "trend-marker":
@@ -22432,9 +22722,16 @@ svg .band-3 rect { fill: var(--band-3); } svg .band-3 text { fill: var(--on-band
 svg .band-4 rect { fill: var(--band-4); } svg .band-4 text { fill: var(--on-band-4); }
 svg .band-5 rect { fill: var(--band-5); } svg .band-5 text { fill: var(--on-band-5); }
 svg .band-none rect { fill: var(--panel); stroke: var(--muted); stroke-dasharray: 3 2; }
+svg .group rect { fill: none; stroke: var(--marker); stroke-width: 2; }
+svg .cell[class*="mark-"] text { font-weight: 700; }
 svg .bin rect { fill: var(--bar); }
 svg .bar rect { fill: var(--bar); } svg .bar.above rect { fill: var(--bar-above); }
 svg .bar line { stroke: var(--marker); stroke-width: 2; }
+svg .frame { fill: none; stroke: var(--rule); }
+svg .guideline line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 6 4; } svg .guideline text, svg .tick { fill: var(--muted); }
+svg circle.point { fill: var(--bar); fill-opacity: .4; }
+svg rect.point, svg .point.named rect { fill: var(--bar-above); stroke: var(--bg); stroke-width: 1; }
+svg .point.named text { paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
 svg polyline { fill: none; stroke: var(--bar-above); stroke-width: 2; } svg circle { fill: var(--bar-above); }
 .notice { border-left: 4px solid var(--notice-rule); background: var(--notice-bg); padding: .5rem .75rem; margin: .75rem 0; }
 .judgement { border: 1px solid var(--rule); border-left: 4px solid var(--link); background: var(--panel); padding: .25rem 1rem .5rem; margin: 1rem 0; }
@@ -22458,7 +22755,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 function headerFacts(report) {
   const { header: header2 } = report;
   const excluded = header2.excluded.length === 0 ? "nothing" : `<ul>${header2.excluded.map((e) => `<li>${escapeHtml(e.what)}: ${formatNumber(e.count)}</li>`).join("")}</ul>`;
-  const rows7 = [
+  const rows9 = [
     ["Repository", escapeHtml(header2.repo)],
     ["Analysed commit", `<code>${escapeHtml(header2.commit)}</code>`],
     ["Date", escapeHtml(header2.date)],
@@ -22468,24 +22765,24 @@ function headerFacts(report) {
     ["Excluded", excluded]
   ];
   return `<dl class="header">
-${rows7.map(([term, value]) => `<dt>${term}</dt><dd>${value}</dd>`).join("\n")}
+${rows9.map(([term, value]) => `<dt>${term}</dt><dd>${value}</dd>`).join("\n")}
 </dl>`;
 }
-function section(s, report, notes3) {
+function section(s, report, notes4) {
   const empty = emptySection(s);
   if (empty !== void 0) return `<section id="${escapeHtml(s.id)}" aria-labelledby="${escapeHtml(s.id)}-heading">
 <p class="empty"><strong id="${escapeHtml(s.id)}-heading">${escapeHtml(s.heading)}:</strong> ${inlineHtml(empty)}</p>
 </section>`;
-  const body2 = s.blocks.map((block) => renderBlock(block, "html", { slots: report.slots, notes: notes3 })).join("\n");
+  const body2 = s.blocks.map((block) => renderBlock(block, "html", { slots: report.slots, notes: notes4 })).join("\n");
   return `<section id="${escapeHtml(s.id)}" aria-labelledby="${escapeHtml(s.id)}-heading">
 <h2 id="${escapeHtml(s.id)}-heading">${escapeHtml(s.heading)}</h2>
 ${body2}
 </section>`;
 }
-function limitsSection(report, notes3) {
+function limitsSection(report, notes4) {
   const slot = report.slots.find((s) => s.id === "limits");
   const fixed = report.limits.map((text3) => `<li>${inlineHtml(text3)}</li>`).join("\n");
-  const judged = slot === void 0 ? "" : renderBlock({ type: "judgement", slot: slot.id }, "html", { slots: report.slots, notes: notes3 });
+  const judged = slot === void 0 ? "" : renderBlock({ type: "judgement", slot: slot.id }, "html", { slots: report.slots, notes: notes4 });
   return `<section id="limits" aria-labelledby="limits-heading">
 <h2 id="limits-heading">Limits</h2>
 ${fixed === "" ? "" : `<ul>
@@ -22494,7 +22791,7 @@ ${fixed}
 `}${judged}
 </section>`;
 }
-function htmlPage(report, notes3) {
+function htmlPage(report, notes4) {
   const ids = [...report.sections.map((s) => [s.id, s.heading]), ["limits", "Limits"]];
   const nav = `<nav aria-label="Sections">
 <ul>
@@ -22519,8 +22816,8 @@ ${headerFacts(report)}
 </header>`,
     nav,
     '<main id="main">',
-    ...report.sections.map((s) => section(s, report, notes3)),
-    limitsSection(report, notes3),
+    ...report.sections.map((s) => section(s, report, notes4)),
+    limitsSection(report, notes4),
     "</main>",
     `<footer>
 <p>Report <code>${escapeHtml(report.kind)}</code> for commit <code>${escapeHtml(report.header.commit.slice(0, 12))}</code>. Every number comes from the command's data. The judgements were written by an agent from that data and checked against the report's slots.</p>
@@ -22553,8 +22850,8 @@ function header(report, compact) {
     ...h.excluded.length === 0 ? ["- Excluded: nothing"] : ["- Excluded:", ...h.excluded.map((e) => `  - ${escapeMd(e.what)}: ${formatNumber(e.count)}`)]
   ];
 }
-function markdownPage(report, notes3, options = {}) {
-  const context = { slots: report.slots, notes: notes3 };
+function markdownPage(report, notes4, options = {}) {
+  const context = { slots: report.slots, notes: notes4 };
   const limits = report.limits.map((text3) => `- ${escapeMd(text3)}`);
   const slot = report.slots.find((s) => s.id === "limits");
   const judged = slot === void 0 ? [] : [renderBlock({ type: "judgement", slot: slot.id }, "md", context)];
@@ -22570,12 +22867,12 @@ function markdownPage(report, notes3, options = {}) {
 }
 
 // packages/report/src/render.ts
-function renderReport(report, format2, notes3, options = {}) {
+function renderReport(report, format2, notes4, options = {}) {
   if (format2 === "html") {
-    if (notes3 === void 0) throw new ReportError("html needs notes: run --slots, write the notes file, then render with --notes FILE --format html");
-    return htmlPage(report, notes3);
+    if (notes4 === void 0) throw new ReportError("html needs notes: run --slots, write the notes file, then render with --notes FILE --format html");
+    return htmlPage(report, notes4);
   }
-  return markdownPage(report, notes3, options);
+  return markdownPage(report, notes4, options);
 }
 
 // packages/report/src/slots-document.ts
@@ -22732,7 +23029,7 @@ var protocolOptionHelp = {
 };
 var protocolOptionNames = Object.keys(protocolOptions);
 function reportCommand(kinds) {
-  const names = Object.keys(kinds);
+  const names2 = Object.keys(kinds);
   const kindOptions = Object.assign({}, ...Object.values(kinds).map((k) => k.options ?? {}));
   const subcommands = Object.fromEntries(
     Object.entries(kinds).map(([name11, kind]) => [name11, { summary: kind.summary, options: [.../* @__PURE__ */ new Set([...protocolOptionNames, ...Object.keys(kind.options ?? {})])] }])
@@ -22745,9 +23042,9 @@ function reportCommand(kinds) {
     subcommands,
     async run(context) {
       const [name11, ...args2] = context.positionals;
-      if (name11 === void 0) throw usageError(`report needs a report name: ${names.join(", ")}`);
+      if (name11 === void 0) throw usageError(`report needs a report name: ${names2.join(", ")}`);
       const kind = kinds[name11];
-      if (kind === void 0) throw usageError(`unknown report "${name11}"; reports: ${names.join(", ")}`);
+      if (kind === void 0) throw usageError(`unknown report "${name11}"; reports: ${names2.join(", ")}`);
       const request = readRequest(context);
       const own = { ...context, positionals: args2 };
       const build = await cachedBuild(own, name11, kind.dependsOn === void 0 ? void 0 : () => kind.dependsOn(own), async () => kind.build(own));
@@ -22773,7 +23070,7 @@ function reportCommand(kinds) {
   };
 }
 function readRequest(context) {
-  const { slots, notes: notes3, format: format2, out: out2, compact } = context.values;
+  const { slots, notes: notes4, format: format2, out: out2, compact } = context.values;
   const text3 = (value, option) => {
     if (value === void 0) return void 0;
     if (typeof value !== "string" || value === "") throw usageError(`--${option} needs a value`);
@@ -22781,7 +23078,7 @@ function readRequest(context) {
   };
   const chosen = text3(format2, "format");
   if (chosen !== void 0 && chosen !== "html" && chosen !== "md") throw usageError(`--format must be html or md, got "${chosen}"`);
-  const request = { slots: slots === true, notes: text3(notes3, "notes"), format: chosen, out: text3(out2, "out"), compact: compact === true };
+  const request = { slots: slots === true, notes: text3(notes4, "notes"), format: chosen, out: text3(out2, "out"), compact: compact === true };
   if (request.slots) {
     if (request.notes !== void 0 || request.format !== void 0 || request.compact) throw usageError("--slots prints the slots and takes no --notes, --format or --compact");
   } else if (request.notes === void 0 && request.format !== "md") {
@@ -22889,6 +23186,60 @@ function xraySlots(data) {
     maxChars: 400
   }));
 }
+var XRAY_BARS = 20;
+var XRAY_MATRIX_FUNCTIONS = 8;
+var XRAY_MATRIX_MIN_REVISIONS = 2;
+function sharedChanges(functions, changesOf) {
+  const chosen = functions.filter((fn) => (fn.revisions ?? 0) >= XRAY_MATRIX_MIN_REVISIONS).sort((a, b) => (b.revisions ?? 0) - (a.revisions ?? 0) || byComplexity(a, b)).slice(0, XRAY_MATRIX_FUNCTIONS);
+  if (chosen.length < 2) return void 0;
+  const overlap = (a, b) => {
+    const left = changesOf(a);
+    const right = changesOf(b);
+    return left === void 0 || right === void 0 ? 0 : [...left].filter((change) => right.has(change)).length;
+  };
+  return { ids: chosen.map((fn) => fn.id), cells: chosen.map((row) => chosen.map((column) => row.id === column.id ? null : overlap(row.id, column.id))) };
+}
+var MATRIX_LABEL_CHARS = 16;
+function matrixLabels(names2) {
+  const first = names2[0] ?? "";
+  let prefix = first.slice(0, first.lastIndexOf(".") + 1);
+  while (prefix !== "" && !names2.every((name11) => name11.startsWith(prefix))) prefix = prefix.slice(0, prefix.slice(0, -1).lastIndexOf(".") + 1);
+  const shortened = names2.map((name11) => {
+    const rest = name11.slice(prefix.length);
+    return rest.length <= MATRIX_LABEL_CHARS ? rest : `…${rest.slice(rest.length - MATRIX_LABEL_CHARS + 1)}`;
+  });
+  return new Set(shortened).size === names2.length ? shortened : [...names2];
+}
+function xrayFigures(data) {
+  const sorted = [...data.functions].sort(byComplexity);
+  const drawn = sorted.slice(0, XRAY_BARS).filter((fn) => fn.cognitive !== null);
+  const figures = [];
+  if (data.guidelines !== void 0 && drawn.length > 0) {
+    figures.push({
+      type: "function-bars",
+      title: `Functions of ${data.file} by cognitive complexity`,
+      unit: "cognitive complexity",
+      guideline: data.guidelines.cognitive,
+      source: `The guideline is ${data.guidelines.note}. Revisions and fixes count landed changes in the history window.`,
+      bars: drawn.map((fn) => ({ label: displayName(fn.name), value: fn.cognitive, revisions: fn.revisions, fixes: fn.fixes })),
+      omitted: { count: data.functions.length - drawn.length, reason: `the chart draws the ${XRAY_BARS} most complex, and the X-Ray table lists the ${Math.min(data.rows ?? XRAY_ROWS, data.functions.length)} most complex` }
+    });
+  }
+  if (data.shared !== void 0) {
+    const byId = new Map(data.functions.map((fn) => [fn.id, fn]));
+    const names2 = matrixLabels(data.shared.ids.map((id) => displayName(byId.get(id)?.name ?? id)));
+    figures.push({
+      type: "matrix",
+      title: `Changes shared by the most changed functions of ${data.file}`,
+      valueLabel: "shared changes",
+      rows: names2,
+      columns: names2,
+      cells: data.shared.cells,
+      orderText: `Rows and columns are the ${data.shared.ids.length} functions with the most revisions (at least ${XRAY_MATRIX_MIN_REVISIONS}), most first. A cell is the number of landed changes in the window that touched both functions; the diagonal is empty.`
+    });
+  }
+  return figures;
+}
 
 // packages/complexity/src/reports/xray.ts
 var isoDate = (value) => value.slice(0, 10);
@@ -22922,15 +23273,17 @@ var xray = {
     const settings = readSettings(context.config);
     const forFile = { ...context, positionals: [file], values: { ...context.values, "include-tests": true } };
     const analysis = await command.run(forFile);
-    const rows7 = analysis.results.filter((row) => row.path === file);
-    if (rows7.length === 0) throw usageError(`no functions were measured in "${file}": name a source file of the current tree that a language adapter reads`);
+    const rows9 = analysis.results.filter((row) => row.path === file);
+    if (rows9.length === 0) throw usageError(`no functions were measured in "${file}": name a source file of the current tree that a language adapter reads`);
     const current = await currentTree(context);
     let fixes;
+    let changes;
     let header2;
     let fixProblem;
     try {
       const measured = await measureFixesFor(forFile, settings, current);
       fixes = measured.stats.units;
+      changes = measured.stats.changes;
       header2 = fixHeader(measured.stats, measured.request, settings);
     } catch (error) {
       if (!(error instanceof CliError)) throw error;
@@ -22939,7 +23292,7 @@ var xray = {
     const guidelines = guidelinesFor(settings, file);
     const data = {
       file,
-      functions: rows7.map((row) => functionOf(row, fixes)),
+      functions: rows9.map((row) => functionOf(row, fixes)),
       allCommand: `complexity analyse ${file} --with-fixes --limit all`,
       guidelines: {
         cognitive: limitOf(guidelines, "cognitive"),
@@ -22948,6 +23301,7 @@ var xray = {
         note: "complexity.guidelines, the warn level"
       }
     };
+    if (fixes !== void 0) data.shared = sharedChanges(data.functions, (id) => changes?.get(id));
     const above = data.functions.filter((fn) => fn.labels.length > 0).length;
     const touched = data.functions.filter((fn) => (fn.revisions ?? 0) > 0).length;
     const grade = fixes === void 0 ? "not graded" : (await analyseHistory(context.repo.root, { ref: "HEAD", noise: { exclude: [...context.config.effective.exclude], botPatterns: settings.botPatterns, maxChangesetSize: settings.maxChangesetSize } })).evidence.grade;
@@ -22980,7 +23334,7 @@ var xray = {
         excluded: excluded.filter((e) => e.count > 0)
       },
       sections: [
-        { id: "summary", heading: "Summary", blocks: [...summary, { type: "judgement", slot: "summary" }] },
+        { id: "summary", heading: "Summary", blocks: [...summary, ...xrayFigures(data), { type: "judgement", slot: "summary" }] },
         {
           id: "xray",
           heading: "X-Ray",

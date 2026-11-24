@@ -1,6 +1,6 @@
 # Contributing
 
-The specs in `docs/specs/` are the source of truth, starting with `docs/specs/suite.md`. This file says how to work in the repository: how to add a plugin, a command or a skill, and which checks gate a change. `README.md` describes the layout.
+This file says how to work in the repository: how to add a plugin, a command, a report, a skill or a language, and which checks gate a change. `README.md` describes the layout, `docs/basis.md` explains why the suite is built as it is, and `docs/languages.md` says how each language is read. The code, its tests and its golden files are the source of truth for behaviour.
 
 ## Contributions
 
@@ -15,7 +15,8 @@ External contributions are not accepted yet. Until contribution terms are publis
 - Install packages with the npm CLI (`npm install <pkg> -w <workspace>`), never by editing `package.json`.
 - One logical change per commit. Run `npm run check` before committing.
 - A change under `plugins/<plugin>/` needs a rebuilt, committed `dist/` (`npm run build`). Plugin versions stay at `0.1.0` until the first public release, so no bump is needed. The version lives in `plugin.json` only, never in the marketplace entry.
-- Evergreen content only in `README.md`, `CONTRIBUTING.md` and the specs: no status updates.
+- Evergreen content only in `README.md`, `CONTRIBUTING.md` and `docs/`: no status updates.
+- Numeric values are guidelines that order and annotate results. A new one is a named config key whose schema description says it is a guideline and where its default comes from, and it never hides a result or sets exit code 1 (see "Guidelines" in `docs/basis.md`).
 
 ## Adding a plugin
 
@@ -74,7 +75,7 @@ Bundles import only Node builtins and install without `npm install`. Do not add 
 
 ## Maintainer commands
 
-Three commands calibrate or evaluate the suite on a corpus of repositories. They are for the suite's maintainers and not for end users. They stay runnable, but are marked `hidden` in their command definition (`hidden: true` on a `SubcommandHelp`, `hiddenOptions` for options only they take), so they are left out of `--help` listings, and no skill or reference mentions them. Each plugin's spec describes its own in a "Maintainer commands" section. `<command> <subcommand> --help` still describes one.
+Three commands calibrate or evaluate the suite on a corpus of repositories. They are for the suite's maintainers and not for end users. They stay runnable, but are marked `hidden` in their command definition (`hidden: true` on a `SubcommandHelp`, `hiddenOptions` for options only they take), so they are left out of `--help` listings, and no skill or reference mentions them. `<command> <subcommand> --help` still describes one.
 
 | Command | What it checks | Notes |
 |---|---|---|
@@ -150,7 +151,7 @@ allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/dist/<p>.mjs *)
 
 ### Shared red flags
 
-`shared/red-flags.md` is the single source of the design vocabulary. `npm run build` copies it byte for byte to `plugins/*/skills/*/references/red-flags.md`, and `npm run check:red-flags` (part of `npm run check` and CI) fails when a copy differs or is missing. Edit only the shared file, then build and commit the copies together. Specs link to `shared/red-flags.md`. `shared/reports.md`, how an agent writes a report's judgement, is copied and checked the same way.
+`shared/red-flags.md` is the single source of the design vocabulary. `npm run build` copies it byte for byte to `plugins/*/skills/*/references/red-flags.md`, and `npm run check:red-flags` (part of `npm run check` and CI) fails when a copy differs or is missing. Edit only the shared file, then build and commit the copies together. `shared/reports.md`, how an agent writes a report's judgement, is copied and checked the same way.
 
 ### Adding a report
 
@@ -162,7 +163,7 @@ A plugin adds a report as one entry in the `reportCommand({ ... })` registration
 
 Shared header text lives in `packages/history/src/report-header.ts`: `excludedCounts(filters, droppedCounts(), builtinOmissions(), { leftOutOf?, oversizedNote? })` for the header's excluded list, `historyWindowText(evidence, window, suffix?)` for its history window and `isoDate`. Do not copy them into a report.
 
-The kit stores each kind's build, so a render reads what `--slots` computed (see "Stored build" in `docs/specs/suite.md`). A build that depends on something the kit does not check, such as a branch name or a file named by an option, returns it from `ReportKind.dependsOn` (see the change report); the result must be plain JSON and cheap to compute.
+The kit stores each kind's build in `.cache/code-health/report-builds/`, so a render reads what `--slots` computed and does not compute the report again. A stored build is reused only when the kind, its arguments and options, the working directory, HEAD, the config hash, the running code and the stored results it read are all unchanged, and a tree with uncommitted work neither reads nor stores one. A build that depends on something the kit does not check, such as a branch name or a file named by an option, returns it from `ReportKind.dependsOn` (see the change report); the result must be plain JSON and cheap to compute.
 
 Test it with a real git fixture end to end: `--slots`, then notes, then HTML and Markdown, plus the refusal cases, as `packages/cochange/test/report-overview.test.ts` does.
 
@@ -170,7 +171,7 @@ Test it with a real git fixture end to end: `--slots`, then notes, then HTML and
 
 A language is a contained change: new files in a fixed set of places, and one registration line in each of six registries. A track adds nothing to a shared module, so tracks for different languages do not touch the same lines. Replace `<id>` with the adapter's id, kebab-case and unique (`csharp`, `cpp`, `python`, `go`, `java`, `kotlin`, `rust`). It is also the folder name under `fixtures/languages/`.
 
-The contract is `LanguageAdapter` in `packages/parse/src/language-adapter.ts`. It covers both dependency models of `docs/specs/suite.md`: `import-based` (a resolver maps a specifier to a file, and the shared import model follows re-exports and barrels) and `symbol-based` (the adapter extracts `FileFacts.symbols`, and the shared symbol model resolves names through namespaces and usings; a language may replace it with its own `resolve`). Both produce the same file edges, consumers, exports and units, so the graph consumers read them alike.
+The contract is `LanguageAdapter` in `packages/parse/src/language-adapter.ts`. It covers both dependency models of `docs/languages.md`: `import-based` (a resolver maps a specifier to a file, and the shared import model follows re-exports and barrels) and `symbol-based` (the adapter extracts `FileFacts.symbols`, and the shared symbol model resolves names through namespaces and usings; a language may replace it with its own `resolve`). Both produce the same file edges, consumers, exports and units, so the graph consumers read them alike.
 
 | Add | What it holds |
 |---|---|

@@ -8,7 +8,7 @@ import { packagingLanguages } from "../src/packaging/language.ts";
 import { projectFromTree } from "../src/project.ts";
 
 /**
- * Structure's side of the conformance harness (suite.md, Testing): the census runs over the fixtures in
+ * Structure's side of the conformance harness (CONTRIBUTING.md, Conformance): the census runs over the fixtures in
  * `fixtures/languages/<id>/census`, with values counted by hand, and each language has its census detectors
  * and packaging language. The packaging fixtures run through the real CLI in language-packaging.test.ts.
  */

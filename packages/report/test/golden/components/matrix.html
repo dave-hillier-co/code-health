@@ -1,27 +1,29 @@
 <figure class="chart matrix">
 <figcaption>Shared changes</figcaption>
-<svg role="img" aria-labelledby="shared-changes-4d76fd-title shared-changes-4d76fd-desc" viewBox="0 0 412 146" preserveAspectRatio="xMinYMin meet">
-<title id="shared-changes-4d76fd-title">Shared changes</title>
-<desc id="shared-changes-4d76fd-desc">A grid of 2 rows by 3 columns holding shared changes. Each cell prints its value; the table below lists the same values.</desc>
-<text x="212" y="84" transform="rotate(-35 212 84)">a.ts</text>
-<text x="276" y="84" transform="rotate(-35 276 84)">b.ts</text>
-<text x="340" y="84" transform="rotate(-35 340 84)">c.ts</text>
-<text x="174" y="107" text-anchor="end">a.ts</text>
-<text x="174" y="133" text-anchor="end">b.ts</text>
-<g class="cell band-none"><rect x="180" y="90" width="62" height="24"/><text x="211" y="106" text-anchor="middle">none</text></g>
-<g class="cell band-2"><rect x="244" y="90" width="62" height="24"/><text x="275" y="106" text-anchor="middle">5</text></g>
-<g class="cell band-1"><rect x="308" y="90" width="62" height="24"/><text x="339" y="106" text-anchor="middle">1</text></g>
-<g class="cell band-2"><rect x="180" y="116" width="62" height="24"/><text x="211" y="132" text-anchor="middle">5</text></g>
-<g class="cell band-none"><rect x="244" y="116" width="62" height="24"/><text x="275" y="132" text-anchor="middle">none</text></g>
-<g class="cell band-3"><rect x="308" y="116" width="62" height="24"/><text x="339" y="132" text-anchor="middle">9</text></g>
+<svg role="img" aria-labelledby="shared-changes-ee541c-title shared-changes-ee541c-desc" viewBox="0 0 292 142" preserveAspectRatio="xMinYMin meet">
+<title id="shared-changes-ee541c-title">Shared changes</title>
+<desc id="shared-changes-ee541c-desc">A grid of 2 rows by 3 columns holding shared changes. Each cell prints its value; the table below lists every cell that has a value or a mark.</desc>
+<text x="192" y="84" transform="rotate(-35 192 84)">a.ts</text>
+<text x="216" y="84" transform="rotate(-35 216 84)">b.ts</text>
+<text x="240" y="84" transform="rotate(-35 240 84)">c.ts</text>
+<text x="174" y="101" dominant-baseline="central" text-anchor="end">a.ts</text>
+<text x="174" y="125" dominant-baseline="central" text-anchor="end">b.ts</text>
+<g class="cell band-none"><rect x="180" y="90" width="22" height="22"/></g>
+<g class="cell band-2"><rect x="204" y="90" width="22" height="22"/><text x="215" y="101" text-anchor="middle" dominant-baseline="central">5</text></g>
+<g class="cell band-1"><rect x="228" y="90" width="22" height="22"/><text x="239" y="101" text-anchor="middle" dominant-baseline="central">1</text></g>
+<g class="cell band-2"><rect x="180" y="114" width="22" height="22"/><text x="191" y="125" text-anchor="middle" dominant-baseline="central">5</text></g>
+<g class="cell band-none"><rect x="204" y="114" width="22" height="22"/></g>
+<g class="cell band-3"><rect x="228" y="114" width="22" height="22"/><text x="239" y="125" text-anchor="middle" dominant-baseline="central">9</text></g>
 </svg>
 <table>
-<caption>Shared changes: shared changes</caption>
-<thead><tr><th scope="col"></th><th scope="col" class="number">a.ts</th><th scope="col" class="number">b.ts</th><th scope="col" class="number">c.ts</th></tr></thead>
+<caption>Shared changes: shared changes, the cells that have a value or a mark</caption>
+<thead><tr><th scope="col">Row</th><th scope="col">Column</th><th scope="col" class="number">Value</th><th scope="col">Mark</th></tr></thead>
 <tbody>
-<tr><th scope="row">a.ts</th><td class="number">none</td><td class="number">5</td><td class="number">1</td></tr>
-<tr><th scope="row">b.ts</th><td class="number">5</td><td class="number">none</td><td class="number">9</td></tr>
+<tr><td>a.ts</td><td>b.ts</td><td class="number">5</td><td></td></tr>
+<tr><td>a.ts</td><td>c.ts</td><td class="number">1</td><td></td></tr>
+<tr><td>b.ts</td><td>a.ts</td><td class="number">5</td><td></td></tr>
+<tr><td>b.ts</td><td>c.ts</td><td class="number">9</td><td></td></tr>
 </tbody>
 </table>
-<p class="legend">Colour is shared changes in three bands, and each cell prints its value: band 1: 1, band 2: 5, band 3: 9. Hatched cells have no value.</p>
+<p class="legend">Colour is shared changes in three bands, and each cell prints its value: band 1: 1, band 2: 5, band 3: 9. Hatched blank cells have no value (2 cells of 6 cells).</p>
 </figure>

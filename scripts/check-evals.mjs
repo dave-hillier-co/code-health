@@ -18,7 +18,7 @@ export const readEvalPins = (root = defaultRoot) => JSON.parse(readFileSync(join
  * - `execution.model` is the model pinned in `shared/evals.json`
  *
  * - a plugin that ships a skill has cases tagged `trigger` (it loads when it should), `negative`
- *   (it stays out of the way or declines) and `behaviour` (what it does once loaded), as suite.md asks
+ *   (it stays out of the way or declines) and `behaviour` (what it does once loaded), as CONTRIBUTING.md asks
  *
  * Cases are `case.yaml` files only. The `prompt.md` form cannot pin a model.
  * `evals/results/` is output and is skipped.

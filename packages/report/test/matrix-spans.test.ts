@@ -27,11 +27,11 @@ test("a line crosses the grid at each span boundary, and none at the edges", () 
 
 test("the span label is printed in the table row header, the legend and the markdown", () => {
   const html = matrixHtml(square);
-  expect(html).toContain("a (src)");
-  expect(html).toContain("d (test)");
+  expect(html).toContain("<td>src</td><td>src</td>");
+  expect(html).toContain("<td>test</td><td>src</td>");
   expect(html).toContain("Bars above the columns and left of the rows mark 2 spans: src (3 rows), test (2 rows).");
   const md = matrixMd(square);
-  expect(md).toContain("| a (src) |");
+  expect(md).toContain("| a | b | 10 |  | src | src |");
   expect(md).toContain("Bars above the columns and left of the rows mark 2 spans: src (3 rows), test (2 rows).");
 });
 
@@ -55,7 +55,7 @@ test("span colours repeat after six and groups still draw with spans", () => {
   expect(html).toContain('class="span span-6"');
   expect(html.match(/class="span span-1"/g)?.length).toBe(4);
   expect(html).toContain('<g class="group">');
-  expect(html).toContain("a (a, cluster 1)");
+  expect(html).toContain("<td>a, cluster 1</td>");
 });
 
 test("a matrix without spans draws no bar and no line", () => {
@@ -76,10 +76,10 @@ test("the column labels fit inside the drawing, so the longest label is not clip
 
 test("a label longer than the limit is cut with an ellipsis in the drawing and kept whole in the table and hover title", () => {
   const long = "x".repeat(50);
-  const html = matrixHtml({ title: "M", valueLabel: "v", rows: [long], columns: [long], cells: [[null]] });
+  const html = matrixHtml({ title: "M", valueLabel: "v", rows: [long], columns: [long], cells: [[1]] });
   expect(html).toContain(`${"x".repeat(31)}…`);
   expect(html).toContain(`<title>${long}</title>`);
-  expect(html).toContain(`>${long}</th>`);
+  expect(html).toContain(`<td>${long}</td>`);
 });
 
 test("the theme defines six span colours for light and dark", () => {

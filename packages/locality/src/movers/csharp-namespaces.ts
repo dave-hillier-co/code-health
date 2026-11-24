@@ -6,7 +6,7 @@ import type { MoveResult, Rewrite } from "./mover-language.ts";
 /**
  * The optional second step of a C# move: making namespaces follow the folders the files moved to. It is a
  * commit of its own, after the move, because reflection, serialisation, XAML and DI-by-name can all see a
- * namespace, and for a library it is a public API change (suite.md, Language notes).
+ * namespace, and for a library it is a public API change (docs/languages.md, Language notes).
  *
  * The step is deliberately narrow. A moved file's namespace follows its folder when the namespace ends with the
  * folder's path below the part the move leaves alone (`Acme.Billing` for `src/Billing`). That namespace is

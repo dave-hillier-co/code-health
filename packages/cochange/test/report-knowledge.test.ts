@@ -118,7 +118,7 @@ test("the page shows the patterns with their rules, a treemap marked by pattern,
   // Each pattern states its rule and guideline, and the guidelines are legend values, not a score.
   expect(stdout).toContain("One active developer holds at least 90% of the lines held by people, and the file is a hotspot");
   expect(stdout).toContain("cochange.knowledge.abandonmentGuideline");
-  expect(stdout).toContain("marks: SOH Single-owner hotspot (1 tile)");
+  expect(stdout).toMatch(/marks: SOH Single-owner hotspot \(1 tile, \d+ lines\)/);
   // Routes and auth are the hotspots. Auth has a bus factor of one and routes of two.
   expect(stdout).toMatch(/\| src\/api\/auth\.ts \| [0-9.]+ \| 10 \| 1 \| 1 \| 100 \| 0 \| Single-owner hotspot \|/);
   expect(stdout).toMatch(/\| src\/api\/routes\.ts \| [0-9.]+ \| 10 \| 2 \| 2 \| 50 \| 0 \| – \|/);
@@ -262,8 +262,8 @@ test("the html page is accessible, self-contained and themed, and the treemap ma
   expect(new Set(ids).size).toBe(ids.length);
   for (const id of ["summary", "patterns", "bus-factor", "knowledge-lost", "simulation", "limits"]) expect(html).toContain(`href="#${id}"`);
   // The marks are printed in the tiles and listed with their words in the legend.
-  expect(html).toContain("<li><strong>SOH</strong> Single-owner hotspot: 1 tile</li>");
-  expect(html).toContain("<title>src/api/auth.ts: 10 lines held by people, First pattern Single-owner hotspot</title>");
+  expect(html).toMatch(/<li><strong>SOH<\/strong> Single-owner hotspot: 1 tile, \d+ lines<\/li>/);
+  expect(html).toContain("<title>src/api/auth.ts: 10 lines, First pattern Single-owner hotspot</title>");
   // Values beside their guidelines carry words as well as the triangle.
   expect(html).toContain("above guideline");
 });

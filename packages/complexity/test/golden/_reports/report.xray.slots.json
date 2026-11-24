@@ -41,6 +41,55 @@
             "type": "facts"
           },
           {
+            "bars": [
+              {
+                "fixes": 2,
+                "label": "priceOrder",
+                "revisions": 5,
+                "value": 8
+              },
+              {
+                "fixes": 1,
+                "label": "describe",
+                "revisions": 2,
+                "value": 1
+              }
+            ],
+            "guideline": 15,
+            "omitted": {
+              "count": 0,
+              "reason": "the chart draws the 20 most complex, and the X-Ray table lists the 2 most complex"
+            },
+            "source": "The guideline is complexity.guidelines, the warn level. Revisions and fixes count landed changes in the history window.",
+            "title": "Functions of src/billing.ts by cognitive complexity",
+            "type": "function-bars",
+            "unit": "cognitive complexity"
+          },
+          {
+            "cells": [
+              [
+                null,
+                1
+              ],
+              [
+                1,
+                null
+              ]
+            ],
+            "columns": [
+              "priceOrder",
+              "describe"
+            ],
+            "orderText": "Rows and columns are the 2 functions with the most revisions (at least 2), most first. A cell is the number of landed changes in the window that touched both functions; the diagonal is empty.",
+            "rows": [
+              "priceOrder",
+              "describe"
+            ],
+            "title": "Changes shared by the most changed functions of src/billing.ts",
+            "type": "matrix",
+            "valueLabel": "shared changes"
+          },
+          {
             "slot": "summary",
             "type": "judgement"
           }

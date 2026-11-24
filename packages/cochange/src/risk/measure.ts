@@ -251,6 +251,14 @@ interface Partner {
 }
 
 /**
+ * Whether a pair that changed together `support` times, with the first file revised `revisions` times in the window,
+ * meets the configured support and confidence. Exact integer arithmetic: a pair at the guideline is never lost to rounding.
+ */
+export function pairCoupled(support: number, revisions: number, context: Pick<MeasureContext, "minSupport" | "risk">): boolean {
+  return support >= context.minSupport && 100 * support >= context.risk.missingConfidence * revisions;
+}
+
+/**
  * Files that changed with a touched file at the configured confidence and support, over the eligible
  * changes of the window. One entry per partner, naming the touched file it is strongest towards.
  */
@@ -261,8 +269,7 @@ function coupledPartners(facts: ChangeFacts, state: HistoryState, context: Measu
     const revisions = state.eligibleRevisionsInWindow(file.fileId);
     if (revisions === 0) continue;
     for (const [other, support] of state.partners(file.fileId)) {
-      // Exact integer arithmetic: a pair at the guideline is never lost to rounding.
-      if (support < context.minSupport || 100 * support < context.risk.missingConfidence * revisions) continue;
+      if (!pairCoupled(support, revisions, context)) continue;
       if (!state.present(other)) continue;
       const confidence = round((100 * support) / revisions, 1);
       const current = best.get(other);

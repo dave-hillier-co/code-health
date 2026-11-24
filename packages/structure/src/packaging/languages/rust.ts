@@ -17,7 +17,7 @@ const table = (value: unknown): TomlTable => (typeof value === "object" && value
 
 /**
  * Reads the entry files of the cargo packages that have code. The marker is "anything not `pub` at the crate
- * root" (packaging.md, Languages), so a library's entries are its root file and the file of every module
+ * root" (docs/languages.md, Packages), so a library's entries are its root file and the file of every module
  * reachable from it through `pub mod`. What a root re-exports with `pub use` is on its surface through the
  * exports of the root itself. A binary has no library surface: its entry is its own root.
  */

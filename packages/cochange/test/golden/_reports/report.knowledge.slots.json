@@ -33,6 +33,92 @@
           {
             "slot": "summary",
             "type": "judgement"
+          },
+          {
+            "categories": [
+              {
+                "band": 5,
+                "id": "single-owner-hotspot",
+                "label": "Single-owner hotspot",
+                "mark": "SOH"
+              },
+              {
+                "band": 4,
+                "id": "former-contributors-complex",
+                "label": "Complex code by former contributors",
+                "mark": "CFC"
+              },
+              {
+                "band": 3,
+                "id": "single-owner",
+                "label": "Single owner",
+                "mark": "SO"
+              },
+              {
+                "band": 2,
+                "id": "many-active-developers",
+                "label": "Many active developers",
+                "mark": "MAD"
+              },
+              {
+                "band": 1,
+                "id": "inconclusive",
+                "label": "Inconclusive",
+                "mark": "INC"
+              }
+            ],
+            "categoryLabel": "First pattern",
+            "items": [
+              {
+                "category": "single-owner-hotspot",
+                "path": "src/api/auth.ts",
+                "size": 10
+              },
+              {
+                "category": null,
+                "path": "src/api/routes.ts",
+                "size": 10
+              },
+              {
+                "category": "former-contributors-complex",
+                "path": "src/core/engine.ts",
+                "size": 10
+              },
+              {
+                "category": "former-contributors-complex",
+                "path": "src/core/lexer.ts",
+                "size": 10
+              },
+              {
+                "category": "former-contributors-complex",
+                "path": "src/core/parser.ts",
+                "size": 10
+              },
+              {
+                "category": "inconclusive",
+                "path": "src/gen/deps.ts",
+                "size": 10
+              },
+              {
+                "category": "single-owner",
+                "path": "src/ui/view.ts",
+                "size": 10
+              },
+              {
+                "category": "single-owner",
+                "path": "src/util/log.ts",
+                "size": 10
+              }
+            ],
+            "sizeLabel": "lines",
+            "tableRows": 20,
+            "title": "The code, nested by folder: size is lines, fill is knowledge-risk pattern",
+            "type": "category-treemap"
+          },
+          {
+            "level": "notice",
+            "text": "The map draws all 8 production code files at HEAD (80 lines), the same files at the same places as the map in the hotspots report. The tables below list files of every kind by pattern, hottest first.",
+            "type": "notice"
           }
         ],
         "heading": "Where knowledge is concentrated",
@@ -140,92 +226,6 @@
               }
             ],
             "type": "ranked-table"
-          },
-          {
-            "categories": [
-              {
-                "band": 5,
-                "id": "single-owner-hotspot",
-                "label": "Single-owner hotspot",
-                "mark": "SOH"
-              },
-              {
-                "band": 4,
-                "id": "former-contributors-complex",
-                "label": "Complex code by former contributors",
-                "mark": "CFC"
-              },
-              {
-                "band": 3,
-                "id": "single-owner",
-                "label": "Single owner",
-                "mark": "SO"
-              },
-              {
-                "band": 2,
-                "id": "many-active-developers",
-                "label": "Many active developers",
-                "mark": "MAD"
-              },
-              {
-                "band": 1,
-                "id": "inconclusive",
-                "label": "Inconclusive",
-                "mark": "INC"
-              }
-            ],
-            "categoryLabel": "First pattern",
-            "items": [
-              {
-                "category": "single-owner-hotspot",
-                "path": "src/api/auth.ts",
-                "size": 10
-              },
-              {
-                "category": null,
-                "path": "src/api/routes.ts",
-                "size": 10
-              },
-              {
-                "category": "former-contributors-complex",
-                "path": "src/core/engine.ts",
-                "size": 10
-              },
-              {
-                "category": "former-contributors-complex",
-                "path": "src/core/lexer.ts",
-                "size": 10
-              },
-              {
-                "category": "former-contributors-complex",
-                "path": "src/core/parser.ts",
-                "size": 10
-              },
-              {
-                "category": "single-owner",
-                "path": "src/ui/view.ts",
-                "size": 10
-              },
-              {
-                "category": "single-owner",
-                "path": "src/util/log.ts",
-                "size": 10
-              },
-              {
-                "category": "inconclusive",
-                "path": "src/gen/deps.ts",
-                "size": 5
-              }
-            ],
-            "maxTiles": 60,
-            "sizeLabel": "lines held by people",
-            "title": "Files by lines held by people, marked by knowledge-risk pattern",
-            "type": "category-treemap"
-          },
-          {
-            "level": "notice",
-            "text": "The treemap draws the 8 production code files with the most lines held by people, of 8. The tables below list files of every kind by pattern, hottest first.",
-            "type": "notice"
           },
           {
             "caption": "Top files whose first pattern is single-owner hotspot, hottest first",

@@ -7,7 +7,7 @@ import { externalModuleOf, importPathToDirectory, isStandardLibrary, moduleOwnin
 import { isExported } from "./shape.ts";
 
 /**
- * Go dependency resolution (suite.md, Language notes). An import path is resolved against the module paths
+ * Go dependency resolution (docs/languages.md, Language notes). An import path is resolved against the module paths
  * of the repository's go.mod files (and local `replace` directives) to the directory of a package. Files in
  * one directory and one package share their names without importing each other, so what is left is
  * symbol-based: each reference is resolved to the package that declares the name, and the shared symbol

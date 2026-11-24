@@ -33,7 +33,7 @@ export interface LanguageAdapter {
   tier: 1 | 2;
   /**
    * `experimental` adapters are registered and tested but are not used to analyse a repository and ship no
-   * grammar. `supported` is claimed only when the conformance suites pass for every plugin (suite.md, Tiers).
+   * grammar. `supported` is claimed only when the conformance suites pass for every plugin (docs/languages.md, Tiers).
    */
   support: "experimental" | "supported";
   /** The name of the lexer profile in `@code-health/lexical/profile` whose agreement with this adapter is recorded. */
@@ -207,7 +207,7 @@ export interface CensusExtraction {
 /**
  * How the structure packaging skill reads packages of this language. Discovery of packages from manifests
  * is the plugin's (`packaging/discovery.ts`), because a manifest names a build system, not a language;
- * this says which discovered ecosystems the adapter can read. The language's internals marker (packaging.md,
+ * this says which discovered ecosystems the adapter can read. The language's internals marker (docs/languages.md,
  * Languages: `exports`, `internal`, a leading underscore, `internal/`, `pub`) is applied by the plugin's
  * packaging language when it reads a package's entry files, since what a package exposes is the complement.
  */
@@ -218,7 +218,7 @@ export interface PackagingInternals {
   description: string;
 }
 
-/** Which declaration kinds count as exported types for Martin's abstractness, and which of those are abstract (packaging.md, Languages: interfaces, abstract classes, traits, protocols, pure-virtual classes). */
+/** Which declaration kinds count as exported types for Martin's abstractness, and which of those are abstract (docs/languages.md, Packages: interfaces, abstract classes, traits, protocols, pure-virtual classes). */
 export interface AbstractTypeDetection {
   typeKinds: readonly DeclarationKind[];
   abstractKinds: readonly DeclarationKind[];

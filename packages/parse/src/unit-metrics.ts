@@ -4,7 +4,7 @@ import type { ConstructMap, MetricRules, RecursionScope } from "./metric-rules.t
 
 /**
  * Structural metrics of one function, computed from its syntax tree. Each metric is one decision in one
- * place below, so the definitions in complexity.md can be checked against the code.
+ * place below, so the definitions in the complexity skill's references/metrics.md can be checked against the code.
  *
  * - Cyclomatic: 1 plus decision points: `if` (an `else if` is an `if`), loops, each `case` (not
  *   `default`), `catch`, the ternary, and `&&`, `||`, `??` (also as `&&=`, `||=`, `??=`). Optional

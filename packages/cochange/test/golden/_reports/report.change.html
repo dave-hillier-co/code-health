@@ -79,6 +79,7 @@ figure.chart svg text { fill: var(--text); }
 svg .folder rect { fill: none; stroke: var(--rule); }
 svg .folder text { fill: var(--muted); }
 svg .tile rect, svg .cell rect { stroke: var(--bg); stroke-width: 1; }
+svg .tile.marked rect { stroke: var(--text); stroke-width: 2; }
 svg .band-1 rect { fill: var(--band-1); } svg .band-1 text { fill: var(--on-band-1); }
 svg .band-2 rect { fill: var(--band-2); } svg .band-2 text { fill: var(--on-band-2); }
 svg .band-3 rect { fill: var(--band-3); } svg .band-3 text { fill: var(--on-band-3); }
@@ -95,9 +96,18 @@ svg .span text { font-weight: 600; }
 svg .span-boundary { stroke: var(--marker); stroke-width: 1; }
 svg .group rect { fill: none; stroke: var(--marker); stroke-width: 2; }
 svg .cell[class*="mark-"] text { font-weight: 700; }
+svg .folder-row .folder-name { font-weight: 600; } svg .folder-row .row-note { fill: var(--muted); }
+svg .folder-row .guide { stroke: var(--rule); stroke-dasharray: 1 3; }
+svg .edge path { fill: none; stroke: var(--bar-above); } svg .edge polygon { fill: var(--bar-above); }
+svg .edge.dashed path { stroke-dasharray: 6 4; }
 svg .bin rect { fill: var(--bar); }
 svg .bar rect { fill: var(--bar); } svg .bar.above rect { fill: var(--bar-above); }
 svg .bar line { stroke: var(--marker); stroke-width: 2; }
+svg .frame { fill: none; stroke: var(--rule); }
+svg .guideline line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 6 4; } svg .guideline text, svg .tick { fill: var(--muted); }
+svg circle.point { fill: var(--bar); fill-opacity: .4; }
+svg rect.point, svg .point.named rect { fill: var(--bar-above); stroke: var(--bg); stroke-width: 1; }
+svg .point.named text { paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
 svg polyline { fill: none; stroke: var(--bar-above); stroke-width: 2; } svg circle { fill: var(--bar-above); }
 .notice { border-left: 4px solid var(--notice-rule); background: var(--notice-bg); padding: .5rem .75rem; margin: .75rem 0; }
 .judgement { border: 1px solid var(--rule); border-left: 4px solid var(--link); background: var(--panel); padding: .25rem 1rem .5rem; margin: 1rem 0; }
@@ -161,6 +171,29 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">Commits with an agent trailer</th><td>0</td></tr>
 </tbody>
 </table>
+<figure class="chart matrix">
+<figcaption>Change footprint: 1 changed file against 3 files</figcaption>
+<svg role="img" aria-labelledby="change-footprint-1-changed-file-against-3-files-40da2b-title change-footprint-1-changed-file-against-3-files-40da2b-desc" viewBox="0 0 363 122" preserveAspectRatio="xMinYMin meet">
+<title id="change-footprint-1-changed-file-against-3-files-40da2b-title">Change footprint: 1 changed file against 3 files</title>
+<desc id="change-footprint-1-changed-file-against-3-files-40da2b-desc">A grid of 1 rows by 3 columns holding shared changes of the row file and the column file in the analysis window. Each cell prints its value; the table below lists every cell that has a value or a mark.</desc>
+<text x="194" y="84" transform="rotate(-35 194 84)">...illing/invoice.ts</text>
+<text x="222" y="84" transform="rotate(-35 222 84)">...g/invoice.test.ts</text>
+<text x="250" y="84" transform="rotate(-35 250 84)">src/billing/tax.ts</text>
+<text x="174" y="103" dominant-baseline="central" text-anchor="end">...illing/invoice.ts</text>
+<g class="cell band-none"><rect x="180" y="90" width="26" height="26"/></g>
+<g class="cell band-1 mark-missing"><rect x="208" y="90" width="26" height="26"/><text x="221" y="103" text-anchor="middle" dominant-baseline="central">6 !</text></g>
+<g class="cell band-1 mark-missing"><rect x="236" y="90" width="26" height="26"/><text x="249" y="103" text-anchor="middle" dominant-baseline="central">6 !</text></g>
+</svg>
+<table>
+<caption>Change footprint: 1 changed file against 3 files: shared changes of the row file and the column file in the analysis window, the cells that have a value or a mark</caption>
+<thead><tr><th scope="col">Row</th><th scope="col">Column</th><th scope="col" class="number">Value</th><th scope="col">Mark</th></tr></thead>
+<tbody>
+<tr><td>...illing/invoice.ts</td><td>...g/invoice.test.ts</td><td class="number">6</td><td>a usual partner of the row file that the change left out, as listed under Missing co-change partners</td></tr>
+<tr><td>...illing/invoice.ts</td><td>src/billing/tax.ts</td><td class="number">6</td><td>a usual partner of the row file that the change left out, as listed under Missing co-change partners</td></tr>
+</tbody>
+</table>
+<p class="legend">Colour is shared changes of the row file and the column file in the analysis window in one band, and each cell prints its value: band 1: 6. Hatched blank cells have no value (1 cell of 3 cells). ! is a usual partner of the row file that the change left out, as listed under Missing co-change partners (2 cells). Columns are the changed files, then the missing partners. Rows are ordered by missing partners, then by partners in the change, then by path. Missing columns follow the order of the Missing co-change partners section, and each is marked at the file it usually changes with.</p>
+</figure>
 </section>
 <section id="guidance" aria-labelledby="guidance-heading">
 <h2 id="guidance-heading">Reviewer guidance</h2>

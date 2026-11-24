@@ -13,7 +13,7 @@ import { overrideSupportedAdapters, registeredAdapters } from "../src/languages.
 import { treeFromDirectory } from "../src/source-tree.ts";
 
 /**
- * The lexical agreement test (suite.md, Testing), for every lexer profile that has a structural adapter. The
+ * The lexical agreement test (CONTRIBUTING.md, Conformance), for every lexer profile that has a structural adapter. The
  * structural layer is ground truth: each corpus file goes through both layers and lexical function blocks are
  * matched to structural units by start and end line. The corpus of a profile is the `adapter`, `metrics` and
  * `agreement` fixtures of every adapter that uses it. The counts are compared with the ones recorded in the

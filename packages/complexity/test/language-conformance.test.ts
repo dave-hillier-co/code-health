@@ -9,7 +9,7 @@ import { complexityLanguages, explainRule } from "../src/language.ts";
 import { measureTree } from "../src/measure.ts";
 
 /**
- * Complexity's side of the conformance harness (suite.md, Testing). The fixtures in
+ * Complexity's side of the conformance harness (CONTRIBUTING.md, Conformance). The fixtures in
  * `fixtures/languages/<id>/metrics`, `metrics-wide` and `depth` carry values counted by hand, and the
  * plugin's own measurement runs over them: cyclomatic in both switch modes, cognitive, nesting, length,
  * parameters, and the interface shape behind the depth signal.

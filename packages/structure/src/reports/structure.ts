@@ -21,6 +21,7 @@ import { command as packages } from "../commands/packages.ts";
 import { command as stability } from "../commands/stability.ts";
 import { readSettings, type StructureSettings } from "../config.ts";
 import type { CycleRow, ProjectFolderCycles } from "../cycles.ts";
+import { DSM_MODULES, type Dsm } from "../dsm.ts";
 import type { Hub } from "../hubs.ts";
 import type { LayerViolation } from "../layers.ts";
 import type { PackageRow } from "../packaging/list.ts";
@@ -52,6 +53,8 @@ interface Extra {
   window: { since: string; until: string };
   /** Present only when the structure.csharpFolderCycles setting is true. */
   projectFolderCycles?: ProjectFolderCycles;
+  /** The module matrix the cycles command computes at the default level, or null when no module of the largest language depends on another. */
+  dsm?: Dsm | null;
 }
 
 type IncludeSection = IncludeResolution & { guideline: number; aboveGuideline: boolean };
@@ -101,6 +104,61 @@ async function gather(context: CommandContext, settings: StructureSettings): Pro
     },
     include: note === undefined ? null : { section: note.value as IncludeSection, notice: note.notice },
   };
+}
+
+const LABEL_CHARS = 20;
+
+/** A module's name cut from the left to fit a matrix label; names that cut to the same text get a number. */
+function matrixLabels(modules: readonly string[]): string[] {
+  const cut = modules.map((m) => (m.length <= LABEL_CHARS ? m : `…${m.slice(m.length - LABEL_CHARS + 1)}`));
+  const seen = new Map<string, number>();
+  return cut.map((label) => {
+    const n = (seen.get(label) ?? 0) + 1;
+    seen.set(label, n);
+    return cut.indexOf(label) === cut.lastIndexOf(label) ? label : `${label} #${n}`;
+  });
+}
+
+/** The dependency structure matrix of the modules at the default level, and the lines that say what it draws and leaves out. */
+export function dsmBlocks(dsm: Dsm | null | undefined, layered: boolean): Block[] {
+  if (dsm === null || dsm === undefined) return [{ type: "notice", level: "notice", text: "No module depends on another at the default level, so there is no dependency structure matrix." }];
+  const drawn = dsm.modules.length;
+  const labels = matrixLabels(dsm.modules);
+  const against = new Set(dsm.againstOrder.map(([i, j]) => `${i},${j}`));
+  const layer = new Set(dsm.layerViolations.map(([i, j]) => `${i},${j}`));
+  const cellMarks = dsm.cells.map((row, i) =>
+    row.map((value, j) => {
+      if (value === null) return null;
+      const a = against.has(`${i},${j}`);
+      const l = layer.has(`${i},${j}`);
+      return a && l ? "both" : a ? "against" : l ? "layer" : null;
+    }),
+  );
+  const omitted = dsm.connectedModules - drawn;
+  const isolated = dsm.totalModules - dsm.connectedModules;
+  const others = dsm.languages.filter((l) => l.language !== dsm.language);
+  const isAre = (n: number) => (n === 1 ? "is" : "are");
+  return [
+    {
+      type: "matrix",
+      title: "Module dependency matrix",
+      valueLabel: "file imports from the row module into the column module",
+      rows: labels,
+      columns: labels,
+      cells: dsm.cells,
+      marks: {
+        against: { symbol: "!", text: "a dependency against the order: below the diagonal, inside an import cycle" },
+        ...(layered ? { layer: { symbol: "L", text: "an import the configured layer rules forbid" }, both: { symbol: "!L", text: "against the order and forbidden by the layer rules" } } : {}),
+      },
+      cellMarks,
+      groups: dsm.groups.map((g) => ({ label: g.size > g.end - g.start + 1 ? `${g.label}, ${g.end - g.start + 1} of ${g.size} modules drawn` : g.label, start: g.start, end: g.end })),
+      orderText: `A row is a module and the cells in it are the modules it depends on. Rows are ordered by layer, top first: a module comes after every module that depends on it, so in a layered design every cell is above the diagonal. The members of one cycle stay together in a box labelled as in the cycles table, ordered so that only the edges of its breaking set lie below the diagonal. Names are cut from the left to ${LABEL_CHARS} characters; the cycles table gives them whole.${layered && dsm.layerViolations.length === 0 ? " No drawn import breaks a layer rule." : ""}`,
+    },
+    {
+      type: "paragraph",
+      text: `The matrix draws ${drawn === dsm.totalModules ? `all ${plural(drawn, "module")}` : `${drawn} of the ${plural(dsm.totalModules, "module")}`} of ${dsm.language}, the language with the most modules at the default level${others.length === 0 ? "" : `; the ${others.map((l) => `${l.modules} of ${l.language}`).join(" and ")} ${others.length === 1 && others[0]!.modules === 1 ? "is" : "are"} not drawn`}.${omitted > 0 ? ` It leaves out ${plural(omitted, "module")} that ${omitted === 1 ? "has" : "have"} a dependency, to stay readable: the members of cycles come first, in the order of the cycles table, then the modules with the most neighbours, up to ${DSM_MODULES}.` : ""}${isolated > 0 ? ` ${plural(isolated, "module")} with no dependency on another ${isAre(isolated)} not drawn.` : ""}`,
+    },
+  ];
 }
 
 /** One line about the folder cycles inside one C# project, which the table of cycles does not list. */
@@ -442,6 +500,7 @@ export const structure: ReportKind = {
               { label: "Packages", value: String(results.packages.length) },
             ],
           },
+          ...dsmBlocks(results.extra.dsm, results.layerViolations !== null),
           { type: "judgement", slot: "summary" },
         ],
       },

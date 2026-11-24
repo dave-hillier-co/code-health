@@ -1,13 +1,16 @@
 import { categoryTreemapHtml, categoryTreemapMd, type CategoryTreemapData } from "./components/category-treemap.ts";
 import { evidenceListHtml, evidenceListMd, type EvidenceListData } from "./components/evidence-list.ts";
 import { factsHtml, factsMd, type FactsData } from "./components/facts.ts";
+import { functionBarsHtml, functionBarsMd, type FunctionBarsData } from "./components/function-bars.ts";
 import { guidelineBarsHtml, guidelineBarsMd, type GuidelineBarsData } from "./components/guideline-bar.ts";
 import { histogramHtml, histogramMd, type HistogramData } from "./components/histogram.ts";
 import { judgedLineMd, judgementHtml, judgementMd } from "./components/judgement.ts";
 import { matrixHtml, matrixMd, type MatrixData } from "./components/matrix.ts";
+import { moveMapHtml, moveMapMd, type MoveMapData } from "./components/move-map.ts";
 import { noticeHtml, noticeMd, type NoticeData } from "./components/notice.ts";
 import { paragraphHtml, paragraphMd, type ParagraphData } from "./components/paragraph.ts";
 import { rankedTableHtml, rankedTableMd, type RankedTableData } from "./components/ranked-table.ts";
+import { scatterHtml, scatterMd, type ScatterData } from "./components/scatter.ts";
 import { stabilityChartHtml, stabilityChartMd, type StabilityChartData } from "./components/stability-chart.ts";
 import { sparklineHtml, sparklineMd, type SparklineData } from "./components/sparkline.ts";
 import { trendMarkerHtml, trendMarkerMd, type TrendMarkerData } from "./components/trend-marker.ts";
@@ -25,7 +28,10 @@ export type Block =
   | ({ type: "sparkline" } & SparklineData)
   | ({ type: "histogram" } & HistogramData)
   | ({ type: "matrix" } & MatrixData)
+  | ({ type: "function-bars" } & FunctionBarsData)
+  | ({ type: "move-map" } & MoveMapData)
   | ({ type: "guideline-bars" } & GuidelineBarsData)
+  | ({ type: "scatter" } & ScatterData)
   | ({ type: "stability-chart" } & StabilityChartData)
   | ({ type: "trend-marker" } & TrendMarkerData)
   | ({ type: "evidence-list" } & EvidenceListData)
@@ -100,7 +106,10 @@ export function renderBlock(block: Block, format: Format, context: BlockContext)
     case "sparkline": return format === "html" ? sparklineHtml(block) : sparklineMd(block);
     case "histogram": return format === "html" ? histogramHtml(block) : histogramMd(block);
     case "matrix": return format === "html" ? matrixHtml(block) : matrixMd(block);
+    case "function-bars": return format === "html" ? functionBarsHtml(block) : functionBarsMd(block);
+    case "move-map": return format === "html" ? moveMapHtml(block) : moveMapMd(block);
     case "guideline-bars": return format === "html" ? guidelineBarsHtml(block) : guidelineBarsMd(block);
+    case "scatter": return format === "html" ? scatterHtml(block) : scatterMd(block);
     case "stability-chart": return format === "html" ? stabilityChartHtml(block) : stabilityChartMd(block);
     case "trend-marker": return format === "html" ? `<p>${trendMarkerHtml(block)}</p>` : trendMarkerMd(block);
     case "evidence-list": return format === "html" ? evidenceListHtml(block) : evidenceListMd(block);

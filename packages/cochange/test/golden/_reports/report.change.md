@@ -21,6 +21,15 @@
 | Files moved or renamed | 0 |
 | Commits with an agent trailer | 0 |
 
+**Change footprint: 1 changed file against 3 files** (shared changes of the row file and the column file in the analysis window; band 1: 6)
+
+| Row | Column | Value | Mark |
+| --- | --- | ---: | --- |
+| ...illing/invoice.ts | ...g/invoice.test.ts | 6 | a usual partner of the row file that the change left out, as listed under Missing co-change partners |
+| ...illing/invoice.ts | src/billing/tax.ts | 6 | a usual partner of the row file that the change left out, as listed under Missing co-change partners |
+
+The table lists the cells that have a value or a mark, in row order then column order. Blank cells have no value (1 cell of 3 cells). ! is a usual partner of the row file that the change left out, as listed under Missing co-change partners (2 cells). Columns are the changed files, then the missing partners. Rows are ordered by missing partners, then by partners in the change, then by path. Missing columns follow the order of the Missing co-change partners section, and each is marked at the file it usually changes with.
+
 ## Reviewer guidance
 
 **Judgement: reviewer guidance**

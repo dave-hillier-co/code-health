@@ -78,6 +78,7 @@ figure.chart svg text { fill: var(--text); }
 svg .folder rect { fill: none; stroke: var(--rule); }
 svg .folder text { fill: var(--muted); }
 svg .tile rect, svg .cell rect { stroke: var(--bg); stroke-width: 1; }
+svg .tile.marked rect { stroke: var(--text); stroke-width: 2; }
 svg .band-1 rect { fill: var(--band-1); } svg .band-1 text { fill: var(--on-band-1); }
 svg .band-2 rect { fill: var(--band-2); } svg .band-2 text { fill: var(--on-band-2); }
 svg .band-3 rect { fill: var(--band-3); } svg .band-3 text { fill: var(--on-band-3); }
@@ -94,9 +95,18 @@ svg .span text { font-weight: 600; }
 svg .span-boundary { stroke: var(--marker); stroke-width: 1; }
 svg .group rect { fill: none; stroke: var(--marker); stroke-width: 2; }
 svg .cell[class*="mark-"] text { font-weight: 700; }
+svg .folder-row .folder-name { font-weight: 600; } svg .folder-row .row-note { fill: var(--muted); }
+svg .folder-row .guide { stroke: var(--rule); stroke-dasharray: 1 3; }
+svg .edge path { fill: none; stroke: var(--bar-above); } svg .edge polygon { fill: var(--bar-above); }
+svg .edge.dashed path { stroke-dasharray: 6 4; }
 svg .bin rect { fill: var(--bar); }
 svg .bar rect { fill: var(--bar); } svg .bar.above rect { fill: var(--bar-above); }
 svg .bar line { stroke: var(--marker); stroke-width: 2; }
+svg .frame { fill: none; stroke: var(--rule); }
+svg .guideline line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 6 4; } svg .guideline text, svg .tick { fill: var(--muted); }
+svg circle.point { fill: var(--bar); fill-opacity: .4; }
+svg rect.point, svg .point.named rect { fill: var(--bar-above); stroke: var(--bg); stroke-width: 1; }
+svg .point.named text { paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
 svg polyline { fill: none; stroke: var(--bar-above); stroke-width: 2; } svg circle { fill: var(--bar-above); }
 .notice { border-left: 4px solid var(--notice-rule); background: var(--notice-bg); padding: .5rem .75rem; margin: .75rem 0; }
 .judgement { border: 1px solid var(--rule); border-left: 4px solid var(--link); background: var(--panel); padding: .25rem 1rem .5rem; margin: 1rem 0; }

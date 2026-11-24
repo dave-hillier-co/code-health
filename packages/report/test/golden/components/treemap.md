@@ -1,4 +1,4 @@
-**Files by lines and revisions** (the items by lines, largest first; band is revisions, band 1: 1, band 2: 3, band 3: 7, band 4: 12)
+**Files by lines and revisions** (the items by lines, marked first, then largest first; band is revisions, band 1: 1, band 2: 3, band 3: 7, band 4: 12; band 1: 1 item, 60 lines; band 2: 1 item, 120 lines; band 3: 1 item, 200 lines; band 4: 1 item, 400 lines; no value: 1 item, 90 lines)
 
 | Path | Size (lines) | Colour (revisions) | Band |
 | --- | ---: | ---: | ---: |

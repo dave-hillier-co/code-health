@@ -8,7 +8,7 @@ function target(member: Node): Node {
 }
 
 /**
- * What a class, struct or union with a body is for Martin's abstractness (packaging.md, Languages): an
+ * What a class, struct or union with a body is for Martin's abstractness (docs/languages.md, Packages): an
  * `interface` when every function it declares, apart from constructors and the destructor, is pure virtual
  * (`= 0`) and it holds no data; an `abstract-class` when it has any pure virtual function; a `class` otherwise.
  */

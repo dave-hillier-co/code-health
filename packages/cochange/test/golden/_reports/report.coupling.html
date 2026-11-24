@@ -79,6 +79,7 @@ figure.chart svg text { fill: var(--text); }
 svg .folder rect { fill: none; stroke: var(--rule); }
 svg .folder text { fill: var(--muted); }
 svg .tile rect, svg .cell rect { stroke: var(--bg); stroke-width: 1; }
+svg .tile.marked rect { stroke: var(--text); stroke-width: 2; }
 svg .band-1 rect { fill: var(--band-1); } svg .band-1 text { fill: var(--on-band-1); }
 svg .band-2 rect { fill: var(--band-2); } svg .band-2 text { fill: var(--on-band-2); }
 svg .band-3 rect { fill: var(--band-3); } svg .band-3 text { fill: var(--on-band-3); }
@@ -95,9 +96,18 @@ svg .span text { font-weight: 600; }
 svg .span-boundary { stroke: var(--marker); stroke-width: 1; }
 svg .group rect { fill: none; stroke: var(--marker); stroke-width: 2; }
 svg .cell[class*="mark-"] text { font-weight: 700; }
+svg .folder-row .folder-name { font-weight: 600; } svg .folder-row .row-note { fill: var(--muted); }
+svg .folder-row .guide { stroke: var(--rule); stroke-dasharray: 1 3; }
+svg .edge path { fill: none; stroke: var(--bar-above); } svg .edge polygon { fill: var(--bar-above); }
+svg .edge.dashed path { stroke-dasharray: 6 4; }
 svg .bin rect { fill: var(--bar); }
 svg .bar rect { fill: var(--bar); } svg .bar.above rect { fill: var(--bar-above); }
 svg .bar line { stroke: var(--marker); stroke-width: 2; }
+svg .frame { fill: none; stroke: var(--rule); }
+svg .guideline line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 6 4; } svg .guideline text, svg .tick { fill: var(--muted); }
+svg circle.point { fill: var(--bar); fill-opacity: .4; }
+svg rect.point, svg .point.named rect { fill: var(--bar-above); stroke: var(--bg); stroke-width: 1; }
+svg .point.named text { paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
 svg polyline { fill: none; stroke: var(--bar-above); stroke-width: 2; } svg circle { fill: var(--bar-above); }
 .notice { border-left: 4px solid var(--notice-rule); background: var(--notice-bg); padding: .5rem .75rem; margin: .75rem 0; }
 .judgement { border: 1px solid var(--rule); border-left: 4px solid var(--link); background: var(--panel); padding: .25rem 1rem .5rem; margin: 1rem 0; }
@@ -151,199 +161,196 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </section>
 <figure class="chart matrix">
 <figcaption>Co-change between the 7 components with the most changes, degree in percent</figcaption>
-<svg role="img" aria-labelledby="co-change-between-the-7-components-with-the-most-changes-degree-in-percent-db3a36-title co-change-between-the-7-components-with-the-most-changes-degree-in-percent-db3a36-desc" viewBox="0 0 690 298" preserveAspectRatio="xMinYMin meet">
-<title id="co-change-between-the-7-components-with-the-most-changes-degree-in-percent-db3a36-title">Co-change between the 7 components with the most changes, degree in percent</title>
-<desc id="co-change-between-the-7-components-with-the-most-changes-degree-in-percent-db3a36-desc">A grid of 7 rows by 7 columns holding coupling degree in percent. 2 bars mark spans of consecutive rows: src, top level. Each cell prints its value; the table below lists the same values.</desc>
-<g class="span span-1"><rect x="0" y="112" width="18" height="154"/><text x="9" y="189" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 9 189)">src</text><title>src</title></g>
-<g class="span span-1"><rect x="202" y="0" width="382" height="18"/><text x="393" y="9" text-anchor="middle" dominant-baseline="central">src</text><title>src</title></g>
-<g class="span span-2"><rect x="0" y="268" width="18" height="24"/><text x="9" y="280" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 9 280)">to…</text><title>top level</title></g>
-<g class="span span-2"><rect x="586" y="0" width="62" height="18"/><text x="617" y="9" text-anchor="middle" dominant-baseline="central">top lev…</text><title>top level</title></g>
-<text x="234" y="106" transform="rotate(-35 234 106)">api</text>
-<text x="298" y="106" transform="rotate(-35 298 106)">billing</text>
-<text x="362" y="106" transform="rotate(-35 362 106)">config</text>
-<text x="426" y="106" transform="rotate(-35 426 106)">runtime</text>
-<text x="490" y="106" transform="rotate(-35 490 106)">web</text>
-<text x="554" y="106" transform="rotate(-35 554 106)">search</text>
-<text x="618" y="106" transform="rotate(-35 618 106)">docs</text>
-<text x="196" y="129" text-anchor="end">api</text>
-<text x="196" y="155" text-anchor="end">billing</text>
-<text x="196" y="181" text-anchor="end">config</text>
-<text x="196" y="207" text-anchor="end">runtime</text>
-<text x="196" y="233" text-anchor="end">web</text>
-<text x="196" y="259" text-anchor="end">search</text>
-<text x="196" y="285" text-anchor="end">docs</text>
-<g class="cell band-none"><rect x="202" y="112" width="62" height="24"/><text x="233" y="128" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="266" y="112" width="62" height="24"/><text x="297" y="128" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="330" y="112" width="62" height="24"/><text x="361" y="128" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="394" y="112" width="62" height="24"/><text x="425" y="128" text-anchor="middle">none</text></g>
-<g class="cell band-5"><rect x="458" y="112" width="62" height="24"/><text x="489" y="128" text-anchor="middle">80</text></g>
-<g class="cell band-none"><rect x="522" y="112" width="62" height="24"/><text x="553" y="128" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="586" y="112" width="62" height="24"/><text x="617" y="128" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="202" y="138" width="62" height="24"/><text x="233" y="154" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="266" y="138" width="62" height="24"/><text x="297" y="154" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="330" y="138" width="62" height="24"/><text x="361" y="154" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="394" y="138" width="62" height="24"/><text x="425" y="154" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="458" y="138" width="62" height="24"/><text x="489" y="154" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="522" y="138" width="62" height="24"/><text x="553" y="154" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="586" y="138" width="62" height="24"/><text x="617" y="154" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="202" y="164" width="62" height="24"/><text x="233" y="180" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="266" y="164" width="62" height="24"/><text x="297" y="180" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="330" y="164" width="62" height="24"/><text x="361" y="180" text-anchor="middle">none</text></g>
-<g class="cell band-3"><rect x="394" y="164" width="62" height="24"/><text x="425" y="180" text-anchor="middle">50</text></g>
-<g class="cell band-none"><rect x="458" y="164" width="62" height="24"/><text x="489" y="180" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="522" y="164" width="62" height="24"/><text x="553" y="180" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="586" y="164" width="62" height="24"/><text x="617" y="180" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="202" y="190" width="62" height="24"/><text x="233" y="206" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="266" y="190" width="62" height="24"/><text x="297" y="206" text-anchor="middle">none</text></g>
-<g class="cell band-3"><rect x="330" y="190" width="62" height="24"/><text x="361" y="206" text-anchor="middle">50</text></g>
-<g class="cell band-none"><rect x="394" y="190" width="62" height="24"/><text x="425" y="206" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="458" y="190" width="62" height="24"/><text x="489" y="206" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="522" y="190" width="62" height="24"/><text x="553" y="206" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="586" y="190" width="62" height="24"/><text x="617" y="206" text-anchor="middle">none</text></g>
-<g class="cell band-5"><rect x="202" y="216" width="62" height="24"/><text x="233" y="232" text-anchor="middle">80</text></g>
-<g class="cell band-none"><rect x="266" y="216" width="62" height="24"/><text x="297" y="232" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="330" y="216" width="62" height="24"/><text x="361" y="232" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="394" y="216" width="62" height="24"/><text x="425" y="232" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="458" y="216" width="62" height="24"/><text x="489" y="232" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="522" y="216" width="62" height="24"/><text x="553" y="232" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="586" y="216" width="62" height="24"/><text x="617" y="232" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="202" y="242" width="62" height="24"/><text x="233" y="258" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="266" y="242" width="62" height="24"/><text x="297" y="258" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="330" y="242" width="62" height="24"/><text x="361" y="258" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="394" y="242" width="62" height="24"/><text x="425" y="258" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="458" y="242" width="62" height="24"/><text x="489" y="258" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="522" y="242" width="62" height="24"/><text x="553" y="258" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="586" y="242" width="62" height="24"/><text x="617" y="258" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="202" y="268" width="62" height="24"/><text x="233" y="284" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="266" y="268" width="62" height="24"/><text x="297" y="284" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="330" y="268" width="62" height="24"/><text x="361" y="284" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="394" y="268" width="62" height="24"/><text x="425" y="284" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="458" y="268" width="62" height="24"/><text x="489" y="284" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="522" y="268" width="62" height="24"/><text x="553" y="284" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="586" y="268" width="62" height="24"/><text x="617" y="284" text-anchor="middle">none</text></g>
-<line class="span-boundary" x1="22" y1="267" x2="650" y2="267"/>
-<line class="span-boundary" x1="585" y1="22" x2="585" y2="294"/>
+<svg role="img" aria-labelledby="co-change-between-the-7-components-with-the-most-changes-degree-in-percent-ee26fa-title co-change-between-the-7-components-with-the-most-changes-degree-in-percent-ee26fa-desc" viewBox="0 0 410 284" preserveAspectRatio="xMinYMin meet">
+<title id="co-change-between-the-7-components-with-the-most-changes-degree-in-percent-ee26fa-title">Co-change between the 7 components with the most changes, degree in percent</title>
+<desc id="co-change-between-the-7-components-with-the-most-changes-degree-in-percent-ee26fa-desc">A grid of 7 rows by 7 columns holding coupling degree in percent. 2 bars mark spans of consecutive rows: src, top level. Each cell prints its value; the table below lists every cell that has a value or a mark.</desc>
+<g class="span span-1"><rect x="0" y="112" width="18" height="142"/><text x="9" y="183" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 9 183)">src</text><title>src</title></g>
+<g class="span span-1"><rect x="202" y="0" width="142" height="18"/><text x="273" y="9" text-anchor="middle" dominant-baseline="central">src</text><title>src</title></g>
+<g class="span span-2"><rect x="0" y="256" width="18" height="22"/><text x="9" y="267" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 9 267)">t…</text><title>top level</title></g>
+<g class="span span-2"><rect x="346" y="0" width="22" height="18"/><text x="357" y="9" text-anchor="middle" dominant-baseline="central">t…</text><title>top level</title></g>
+<text x="214" y="106" transform="rotate(-35 214 106)">api</text>
+<text x="238" y="106" transform="rotate(-35 238 106)">billing</text>
+<text x="262" y="106" transform="rotate(-35 262 106)">config</text>
+<text x="286" y="106" transform="rotate(-35 286 106)">runtime</text>
+<text x="310" y="106" transform="rotate(-35 310 106)">web</text>
+<text x="334" y="106" transform="rotate(-35 334 106)">search</text>
+<text x="358" y="106" transform="rotate(-35 358 106)">docs</text>
+<text x="196" y="123" dominant-baseline="central" text-anchor="end">api</text>
+<text x="196" y="147" dominant-baseline="central" text-anchor="end">billing</text>
+<text x="196" y="171" dominant-baseline="central" text-anchor="end">config</text>
+<text x="196" y="195" dominant-baseline="central" text-anchor="end">runtime</text>
+<text x="196" y="219" dominant-baseline="central" text-anchor="end">web</text>
+<text x="196" y="243" dominant-baseline="central" text-anchor="end">search</text>
+<text x="196" y="267" dominant-baseline="central" text-anchor="end">docs</text>
+<g class="cell band-none"><rect x="202" y="112" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="226" y="112" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="250" y="112" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="274" y="112" width="22" height="22"/></g>
+<g class="cell band-5"><rect x="298" y="112" width="22" height="22"/><text x="309" y="123" text-anchor="middle" dominant-baseline="central">80</text></g>
+<g class="cell band-none"><rect x="322" y="112" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="346" y="112" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="202" y="136" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="226" y="136" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="250" y="136" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="274" y="136" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="298" y="136" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="322" y="136" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="346" y="136" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="202" y="160" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="226" y="160" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="250" y="160" width="22" height="22"/></g>
+<g class="cell band-3"><rect x="274" y="160" width="22" height="22"/><text x="285" y="171" text-anchor="middle" dominant-baseline="central">50</text></g>
+<g class="cell band-none"><rect x="298" y="160" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="322" y="160" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="346" y="160" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="202" y="184" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="226" y="184" width="22" height="22"/></g>
+<g class="cell band-3"><rect x="250" y="184" width="22" height="22"/><text x="261" y="195" text-anchor="middle" dominant-baseline="central">50</text></g>
+<g class="cell band-none"><rect x="274" y="184" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="298" y="184" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="322" y="184" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="346" y="184" width="22" height="22"/></g>
+<g class="cell band-5"><rect x="202" y="208" width="22" height="22"/><text x="213" y="219" text-anchor="middle" dominant-baseline="central">80</text></g>
+<g class="cell band-none"><rect x="226" y="208" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="250" y="208" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="274" y="208" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="298" y="208" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="322" y="208" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="346" y="208" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="202" y="232" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="226" y="232" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="250" y="232" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="274" y="232" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="298" y="232" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="322" y="232" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="346" y="232" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="202" y="256" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="226" y="256" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="250" y="256" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="274" y="256" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="298" y="256" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="322" y="256" width="22" height="22"/></g>
+<g class="cell band-none"><rect x="346" y="256" width="22" height="22"/></g>
+<line class="span-boundary" x1="22" y1="255" x2="370" y2="255"/>
+<line class="span-boundary" x1="345" y1="22" x2="345" y2="280"/>
 </svg>
 <table>
-<caption>Co-change between the 7 components with the most changes, degree in percent: coupling degree in percent</caption>
-<thead><tr><th scope="col"></th><th scope="col" class="number">api</th><th scope="col" class="number">billing</th><th scope="col" class="number">config</th><th scope="col" class="number">runtime</th><th scope="col" class="number">web</th><th scope="col" class="number">search</th><th scope="col" class="number">docs</th></tr></thead>
+<caption>Co-change between the 7 components with the most changes, degree in percent: coupling degree in percent, the cells that have a value or a mark</caption>
+<thead><tr><th scope="col">Row</th><th scope="col">Column</th><th scope="col" class="number">Value</th><th scope="col">Mark</th><th scope="col">Row group</th><th scope="col">Column group</th></tr></thead>
 <tbody>
-<tr><th scope="row">api (src)</th><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">80</td><td class="number">none</td><td class="number">none</td></tr>
-<tr><th scope="row">billing (src)</th><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td></tr>
-<tr><th scope="row">config (src)</th><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">50</td><td class="number">none</td><td class="number">none</td><td class="number">none</td></tr>
-<tr><th scope="row">runtime (src)</th><td class="number">none</td><td class="number">none</td><td class="number">50</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td></tr>
-<tr><th scope="row">web (src)</th><td class="number">80</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td></tr>
-<tr><th scope="row">search (src)</th><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td></tr>
-<tr><th scope="row">docs (top level)</th><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td></tr>
+<tr><td>api</td><td>web</td><td class="number">80</td><td></td><td>src</td><td>src</td></tr>
+<tr><td>config</td><td>runtime</td><td class="number">50</td><td></td><td>src</td><td>src</td></tr>
+<tr><td>runtime</td><td>config</td><td class="number">50</td><td></td><td>src</td><td>src</td></tr>
+<tr><td>web</td><td>api</td><td class="number">80</td><td></td><td>src</td><td>src</td></tr>
 </tbody>
 </table>
-<p class="legend">Colour is coupling degree in percent in five bands, and each cell prints its value: band 1: 20, band 2: 20 to 40, band 3: 40 to 60, band 4: 60 to 80, band 5: 80. Hatched cells have no value. Bars above the columns and left of the rows mark 2 spans: src (6 rows), top level (1 row). The component map is inferred from folders (no `components` are configured; `cochange components --propose` prints it for review), with 7 components in 2 groups. Rows and columns are components, ordered by group (the group with the most changes first) and within a group by change count, then name. Draws 7 of the 7 components with a change, at most 20, the ones with the most changes; omits 0 components. 0 production code files are in no component. `cochange components` lists the map. A cell is the degree between two components: the changes that touched both, over the mean of the changes that touched each, counted over the same eligible changes and with the same formula as a pair of files; a change counts once for each component it touches. A pair that shares fewer than 5 changes (the support floor) has no value. Production code files only.</p>
+<p class="legend">Colour is coupling degree in percent in five bands, and each cell prints its value: band 1: 20, band 2: 20 to 40, band 3: 40 to 60, band 4: 60 to 80, band 5: 80. Hatched blank cells have no value (45 cells of 49 cells). Bars above the columns and left of the rows mark 2 spans: src (6 rows), top level (1 row). The component map is inferred from folders (no `components` are configured; `cochange components --propose` prints it for review), with 7 components in 2 groups. Rows and columns are components, ordered by group (the group with the most changes first) and within a group by change count, then name. Draws 7 of the 7 components with a change, at most 20, the ones with the most changes; omits 0 components. 0 production code files are in no component. `cochange components` lists the map. A cell is the degree between two components: the changes that touched both, over the mean of the changes that touched each, counted over the same eligible changes and with the same formula as a pair of files; a change counts once for each component it touches. A pair that shares fewer than 5 changes (the support floor) has no value. Production code files only.</p>
 </figure>
 <figure class="chart matrix">
 <figcaption>Co-change between the 8 files of the strongest clusters, degree in percent</figcaption>
-<svg role="img" aria-labelledby="co-change-between-the-8-files-of-the-strongest-clusters-degree-in-percent-3b6bc7-title co-change-between-the-8-files-of-the-strongest-clusters-degree-in-percent-3b6bc7-desc" viewBox="0 0 805 324" preserveAspectRatio="xMinYMin meet">
-<title id="co-change-between-the-8-files-of-the-strongest-clusters-degree-in-percent-3b6bc7-title">Co-change between the 8 files of the strongest clusters, degree in percent</title>
-<desc id="co-change-between-the-8-files-of-the-strongest-clusters-degree-in-percent-3b6bc7-desc">A grid of 8 rows by 8 columns holding coupling degree in percent. 4 boxes along the diagonal mark groups of rows. Each cell prints its value; the table below lists the same values.</desc>
-<text x="212" y="106" transform="rotate(-35 212 106)">src/api/orders.ts</text>
-<text x="276" y="106" transform="rotate(-35 276 106)">src/web/orders-view.ts</text>
-<text x="340" y="106" transform="rotate(-35 340 106)">src/config/flags.ts</text>
-<text x="404" y="106" transform="rotate(-35 404 106)">src/runtime/flags.ts</text>
-<text x="468" y="106" transform="rotate(-35 468 106)">src/billing/ledger.test.ts</text>
-<text x="532" y="106" transform="rotate(-35 532 106)">src/billing/ledger.ts</text>
-<text x="596" y="106" transform="rotate(-35 596 106)">src/search/index.ts</text>
-<text x="660" y="106" transform="rotate(-35 660 106)">src/search/ranking.ts</text>
-<text x="174" y="129" text-anchor="end">src/api/orders.ts</text>
-<text x="174" y="155" text-anchor="end">src/web/orders-view.ts</text>
-<text x="174" y="181" text-anchor="end">src/config/flags.ts</text>
-<text x="174" y="207" text-anchor="end">src/runtime/flags.ts</text>
-<text x="174" y="233" text-anchor="end">src/billing/ledger.test.ts</text>
-<text x="174" y="259" text-anchor="end">src/billing/ledger.ts</text>
-<text x="174" y="285" text-anchor="end">src/search/index.ts</text>
-<text x="174" y="311" text-anchor="end">src/search/ranking.ts</text>
-<g class="cell band-none"><rect x="180" y="112" width="62" height="24"/><text x="211" y="128" text-anchor="middle">none</text></g>
-<g class="cell band-5"><rect x="244" y="112" width="62" height="24"/><text x="275" y="128" text-anchor="middle">80</text></g>
-<g class="cell band-none"><rect x="308" y="112" width="62" height="24"/><text x="339" y="128" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="372" y="112" width="62" height="24"/><text x="403" y="128" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="436" y="112" width="62" height="24"/><text x="467" y="128" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="500" y="112" width="62" height="24"/><text x="531" y="128" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="564" y="112" width="62" height="24"/><text x="595" y="128" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="628" y="112" width="62" height="24"/><text x="659" y="128" text-anchor="middle">none</text></g>
-<g class="cell band-5"><rect x="180" y="138" width="62" height="24"/><text x="211" y="154" text-anchor="middle">80</text></g>
-<g class="cell band-none"><rect x="244" y="138" width="62" height="24"/><text x="275" y="154" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="308" y="138" width="62" height="24"/><text x="339" y="154" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="372" y="138" width="62" height="24"/><text x="403" y="154" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="436" y="138" width="62" height="24"/><text x="467" y="154" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="500" y="138" width="62" height="24"/><text x="531" y="154" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="564" y="138" width="62" height="24"/><text x="595" y="154" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="628" y="138" width="62" height="24"/><text x="659" y="154" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="180" y="164" width="62" height="24"/><text x="211" y="180" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="244" y="164" width="62" height="24"/><text x="275" y="180" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="308" y="164" width="62" height="24"/><text x="339" y="180" text-anchor="middle">none</text></g>
-<g class="cell band-3"><rect x="372" y="164" width="62" height="24"/><text x="403" y="180" text-anchor="middle">50</text></g>
-<g class="cell band-none"><rect x="436" y="164" width="62" height="24"/><text x="467" y="180" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="500" y="164" width="62" height="24"/><text x="531" y="180" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="564" y="164" width="62" height="24"/><text x="595" y="180" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="628" y="164" width="62" height="24"/><text x="659" y="180" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="180" y="190" width="62" height="24"/><text x="211" y="206" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="244" y="190" width="62" height="24"/><text x="275" y="206" text-anchor="middle">none</text></g>
-<g class="cell band-3"><rect x="308" y="190" width="62" height="24"/><text x="339" y="206" text-anchor="middle">50</text></g>
-<g class="cell band-none"><rect x="372" y="190" width="62" height="24"/><text x="403" y="206" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="436" y="190" width="62" height="24"/><text x="467" y="206" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="500" y="190" width="62" height="24"/><text x="531" y="206" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="564" y="190" width="62" height="24"/><text x="595" y="206" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="628" y="190" width="62" height="24"/><text x="659" y="206" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="180" y="216" width="62" height="24"/><text x="211" y="232" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="244" y="216" width="62" height="24"/><text x="275" y="232" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="308" y="216" width="62" height="24"/><text x="339" y="232" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="372" y="216" width="62" height="24"/><text x="403" y="232" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="436" y="216" width="62" height="24"/><text x="467" y="232" text-anchor="middle">none</text></g>
-<g class="cell band-4 mark-expected"><rect x="500" y="216" width="62" height="24"/><text x="531" y="232" text-anchor="middle">70 e</text></g>
-<g class="cell band-none"><rect x="564" y="216" width="62" height="24"/><text x="595" y="232" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="628" y="216" width="62" height="24"/><text x="659" y="232" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="180" y="242" width="62" height="24"/><text x="211" y="258" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="244" y="242" width="62" height="24"/><text x="275" y="258" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="308" y="242" width="62" height="24"/><text x="339" y="258" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="372" y="242" width="62" height="24"/><text x="403" y="258" text-anchor="middle">none</text></g>
-<g class="cell band-4 mark-expected"><rect x="436" y="242" width="62" height="24"/><text x="467" y="258" text-anchor="middle">70 e</text></g>
-<g class="cell band-none"><rect x="500" y="242" width="62" height="24"/><text x="531" y="258" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="564" y="242" width="62" height="24"/><text x="595" y="258" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="628" y="242" width="62" height="24"/><text x="659" y="258" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="180" y="268" width="62" height="24"/><text x="211" y="284" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="244" y="268" width="62" height="24"/><text x="275" y="284" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="308" y="268" width="62" height="24"/><text x="339" y="284" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="372" y="268" width="62" height="24"/><text x="403" y="284" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="436" y="268" width="62" height="24"/><text x="467" y="284" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="500" y="268" width="62" height="24"/><text x="531" y="284" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="564" y="268" width="62" height="24"/><text x="595" y="284" text-anchor="middle">none</text></g>
-<g class="cell band-5"><rect x="628" y="268" width="62" height="24"/><text x="659" y="284" text-anchor="middle">100</text></g>
-<g class="cell band-none"><rect x="180" y="294" width="62" height="24"/><text x="211" y="310" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="244" y="294" width="62" height="24"/><text x="275" y="310" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="308" y="294" width="62" height="24"/><text x="339" y="310" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="372" y="294" width="62" height="24"/><text x="403" y="310" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="436" y="294" width="62" height="24"/><text x="467" y="310" text-anchor="middle">none</text></g>
-<g class="cell band-none"><rect x="500" y="294" width="62" height="24"/><text x="531" y="310" text-anchor="middle">none</text></g>
-<g class="cell band-5"><rect x="564" y="294" width="62" height="24"/><text x="595" y="310" text-anchor="middle">100</text></g>
-<g class="cell band-none"><rect x="628" y="294" width="62" height="24"/><text x="659" y="310" text-anchor="middle">none</text></g>
-<g class="group"><rect x="179" y="111" width="128" height="52"><title>cluster 1</title></rect></g>
-<g class="group"><rect x="307" y="163" width="128" height="52"><title>cluster 2</title></rect></g>
-<g class="group"><rect x="435" y="215" width="128" height="52"><title>cluster 3</title></rect></g>
-<g class="group"><rect x="563" y="267" width="128" height="52"><title>cluster 4</title></rect></g>
+<svg role="img" aria-labelledby="co-change-between-the-8-files-of-the-strongest-clusters-degree-in-percent-4f9994-title co-change-between-the-8-files-of-the-strongest-clusters-degree-in-percent-4f9994-desc" viewBox="0 0 580 388" preserveAspectRatio="xMinYMin meet">
+<title id="co-change-between-the-8-files-of-the-strongest-clusters-degree-in-percent-4f9994-title">Co-change between the 8 files of the strongest clusters, degree in percent</title>
+<desc id="co-change-between-the-8-files-of-the-strongest-clusters-degree-in-percent-4f9994-desc">A grid of 8 rows by 8 columns holding coupling degree in percent. 4 boxes along the diagonal mark groups of rows. Each cell prints its value; the table below lists every cell that has a value or a mark.</desc>
+<text x="197" y="106" transform="rotate(-35 197 106)">src/api/orders.ts</text>
+<text x="231" y="106" transform="rotate(-35 231 106)">src/web/orders-view.ts</text>
+<text x="265" y="106" transform="rotate(-35 265 106)">src/config/flags.ts</text>
+<text x="299" y="106" transform="rotate(-35 299 106)">src/runtime/flags.ts</text>
+<text x="333" y="106" transform="rotate(-35 333 106)">src/billing/ledger.test.ts</text>
+<text x="367" y="106" transform="rotate(-35 367 106)">src/billing/ledger.ts</text>
+<text x="401" y="106" transform="rotate(-35 401 106)">src/search/index.ts</text>
+<text x="435" y="106" transform="rotate(-35 435 106)">src/search/ranking.ts</text>
+<text x="174" y="128" dominant-baseline="central" text-anchor="end">src/api/orders.ts</text>
+<text x="174" y="162" dominant-baseline="central" text-anchor="end">src/web/orders-view.ts</text>
+<text x="174" y="196" dominant-baseline="central" text-anchor="end">src/config/flags.ts</text>
+<text x="174" y="230" dominant-baseline="central" text-anchor="end">src/runtime/flags.ts</text>
+<text x="174" y="264" dominant-baseline="central" text-anchor="end">src/billing/ledger.test.ts</text>
+<text x="174" y="298" dominant-baseline="central" text-anchor="end">src/billing/ledger.ts</text>
+<text x="174" y="332" dominant-baseline="central" text-anchor="end">src/search/index.ts</text>
+<text x="174" y="366" dominant-baseline="central" text-anchor="end">src/search/ranking.ts</text>
+<g class="cell band-none"><rect x="180" y="112" width="32" height="32"/></g>
+<g class="cell band-5"><rect x="214" y="112" width="32" height="32"/><text x="230" y="128" text-anchor="middle" dominant-baseline="central">80</text></g>
+<g class="cell band-none"><rect x="248" y="112" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="282" y="112" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="316" y="112" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="350" y="112" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="384" y="112" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="418" y="112" width="32" height="32"/></g>
+<g class="cell band-5"><rect x="180" y="146" width="32" height="32"/><text x="196" y="162" text-anchor="middle" dominant-baseline="central">80</text></g>
+<g class="cell band-none"><rect x="214" y="146" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="248" y="146" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="282" y="146" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="316" y="146" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="350" y="146" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="384" y="146" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="418" y="146" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="180" y="180" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="214" y="180" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="248" y="180" width="32" height="32"/></g>
+<g class="cell band-3"><rect x="282" y="180" width="32" height="32"/><text x="298" y="196" text-anchor="middle" dominant-baseline="central">50</text></g>
+<g class="cell band-none"><rect x="316" y="180" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="350" y="180" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="384" y="180" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="418" y="180" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="180" y="214" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="214" y="214" width="32" height="32"/></g>
+<g class="cell band-3"><rect x="248" y="214" width="32" height="32"/><text x="264" y="230" text-anchor="middle" dominant-baseline="central">50</text></g>
+<g class="cell band-none"><rect x="282" y="214" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="316" y="214" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="350" y="214" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="384" y="214" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="418" y="214" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="180" y="248" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="214" y="248" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="248" y="248" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="282" y="248" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="316" y="248" width="32" height="32"/></g>
+<g class="cell band-4 mark-expected"><rect x="350" y="248" width="32" height="32"/><text x="366" y="264" text-anchor="middle" dominant-baseline="central">70 e</text></g>
+<g class="cell band-none"><rect x="384" y="248" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="418" y="248" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="180" y="282" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="214" y="282" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="248" y="282" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="282" y="282" width="32" height="32"/></g>
+<g class="cell band-4 mark-expected"><rect x="316" y="282" width="32" height="32"/><text x="332" y="298" text-anchor="middle" dominant-baseline="central">70 e</text></g>
+<g class="cell band-none"><rect x="350" y="282" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="384" y="282" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="418" y="282" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="180" y="316" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="214" y="316" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="248" y="316" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="282" y="316" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="316" y="316" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="350" y="316" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="384" y="316" width="32" height="32"/></g>
+<g class="cell band-5"><rect x="418" y="316" width="32" height="32"/><text x="434" y="332" text-anchor="middle" dominant-baseline="central">100</text></g>
+<g class="cell band-none"><rect x="180" y="350" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="214" y="350" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="248" y="350" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="282" y="350" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="316" y="350" width="32" height="32"/></g>
+<g class="cell band-none"><rect x="350" y="350" width="32" height="32"/></g>
+<g class="cell band-5"><rect x="384" y="350" width="32" height="32"/><text x="400" y="366" text-anchor="middle" dominant-baseline="central">100</text></g>
+<g class="cell band-none"><rect x="418" y="350" width="32" height="32"/></g>
+<g class="group"><rect x="179" y="111" width="68" height="68"><title>cluster 1</title></rect></g>
+<g class="group"><rect x="247" y="179" width="68" height="68"><title>cluster 2</title></rect></g>
+<g class="group"><rect x="315" y="247" width="68" height="68"><title>cluster 3</title></rect></g>
+<g class="group"><rect x="383" y="315" width="68" height="68"><title>cluster 4</title></rect></g>
 </svg>
 <table>
-<caption>Co-change between the 8 files of the strongest clusters, degree in percent: coupling degree in percent</caption>
-<thead><tr><th scope="col"></th><th scope="col" class="number">src/api/orders.ts</th><th scope="col" class="number">src/web/orders-view.ts</th><th scope="col" class="number">src/config/flags.ts</th><th scope="col" class="number">src/runtime/flags.ts</th><th scope="col" class="number">src/billing/ledger.test.ts</th><th scope="col" class="number">src/billing/ledger.ts</th><th scope="col" class="number">src/search/index.ts</th><th scope="col" class="number">src/search/ranking.ts</th></tr></thead>
+<caption>Co-change between the 8 files of the strongest clusters, degree in percent: coupling degree in percent, the cells that have a value or a mark</caption>
+<thead><tr><th scope="col">Row</th><th scope="col">Column</th><th scope="col" class="number">Value</th><th scope="col">Mark</th><th scope="col">Row group</th><th scope="col">Column group</th></tr></thead>
 <tbody>
-<tr><th scope="row">src/api/orders.ts (cluster 1)</th><td class="number">none</td><td class="number">80</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td></tr>
-<tr><th scope="row">src/web/orders-view.ts (cluster 1)</th><td class="number">80</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td></tr>
-<tr><th scope="row">src/config/flags.ts (cluster 2)</th><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">50</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td></tr>
-<tr><th scope="row">src/runtime/flags.ts (cluster 2)</th><td class="number">none</td><td class="number">none</td><td class="number">50</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td></tr>
-<tr><th scope="row">src/billing/ledger.test.ts (cluster 3)</th><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">70 e</td><td class="number">none</td><td class="number">none</td></tr>
-<tr><th scope="row">src/billing/ledger.ts (cluster 3)</th><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">70 e</td><td class="number">none</td><td class="number">none</td><td class="number">none</td></tr>
-<tr><th scope="row">src/search/index.ts (cluster 4)</th><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">100</td></tr>
-<tr><th scope="row">src/search/ranking.ts (cluster 4)</th><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">none</td><td class="number">100</td><td class="number">none</td></tr>
+<tr><td>src/api/orders.ts</td><td>src/web/orders-view.ts</td><td class="number">80</td><td></td><td>cluster 1</td><td>cluster 1</td></tr>
+<tr><td>src/web/orders-view.ts</td><td>src/api/orders.ts</td><td class="number">80</td><td></td><td>cluster 1</td><td>cluster 1</td></tr>
+<tr><td>src/config/flags.ts</td><td>src/runtime/flags.ts</td><td class="number">50</td><td></td><td>cluster 2</td><td>cluster 2</td></tr>
+<tr><td>src/runtime/flags.ts</td><td>src/config/flags.ts</td><td class="number">50</td><td></td><td>cluster 2</td><td>cluster 2</td></tr>
+<tr><td>src/billing/ledger.test.ts</td><td>src/billing/ledger.ts</td><td class="number">70</td><td>an expected pair (a test and its code, a header and its source, or another pair listed in the table of expected pairs)</td><td>cluster 3</td><td>cluster 3</td></tr>
+<tr><td>src/billing/ledger.ts</td><td>src/billing/ledger.test.ts</td><td class="number">70</td><td>an expected pair (a test and its code, a header and its source, or another pair listed in the table of expected pairs)</td><td>cluster 3</td><td>cluster 3</td></tr>
+<tr><td>src/search/index.ts</td><td>src/search/ranking.ts</td><td class="number">100</td><td></td><td>cluster 4</td><td>cluster 4</td></tr>
+<tr><td>src/search/ranking.ts</td><td>src/search/index.ts</td><td class="number">100</td><td></td><td>cluster 4</td><td>cluster 4</td></tr>
 </tbody>
 </table>
-<p class="legend">Colour is coupling degree in percent in five bands, and each cell prints its value: band 1: 20, band 2: 20 to 40, band 3: 40 to 60, band 4: 60 to 80, band 5: 80 to 100. Hatched cells have no value. e is an expected pair (a test and its code, a header and its source, or another pair listed in the table of expected pairs) (2 cells). Boxes along the diagonal mark 4 groups: cluster 1 (2 rows), cluster 2 (2 rows), cluster 3 (2 rows), cluster 4 (2 rows). Rows and columns are ordered by cluster (the numbers of the table of clusters), and within a cluster by sum of coupling over production pairs, then coupled files, then path. Draws 8 files and 4 of 4 clusters, at most 18 files; omits 0 files and 0 clusters (clusters are drawn in the order of the table of clusters, then the files in no cluster with the greatest sum).  `cochange clusters` lists every cluster. A cell is the degree of the pair, which is also its colour; shared changes are in the tables of pairs, and a pair that shares fewer than 5 changes (the support floor) has no cell value. Expected pairs are drawn and marked, not left out (1 of 1 expected pair falls within the drawn files). Cluster edges are pairs at or above the degree guideline of 30 percent, so a marked cell outside the boxes is a pair under the guideline.</p>
+<p class="legend">Colour is coupling degree in percent in five bands, and each cell prints its value: band 1: 20, band 2: 20 to 40, band 3: 40 to 60, band 4: 60 to 80, band 5: 80 to 100. Hatched blank cells have no value (56 cells of 64 cells). e is an expected pair (a test and its code, a header and its source, or another pair listed in the table of expected pairs) (2 cells). Boxes along the diagonal mark 4 groups: cluster 1 (2 rows), cluster 2 (2 rows), cluster 3 (2 rows), cluster 4 (2 rows). Rows and columns are ordered by cluster (the numbers of the table of clusters), and within a cluster by sum of coupling over production pairs, then coupled files, then path. Draws 8 files and 4 of 4 clusters, at most 18 files; omits 0 files and 0 clusters (clusters are drawn in the order of the table of clusters, then the files in no cluster with the greatest sum).  `cochange clusters` lists every cluster. A cell is the degree of the pair, which is also its colour; shared changes are in the tables of pairs, and a pair that shares fewer than 5 changes (the support floor) has no cell value. Expected pairs are drawn and marked, not left out (1 of 1 expected pair falls within the drawn files). Cluster edges are pairs at or above the degree guideline of 30 percent, so a marked cell outside the boxes is a pair under the guideline.</p>
 </figure>
 </section>
 <section id="pairs" aria-labelledby="pairs-heading">
