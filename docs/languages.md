@@ -27,10 +27,10 @@ Tree-sitter WASM grammars run through `web-tree-sitter`, with no native builds. 
 | Tier | Languages | Support |
 |---|---|---|
 | **1** | TypeScript/JavaScript, C#, C++ | All three layers, with full adapters for every plugin |
-| **2** | Python, Go, Java, Kotlin, Rust | All three layers, with full adapters for every plugin, added in roughly that order. Java and Kotlin share one JVM graph, so mixed projects resolve across both. |
+| **2** | Python, Go, Java, Kotlin, Rust | All three layers, with full adapters for every plugin. Java and Kotlin share one JVM graph, so mixed projects resolve across both. |
 | **0** | Everything else | History layer, plus best-effort lexical metrics: indentation metrics always, profile metrics only if the language is mapped to a profile. No deterministic moves and no import-graph units. |
 
-Within tier 1 the build order was TypeScript, then C#, then C++, from easiest to hardest resolution. TypeScript also has a mature codemod (ts-morph) for deterministic moves. All eight adapters are supported: each passes the conformance fixtures of every plugin.
+Tier 1 holds the languages whose resolution was built first, from easiest to hardest: TypeScript, which has a mature codemod (ts-morph) for deterministic moves, then C#, then C++. All eight adapters are supported: each passes the conformance fixtures of every plugin.
 
 An adapter is **supported** only when it passes the shared conformance fixtures for every plugin that uses it. Only supported adapters analyse a repository and ship grammars. An **experimental** adapter is registered and tested but is not used to analyse a repository and ships no grammar: it runs only under test, through `overrideSupportedAdapters()`. The tables on this page are the explicit list of supported languages. A file in any other language gets the history layer and what the lexical layer can measure, and each output says which layer produced each value.
 
