@@ -105,9 +105,38 @@ Erosion rises in 77% of agent trajectories and in 53% of the human repositories.
 
 The paper considered cognitive complexity and did not use it, so the table has no figure for the suite's primary ranking metric.
 
+## The same question on four repositories
+
+`complexity backtest`, a maintainer command ([CONTRIBUTING.md](../CONTRIBUTING.md)), asks the paper's question of a repository's own history. It measures each file at sampled revisions and sets the measures against what the landed changes of the following period did to the file. The figures below are from a run in November 2026 with the defaults: 7 samples over 36 months, so 6 periods of about 6 months, on the default branch of each repository.
+
+Each cell is the Spearman correlation with the number of landed changes that touched the file in the following period, then the same with code lines held fixed.
+
+| Measure at the sample | orleans (C#) | spicedb (Go) | django (Python) | vite (TypeScript) |
+|---|---|---|---|---|
+| Code lines | 0.332 | 0.500 | 0.453 | 0.722 |
+| Largest cyclomatic complexity | 0.271, 0.026 | 0.369, −0.018 | 0.308, −0.050 | 0.707, 0.319 |
+| Mean cyclomatic complexity | 0.214, 0.014 | 0.181, −0.061 | 0.107, −0.037 | 0.655, 0.244 |
+| Share of weighted complexity above the guideline | 0.188, 0.057 | 0.312, 0.045 | 0.222, −0.016 | 0.643, 0.322 |
+| Largest cognitive complexity | 0.276, 0.034 | 0.348, −0.028 | 0.292, −0.076 | 0.703, 0.309 |
+| Indentation complexity | 0.321, −0.028 | 0.473, −0.030 | 0.432, −0.020 | 0.721, 0.125 |
+| Prior changes | 0.207, 0.123 | 0.482, 0.307 | 0.412, 0.255 | 0.689, 0.381 |
+| Indentation complexity times prior changes | 0.218, 0.127 | 0.498, 0.283 | 0.423, 0.248 | 0.715, 0.398 |
+| Files, summed over the periods | 7,524 | 2,784 | 3,385 | 1,831 |
+
+- **Code lines orders the files best in every repository**, as it did in the paper.
+- **In three of the four, complexity adds nothing to size.** With code lines held fixed, every cyclomatic and cognitive measure is within 0.08 of zero on orleans, spicedb and django. Cognitive complexity does no better than cyclomatic.
+- **Vite is the exception**, with 0.24 to 0.33 left after the control. The cause has not been looked into.
+- **How often a file changed before is the one measure that adds to size everywhere**: 0.12 to 0.38 with code lines held fixed. That is the history half of a hotspot, and the basis of the suite's first position, that history shows cost.
+- **The share above the guideline has the weakest raw link of the cyclomatic measures** on orleans and vite and sits between the mean and the largest value on the other two, which agrees with the paper's ranking of erosion below max CC.
+- **Lines churned per change** follows the same pattern more weakly: code lines gives 0.18 to 0.43, and the complexity partials are under 0.13 outside vite.
+- **Fix share rests on few files**: 183 to 319 file samples per repository had three or more changes in a period. The partials range from −0.11 to 0.25 with no measure consistent across the four.
+
+These are correlations over files, not functions, on four repositories. They say what orders files by later change, not what causes it, and they set no threshold.
+
 ## What it means for the suite
 
 - **The harness is an independent outcome measure.** Hidden tests, regression tests that accumulate, and dollars per checkpoint measure whether a later change succeeded and what it cost, without reference to any static score. An agent run with and without the plugins could be compared on solve rate and cost at the later checkpoints.
 - **The fit is partial.** A trajectory has at most 8 commits, so history-based findings would be graded weak. The workspaces are far smaller than the repositories the suite is built for.
 - **Neither metric is a score to act on.** Verbosity is lint. Erosion is one structural score with a fixed cutoff, and the paper's own table shows it predicts cost less well than line count. `complexity report trends` draws it beside code lines and the mean and largest cyclomatic complexity so that the measures can be compared on a repository's own history, not because any of them is a target.
+- **Size and change history carry the signal.** On real repositories a file's complexity mostly repeats its size, and prior change is what adds to it. A complexity ranking is most useful weighted by change, which is what `complexity analyse` does by default and what a hotspot is.
 - **Cost is the outcome to measure.** Static measures relate to what the next change costs far more than to whether it passes, which matches the suite's outcomes of change cost and agent effort.

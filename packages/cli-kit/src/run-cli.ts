@@ -65,6 +65,8 @@ export interface SubcommandHelp {
 
 export interface Command {
   summary: string;
+  /** A maintainer command: runnable, and described by `<command> --help`, but left out of the tool's `--help` listing. */
+  hidden?: boolean;
   /** The positional arguments, shown in the usage line of the command's help: `<path>...`, `<from>-><to>`. */
   usage?: string;
   options?: OptionSpec;
@@ -260,7 +262,7 @@ const commonOptionHelp = [
 
 function helpText(cli: CliDefinition): string {
   const commands: [string, string][] = [
-    ...Object.entries(cli.commands).map(([name, command]): [string, string] => [name, command.summary]),
+    ...Object.entries(cli.commands).filter(([, command]) => command.hidden !== true).map(([name, command]): [string, string] => [name, command.summary]),
     ["config explain", configExplain.summary],
     ...(cli.rules ? [["explain <rule>", "Describe a recommendation rule"] as [string, string]] : []),
   ];

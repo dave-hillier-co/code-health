@@ -1,0 +1,442 @@
+{
+  "command": "backtest",
+  "config": "0000000000000000",
+  "evidence": {
+    "grade": "weak",
+    "logicalChangesInWindow": 11,
+    "usableHistoryMonths": 10
+  },
+  "inputs": {
+    "months": 11,
+    "revisions": [
+      "1f2e88138952d79d71cce27f580898cc98ed504a",
+      "5ae108c4d27e85ce81efb67449cdfd697ed50af7",
+      "fef6f2662fc8140b31860111d4e9fcd766daa2ee",
+      "3e3ac5c3ef7c05414fb50ef680a151b26de12aae"
+    ],
+    "samples": 4
+  },
+  "repo": {
+    "dirty": false,
+    "head": "3e3ac5c3ef7c05414fb50ef680a151b26de12aae"
+  },
+  "results": {
+    "correlations": [
+      {
+        "correlation": 0.869,
+        "fileSamples": 72,
+        "measure": "codeLines",
+        "outcome": "changes",
+        "partialOnCodeLines": null,
+        "periods": 3
+      },
+      {
+        "correlation": null,
+        "fileSamples": 72,
+        "measure": "functions",
+        "outcome": "changes",
+        "partialOnCodeLines": null,
+        "periods": 3
+      },
+      {
+        "correlation": 0.89,
+        "fileSamples": 72,
+        "measure": "cyclomaticSum",
+        "outcome": "changes",
+        "partialOnCodeLines": 0.456,
+        "periods": 3
+      },
+      {
+        "correlation": 0.89,
+        "fileSamples": 72,
+        "measure": "cyclomaticMean",
+        "outcome": "changes",
+        "partialOnCodeLines": 0.456,
+        "periods": 3
+      },
+      {
+        "correlation": 0.89,
+        "fileSamples": 72,
+        "measure": "cyclomaticMax",
+        "outcome": "changes",
+        "partialOnCodeLines": 0.456,
+        "periods": 3
+      },
+      {
+        "correlation": 0.924,
+        "fileSamples": 72,
+        "measure": "shareAbove",
+        "outcome": "changes",
+        "partialOnCodeLines": 0.728,
+        "periods": 3
+      },
+      {
+        "correlation": 0.89,
+        "fileSamples": 72,
+        "measure": "cognitiveSum",
+        "outcome": "changes",
+        "partialOnCodeLines": 0.456,
+        "periods": 3
+      },
+      {
+        "correlation": 0.89,
+        "fileSamples": 72,
+        "measure": "cognitiveMax",
+        "outcome": "changes",
+        "partialOnCodeLines": 0.456,
+        "periods": 3
+      },
+      {
+        "correlation": 0.89,
+        "fileSamples": 72,
+        "measure": "indentation",
+        "outcome": "changes",
+        "partialOnCodeLines": 0.456,
+        "periods": 3
+      },
+      {
+        "correlation": 0.94,
+        "fileSamples": 72,
+        "measure": "priorChanges",
+        "outcome": "changes",
+        "partialOnCodeLines": 0.758,
+        "periods": 3
+      },
+      {
+        "correlation": 0.889,
+        "fileSamples": 72,
+        "measure": "hotspot",
+        "outcome": "changes",
+        "partialOnCodeLines": 0.447,
+        "periods": 3
+      },
+      {
+        "correlation": 0.799,
+        "fileSamples": 72,
+        "measure": "codeLines",
+        "outcome": "linesChurned",
+        "partialOnCodeLines": null,
+        "periods": 3
+      },
+      {
+        "correlation": null,
+        "fileSamples": 72,
+        "measure": "functions",
+        "outcome": "linesChurned",
+        "partialOnCodeLines": null,
+        "periods": 3
+      },
+      {
+        "correlation": 0.678,
+        "fileSamples": 72,
+        "measure": "cyclomaticSum",
+        "outcome": "linesChurned",
+        "partialOnCodeLines": -0.768,
+        "periods": 3
+      },
+      {
+        "correlation": 0.678,
+        "fileSamples": 72,
+        "measure": "cyclomaticMean",
+        "outcome": "linesChurned",
+        "partialOnCodeLines": -0.768,
+        "periods": 3
+      },
+      {
+        "correlation": 0.678,
+        "fileSamples": 72,
+        "measure": "cyclomaticMax",
+        "outcome": "linesChurned",
+        "partialOnCodeLines": -0.768,
+        "periods": 3
+      },
+      {
+        "correlation": 0.666,
+        "fileSamples": 72,
+        "measure": "shareAbove",
+        "outcome": "linesChurned",
+        "partialOnCodeLines": -0.056,
+        "periods": 3
+      },
+      {
+        "correlation": 0.678,
+        "fileSamples": 72,
+        "measure": "cognitiveSum",
+        "outcome": "linesChurned",
+        "partialOnCodeLines": -0.768,
+        "periods": 3
+      },
+      {
+        "correlation": 0.678,
+        "fileSamples": 72,
+        "measure": "cognitiveMax",
+        "outcome": "linesChurned",
+        "partialOnCodeLines": -0.768,
+        "periods": 3
+      },
+      {
+        "correlation": 0.678,
+        "fileSamples": 72,
+        "measure": "indentation",
+        "outcome": "linesChurned",
+        "partialOnCodeLines": -0.768,
+        "periods": 3
+      },
+      {
+        "correlation": 0.714,
+        "fileSamples": 72,
+        "measure": "priorChanges",
+        "outcome": "linesChurned",
+        "partialOnCodeLines": -0.221,
+        "periods": 3
+      },
+      {
+        "correlation": 0.682,
+        "fileSamples": 72,
+        "measure": "hotspot",
+        "outcome": "linesChurned",
+        "partialOnCodeLines": -0.777,
+        "periods": 3
+      },
+      {
+        "correlation": 0.276,
+        "fileSamples": 66,
+        "measure": "codeLines",
+        "outcome": "linesPerChange",
+        "partialOnCodeLines": null,
+        "periods": 3
+      },
+      {
+        "correlation": null,
+        "fileSamples": 66,
+        "measure": "functions",
+        "outcome": "linesPerChange",
+        "partialOnCodeLines": null,
+        "periods": 3
+      },
+      {
+        "correlation": 0.064,
+        "fileSamples": 66,
+        "measure": "cyclomaticSum",
+        "outcome": "linesPerChange",
+        "partialOnCodeLines": -0.832,
+        "periods": 3
+      },
+      {
+        "correlation": 0.064,
+        "fileSamples": 66,
+        "measure": "cyclomaticMean",
+        "outcome": "linesPerChange",
+        "partialOnCodeLines": -0.832,
+        "periods": 3
+      },
+      {
+        "correlation": 0.064,
+        "fileSamples": 66,
+        "measure": "cyclomaticMax",
+        "outcome": "linesPerChange",
+        "partialOnCodeLines": -0.832,
+        "periods": 3
+      },
+      {
+        "correlation": 0.067,
+        "fileSamples": 66,
+        "measure": "shareAbove",
+        "outcome": "linesPerChange",
+        "partialOnCodeLines": -0.292,
+        "periods": 3
+      },
+      {
+        "correlation": 0.064,
+        "fileSamples": 66,
+        "measure": "cognitiveSum",
+        "outcome": "linesPerChange",
+        "partialOnCodeLines": -0.832,
+        "periods": 3
+      },
+      {
+        "correlation": 0.064,
+        "fileSamples": 66,
+        "measure": "cognitiveMax",
+        "outcome": "linesPerChange",
+        "partialOnCodeLines": -0.832,
+        "periods": 3
+      },
+      {
+        "correlation": 0.064,
+        "fileSamples": 66,
+        "measure": "indentation",
+        "outcome": "linesPerChange",
+        "partialOnCodeLines": -0.832,
+        "periods": 3
+      },
+      {
+        "correlation": 0.019,
+        "fileSamples": 66,
+        "measure": "priorChanges",
+        "outcome": "linesPerChange",
+        "partialOnCodeLines": -0.566,
+        "periods": 3
+      },
+      {
+        "correlation": 0.029,
+        "fileSamples": 66,
+        "measure": "hotspot",
+        "outcome": "linesPerChange",
+        "partialOnCodeLines": -0.838,
+        "periods": 3
+      },
+      {
+        "correlation": null,
+        "fileSamples": 0,
+        "measure": "codeLines",
+        "outcome": "fixShare",
+        "partialOnCodeLines": null,
+        "periods": 0
+      },
+      {
+        "correlation": null,
+        "fileSamples": 0,
+        "measure": "functions",
+        "outcome": "fixShare",
+        "partialOnCodeLines": null,
+        "periods": 0
+      },
+      {
+        "correlation": null,
+        "fileSamples": 0,
+        "measure": "cyclomaticSum",
+        "outcome": "fixShare",
+        "partialOnCodeLines": null,
+        "periods": 0
+      },
+      {
+        "correlation": null,
+        "fileSamples": 0,
+        "measure": "cyclomaticMean",
+        "outcome": "fixShare",
+        "partialOnCodeLines": null,
+        "periods": 0
+      },
+      {
+        "correlation": null,
+        "fileSamples": 0,
+        "measure": "cyclomaticMax",
+        "outcome": "fixShare",
+        "partialOnCodeLines": null,
+        "periods": 0
+      },
+      {
+        "correlation": null,
+        "fileSamples": 0,
+        "measure": "shareAbove",
+        "outcome": "fixShare",
+        "partialOnCodeLines": null,
+        "periods": 0
+      },
+      {
+        "correlation": null,
+        "fileSamples": 0,
+        "measure": "cognitiveSum",
+        "outcome": "fixShare",
+        "partialOnCodeLines": null,
+        "periods": 0
+      },
+      {
+        "correlation": null,
+        "fileSamples": 0,
+        "measure": "cognitiveMax",
+        "outcome": "fixShare",
+        "partialOnCodeLines": null,
+        "periods": 0
+      },
+      {
+        "correlation": null,
+        "fileSamples": 0,
+        "measure": "indentation",
+        "outcome": "fixShare",
+        "partialOnCodeLines": null,
+        "periods": 0
+      },
+      {
+        "correlation": null,
+        "fileSamples": 0,
+        "measure": "priorChanges",
+        "outcome": "fixShare",
+        "partialOnCodeLines": null,
+        "periods": 0
+      },
+      {
+        "correlation": null,
+        "fileSamples": 0,
+        "measure": "hotspot",
+        "outcome": "fixShare",
+        "partialOnCodeLines": null,
+        "periods": 0
+      }
+    ],
+    "limits": [
+      "A correlation says how well a measure orders the files by what followed. It does not say the measure caused it, and it is not a threshold for any measure.",
+      "A larger file is touched by more changes because there is more of it. The partial correlation holds code lines fixed, and is the figure that says whether a measure adds anything to size.",
+      "The unit is a file. Whether a function's complexity predicts changes to that function is not measured.",
+      "Changes are counted for the files that had a measured function at the sample. A file added after the sample, or read by the lexical layer alone, is not in the period.",
+      "A change with more files than `history.maxChangesetSize` is left out, as are commits made through the suite's skills.",
+      "A fix is a landed change whose text matches `history.fixPatterns`. Some matches are not defects, and a repository that does not name its fixes gives no fix share.",
+      "Every sample is read with the config of the checkout and the parsers of this version, not those of the time."
+    ],
+    "measures": {
+      "codeLines": "Lines of code, blank and comment lines excluded",
+      "cognitiveMax": "Largest cognitive complexity of one function",
+      "cognitiveSum": "Sum of the functions' cognitive complexity",
+      "cyclomaticMax": "Largest cyclomatic complexity of one function",
+      "cyclomaticMean": "Mean cyclomatic complexity per function",
+      "cyclomaticSum": "Sum of the functions' cyclomatic complexity",
+      "functions": "Functions measured, a nested function counted in the function that holds it",
+      "hotspot": "Indentation complexity times prior changes",
+      "indentation": "Indentation complexity of the file, the complexity half of a hotspot",
+      "priorChanges": "Landed changes that touched the file in the period before the sample, as long as the period after it",
+      "shareAbove": "Share of weighted complexity in functions above the cyclomatic guideline, where a function's weight is its cyclomatic complexity times the square root of its code lines"
+    },
+    "minChanges": 3,
+    "minFiles": 20,
+    "outcomes": {
+      "changes": "Landed changes that touched the file, over every file",
+      "fixShare": "Share of the file's landed changes that are fixes, over the files with at least the minimum number of changes",
+      "linesChurned": "Lines added plus deleted in the file, over every file",
+      "linesPerChange": "Lines added plus deleted per landed change, over the files that changed"
+    },
+    "periods": [
+      {
+        "files": 24,
+        "from": "2024-01-02",
+        "landedChanges": 3,
+        "oversizedSkipped": 0,
+        "revision": "1f2e88138952d79d71cce27f580898cc98ed504a",
+        "to": "2024-04-02"
+      },
+      {
+        "files": 24,
+        "from": "2024-04-02",
+        "landedChanges": 4,
+        "oversizedSkipped": 0,
+        "revision": "5ae108c4d27e85ce81efb67449cdfd697ed50af7",
+        "to": "2024-08-02"
+      },
+      {
+        "files": 24,
+        "from": "2024-08-02",
+        "landedChanges": 4,
+        "oversizedSkipped": 0,
+        "revision": "fef6f2662fc8140b31860111d4e9fcd766daa2ee",
+        "to": "2024-12-02"
+      }
+    ]
+  },
+  "schemaVersion": 1,
+  "tool": "complexity",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  }
+}

@@ -1,5 +1,6 @@
 import type { Command, Rule } from "@code-health/cli-kit/run-cli";
 import * as analyse from "./commands/analyse.ts";
+import * as backtest from "./commands/backtest.ts";
 import * as check from "./commands/check.ts";
 import * as depth from "./commands/depth.ts";
 import * as diff from "./commands/diff.ts";
@@ -25,6 +26,7 @@ export interface CommandModule {
  */
 export const commandModules: CommandModule[] = [
   analyse,
+  backtest,
   check,
   depth,
   diff,

@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Commercial. Third-party licences: THIRD_PARTY_NOTICES.md.
 var __defProp = Object.defineProperty;
 var __export = (target2, all) => {
-  for (var name11 in all)
-    __defProp(target2, name11, { get: all[name11], enumerable: true });
+  for (var name12 in all)
+    __defProp(target2, name12, { get: all[name12], enumerable: true });
 };
 
 // packages/cli-kit/src/args.ts
@@ -61,9 +61,9 @@ function parseArguments(argv, commandOptions = {}) {
     throw usageError(error instanceof Error ? error.message : String(error));
   }
   const { json, help, limit, fields, ...values } = parsed.values;
-  const [command10, ...positionals] = parsed.positionals;
+  const [command11, ...positionals] = parsed.positionals;
   return {
-    command: command10,
+    command: command11,
     positionals,
     json: json === true,
     help: help === true,
@@ -577,8 +577,8 @@ async function runCli(cli2, io) {
 }
 async function execute(cli2, io) {
   const started = Date.now();
-  const name11 = discoverCommand(io.argv);
-  if (name11 === void 0) {
+  const name12 = discoverCommand(io.argv);
+  if (name12 === void 0) {
     if (io.argv.includes("--help")) {
       io.stdout.write(helpText(cli2));
       return ExitCode.Success;
@@ -586,16 +586,16 @@ async function execute(cli2, io) {
     io.stderr.write(helpText(cli2));
     return ExitCode.Usage;
   }
-  if (name11 === "explain" && cli2.rules && !cli2.commands.explain) return explain(cli2, discoverPositionals(io.argv), io);
-  const command10 = name11 === "config" ? configExplain : cli2.commands[name11];
-  if (!command10) throw usageError(`unknown command "${name11}"; run with --help to list commands`);
-  const args2 = parseArguments(io.argv, command10.options);
+  if (name12 === "explain" && cli2.rules && !cli2.commands.explain) return explain(cli2, discoverPositionals(io.argv), io);
+  const command11 = name12 === "config" ? configExplain : cli2.commands[name12];
+  if (!command11) throw usageError(`unknown command "${name12}"; run with --help to list commands`);
+  const args2 = parseArguments(io.argv, command11.options);
   if (args2.help) {
-    io.stdout.write(commandHelp(cli2, name11, command10, args2.positionals[0]));
+    io.stdout.write(commandHelp(cli2, name12, command11, args2.positionals[0]));
     return ExitCode.Success;
   }
-  let commandName = name11;
-  if (name11 === "config") {
+  let commandName = name12;
+  if (name12 === "config") {
     if (args2.positionals[0] !== "explain") throw usageError("usage: config explain");
     commandName = "config explain";
   }
@@ -605,7 +605,7 @@ async function execute(cli2, io) {
   resetBuiltinOmissions();
   resetRunNotes();
   resetDropped();
-  const output = await command10.run(context);
+  const output = await command11.run(context);
   if (output.text !== void 0) {
     for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}
 `);
@@ -704,38 +704,38 @@ var commonOptionHelp = [
 ];
 function helpText(cli2) {
   const commands3 = [
-    ...Object.entries(cli2.commands).map(([name11, command10]) => [name11, command10.summary]),
+    ...Object.entries(cli2.commands).filter(([, command11]) => command11.hidden !== true).map(([name12, command11]) => [name12, command11.summary]),
     ["config explain", configExplain.summary],
     ...cli2.rules ? [["explain <rule>", "Describe a recommendation rule"]] : []
   ];
-  const width = Math.max(...commands3.map(([name11]) => name11.length));
+  const width = Math.max(...commands3.map(([name12]) => name12.length));
   return [
     `Usage: ${cli2.tool} <command> [options]`,
     "",
     "Commands:",
-    ...commands3.map(([name11, summary]) => `  ${name11.padEnd(width)}  ${summary}`),
+    ...commands3.map(([name12, summary]) => `  ${name12.padEnd(width)}  ${summary}`),
     "",
     "Options:",
     ...commonOptionHelp,
     ""
   ].join("\n");
 }
-function commandHelp(cli2, name11, command10, requested) {
-  const sub = requested === void 0 ? void 0 : command10.subcommands?.[requested];
+function commandHelp(cli2, name12, command11, requested) {
+  const sub = requested === void 0 ? void 0 : command11.subcommands?.[requested];
   const optionLines = (entries) => {
     const flags2 = entries.map(([option, spec]) => [
       `--${option}${spec.type === "string" ? ` <${option}>` : ""}`,
-      command10.optionHelp?.[option] ?? ""
+      command11.optionHelp?.[option] ?? ""
     ]);
     const width2 = Math.max(0, ...flags2.map(([flag]) => flag.length));
     return flags2.map(([flag, description]) => description === "" ? `  ${flag}` : `  ${flag.padEnd(width2)}  ${description}`);
   };
-  const all = Object.entries(command10.options ?? {});
-  const hiddenOptions = new Set(command10.hiddenOptions ?? []);
+  const all = Object.entries(command11.options ?? {});
+  const hiddenOptions = new Set(command11.hiddenOptions ?? []);
   if (sub !== void 0) {
     const taken = new Set(sub.options ?? []);
     return [
-      `Usage: ${cli2.tool} ${name11} ${requested}${command10.usage === void 0 ? "" : ` ${command10.usage}`} [options]`,
+      `Usage: ${cli2.tool} ${name12} ${requested}${command11.usage === void 0 ? "" : ` ${command11.usage}`} [options]`,
       "",
       sub.summary,
       "",
@@ -745,14 +745,14 @@ function commandHelp(cli2, name11, command10, requested) {
       ""
     ].join("\n");
   }
-  const subcommands = Object.entries(command10.subcommands ?? {}).filter(([, s]) => s.hidden !== true);
+  const subcommands = Object.entries(command11.subcommands ?? {}).filter(([, s]) => s.hidden !== true);
   const width = Math.max(0, ...subcommands.map(([sname]) => sname.length));
   return [
-    `Usage: ${cli2.tool} ${name11}${command10.usage === void 0 ? "" : ` ${command10.usage}`}${subcommands.length > 0 ? " <subcommand>" : ""} [options]`,
+    `Usage: ${cli2.tool} ${name12}${command11.usage === void 0 ? "" : ` ${command11.usage}`}${subcommands.length > 0 ? " <subcommand>" : ""} [options]`,
     "",
-    command10.summary,
+    command11.summary,
     "",
-    ...subcommands.length > 0 ? ["Subcommands:", ...subcommands.map(([sname, s]) => `  ${sname.padEnd(width)}  ${s.summary}`), `Run ${cli2.tool} ${name11} <subcommand> --help for the options of one.`, ""] : [],
+    ...subcommands.length > 0 ? ["Subcommands:", ...subcommands.map(([sname, s]) => `  ${sname.padEnd(width)}  ${s.summary}`), `Run ${cli2.tool} ${name12} <subcommand> --help for the options of one.`, ""] : [],
     "Options:",
     ...optionLines(all.filter(([option]) => !hiddenOptions.has(option))),
     ...commonOptionHelp,
@@ -1150,9 +1150,9 @@ var BINARY_EXTENSIONS = /* @__PURE__ */ new Set([
   "lockb"
 ]);
 function maybeText(path) {
-  const name11 = path.slice(path.lastIndexOf("/") + 1);
-  const dot = name11.lastIndexOf(".");
-  return dot <= 0 || !BINARY_EXTENSIONS.has(name11.slice(dot + 1).toLowerCase());
+  const name12 = path.slice(path.lastIndexOf("/") + 1);
+  const dot = name12.lastIndexOf(".");
+  return dot <= 0 || !BINARY_EXTENSIONS.has(name12.slice(dot + 1).toLowerCase());
 }
 var noAttributes = () => ({ generated: /* @__PURE__ */ new Set(), vendored: /* @__PURE__ */ new Set(), notGenerated: /* @__PURE__ */ new Set(), notVendored: /* @__PURE__ */ new Set() });
 async function classifyFiles(repoPath, ref, entries, treeFiles, options = {}) {
@@ -2253,13 +2253,13 @@ function canonical(value) {
   }
   return JSON.stringify(value) ?? "null";
 }
-function reportPath(root, tool, command10, variant) {
-  return join5(root, ".cache", "code-health", "reports", `${tool}.${command10}${variant === void 0 ? "" : `.${variant}`}.json`);
+function reportPath(root, tool, command11, variant) {
+  return join5(root, ".cache", "code-health", "reports", `${tool}.${command11}${variant === void 0 ? "" : `.${variant}`}.json`);
 }
 function skipReport(context, reason) {
   context.report = { stored: false, reason };
 }
-async function writeReport(context, identity2, command10, output, analysedHead, options = {}) {
+async function writeReport(context, identity2, command11, output, analysedHead, options = {}) {
   if (options.describesCommit !== true) {
     if (context.repo.dirty) {
       skipReport(context, "the working tree has uncommitted changes");
@@ -2282,7 +2282,7 @@ async function writeReport(context, identity2, command10, output, analysedHead, 
   const document2 = buildDocument({
     schemaVersion: identity2.schemaVersion,
     tool: identity2.tool,
-    command: command10,
+    command: command11,
     repo: { head: analysedHead, dirty: false },
     configHash: context.config.hash,
     inputs: output.inputs,
@@ -2296,7 +2296,7 @@ async function writeReport(context, identity2, command10, output, analysedHead, 
     truncated,
     ...options.replayable === true ? { meta: { printed } } : {}
   });
-  const file = reportPath(context.repo.root, identity2.tool, command10, options.variant);
+  const file = reportPath(context.repo.root, identity2.tool, command11, options.variant);
   const location = await locateCache(context.repo.root);
   ensureCacheDir({ ...location, cacheDir: join5(context.repo.root, ".cache", "code-health") });
   mkdirSync2(join5(file, ".."), { recursive: true });
@@ -2323,8 +2323,8 @@ import { fileURLToPath } from "node:url";
 var cached;
 function bundleIdentity(dir) {
   const hash2 = createHash3("sha256");
-  for (const name11 of readdirSync(dir).filter((file) => file.endsWith(".mjs")).sort()) {
-    hash2.update(name11).update("\0").update(readFileSync4(join6(dir, name11))).update("\0");
+  for (const name12 of readdirSync(dir).filter((file) => file.endsWith(".mjs")).sort()) {
+    hash2.update(name12).update("\0").update(readFileSync4(join6(dir, name12))).update("\0");
   }
   return hash2.digest("hex").slice(0, 16);
 }
@@ -2337,10 +2337,10 @@ function sourceFiles(dir) {
 }
 function sourceIdentity(packages) {
   const hash2 = createHash3("sha256");
-  for (const name11 of readdirSync(packages).sort()) {
+  for (const name12 of readdirSync(packages).sort()) {
     let files;
     try {
-      files = sourceFiles(join6(packages, name11, "src")).sort();
+      files = sourceFiles(join6(packages, name12, "src")).sort();
     } catch {
       continue;
     }
@@ -3121,10 +3121,10 @@ var extensionProfiles = {
   py: "python"
 };
 function selectProfile(path, mappings = {}) {
-  const name11 = path.slice(path.lastIndexOf("/") + 1);
-  const dot = name11.lastIndexOf(".");
+  const name12 = path.slice(path.lastIndexOf("/") + 1);
+  const dot = name12.lastIndexOf(".");
   if (dot <= 0) return void 0;
-  const extension = name11.slice(dot + 1).toLowerCase();
+  const extension = name12.slice(dot + 1).toLowerCase();
   const mappedName = mappings[extension];
   if (mappedName !== void 0) {
     const profile2 = profiles[mappedName];
@@ -3157,8 +3157,8 @@ var isSettings = (path) => /(^|\/)settings\.gradle(\.kts)?$/.test(path);
 var isMavenPom = (path) => path === "pom.xml" || path.endsWith("/pom.xml");
 var isManifest = (path) => manifestNames.has(path.slice(path.lastIndexOf("/") + 1));
 var withoutXmlComments = (text3) => text3.replace(/<!--[\s\S]*?-->/g, "");
-var element = (text3, name11) => new RegExp(`<${name11}>\\s*([^<]*?)\\s*</${name11}>`, "i").exec(text3)?.[1];
-var childOf = (dir, name11) => dir === "." ? name11 : `${dir}/${name11}`;
+var element = (text3, name12) => new RegExp(`<${name12}>\\s*([^<]*?)\\s*</${name12}>`, "i").exec(text3)?.[1];
+var childOf = (dir, name12) => dir === "." ? name12 : `${dir}/${name12}`;
 function gradleProjects(settings, text3) {
   const base = posix.dirname(settings);
   const names2 = /* @__PURE__ */ new Map();
@@ -3178,7 +3178,7 @@ var jvmBoundaries = {
     const manifests = paths.filter(isManifest);
     const texts = await tree.readMany([...manifests, ...paths.filter(isSettings)]);
     const projectNames = /* @__PURE__ */ new Map();
-    for (const path of paths.filter(isSettings)) for (const [dir, name11] of gradleProjects(path, texts.get(path) ?? "")) projectNames.set(dir, name11);
+    for (const path of paths.filter(isSettings)) for (const [dir, name12] of gradleProjects(path, texts.get(path) ?? "")) projectNames.set(dir, name12);
     const found = [];
     for (const path of manifests) {
       const dir = posix.dirname(path);
@@ -3766,19 +3766,19 @@ function isStatement(node) {
   const parent = node.parent;
   return !(parent?.type === "for_statement" && parent.childForFieldName("body")?.id !== node.id);
 }
-function rebinds(fn, name11) {
+function rebinds(fn, name12) {
   const binders = fn.descendantsOfType(["required_parameter", "optional_parameter", "variable_declarator", "function_declaration", "rest_pattern"]);
   const own = fn.childForFieldName("name");
   return binders.some((binder) => {
     if (binder.id === fn.id) return false;
-    if (binder.type === "function_declaration") return binder.childForFieldName("name")?.text === name11;
+    if (binder.type === "function_declaration") return binder.childForFieldName("name")?.text === name12;
     const target2 = binder.childForFieldName("pattern") ?? binder.childForFieldName("name") ?? binder;
-    return target2.descendantsOfType("identifier").some((identifier) => identifier.text === name11 && identifier.id !== own?.id);
+    return target2.descendantsOfType("identifier").some((identifier) => identifier.text === name12 && identifier.id !== own?.id);
   });
 }
-function rebindsBareParameter(fn, name11) {
+function rebindsBareParameter(fn, name12) {
   const parameters = fn.descendantsOfType(["formal_parameters"]);
-  return parameters.some((list2) => list2.namedChildren.some((child) => child.type === "identifier" && child.text === name11));
+  return parameters.some((list2) => list2.namedChildren.some((child) => child.type === "identifier" && child.text === name12));
 }
 function enclosingClassName(fn) {
   for (let parent = fn.parent; parent !== null; parent = parent.parent) {
@@ -3789,15 +3789,15 @@ function enclosingClassName(fn) {
   }
   return void 0;
 }
-function recursionScope(fn, name11) {
+function recursionScope(fn, name12) {
   const member = /* @__PURE__ */ new Set();
-  if (name11 !== void 0) member.add(name11);
+  if (name12 !== void 0) member.add(name12);
   const own = fn.childForFieldName("name");
   if (own !== null) member.add(own.text);
   const isMethod = fn.type === "method_definition";
   const bare = /* @__PURE__ */ new Set();
   if (!isMethod) {
-    for (const candidate of own !== null && name11 === void 0 ? [own.text] : [...name11 !== void 0 ? [name11] : [], ...own !== null ? [own.text] : []]) {
+    for (const candidate of own !== null && name12 === void 0 ? [own.text] : [...name12 !== void 0 ? [name12] : [], ...own !== null ? [own.text] : []]) {
       if (!rebinds(fn, candidate) && !rebindsBareParameter(fn, candidate)) bare.add(candidate);
     }
   }
@@ -3975,9 +3975,9 @@ function enclosingClassName2(fn) {
   }
   return void 0;
 }
-function recursionScope2(fn, name11) {
+function recursionScope2(fn, name12) {
   if (fn.type !== "method_declaration") return { bare: /* @__PURE__ */ new Set(), member: /* @__PURE__ */ new Set() };
-  const own = fn.childForFieldName("name")?.text ?? name11;
+  const own = fn.childForFieldName("name")?.text ?? name12;
   const names2 = new Set(own === void 0 ? [] : [own]);
   const owner = enclosingClassName2(fn);
   return { bare: names2, member: names2, ...owner === void 0 ? {} : { owner } };
@@ -4087,16 +4087,16 @@ function passThroughOf2(fn, parameters) {
   if (args2 === null) return void 0;
   const forwarded = args2.namedChildren.filter((child) => !isComment(child)).every((argument) => argument.type === "identifier" ? parameters.has(argument.text) : literalTypes2.has(argument.type));
   if (!forwarded) return void 0;
-  const name11 = call.childForFieldName("name").text;
+  const name12 = call.childForFieldName("name").text;
   const object = call.childForFieldName("object");
-  return object === null ? name11 : `${object.text}.${name11}`;
+  return object === null ? name12 : `${object.text}.${name12}`;
 }
 function parameterNames(fn) {
   const names2 = /* @__PURE__ */ new Set();
   const list2 = fn.childForFieldName("parameters");
   for (const parameter of list2?.namedChildren ?? []) {
-    const name11 = parameter.type === "spread_parameter" ? parameter.namedChildren.find((child) => child.type === "variable_declarator")?.childForFieldName("name") : parameter.childForFieldName("name");
-    if (name11 !== null && name11 !== void 0) names2.add(name11.text);
+    const name12 = parameter.type === "spread_parameter" ? parameter.namedChildren.find((child) => child.type === "variable_declarator")?.childForFieldName("name") : parameter.childForFieldName("name");
+    if (name12 !== null && name12 !== void 0) names2.add(name12.text);
   }
   return names2;
 }
@@ -4136,23 +4136,23 @@ var Extractor = class {
   }
   /** `import a.b.C;` reaches the type `a.b.C` and makes `C` mean it; `import a.b.*;` brings `a.b` in; a static import reaches the class that holds the member. */
   importDeclaration(node) {
-    const name11 = chainText(node.namedChildren.find((child) => child.type === "scoped_identifier" || child.type === "identifier") ?? null);
-    if (name11 === void 0) return;
+    const name12 = chainText(node.namedChildren.find((child) => child.type === "scoped_identifier" || child.type === "identifier") ?? null);
+    if (name12 === void 0) return;
     const isStatic2 = node.children.some((child) => child.type === "static");
     const wildcard = node.namedChildren.some((child) => child.type === "asterisk");
     const line = node.startPosition.row + 1;
-    const parent = name11.includes(".") ? name11.slice(0, name11.lastIndexOf(".")) : "";
-    if (!wildcard) this.imported.set(name11.slice(name11.lastIndexOf(".") + 1), name11);
+    const parent = name12.includes(".") ? name12.slice(0, name12.lastIndexOf(".")) : "";
+    if (!wildcard) this.imported.set(name12.slice(name12.lastIndexOf(".") + 1), name12);
     if (wildcard) {
-      this.uses.add(name11);
-      if (isStatic2) this.references.push({ name: name11, kind: "reference", line });
+      this.uses.add(name12);
+      if (isStatic2) this.references.push({ name: name12, kind: "reference", line });
       return;
     }
     if (isStatic2) {
       if (parent !== "") this.references.push({ name: parent, kind: "reference", line });
       return;
     }
-    this.references.push({ name: name11, kind: "reference", line });
+    this.references.push({ name: name12, kind: "reference", line });
   }
   qualified(chain) {
     return this.packageName === "" ? chain : `${this.packageName}.${chain}`;
@@ -4160,8 +4160,8 @@ var Extractor = class {
   reference(written, kind, node, context) {
     const head = written.split(".")[0];
     const imported = this.imported.get(head);
-    const name11 = imported === void 0 ? written : `${imported}${written.slice(head.length)}`;
-    const fact = { name: name11, kind, line: node.startPosition.row + 1 };
+    const name12 = imported === void 0 ? written : `${imported}${written.slice(head.length)}`;
+    const fact = { name: name12, kind, line: node.startPosition.row + 1 };
     if (context.unit !== void 0) fact.inUnit = context.unit;
     this.references.push(fact);
   }
@@ -4181,8 +4181,8 @@ var Extractor = class {
         return;
       case "marker_annotation":
       case "annotation": {
-        const name11 = chainText(node.childForFieldName("name"));
-        if (name11 !== void 0) this.reference(name11, "reference", node, context);
+        const name12 = chainText(node.childForFieldName("name"));
+        if (name12 !== void 0) this.reference(name12, "reference", node, context);
         const args2 = node.childForFieldName("arguments");
         if (args2 !== null) this.visitChildren(args2, context);
         return;
@@ -4191,8 +4191,8 @@ var Extractor = class {
         const created = node.childForFieldName("type");
         const target2 = created?.type === "generic_type" ? created.namedChildren[0] : created;
         if (target2 !== null && target2 !== void 0) {
-          const name11 = chainText(target2);
-          if (name11 !== void 0) this.reference(name11, "call", target2, context);
+          const name12 = chainText(target2);
+          if (name12 !== void 0) this.reference(name12, "call", target2, context);
         }
         for (const child of node.namedChildren) if (child.id !== created?.id) this.visit(child, context);
         for (const child of created?.namedChildren ?? []) if (child.id !== target2?.id) this.visit(child, context);
@@ -4200,10 +4200,10 @@ var Extractor = class {
       }
       case "method_invocation": {
         const object = node.childForFieldName("object");
-        const name11 = chainText(object);
-        if (name11 !== void 0) this.reference(name11, "call", object, context);
+        const name12 = chainText(object);
+        if (name12 !== void 0) this.reference(name12, "call", object, context);
         for (const child of node.namedChildren) {
-          if (child.id === object?.id && name11 !== void 0) continue;
+          if (child.id === object?.id && name12 !== void 0) continue;
           if (child.id === node.childForFieldName("name")?.id) continue;
           this.visit(child, context);
         }
@@ -4211,9 +4211,9 @@ var Extractor = class {
       }
       case "field_access": {
         const object = node.childForFieldName("object");
-        const name11 = chainText(object);
-        if (name11 !== void 0) {
-          this.reference(name11, "reference", object, context);
+        const name12 = chainText(object);
+        if (name12 !== void 0) {
+          this.reference(name12, "reference", object, context);
           return;
         }
         this.visitChildren(node, context);
@@ -4221,8 +4221,8 @@ var Extractor = class {
       }
       case "method_reference": {
         const first = node.namedChildren[0];
-        const name11 = chainText(first ?? null);
-        if (first !== void 0 && name11 !== void 0) this.reference(name11, "reference", first, context);
+        const name12 = chainText(first ?? null);
+        if (first !== void 0 && name12 !== void 0) this.reference(name12, "reference", first, context);
         else this.visitChildren(node, context);
         return;
       }
@@ -4236,10 +4236,10 @@ var Extractor = class {
     return seen === 0 ? base : `${base}~${seen + 1}`;
   }
   typeDeclaration(node, context) {
-    const name11 = node.childForFieldName("name")?.text;
-    if (name11 === void 0) return this.visitChildren(node, context);
+    const name12 = node.childForFieldName("name")?.text;
+    if (name12 === void 0) return this.visitChildren(node, context);
     const words3 = modifiersOf(node);
-    const chain = context.unit === void 0 ? name11 : `${context.unit}.${name11}`;
+    const chain = context.unit === void 0 ? name12 : `${context.unit}.${name12}`;
     const qualifiedName = this.unitName(chain);
     const visible = context.unit === void 0 ? words3.has("public") : context.exposed && (context.inInterface || words3.has("public") || words3.has("protected"));
     const kind = typeKind(node, words3);
@@ -4248,18 +4248,18 @@ var Extractor = class {
     unit.shape = typeShape(node);
     this.units.push(unit);
     this.declarations.push({ name: this.qualified(chain), kind, unit: qualifiedName, exported: visible, line: node.startPosition.row + 1 });
-    const inside = { unit: qualifiedName, type: name11, exposed: visible, inInterface: kind === "interface" };
+    const inside = { unit: qualifiedName, type: name12, exposed: visible, inInterface: kind === "interface" };
     for (const child of node.namedChildren) this.visit(child, child.type === "modifiers" ? context : inside);
   }
   functionDeclaration(node, context) {
     const body2 = node.childForFieldName("body");
-    const name11 = node.childForFieldName("name")?.text;
-    if (body2 === null || name11 === void 0) return this.visitChildren(node, context);
-    const qualifiedName = this.unitName(context.unit === void 0 ? name11 : `${context.unit}.${name11}`);
+    const name12 = node.childForFieldName("name")?.text;
+    if (body2 === null || name12 === void 0) return this.visitChildren(node, context);
+    const qualifiedName = this.unitName(context.unit === void 0 ? name12 : `${context.unit}.${name12}`);
     const startLine = startRow(node) + 1;
     const endLine = node.endPosition.row + 1;
     this.codeRows ??= codeRowsOf(this.root, javaMetricRules);
-    const measured = measureFunction(node, { name: name11, startLine, endLine, codeRows: this.codeRows, explain: this.explain }, javaMetricRules);
+    const measured = measureFunction(node, { name: name12, startLine, endLine, codeRows: this.codeRows, explain: this.explain }, javaMetricRules);
     const unit = { qualifiedName, kind: "method", startLine, endLine, source: "structural", metrics: measured.metrics };
     if (context.unit !== void 0) unit.parent = context.unit;
     unit.shape = { nodes: nodeCount(node, isComment), interfaceSize: Math.max(1, measured.metrics.parameters) };
@@ -4282,8 +4282,8 @@ function extractFacts(root, options = {}) {
 // packages/parse/src/languages/java/census.ts
 var registryName = /(registry|registries|handlers|plugins|strategies|factories|providers|adapters)$/i;
 var mapTypes = /^(Map|HashMap|LinkedHashMap|TreeMap|ConcurrentHashMap|ConcurrentMap|EnumMap|WeakHashMap|SortedMap)$/;
-var field = (node, name11) => node.childForFieldName(name11);
-var lastSegment = (name11) => name11.slice(name11.lastIndexOf(".") + 1);
+var field = (node, name12) => node.childForFieldName(name12);
+var lastSegment = (name12) => name12.slice(name12.lastIndexOf(".") + 1);
 function lastName(node) {
   if (node === null) return null;
   switch (node.type) {
@@ -4328,23 +4328,23 @@ function heritageOf(node) {
   const out2 = [];
   const superclass = field(node, "superclass");
   if (superclass !== null) {
-    const name11 = lastName(superclass.namedChildren[0] ?? null);
-    if (name11 !== null) out2.push(name11);
+    const name12 = lastName(superclass.namedChildren[0] ?? null);
+    if (name12 !== null) out2.push(name12);
   }
   for (const clause of node.namedChildren.filter((child) => child.type === "super_interfaces" || child.type === "extends_interfaces")) {
     for (const list2 of clause.namedChildren) {
       for (const type of list2.type === "type_list" ? list2.namedChildren : [list2]) {
-        const name11 = lastName(type);
-        if (name11 !== null) out2.push(name11);
+        const name12 = lastName(type);
+        if (name12 !== null) out2.push(name12);
       }
     }
   }
   return out2;
 }
 function importOf(node) {
-  const name11 = node.namedChildren.find((child) => child.type === "scoped_identifier" || child.type === "identifier");
-  if (name11 === void 0 || node.namedChildren.some((child) => child.type === "asterisk")) return null;
-  const specifier = name11.text.replace(/\s+/g, "");
+  const name12 = node.namedChildren.find((child) => child.type === "scoped_identifier" || child.type === "identifier");
+  if (name12 === void 0 || node.namedChildren.some((child) => child.type === "asterisk")) return null;
+  const specifier = name12.text.replace(/\s+/g, "");
   return { local: lastSegment(specifier), imported: lastSegment(specifier), specifier };
 }
 function extractFileCensus(root) {
@@ -4359,29 +4359,29 @@ function extractFileCensus(root) {
         break;
       }
       case "interface_declaration": {
-        const name11 = field(node, "name")?.text;
-        if (name11) facts.types.push({ name: name11, kind: "interface", line });
-        if (name11) nextClass = name11;
+        const name12 = field(node, "name")?.text;
+        if (name12) facts.types.push({ name: name12, kind: "interface", line });
+        if (name12) nextClass = name12;
         break;
       }
       case "class_declaration":
       case "record_declaration":
       case "enum_declaration": {
-        const name11 = field(node, "name")?.text;
-        if (name11) {
+        const name12 = field(node, "name")?.text;
+        if (name12) {
           const body2 = field(node, "body");
           const constructor = body2?.namedChildren.find((member) => member.type === "constructor_declaration");
           const parameters = node.type === "record_declaration" ? field(node, "parameters") : constructor ? field(constructor, "parameters") : null;
-          facts.classes.push({ name: name11, line, heritage: heritageOf(node), constructorTypes: parametersOf(parameters).flatMap((p) => p.type.names) });
-          if (node.type === "class_declaration" && modifiersOf(node).has("abstract")) facts.types.push({ name: name11, kind: "abstract-class", line });
-          nextClass = name11;
+          facts.classes.push({ name: name12, line, heritage: heritageOf(node), constructorTypes: parametersOf(parameters).flatMap((p) => p.type.names) });
+          if (node.type === "class_declaration" && modifiersOf(node).has("abstract")) facts.types.push({ name: name12, kind: "abstract-class", line });
+          nextClass = name12;
         }
         break;
       }
       case "method_declaration":
       case "constructor_declaration": {
-        const name11 = field(node, "name")?.text;
-        if (name11 && className) facts.functions.push({ name: `${className}.${name11}`, line, parameters: parametersOf(field(node, "parameters")) });
+        const name12 = field(node, "name")?.text;
+        if (name12 && className) facts.functions.push({ name: `${className}.${name12}`, line, parameters: parametersOf(field(node, "parameters")) });
         break;
       }
       case "field_declaration":
@@ -4389,23 +4389,23 @@ function extractFileCensus(root) {
         const type = field(node, "type");
         const typeNames2 = annotation(type).names;
         for (const declarator of node.namedChildren.filter((child) => child.type === "variable_declarator")) {
-          const name11 = field(declarator, "name")?.text;
-          if (name11 === void 0 || !registryName.test(name11)) continue;
+          const name12 = field(declarator, "name")?.text;
+          if (name12 === void 0 || !registryName.test(name12)) continue;
           const value = field(declarator, "value");
           const created = value?.type === "object_creation_expression" ? lastName(field(value, "type")) : null;
-          if (typeNames2.some((t) => mapTypes.test(t)) || created !== null && mapTypes.test(created)) facts.keyedMaps.push({ line: declarator.startPosition.row + 1, name: name11 });
+          if (typeNames2.some((t) => mapTypes.test(t)) || created !== null && mapTypes.test(created)) facts.keyedMaps.push({ line: declarator.startPosition.row + 1, name: name12 });
         }
         break;
       }
       case "marker_annotation":
       case "annotation": {
-        const name11 = lastName(field(node, "name"));
-        if (name11) facts.decorators.push({ line, name: name11 });
+        const name12 = lastName(field(node, "name"));
+        if (name12) facts.decorators.push({ line, name: name12 });
         break;
       }
       case "object_creation_expression": {
-        const name11 = lastName(field(node, "type"));
-        if (name11) facts.news.push({ line, name: name11 });
+        const name12 = lastName(field(node, "type"));
+        if (name12) facts.news.push({ line, name: name12 });
         break;
       }
       case "method_invocation": {
@@ -4520,9 +4520,9 @@ function enclosingClassName3(fn) {
   }
   return void 0;
 }
-function recursionScope3(fn, name11) {
+function recursionScope3(fn, name12) {
   if (fn.type !== "function_declaration") return { bare: /* @__PURE__ */ new Set(), member: /* @__PURE__ */ new Set() };
-  const own = fn.childForFieldName("name")?.text ?? name11;
+  const own = fn.childForFieldName("name")?.text ?? name12;
   const names2 = new Set(own === void 0 ? [] : [own]);
   const owner = enclosingClassName3(fn);
   return { bare: names2, member: names2, ...owner === void 0 ? {} : { owner } };
@@ -4652,8 +4652,8 @@ function parameterNames2(fn) {
   const names2 = /* @__PURE__ */ new Set();
   for (const list2 of fn.namedChildren.filter((child) => child.type === "function_value_parameters")) {
     for (const parameter of list2.namedChildren) {
-      const name11 = parameter.type === "parameter" ? parameter.namedChildren.find((child) => child.type === "identifier") : void 0;
-      if (name11 !== void 0) names2.add(name11.text);
+      const name12 = parameter.type === "parameter" ? parameter.namedChildren.find((child) => child.type === "identifier") : void 0;
+      if (name12 !== void 0) names2.add(name12.text);
     }
   }
   return names2;
@@ -4721,19 +4721,19 @@ var Extractor2 = class {
   }
   /** `import a.b.C` reaches `a.b.C` (and its enclosing class for a member) and makes `C` mean it; `import a.b.*` brings `a.b` in; `as` renames. */
   importDirective(node) {
-    const name11 = dotted(node.namedChildren.find((child) => child.type === "qualified_identifier") ?? node);
-    if (name11 === "") return;
+    const name12 = dotted(node.namedChildren.find((child) => child.type === "qualified_identifier") ?? node);
+    if (name12 === "") return;
     const line = node.startPosition.row + 1;
     if (node.children.some((child) => !child.isNamed && child.type === "*")) {
-      this.uses.add(name11);
+      this.uses.add(name12);
       return;
     }
-    const parent = name11.includes(".") ? name11.slice(0, name11.lastIndexOf(".")) : "";
-    this.references.push({ name: name11, kind: "reference", line });
+    const parent = name12.includes(".") ? name12.slice(0, name12.lastIndexOf(".")) : "";
+    this.references.push({ name: name12, kind: "reference", line });
     if (parent.includes(".")) this.references.push({ name: parent, kind: "reference", line });
     const alias = node.namedChildren.filter((child) => child.type === "identifier").at(-1);
     const renamed = alias !== void 0 && node.children.some((child) => !child.isNamed && child.type === "as");
-    this.aliases.set(renamed ? alias.text : name11.slice(name11.lastIndexOf(".") + 1), name11);
+    this.aliases.set(renamed ? alias.text : name12.slice(name12.lastIndexOf(".") + 1), name12);
   }
   qualified(chain) {
     return this.packageName === "" ? chain : `${this.packageName}.${chain}`;
@@ -4741,8 +4741,8 @@ var Extractor2 = class {
   reference(written, kind, node, context) {
     const head = written.split(".")[0];
     const aliased = this.aliases.get(head);
-    const name11 = aliased === void 0 ? written : `${aliased}${written.slice(head.length)}`;
-    const fact = { name: name11, kind, line: node.startPosition.row + 1 };
+    const name12 = aliased === void 0 ? written : `${aliased}${written.slice(head.length)}`;
+    const fact = { name: name12, kind, line: node.startPosition.row + 1 };
     if (context.unit !== void 0) fact.inUnit = context.unit;
     this.references.push(fact);
   }
@@ -4821,10 +4821,10 @@ var Extractor2 = class {
     return context.exposed;
   }
   typeDeclaration(node, context) {
-    const name11 = node.type === "companion_object" ? node.childForFieldName("name")?.text ?? "Companion" : node.childForFieldName("name")?.text;
-    if (name11 === void 0) return this.visitChildren(node, context);
+    const name12 = node.type === "companion_object" ? node.childForFieldName("name")?.text ?? "Companion" : node.childForFieldName("name")?.text;
+    if (name12 === void 0) return this.visitChildren(node, context);
     const words3 = modifierWords(node);
-    const chain = context.unit === void 0 ? name11 : `${context.unit}.${name11}`;
+    const chain = context.unit === void 0 ? name12 : `${context.unit}.${name12}`;
     const qualifiedName = this.unitName(chain);
     const visible = this.isVisible(words3, context);
     const kind = typeKind2(node, words3);
@@ -4837,14 +4837,14 @@ var Extractor2 = class {
   }
   functionDeclaration(node, context) {
     const isConstructor2 = node.type === "secondary_constructor";
-    const name11 = isConstructor2 ? "constructor" : node.childForFieldName("name")?.text;
+    const name12 = isConstructor2 ? "constructor" : node.childForFieldName("name")?.text;
     const hasBody = node.namedChildren.some((child) => child.type === "function_body" || isConstructor2 && child.type === "block");
-    if (name11 === void 0 || !hasBody) return this.visitChildren(node, { ...context, topLevel: false });
-    const qualifiedName = this.unitName(context.unit === void 0 ? name11 : `${context.unit}.${name11}`);
+    if (name12 === void 0 || !hasBody) return this.visitChildren(node, { ...context, topLevel: false });
+    const qualifiedName = this.unitName(context.unit === void 0 ? name12 : `${context.unit}.${name12}`);
     const startLine = startRow2(node) + 1;
     const endLine = node.endPosition.row + 1;
     this.codeRows ??= codeRowsOf(this.root, kotlinMetricRules);
-    const measured = measureFunction(node, { name: name11, startLine, endLine, codeRows: this.codeRows, explain: this.explain }, kotlinMetricRules);
+    const measured = measureFunction(node, { name: name12, startLine, endLine, codeRows: this.codeRows, explain: this.explain }, kotlinMetricRules);
     const unit = { qualifiedName, kind: context.inType ? "method" : "function", startLine, endLine, source: "structural", metrics: measured.metrics };
     if (context.unit !== void 0) unit.parent = context.unit;
     unit.shape = { nodes: nodeCount(node, isComment2), interfaceSize: Math.max(1, measured.metrics.parameters) };
@@ -4857,7 +4857,7 @@ var Extractor2 = class {
     this.units.push(unit);
     if (context.topLevel && !isConstructor2) {
       const words3 = modifierWords(node);
-      this.declarations.push({ name: this.qualified(name11), kind: "function", unit: qualifiedName, exported: this.isVisible(words3, context), line: node.startPosition.row + 1 });
+      this.declarations.push({ name: this.qualified(name12), kind: "function", unit: qualifiedName, exported: this.isVisible(words3, context), line: node.startPosition.row + 1 });
     }
     const inside = { unit: qualifiedName, inType: false, exposed: context.exposed, topLevel: false };
     for (const child of node.namedChildren) this.visit(child, child.type === "modifiers" ? context : inside);
@@ -4866,8 +4866,8 @@ var Extractor2 = class {
     if (context.topLevel) {
       const words3 = modifierWords(node);
       for (const variable of node.namedChildren.filter((child) => child.type === "variable_declaration")) {
-        const name11 = variable.namedChildren.find((child) => child.type === "identifier")?.text;
-        if (name11 !== void 0) this.declarations.push({ name: this.qualified(name11), kind: "variable", exported: this.isVisible(words3, context), line: node.startPosition.row + 1 });
+        const name12 = variable.namedChildren.find((child) => child.type === "identifier")?.text;
+        if (name12 !== void 0) this.declarations.push({ name: this.qualified(name12), kind: "variable", exported: this.isVisible(words3, context), line: node.startPosition.row + 1 });
       }
     }
     this.visitChildren(node, { ...context, topLevel: false });
@@ -4881,7 +4881,7 @@ function extractFacts2(root, options = {}) {
 var registryName2 = /(registry|registries|handlers|plugins|strategies|factories|providers|adapters)$/i;
 var mapTypes2 = /^(Map|MutableMap|HashMap|LinkedHashMap|TreeMap|ConcurrentHashMap|ConcurrentMap|EnumMap|SortedMap)$/;
 var mapBuilders = /^(mutableMapOf|hashMapOf|linkedMapOf|sortedMapOf|mapOf|HashMap|LinkedHashMap|TreeMap|ConcurrentHashMap)$/;
-var lastSegment2 = (name11) => name11.slice(name11.lastIndexOf(".") + 1);
+var lastSegment2 = (name12) => name12.slice(name12.lastIndexOf(".") + 1);
 var identifiersOf = (node) => node.namedChildren.filter((child) => child.type === "identifier").map((child) => child.text);
 var comment = (node) => node.type === "line_comment" || node.type === "block_comment";
 function lastName2(node) {
@@ -4907,7 +4907,7 @@ function annotation2(node) {
   const names2 = /* @__PURE__ */ new Set();
   let callback = false;
   const visit2 = (current) => {
-    if (current.type === "user_type") for (const name11 of identifiersOf(current).slice(-1)) names2.add(name11);
+    if (current.type === "user_type") for (const name12 of identifiersOf(current).slice(-1)) names2.add(name12);
     if (current.type === "function_type") callback = true;
     for (const child of current.namedChildren) visit2(child);
   };
@@ -4932,8 +4932,8 @@ function heritageOf2(node) {
   const specifiers = node.namedChildren.find((child) => child.type === "delegation_specifiers");
   for (const specifier of specifiers?.namedChildren ?? []) {
     const target2 = specifier.namedChildren.find((child) => child.type === "constructor_invocation")?.namedChildren.find((child) => child.type === "user_type") ?? specifier.namedChildren.find((child) => child.type === "user_type");
-    const name11 = lastName2(target2 ?? null);
-    if (name11 !== null) out2.push(name11);
+    const name12 = lastName2(target2 ?? null);
+    if (name12 !== null) out2.push(name12);
   }
   return out2;
 }
@@ -4944,52 +4944,52 @@ function extractFileCensus2(root) {
     let nextClass = className;
     switch (node.type) {
       case "import": {
-        const name11 = identifiersOf(node.namedChildren.find((child) => child.type === "qualified_identifier") ?? node).join(".");
-        if (name11 === "" || node.children.some((child) => !child.isNamed && child.type === "*")) break;
+        const name12 = identifiersOf(node.namedChildren.find((child) => child.type === "qualified_identifier") ?? node).join(".");
+        if (name12 === "" || node.children.some((child) => !child.isNamed && child.type === "*")) break;
         const alias = node.children.some((child) => !child.isNamed && child.type === "as") ? node.namedChildren.filter((child) => child.type === "identifier").at(-1)?.text : void 0;
-        facts.imports.push({ local: alias ?? lastSegment2(name11), imported: lastSegment2(name11), specifier: name11 });
+        facts.imports.push({ local: alias ?? lastSegment2(name12), imported: lastSegment2(name12), specifier: name12 });
         break;
       }
       case "type_alias": {
-        const name11 = node.childForFieldName("type")?.text;
-        if (name11 && node.namedChildren.some((child) => child.type === "function_type")) facts.types.push({ name: name11, kind: "function-type", line });
+        const name12 = node.childForFieldName("type")?.text;
+        if (name12 && node.namedChildren.some((child) => child.type === "function_type")) facts.types.push({ name: name12, kind: "function-type", line });
         break;
       }
       case "object_declaration":
       case "class_declaration": {
-        const name11 = node.childForFieldName("name")?.text;
-        if (!name11) break;
+        const name12 = node.childForFieldName("name")?.text;
+        if (!name12) break;
         const words3 = modifierWords(node);
         const isInterface = node.children.some((child) => !child.isNamed && child.type === "interface");
-        if (isInterface) facts.types.push({ name: name11, kind: "interface", line });
-        else if (node.type === "class_declaration" && (words3.has("abstract") || words3.has("sealed"))) facts.types.push({ name: name11, kind: "abstract-class", line });
+        if (isInterface) facts.types.push({ name: name12, kind: "interface", line });
+        else if (node.type === "class_declaration" && (words3.has("abstract") || words3.has("sealed"))) facts.types.push({ name: name12, kind: "abstract-class", line });
         const primary = node.namedChildren.find((child) => child.type === "primary_constructor");
         const secondary = node.namedChildren.find((child) => child.type === "class_body")?.namedChildren.find((member) => member.type === "secondary_constructor");
         const parameters = primary?.namedChildren.find((child) => child.type === "class_parameters") ?? secondary?.namedChildren.find((child) => child.type === "function_value_parameters") ?? null;
-        facts.classes.push({ name: name11, line, heritage: heritageOf2(node), constructorTypes: parametersOf2(parameters).flatMap((p) => p.type.names) });
-        nextClass = name11;
+        facts.classes.push({ name: name12, line, heritage: heritageOf2(node), constructorTypes: parametersOf2(parameters).flatMap((p) => p.type.names) });
+        nextClass = name12;
         break;
       }
       case "function_declaration": {
-        const name11 = node.childForFieldName("name")?.text;
-        if (!name11) break;
+        const name12 = node.childForFieldName("name")?.text;
+        if (!name12) break;
         const parameters = parametersOf2(node.namedChildren.find((child) => child.type === "function_value_parameters") ?? null);
-        facts.functions.push({ name: className === null ? name11 : `${className}.${name11}`, line, parameters });
+        facts.functions.push({ name: className === null ? name12 : `${className}.${name12}`, line, parameters });
         break;
       }
       case "property_declaration": {
         const variable = node.namedChildren.find((child) => child.type === "variable_declaration");
-        const name11 = variable?.namedChildren.find((child) => child.type === "identifier")?.text;
-        if (name11 === void 0 || !registryName2.test(name11)) break;
+        const name12 = variable?.namedChildren.find((child) => child.type === "identifier")?.text;
+        if (name12 === void 0 || !registryName2.test(name12)) break;
         const declared = annotation2(variable?.namedChildren.find((child) => child.type === "user_type" || child.type === "nullable_type") ?? null).names;
         const value = node.namedChildren.filter((child) => child.id !== variable?.id && !comment(child) && child.type !== "modifiers").at(-1);
         const built = value?.type === "call_expression" ? lastName2(value) : null;
-        if (declared.some((type) => mapTypes2.test(type)) || built !== null && mapBuilders.test(built)) facts.keyedMaps.push({ line, name: name11 });
+        if (declared.some((type) => mapTypes2.test(type)) || built !== null && mapBuilders.test(built)) facts.keyedMaps.push({ line, name: name12 });
         break;
       }
       case "annotation": {
-        const name11 = lastName2(node.namedChildren.find((child) => child.type === "user_type") ?? null);
-        if (name11) facts.decorators.push({ line, name: name11 });
+        const name12 = lastName2(node.namedChildren.find((child) => child.type === "user_type") ?? null);
+        if (name12) facts.decorators.push({ line, name: name12 });
         break;
       }
       case "call_expression": {
@@ -5129,8 +5129,8 @@ var typescriptBoundaries = {
 
 // packages/parse/src/languages/typescript/census.ts
 var registryName3 = /(registry|registries|handlers|plugins|strategies|factories|providers|adapters)$/i;
-function field2(node, name11) {
-  return node.childForFieldName(name11);
+function field2(node, name12) {
+  return node.childForFieldName(name12);
 }
 function lastName3(node) {
   if (!node) return null;
@@ -5185,16 +5185,16 @@ function heritageOf3(node) {
   for (const clause of heritage?.namedChildren ?? []) {
     if (clause.type === "extends_clause") {
       const value = field2(clause, "value");
-      const name11 = lastName3(value);
-      if (name11) out2.push(name11);
+      const name12 = lastName3(value);
+      if (name12) out2.push(name12);
     } else if (clause.type === "implements_clause") {
       for (const type of clause.namedChildren) {
-        const name11 = type.type === "generic_type" ? lastName3(field2(type, "name")) : lastName3(type);
-        if (name11) out2.push(name11);
+        const name12 = type.type === "generic_type" ? lastName3(field2(type, "name")) : lastName3(type);
+        if (name12) out2.push(name12);
       }
     } else {
-      const name11 = lastName3(clause);
-      if (name11) out2.push(name11);
+      const name12 = lastName3(clause);
+      if (name12) out2.push(name12);
     }
   }
   return out2;
@@ -5223,40 +5223,40 @@ function extractFileCensus3(root) {
         break;
       }
       case "interface_declaration": {
-        const name11 = field2(node, "name")?.text;
-        if (name11) facts.types.push({ name: name11, kind: "interface", line });
+        const name12 = field2(node, "name")?.text;
+        if (name12) facts.types.push({ name: name12, kind: "interface", line });
         break;
       }
       case "type_alias_declaration": {
-        const name11 = field2(node, "name")?.text;
-        if (name11 && field2(node, "value")?.type === "function_type") facts.types.push({ name: name11, kind: "function-type", line });
+        const name12 = field2(node, "name")?.text;
+        if (name12 && field2(node, "value")?.type === "function_type") facts.types.push({ name: name12, kind: "function-type", line });
         break;
       }
       case "abstract_class_declaration":
       case "class_declaration": {
-        const name11 = field2(node, "name")?.text;
-        if (name11) {
+        const name12 = field2(node, "name")?.text;
+        if (name12) {
           const body2 = field2(node, "body");
           const constructor = body2?.namedChildren.find((member) => member.type === "method_definition" && field2(member, "name")?.text === "constructor");
           const constructorTypes2 = parametersOf3(constructor ? field2(constructor, "parameters") : null).flatMap((p) => p.type.names);
-          facts.classes.push({ name: name11, line, heritage: heritageOf3(node), constructorTypes: constructorTypes2 });
-          if (node.type === "abstract_class_declaration") facts.types.push({ name: name11, kind: "abstract-class", line });
-          nextClass = name11;
+          facts.classes.push({ name: name12, line, heritage: heritageOf3(node), constructorTypes: constructorTypes2 });
+          if (node.type === "abstract_class_declaration") facts.types.push({ name: name12, kind: "abstract-class", line });
+          nextClass = name12;
         }
         break;
       }
       case "function_declaration":
       case "generator_function_declaration": {
-        const name11 = field2(node, "name")?.text;
-        if (name11) {
-          facts.functions.push({ name: name11, line, parameters: parametersOf3(field2(node, "parameters")) });
+        const name12 = field2(node, "name")?.text;
+        if (name12) {
+          facts.functions.push({ name: name12, line, parameters: parametersOf3(field2(node, "parameters")) });
         }
         break;
       }
       case "method_definition": {
-        const name11 = field2(node, "name")?.text;
-        if (name11 && className) {
-          const qualified = `${className}.${name11}`;
+        const name12 = field2(node, "name")?.text;
+        if (name12 && className) {
+          const qualified = `${className}.${name12}`;
           facts.functions.push({ name: qualified, line, parameters: parametersOf3(field2(node, "parameters")) });
         }
         break;
@@ -5265,27 +5265,27 @@ function extractFileCensus3(root) {
       case "public_field_definition": {
         const nameNode = field2(node, "name");
         const value = field2(node, "value");
-        const name11 = nameNode?.text;
-        if (name11 && value && (value.type === "arrow_function" || value.type === "function_expression" || value.type === "function")) {
+        const name12 = nameNode?.text;
+        if (name12 && value && (value.type === "arrow_function" || value.type === "function_expression" || value.type === "function")) {
           if (node.type === "variable_declarator" && className === null) {
-            facts.functions.push({ name: name11, line, parameters: parametersOf3(field2(value, "parameters")) });
+            facts.functions.push({ name: name12, line, parameters: parametersOf3(field2(value, "parameters")) });
           }
         }
-        if (name11 && registryName3.test(name11)) {
+        if (name12 && registryName3.test(name12)) {
           const typeNames2 = annotation3(node.namedChildren.find((child) => child.type === "type_annotation") ?? null).names;
           const isMap = value?.type === "new_expression" && /^(Map|WeakMap)$/.test(lastName3(field2(value, "constructor")) ?? "");
-          if (isMap || value?.type === "object" || typeNames2.some((t) => t === "Record" || t === "Map")) facts.keyedMaps.push({ line, name: name11 });
+          if (isMap || value?.type === "object" || typeNames2.some((t) => t === "Record" || t === "Map")) facts.keyedMaps.push({ line, name: name12 });
         }
         break;
       }
       case "decorator": {
-        const name11 = decoratorName(node);
-        if (name11) facts.decorators.push({ line, name: name11 });
+        const name12 = decoratorName(node);
+        if (name12) facts.decorators.push({ line, name: name12 });
         break;
       }
       case "new_expression": {
-        const name11 = lastName3(field2(node, "constructor"));
-        if (name11) facts.news.push({ line, name: name11 });
+        const name12 = lastName3(field2(node, "constructor"));
+        if (name12) facts.news.push({ line, name: name12 });
         break;
       }
       case "call_expression": {
@@ -5378,7 +5378,7 @@ function declarationKinds(root) {
   const kinds = /* @__PURE__ */ new Map();
   const note = (node) => {
     if (!node) return;
-    const name11 = node.childForFieldName("name")?.text;
+    const name12 = node.childForFieldName("name")?.text;
     switch (node.type) {
       case "export_statement":
         note(node.childForFieldName("declaration"));
@@ -5387,27 +5387,27 @@ function declarationKinds(root) {
         note(node.namedChildren.find((child) => child.type !== "comment") ?? null);
         return;
       case "interface_declaration":
-        if (name11) kinds.set(name11, "interface");
+        if (name12) kinds.set(name12, "interface");
         return;
       case "abstract_class_declaration":
-        if (name11) kinds.set(name11, "abstract-class");
+        if (name12) kinds.set(name12, "abstract-class");
         return;
       case "class_declaration":
-        if (name11) kinds.set(name11, "class");
+        if (name12) kinds.set(name12, "class");
         return;
       case "enum_declaration":
-        if (name11) kinds.set(name11, "enum");
+        if (name12) kinds.set(name12, "enum");
         return;
       case "type_alias_declaration":
-        if (name11) kinds.set(name11, "type");
+        if (name12) kinds.set(name12, "type");
         return;
       case "function_declaration":
       case "generator_function_declaration":
-        if (name11) kinds.set(name11, "function");
+        if (name12) kinds.set(name12, "function");
         return;
       case "internal_module":
       case "module":
-        if (name11) kinds.set(name11, "namespace");
+        if (name12) kinds.set(name12, "namespace");
         return;
       case "lexical_declaration":
       case "variable_declaration": {
@@ -5434,8 +5434,8 @@ function declaredNames(statement, out2) {
     case "generator_function_declaration":
     case "class_declaration":
     case "abstract_class_declaration": {
-      const name11 = statement.childForFieldName("name");
-      if (name11) out2.push(name11.text);
+      const name12 = statement.childForFieldName("name");
+      if (name12) out2.push(name12.text);
       return;
     }
     default:
@@ -5506,29 +5506,29 @@ var Extractor3 = class {
         return;
       case "function_declaration":
       case "generator_function_declaration": {
-        const name11 = node.childForFieldName("name")?.text;
-        const inner2 = name11 ? this.declareUnit(name11, "function", node, wrapperOf(parent), context, node) : context;
+        const name12 = node.childForFieldName("name")?.text;
+        const inner2 = name12 ? this.declareUnit(name12, "function", node, wrapperOf(parent), context, node) : context;
         this.functionBody(node, inner2);
         return;
       }
       case "class_declaration":
       case "abstract_class_declaration": {
-        const name11 = node.childForFieldName("name")?.text;
-        const inner2 = name11 ? this.declareUnit(name11, "class", node, wrapperOf(parent), context) : context;
+        const name12 = node.childForFieldName("name")?.text;
+        const inner2 = name12 ? this.declareUnit(name12, "class", node, wrapperOf(parent), context) : context;
         this.classParts(node, context, inner2);
         return;
       }
       case "method_definition": {
-        const name11 = node.childForFieldName("name");
-        const inner2 = name11 && parent.type === "class_body" ? this.declareUnit(name11.text, "method", node, void 0, context, node) : context;
+        const name12 = node.childForFieldName("name");
+        const inner2 = name12 && parent.type === "class_body" ? this.declareUnit(name12.text, "method", node, void 0, context, node) : context;
         this.functionBody(node, inner2);
         return;
       }
       case "public_field_definition": {
-        const name11 = node.childForFieldName("name");
+        const name12 = node.childForFieldName("name");
         const value = node.childForFieldName("value");
-        if (name11 && value && isFunctionValue(value)) {
-          this.functionBody(value, this.declareUnit(name11.text, functionKind(value), node, void 0, context, value));
+        if (name12 && value && isFunctionValue(value)) {
+          this.functionBody(value, this.declareUnit(name12.text, functionKind(value), node, void 0, context, value));
         } else if (value) {
           this.visit(value, context, node, "value");
         }
@@ -5572,8 +5572,8 @@ var Extractor3 = class {
       }
       case "internal_module":
       case "module": {
-        const name11 = node.childForFieldName("name");
-        this.visitChildren(node, name11 ? scopeOf(context, name11.text) : context);
+        const name12 = node.childForFieldName("name");
+        this.visitChildren(node, name12 ? scopeOf(context, name12.text) : context);
         return;
       }
       case "call_expression":
@@ -5590,8 +5590,8 @@ var Extractor3 = class {
         return;
       case "nested_type_identifier": {
         const module3 = node.childForFieldName("module");
-        const name11 = node.childForFieldName("name");
-        if (module3?.type === "identifier" && name11) this.reference(module3, context, "reference", name11.text);
+        const name12 = node.childForFieldName("name");
+        if (module3?.type === "identifier" && name12) this.reference(module3, context, "reference", name12.text);
         else if (module3) this.visit(module3, context, node, "module");
         return;
       }
@@ -5656,8 +5656,8 @@ var Extractor3 = class {
     if (context.unit !== void 0) fact.inUnit = context.unit;
     this.references.push(fact);
   }
-  declareUnit(name11, kind, node, wrapper, context, fn) {
-    const base = context.unit === void 0 ? name11 : `${context.unit}.${name11}`;
+  declareUnit(name12, kind, node, wrapper, context, fn) {
+    const base = context.unit === void 0 ? name12 : `${context.unit}.${name12}`;
     const seen = this.nameCounts.get(base) ?? 0;
     this.nameCounts.set(base, seen + 1);
     const qualifiedName = seen === 0 ? base : `${base}~${seen + 1}`;
@@ -5675,7 +5675,7 @@ var Extractor3 = class {
     if (fn !== void 0 && kind !== "class") {
       this.codeRows ??= codeRowsOf(this.root, typescriptMetricRules);
       const measured = measureFunction(fn, {
-        name: name11,
+        name: name12,
         startLine: unit.startLine,
         endLine: unit.endLine,
         codeRows: this.codeRows,
@@ -5710,34 +5710,34 @@ var Extractor3 = class {
     const declarators = node.namedChildren.filter((child) => child.type === "variable_declarator");
     const sole = declarators.length === 1;
     for (const declarator of declarators) {
-      const name11 = declarator.childForFieldName("name");
+      const name12 = declarator.childForFieldName("name");
       const value = declarator.childForFieldName("value");
       const annotation7 = declarator.childForFieldName("type");
       if (annotation7) this.visit(annotation7, context, declarator, "type");
       const extent = sole ? parent.type === "export_statement" ? parent : node : declarator;
-      if (name11?.type === "identifier" && value) {
-        if (this.requireDeclarator(declarator, name11, value, context)) continue;
+      if (name12?.type === "identifier" && value) {
+        if (this.requireDeclarator(declarator, name12, value, context)) continue;
         if (isFunctionValue(value)) {
-          this.functionBody(value, this.declareUnit(name11.text, functionKind(value), value, extent, context, value));
+          this.functionBody(value, this.declareUnit(name12.text, functionKind(value), value, extent, context, value));
           continue;
         }
         if (value.type === "class") {
-          this.visitChildren(value, this.declareUnit(name11.text, "class", value, extent, context));
+          this.visitChildren(value, this.declareUnit(name12.text, "class", value, extent, context));
           continue;
         }
         if (value.type === "object") {
-          this.objectLiteral(value, name11.text, context);
+          this.objectLiteral(value, name12.text, context);
           continue;
         }
-      } else if (name11 && value && this.requireDeclarator(declarator, name11, value, context)) {
+      } else if (name12 && value && this.requireDeclarator(declarator, name12, value, context)) {
         continue;
       }
-      if (name11 && name11.type !== "identifier") this.visit(name11, context, declarator, "name");
+      if (name12 && name12.type !== "identifier") this.visit(name12, context, declarator, "name");
       if (value) this.visit(value, context, declarator, "value");
     }
   }
   /** `const x = require("y")` and its destructuring forms. Returns true when it was one. */
-  requireDeclarator(declarator, name11, value, context) {
+  requireDeclarator(declarator, name12, value, context) {
     if (value.type !== "call_expression") return false;
     const callee = value.childForFieldName("function");
     if (callee?.type !== "identifier" || callee.text !== "require" || context.shadow.has("require")) return false;
@@ -5745,10 +5745,10 @@ var Extractor3 = class {
     const specifier = stringValue(args2?.namedChildren[0] ?? null);
     if (specifier === null || args2?.namedChildren.length !== 1) return false;
     const bindings = [];
-    if (name11.type === "identifier") {
-      bindings.push({ imported: "*", local: name11.text, typeOnly: false });
-    } else if (name11.type === "object_pattern") {
-      for (const part of name11.namedChildren) {
+    if (name12.type === "identifier") {
+      bindings.push({ imported: "*", local: name12.text, typeOnly: false });
+    } else if (name12.type === "object_pattern") {
+      for (const part of name12.namedChildren) {
         if (part.type === "shorthand_property_identifier_pattern") {
           bindings.push({ imported: part.text, local: part.text, typeOnly: false });
         } else if (part.type === "object_assignment_pattern") {
@@ -5771,11 +5771,11 @@ var Extractor3 = class {
     });
     return true;
   }
-  objectLiteral(object, name11, context) {
+  objectLiteral(object, name12, context) {
     for (const member of object.namedChildren) {
       if (member.type === "method_definition") {
         const key = member.childForFieldName("name");
-        const inner2 = key ? this.declareUnit(key.text, "method", member, void 0, scopeOf(context, name11), member) : context;
+        const inner2 = key ? this.declareUnit(key.text, "method", member, void 0, scopeOf(context, name12), member) : context;
         this.functionBody(member, inner2);
         continue;
       }
@@ -5783,7 +5783,7 @@ var Extractor3 = class {
         const key = member.childForFieldName("key");
         const value = member.childForFieldName("value");
         if (key && value && isFunctionValue(value)) {
-          const inner2 = this.declareUnit(key.text, functionKind(value), member, void 0, scopeOf(context, name11), value);
+          const inner2 = this.declareUnit(key.text, functionKind(value), member, void 0, scopeOf(context, name12), value);
           this.functionBody(value, inner2);
           continue;
         }
@@ -5850,14 +5850,14 @@ var Extractor3 = class {
           if (alias) this.reexports.push({ specifier: source, typeOnly, line, imported: "*", exported: alias.text });
         } else if (child.type === "export_clause") {
           for (const spec of child.namedChildren) {
-            const name11 = spec.childForFieldName("name");
-            if (spec.type !== "export_specifier" || !name11) continue;
-            const exported2 = spec.childForFieldName("alias")?.text ?? name11.text;
+            const name12 = spec.childForFieldName("name");
+            if (spec.type !== "export_specifier" || !name12) continue;
+            const exported2 = spec.childForFieldName("alias")?.text ?? name12.text;
             this.reexports.push({
               specifier: source,
               typeOnly: typeOnly || hasToken(spec, "type"),
               line,
-              imported: name11.text,
+              imported: name12.text,
               exported: exported2
             });
           }
@@ -5871,9 +5871,9 @@ var Extractor3 = class {
     const clause = node.namedChildren.find((child) => child.type === "export_clause");
     if (clause) {
       for (const spec of clause.namedChildren) {
-        const name11 = spec.childForFieldName("name");
-        if (spec.type !== "export_specifier" || !name11) continue;
-        this.exports.push({ exported: spec.childForFieldName("alias")?.text ?? name11.text, local: name11.text, line });
+        const name12 = spec.childForFieldName("name");
+        if (spec.type !== "export_specifier" || !name12) continue;
+        this.exports.push({ exported: spec.childForFieldName("alias")?.text ?? name12.text, local: name12.text, line });
       }
       return;
     }
@@ -5901,15 +5901,15 @@ var Extractor3 = class {
     const named2 = declaration.type === "ambient_declaration" ? declaration.namedChildren.find((child) => child.type !== "comment") ?? declaration : declaration;
     const names2 = [];
     declaredNames(named2, names2);
-    const name11 = named2.childForFieldName("name");
-    if (names2.length === 0 && name11) names2.push(name11.text);
+    const name12 = named2.childForFieldName("name");
+    if (names2.length === 0 && name12) names2.push(name12.text);
     const alias = named2.type === "import_alias" ? named2.namedChildren.find((c2) => c2.type === "identifier") : void 0;
     if (names2.length === 0 && alias) names2.push(alias.text);
     if (isDefault) {
       const anonymous = functionTypes.has(declaration.type) || classTypes.has(declaration.type);
-      const unitName2 = name11?.text ?? "default";
+      const unitName2 = name12?.text ?? "default";
       this.exports.push({ exported: "default", local: unitName2, line });
-      if (anonymous && !name11) {
+      if (anonymous && !name12) {
         const kind = classTypes.has(declaration.type) ? "class" : "function";
         const inner2 = this.declareUnit("default", kind, declaration, statement, context, declaration);
         if (kind === "class") this.visitChildren(declaration, inner2);
@@ -5991,23 +5991,23 @@ var Extractor3 = class {
     }
   }
   jsxElement(node, context) {
-    const name11 = node.childForFieldName("name");
-    if (name11?.type === "identifier") this.reference(name11, context, "reference");
-    else if (name11?.type === "member_expression" || name11?.type === "nested_identifier") {
-      const first = name11.namedChildren[0];
-      const second = name11.namedChildren[1];
+    const name12 = node.childForFieldName("name");
+    if (name12?.type === "identifier") this.reference(name12, context, "reference");
+    else if (name12?.type === "member_expression" || name12?.type === "nested_identifier") {
+      const first = name12.namedChildren[0];
+      const second = name12.namedChildren[1];
       if (first?.type === "identifier") this.reference(first, context, "reference", second?.text);
     }
     for (const child of node.namedChildren) {
-      if (child.id !== name11?.id) this.visit(child, context, node, null);
+      if (child.id !== name12?.id) this.visit(child, context, node, null);
     }
   }
 };
 function wrapperOf(parent) {
   return parent.type === "export_statement" ? parent : void 0;
 }
-function scopeOf(context, name11) {
-  const unit = context.unit === void 0 ? name11 : `${context.unit}.${name11}`;
+function scopeOf(context, name12) {
+  const unit = context.unit === void 0 ? name12 : `${context.unit}.${name12}`;
   return { unit, shadow: context.shadow };
 }
 function extractFacts3(root, options = {}) {
@@ -6117,8 +6117,8 @@ function removeTrailingCommas(text3) {
 
 // packages/parse/src/languages/typescript/resolve-specifier.ts
 function isConfigPath(path) {
-  const name11 = path.slice(path.lastIndexOf("/") + 1);
-  return name11 === "package.json" || name11.startsWith("tsconfig") && name11.endsWith(".json");
+  const name12 = path.slice(path.lastIndexOf("/") + 1);
+  return name12 === "package.json" || name12.startsWith("tsconfig") && name12.endsWith(".json");
 }
 var sourceExtensions = [".ts", ".tsx", ".d.ts", ".js", ".jsx", ".mts", ".cts", ".mjs", ".cjs"];
 var emittedExtensions = {
@@ -6153,8 +6153,8 @@ var SpecifierResolver = class {
   constructor(files, configs) {
     this.files = new Set(files);
     for (const [path, text3] of configs) {
-      const name11 = path.slice(path.lastIndexOf("/") + 1);
-      if (name11 === "package.json") this.addPackage(path, text3);
+      const name12 = path.slice(path.lastIndexOf("/") + 1);
+      if (name12 === "package.json") this.addPackage(path, text3);
       else this.tsconfigTexts.set(path, text3);
     }
     this.packages.sort((a, b) => b.name.length - a.name.length);
@@ -6184,14 +6184,14 @@ var SpecifierResolver = class {
       const file = resolved === void 0 ? void 0 : this.resolveFile(resolved);
       if (file !== void 0) return { kind: "file", path: file };
     }
-    const { name: name11, subpath } = splitPackageSpecifier(specifier);
-    const workspace = this.packages.find((candidate) => candidate.name === name11);
+    const { name: name12, subpath } = splitPackageSpecifier(specifier);
+    const workspace = this.packages.find((candidate) => candidate.name === name12);
     if (workspace) {
       const file = this.resolveInPackage(workspace, subpath);
       return file === void 0 ? { kind: "not-found" } : { kind: "file", path: file };
     }
     if (builtins.has(specifier.split("/")[0])) return { kind: "builtin" };
-    return pathsMatched ? { kind: "not-found" } : { kind: "external", packageName: name11 };
+    return pathsMatched ? { kind: "not-found" } : { kind: "external", packageName: name12 };
   }
   /** A file for an extensionless or emitted-extension path, or a directory with an index. */
   resolveFile(path) {
@@ -6421,8 +6421,8 @@ import { posix as posix4 } from "node:path";
 var isProjectFile = (path) => path.endsWith(".csproj");
 var isSolutionFile = (path) => path.endsWith(".sln") || path.endsWith(".slnx");
 var withoutComments = (text3) => text3.replace(/<!--[\s\S]*?-->/g, "");
-function attribute(tag, name11) {
-  return new RegExp(`\\b${name11}\\s*=\\s*"([^"]*)"`, "i").exec(tag)?.[1] ?? new RegExp(`\\b${name11}\\s*=\\s*'([^']*)'`, "i").exec(tag)?.[1];
+function attribute(tag, name12) {
+  return new RegExp(`\\b${name12}\\s*=\\s*"([^"]*)"`, "i").exec(tag)?.[1] ?? new RegExp(`\\b${name12}\\s*=\\s*'([^']*)'`, "i").exec(tag)?.[1];
 }
 function projectProperty(text3, element2) {
   return new RegExp(`<${element2}>\\s*([^<]*?)\\s*</${element2}>`, "i").exec(withoutComments(text3))?.[1];
@@ -6569,12 +6569,12 @@ function enclosingTypeName(fn) {
   }
   return void 0;
 }
-function recursionScope4(fn, name11) {
+function recursionScope4(fn, name12) {
   const parameters = parameterInfo(fn);
   const params = parameters.some((parameter) => parameter.isParams);
   const optional = parameters.filter((parameter) => parameter.hasDefault).length;
   const callable = fn.type === "method_declaration" || fn.type === "local_function_statement";
-  const own = callable ? fn.childForFieldName("name")?.text ?? name11 : void 0;
+  const own = callable ? fn.childForFieldName("name")?.text ?? name12 : void 0;
   const names2 = new Set(own === void 0 ? [] : [own]);
   const owner = fn.type === "method_declaration" ? enclosingTypeName(fn) : void 0;
   return {
@@ -6592,12 +6592,12 @@ function isRecursiveCall4(call, scope) {
   if (args2 < arity2.min || args2 > arity2.max) return false;
   const simple = (node) => node === null ? void 0 : node.type === "generic_name" ? node.namedChildren[0]?.text : node.type === "identifier" ? node.text : void 0;
   if (callee.type === "identifier" || callee.type === "generic_name") {
-    const name11 = simple(callee);
-    return name11 !== void 0 && scope.bare.has(name11);
+    const name12 = simple(callee);
+    return name12 !== void 0 && scope.bare.has(name12);
   }
   if (callee.type === "member_access_expression") {
-    const name11 = simple(callee.childForFieldName("name"));
-    if (name11 === void 0 || !scope.member.has(name11)) return false;
+    const name12 = simple(callee.childForFieldName("name"));
+    if (name12 === void 0 || !scope.member.has(name12)) return false;
     const target2 = callee.childForFieldName("expression");
     if (target2 === null || target2.type === "this") return true;
     return scope.owner !== void 0 && target2.type === "identifier" && target2.text === scope.owner;
@@ -6748,16 +6748,16 @@ function chainOf(node) {
       return [node.namedChildren[0]?.text ?? ""];
     case "qualified_name": {
       const qualifier = chainOf(node.childForFieldName("qualifier"));
-      const name11 = chainOf(node.childForFieldName("name"));
-      return qualifier === void 0 || name11 === void 0 ? void 0 : [...qualifier, ...name11];
+      const name12 = chainOf(node.childForFieldName("name"));
+      return qualifier === void 0 || name12 === void 0 ? void 0 : [...qualifier, ...name12];
     }
     case "member_access_expression": {
-      const name11 = chainOf(node.childForFieldName("name"));
-      if (name11 === void 0) return void 0;
+      const name12 = chainOf(node.childForFieldName("name"));
+      if (name12 === void 0) return void 0;
       const target2 = node.childForFieldName("expression");
       if (target2 === null) return void 0;
       const qualifier = chainOf(target2);
-      return qualifier === void 0 ? void 0 : [...qualifier, ...name11];
+      return qualifier === void 0 ? void 0 : [...qualifier, ...name12];
     }
     default:
       return void 0;
@@ -6804,13 +6804,13 @@ var Extractor4 = class {
   /** `using` directives of the whole file, wherever they sit: scopes are file-wide here, which is the heuristic's price. */
   usings(root) {
     for (const directive of root.descendantsOfType("using_directive")) {
-      const name11 = directive.childForFieldName("name");
-      const target2 = directive.namedChildren.find((child) => child.id !== name11?.id && (child.type === "qualified_name" || child.type === "identifier" || child.type === "generic_name"));
+      const name12 = directive.childForFieldName("name");
+      const target2 = directive.namedChildren.find((child) => child.id !== name12?.id && (child.type === "qualified_name" || child.type === "identifier" || child.type === "generic_name"));
       const chain = chainOf(target2 ?? null);
       if (chain === void 0) continue;
       const written = chain.join(".");
-      if (name11 !== null) {
-        this.aliases.set(name11.text, chain);
+      if (name12 !== null) {
+        this.aliases.set(name12.text, chain);
         this.references.push({ name: written, kind: "reference", line: directive.startPosition.row + 1 });
         continue;
       }
@@ -6831,8 +6831,8 @@ var Extractor4 = class {
       }
       case "namespace_declaration": {
         const outer = this.namespace;
-        const name11 = chainOf(node.childForFieldName("name"))?.join(".") ?? "";
-        this.namespace = outer === "" ? name11 : `${outer}.${name11}`;
+        const name12 = chainOf(node.childForFieldName("name"))?.join(".") ?? "";
+        this.namespace = outer === "" ? name12 : `${outer}.${name12}`;
         this.noteNamespace();
         const body2 = node.childForFieldName("body");
         if (body2 !== null) this.members(body2, context);
@@ -6881,10 +6881,10 @@ var Extractor4 = class {
     return seen === 0 ? qualified : `${qualified}~${seen + 1}`;
   }
   typeDeclaration(node, context) {
-    const name11 = node.childForFieldName("name")?.text;
-    if (name11 === void 0) return;
+    const name12 = node.childForFieldName("name")?.text;
+    if (name12 === void 0) return;
     const modifiers2 = modifiersOf2(node);
-    const qualifiedName = this.unitName(name11, context);
+    const qualifiedName = this.unitName(name12, context);
     const nested = context.unit !== void 0;
     const visible = nested ? context.visible && modifiers2.some((modifier) => modifier === "public" || modifier === "protected") : modifiers2.includes("public");
     const kind = kindOf2(node, modifiers2);
@@ -6958,15 +6958,15 @@ var Extractor4 = class {
     }
   }
   propertyMember(node, context) {
-    const name11 = node.childForFieldName("name")?.text ?? (node.type === "indexer_declaration" ? "this[]" : "");
+    const name12 = node.childForFieldName("name")?.text ?? (node.type === "indexer_declaration" ? "this[]" : "");
     const accessors = node.childForFieldName("accessors");
     if (accessors === null) {
-      const propertyUnit2 = this.unitName(name11, context);
+      const propertyUnit2 = this.unitName(name12, context);
       const inner3 = node.childForFieldName("value") !== null ? this.declareFunction(node, propertyUnit2, "method", context.unit, void 0, context) : { ...context, unit: propertyUnit2 };
       this.functionParts(node, inner3, context);
       return;
     }
-    const propertyUnit = context.unit === void 0 ? name11 : `${context.unit}.${name11}`;
+    const propertyUnit = context.unit === void 0 ? name12 : `${context.unit}.${name12}`;
     const inner2 = { ...context, unit: propertyUnit };
     for (const child of node.namedChildren) {
       if (child.type === "attribute_list") this.attributes(child, context);
@@ -6982,11 +6982,11 @@ var Extractor4 = class {
     }
   }
   /** Records a function-like node as a unit with its metrics and shape, and returns the context its body is read in. */
-  declareFunction(fn, qualifiedName, kind, parent, name11, context) {
+  declareFunction(fn, qualifiedName, kind, parent, name12, context) {
     const startLine = startRow4(fn) + 1;
     const endLine = fn.endPosition.row + 1;
     this.codeRows ??= codeRowsOf(this.root, csharpMetricRules);
-    const measured = measureFunction(fn, { name: name11, startLine, endLine, codeRows: this.codeRows, explain: this.explain }, csharpMetricRules);
+    const measured = measureFunction(fn, { name: name12, startLine, endLine, codeRows: this.codeRows, explain: this.explain }, csharpMetricRules);
     const unit = { qualifiedName, kind, startLine, endLine, source: "structural", metrics: measured.metrics, shape: functionShape2(fn, measured.metrics.parameters) };
     if (parent !== void 0) unit.parent = parent;
     const forwarded = passThroughOf4(fn, new Set(parameterInfo(fn).map((parameter) => parameter.name)));
@@ -7066,8 +7066,8 @@ var Extractor4 = class {
         this.attributes(node, context);
         return;
       case "parameter": {
-        const name11 = node.childForFieldName("name");
-        for (const child of node.namedChildren) if (child.id !== name11?.id && child.type !== "modifier") this.expression(child, context);
+        const name12 = node.childForFieldName("name");
+        for (const child of node.namedChildren) if (child.id !== name12?.id && child.type !== "modifier") this.expression(child, context);
         return;
       }
       case "variable_declarator":
@@ -7075,8 +7075,8 @@ var Extractor4 = class {
       case "enum_member_declaration":
       case "type_parameter":
       case "labeled_statement": {
-        const name11 = node.childForFieldName("name");
-        for (const child of node.namedChildren) if (child.id !== name11?.id) this.expression(child, context);
+        const name12 = node.childForFieldName("name");
+        for (const child of node.namedChildren) if (child.id !== name12?.id) this.expression(child, context);
         return;
       }
       case "foreach_statement":
@@ -7132,8 +7132,8 @@ var Extractor4 = class {
   }
   /** The qualifier of a member access that is not a name chain, such as `Make().Run` or `a[0].Run`. */
   walkMembers(node, context) {
-    const name11 = node.childForFieldName("name");
-    for (const child of node.namedChildren) if (child.id !== name11?.id) this.expression(child, context);
+    const name12 = node.childForFieldName("name");
+    for (const child of node.namedChildren) if (child.id !== name12?.id) this.expression(child, context);
   }
   /** The generic arguments inside a chain of names: `List<Invoice>` references `Invoice`. */
   typeArguments(node, context) {
@@ -7145,9 +7145,9 @@ var Extractor4 = class {
    */
   nested(node, context) {
     if (node.type === "local_function_statement" && context.unit !== void 0) {
-      const name11 = node.childForFieldName("name")?.text ?? "";
-      const qualifiedName = this.unitName(name11, context);
-      const inner3 = this.declareFunction(node, qualifiedName, "function", context.unit, name11, context);
+      const name12 = node.childForFieldName("name")?.text ?? "";
+      const qualifiedName = this.unitName(name12, context);
+      const inner3 = this.declareFunction(node, qualifiedName, "function", context.unit, name12, context);
       this.functionParts(node, inner3, context);
       return;
     }
@@ -7176,8 +7176,8 @@ function typeNames(node, out2) {
   if (node.type === "identifier") out2.add(node.text);
   else if (node.type === "qualified_name") typeNames(node.childForFieldName("name"), out2);
   else if (node.type === "generic_name") {
-    const name11 = node.namedChildren[0];
-    if (name11 !== void 0) out2.add(name11.text);
+    const name12 = node.namedChildren[0];
+    if (name12 !== void 0) out2.add(name12.text);
     for (const list2 of node.namedChildren.filter((child) => child.type === "type_argument_list")) for (const child of list2.namedChildren) typeNames(child, out2);
   } else for (const child of node.namedChildren) typeNames(child, out2);
 }
@@ -7197,8 +7197,8 @@ function heritageOf4(declaration) {
   const out2 = [];
   for (const list2 of declaration.namedChildren.filter((child) => child.type === "base_list")) {
     for (const base of list2.namedChildren) {
-      const name11 = lastNameOf(base.type === "primary_constructor_base_type" ? base.namedChildren[0] ?? null : base);
-      if (name11 !== void 0) out2.push(name11);
+      const name12 = lastNameOf(base.type === "primary_constructor_base_type" ? base.namedChildren[0] ?? null : base);
+      if (name12 !== void 0) out2.push(name12);
     }
   }
   return out2;
@@ -7240,58 +7240,58 @@ function extractFileCensus4(root) {
     let nextClass = className;
     switch (node.type) {
       case "interface_declaration": {
-        const name11 = node.childForFieldName("name")?.text;
-        if (name11 !== void 0) facts.types.push({ name: name11, kind: "interface", line });
+        const name12 = node.childForFieldName("name")?.text;
+        if (name12 !== void 0) facts.types.push({ name: name12, kind: "interface", line });
         break;
       }
       case "delegate_declaration": {
-        const name11 = node.childForFieldName("name")?.text;
-        if (name11 !== void 0) facts.types.push({ name: name11, kind: "function-type", line });
+        const name12 = node.childForFieldName("name")?.text;
+        if (name12 !== void 0) facts.types.push({ name: name12, kind: "function-type", line });
         break;
       }
       case "class_declaration":
       case "struct_declaration":
       case "record_declaration":
       case "record_struct_declaration": {
-        const name11 = node.childForFieldName("name")?.text;
-        if (name11 === void 0 || !classLike.has(node.type)) break;
+        const name12 = node.childForFieldName("name")?.text;
+        if (name12 === void 0 || !classLike.has(node.type)) break;
         const constructors = [node.namedChildren.find((child) => child.type === "parameter_list") ?? null];
         for (const member of node.childForFieldName("body")?.namedChildren ?? []) if (member.type === "constructor_declaration") constructors.push(member.childForFieldName("parameters"));
         const constructorTypes2 = constructors.flatMap((list2) => parametersOf4(list2).flatMap((parameter) => parameter.type.names));
-        const klass = { name: name11, line, heritage: heritageOf4(node), constructorTypes: constructorTypes2 };
+        const klass = { name: name12, line, heritage: heritageOf4(node), constructorTypes: constructorTypes2 };
         facts.classes.push(klass);
-        if (node.type === "class_declaration" && modifiersOf2(node).includes("abstract")) facts.types.push({ name: name11, kind: "abstract-class", line });
-        nextClass = name11;
+        if (node.type === "class_declaration" && modifiersOf2(node).includes("abstract")) facts.types.push({ name: name12, kind: "abstract-class", line });
+        nextClass = name12;
         break;
       }
       case "method_declaration": {
-        const name11 = node.childForFieldName("name")?.text;
-        if (name11 !== void 0 && className !== null) {
-          const fn = { name: `${className}.${name11}`, line, parameters: parametersOf4(node.childForFieldName("parameters")) };
+        const name12 = node.childForFieldName("name")?.text;
+        if (name12 !== void 0 && className !== null) {
+          const fn = { name: `${className}.${name12}`, line, parameters: parametersOf4(node.childForFieldName("parameters")) };
           facts.functions.push(fn);
         }
         break;
       }
       case "attribute": {
-        const name11 = lastNameOf(node.childForFieldName("name"));
-        if (name11 !== void 0) facts.decorators.push({ line, name: name11.replace(/Attribute$/, "") });
+        const name12 = lastNameOf(node.childForFieldName("name"));
+        if (name12 !== void 0) facts.decorators.push({ line, name: name12.replace(/Attribute$/, "") });
         break;
       }
       case "object_creation_expression": {
-        const name11 = lastNameOf(node.childForFieldName("type"));
-        if (name11 !== void 0) facts.news.push({ line, name: name11 });
+        const name12 = lastNameOf(node.childForFieldName("type"));
+        if (name12 !== void 0) facts.news.push({ line, name: name12 });
         break;
       }
       case "variable_declarator": {
-        const name11 = node.childForFieldName("name")?.text;
+        const name12 = node.childForFieldName("name")?.text;
         const declaration = node.parent;
         const type = declaration?.type === "variable_declaration" ? declaration.childForFieldName("type") : null;
-        if (name11 !== void 0 && registryName4.test(name11) && isDictionary(node, type)) facts.keyedMaps.push({ line, name: name11 });
+        if (name12 !== void 0 && registryName4.test(name12) && isDictionary(node, type)) facts.keyedMaps.push({ line, name: name12 });
         break;
       }
       case "property_declaration": {
-        const name11 = node.childForFieldName("name")?.text;
-        if (name11 !== void 0 && registryName4.test(name11) && isDictionary(node, node.childForFieldName("type"))) facts.keyedMaps.push({ line, name: name11 });
+        const name12 = node.childForFieldName("name")?.text;
+        if (name12 !== void 0 && registryName4.test(name12) && isDictionary(node, node.childForFieldName("type"))) facts.keyedMaps.push({ line, name: name12 });
         break;
       }
       case "invocation_expression": {
@@ -7309,7 +7309,7 @@ function extractFileCensus4(root) {
 function isDictionary(node, type) {
   const names2 = /* @__PURE__ */ new Set();
   typeNames(type, names2);
-  if ([...names2].some((name11) => dictionaryTypes.test(name11))) return true;
+  if ([...names2].some((name12) => dictionaryTypes.test(name12))) return true;
   const created = node.descendantsOfType("object_creation_expression")[0];
   const createdName = created === void 0 ? void 0 : lastNameOf(created.childForFieldName("type"));
   return createdName !== void 0 && dictionaryTypes.test(createdName);
@@ -7367,19 +7367,19 @@ function partialTypes(facts, owner) {
       declared.set(key, list2);
     }
   }
-  const partial = /* @__PURE__ */ new Map();
+  const partial2 = /* @__PURE__ */ new Map();
   for (const [key, parts3] of declared) {
     if (parts3.length < 2) continue;
     const primary = `${nameOf(key).slice(nameOf(key).lastIndexOf(".") + 1)}.cs`;
-    partial.set(key, parts3.sort((a, b) => Number(basename2(b.file) === primary) - Number(basename2(a.file) === primary) || compare(a.file, b.file)));
+    partial2.set(key, parts3.sort((a, b) => Number(basename2(b.file) === primary) - Number(basename2(a.file) === primary) || compare(a.file, b.file)));
   }
-  return partial;
+  return partial2;
 }
 var nameOf = (key) => key.slice(key.indexOf("\0") + 1);
-function mergePartials(resolved, partial, own, isTest) {
-  if (partial.size === 0) return resolved;
+function mergePartials(resolved, partial2, own, isTest) {
+  if (partial2.size === 0) return resolved;
   const lead = /* @__PURE__ */ new Map();
-  for (const [key, parts3] of partial) for (const part of parts3) lead.set(`${part.file}\0${nameOf(key)}`, parts3[0]);
+  for (const [key, parts3] of partial2) for (const part of parts3) lead.set(`${part.file}\0${nameOf(key)}`, parts3[0]);
   const consumers = /* @__PURE__ */ new Map();
   const addConsumer = (consumer) => {
     const key = [consumer.from, consumer.fromUnit ?? "", consumer.to, consumer.toSymbol ?? consumer.toExport, consumer.kind].join("\0");
@@ -7392,12 +7392,12 @@ function mergePartials(resolved, partial, own, isTest) {
     addConsumer(target2 === void 0 ? consumer : { ...consumer, to: target2.file, toSymbol: target2.unit });
   }
   const behind = /* @__PURE__ */ new Set();
-  for (const [key, parts3] of partial) for (const part of parts3.slice(1)) behind.add(`${part.file}\0${nameOf(key)}`);
+  for (const [key, parts3] of partial2) for (const part of parts3.slice(1)) behind.add(`${part.file}\0${nameOf(key)}`);
   const behindFiles = new Set([...behind].map((entry) => entry.slice(0, entry.indexOf("\0"))));
   const used = new Set([...consumers.values()].map((consumer) => `${consumer.from}\0${consumer.to}`));
   const explained = (edge) => !behindFiles.has(edge.to) || used.has(`${edge.from}\0${edge.to}`);
   const fileEdges = new Map(resolved.fileEdges.filter(explained).map((edge) => [`${edge.from}\0${edge.to}`, edge]));
-  for (const [key, parts3] of partial) {
+  for (const [key, parts3] of partial2) {
     for (const from of parts3) {
       for (const to of parts3) {
         if (from.file === to.file || !own.has(from.file)) continue;
@@ -7532,21 +7532,21 @@ function parseCmake(text3) {
   const file = { project: null, targets: [], includeDirectories: [], subdirectories: [] };
   const byName2 = /* @__PURE__ */ new Map();
   const all = commands(text3);
-  for (const command10 of all) {
-    const [first, ...rest] = command10.args;
-    if (command10.name === "project" && first !== void 0) file.project ??= first;
-    if ((command10.name === "add_library" || command10.name === "add_executable") && first !== void 0) {
+  for (const command11 of all) {
+    const [first, ...rest] = command11.args;
+    if (command11.name === "project" && first !== void 0) file.project ??= first;
+    if ((command11.name === "add_library" || command11.name === "add_executable") && first !== void 0) {
       if (rest.some((argument) => argument === "ALIAS" || argument === "IMPORTED")) continue;
       const sources = rest.filter((argument) => !libraryTypes.has(argument) && argument !== "WIN32" && argument !== "MACOSX_BUNDLE").flatMap((argument) => pathArgument(argument) ?? []);
-      const target2 = { name: first, kind: command10.name === "add_library" ? "library" : "executable", sources, publicIncludes: [], privateIncludes: [], links: [] };
+      const target2 = { name: first, kind: command11.name === "add_library" ? "library" : "executable", sources, publicIncludes: [], privateIncludes: [], links: [] };
       file.targets.push(target2);
       byName2.set(first, target2);
     }
   }
-  for (const command10 of all) {
-    const [first, ...rest] = command10.args;
+  for (const command11 of all) {
+    const [first, ...rest] = command11.args;
     if (first === void 0) continue;
-    switch (command10.name) {
+    switch (command11.name) {
       case "target_sources": {
         const target2 = byName2.get(first);
         if (target2 !== void 0) target2.sources.push(...rest.filter((argument) => !scopes.has(argument) && argument !== "FILE_SET" && argument !== "HEADERS").flatMap((argument) => pathArgument(argument) ?? []));
@@ -7700,17 +7700,17 @@ function ownerOf(fn, qualifier) {
   if (qualifier.length > 0) return qualifier.at(-1);
   for (let parent = fn.parent; parent !== null; parent = parent.parent) {
     if (parent.type === "class_specifier" || parent.type === "struct_specifier" || parent.type === "union_specifier") {
-      const name11 = parent.childForFieldName("name");
-      return name11 === null ? void 0 : plainName(name11);
+      const name12 = parent.childForFieldName("name");
+      return name12 === null ? void 0 : plainName(name12);
     }
     if (parent.type === "function_definition" || parent.type === "translation_unit") return void 0;
   }
   return void 0;
 }
-function recursionScope5(fn, name11) {
+function recursionScope5(fn, name12) {
   if (fn.type === "lambda_expression") return { bare: /* @__PURE__ */ new Set(), member: /* @__PURE__ */ new Set() };
   const named2 = declaratorName(functionDeclarator(fn));
-  const own = named2?.name ?? name11;
+  const own = named2?.name ?? name12;
   const names2 = new Set(own === void 0 ? [] : [own]);
   const owner = named2 === null ? void 0 : ownerOf(fn, named2.qualifier);
   return { bare: names2, member: names2, ...owner === void 0 ? {} : { owner } };
@@ -7727,8 +7727,8 @@ function isRecursiveCall5(call, scope) {
       return scope.member.has(field6) && object?.type === "this";
     }
     case "qualified_identifier": {
-      const name11 = callee.childForFieldName("name");
-      const last = name11 === null ? "" : plainName(name11);
+      const name12 = callee.childForFieldName("name");
+      const last = name12 === null ? "" : plainName(name12);
       const scopeName = callee.childForFieldName("scope");
       if (!scope.bare.has(last)) return false;
       return scope.owner === void 0 || scopeName !== null && plainName(scopeName) === scope.owner;
@@ -7773,8 +7773,8 @@ function classAbstraction(declaration) {
       if (node.type === "field_declaration") data++;
       continue;
     }
-    const name11 = declaratorName(declarator)?.name ?? "";
-    if (name11 === className || name11 === `~${className}`) continue;
+    const name12 = declaratorName(declarator)?.name ?? "";
+    if (name12 === className || name12 === `~${className}`) continue;
     if (node.childForFieldName("default_value")?.text === "0") pure++;
     else other++;
   }
@@ -7786,8 +7786,8 @@ function classAbstraction(declaration) {
 var registryName5 = /(registry|registries|handlers|plugins|strategies|factories|providers|adapters)_?$/i;
 var mapTypes3 = /map$/i;
 var macroName = /^[A-Z][A-Z0-9_]{2,}$/;
-function field3(node, name11) {
-  return node.childForFieldName(name11);
+function field3(node, name12) {
+  return node.childForFieldName(name12);
 }
 function lastName4(node) {
   if (node === null) return null;
@@ -7835,15 +7835,15 @@ function parameterFacts(list2) {
   for (const parameter of list2?.namedChildren ?? []) {
     if (parameter.type !== "parameter_declaration" && parameter.type !== "optional_parameter_declaration") continue;
     const declarator = field3(parameter, "declarator");
-    let name11 = "";
+    let name12 = "";
     for (let current = declarator; current !== null; ) {
       if (current.type === "identifier") {
-        name11 = current.text;
+        name12 = current.text;
         break;
       }
       current = field3(current, "declarator") ?? current.namedChildren.find((child) => child.type.endsWith("declarator") || child.type === "identifier") ?? null;
     }
-    out2.push({ name: name11, type: typeFact(field3(parameter, "type"), declarator !== null && hasFunctionDeclarator(declarator)) });
+    out2.push({ name: name12, type: typeFact(field3(parameter, "type"), declarator !== null && hasFunctionDeclarator(declarator)) });
   }
   return out2;
 }
@@ -7855,8 +7855,8 @@ function heritageOf5(node) {
   const clause = node.namedChildren.find((child) => child.type === "base_class_clause");
   for (const base of clause?.namedChildren ?? []) {
     if (base.type === "access_specifier" || base.type === "virtual_specifier") continue;
-    const name11 = lastName4(base);
-    if (name11 !== null) out2.push(name11);
+    const name12 = lastName4(base);
+    if (name12 !== null) out2.push(name12);
   }
   return out2;
 }
@@ -7879,39 +7879,39 @@ function extractFileCensus5(root) {
       case "union_specifier": {
         const nameNode = field3(node, "name");
         const body2 = field3(node, "body");
-        const name11 = lastName4(nameNode);
-        if (name11 !== null && body2 !== null) {
+        const name12 = lastName4(nameNode);
+        if (name12 !== null && body2 !== null) {
           const kind = classAbstraction(node);
-          if (kind === "interface" || kind === "abstract-class") facts.types.push({ name: name11, kind, line });
+          if (kind === "interface" || kind === "abstract-class") facts.types.push({ name: name12, kind, line });
           const constructorTypes2 = /* @__PURE__ */ new Set();
           for (const member of body2.namedChildren) {
             const target2 = member.type === "template_declaration" ? member.namedChildren.find((child) => child.type !== "template_parameter_list") ?? member : member;
             const declarator = target2.type === "function_definition" || target2.type === "declaration" || target2.type === "field_declaration" ? functionDeclarator(target2) : null;
-            if (declaratorName(declarator)?.name !== name11) continue;
+            if (declaratorName(declarator)?.name !== name12) continue;
             for (const parameter of parameterFacts(field3(declarator, "parameters"))) for (const type of parameter.type.names) constructorTypes2.add(type);
           }
-          facts.classes.push({ name: name11, line, heritage: heritageOf5(node), constructorTypes: [...constructorTypes2].sort() });
-          nextClass = name11;
+          facts.classes.push({ name: name12, line, heritage: heritageOf5(node), constructorTypes: [...constructorTypes2].sort() });
+          nextClass = name12;
         }
         nextFileLevel = false;
         break;
       }
       case "alias_declaration": {
-        const name11 = field3(node, "name")?.text;
-        if (name11 !== void 0 && isFunctionTypeAlias(field3(node, "type"))) facts.types.push({ name: name11, kind: "function-type", line });
+        const name12 = field3(node, "name")?.text;
+        if (name12 !== void 0 && isFunctionTypeAlias(field3(node, "type"))) facts.types.push({ name: name12, kind: "function-type", line });
         break;
       }
       case "type_definition": {
         const declarator = field3(node, "declarator");
         if (declarator !== null && declarator.descendantsOfType(["function_declarator"]).length + (declarator.type === "function_declarator" ? 1 : 0) > 0) {
-          let name11 = null;
+          let name12 = null;
           for (let current = declarator; current !== null; current = field3(current, "declarator") ?? current.namedChildren.find((child) => child.type.endsWith("declarator") || child.type === "type_identifier") ?? null) {
             if (current.type === "type_identifier") {
-              name11 = current.text;
+              name12 = current.text;
               break;
             }
           }
-          if (name11 !== null) facts.types.push({ name: name11, kind: "function-type", line });
+          if (name12 !== null) facts.types.push({ name: name12, kind: "function-type", line });
         }
         break;
       }
@@ -7944,8 +7944,8 @@ function extractFileCensus5(root) {
         break;
       }
       case "attribute": {
-        const name11 = lastName4(field3(node, "name"));
-        if (name11 !== null) facts.decorators.push({ line, name: name11 });
+        const name12 = lastName4(field3(node, "name"));
+        if (name12 !== null) facts.decorators.push({ line, name: name12 });
         break;
       }
       case "expression_statement": {
@@ -7955,8 +7955,8 @@ function extractFileCensus5(root) {
         break;
       }
       case "new_expression": {
-        const name11 = lastName4(field3(node, "type"));
-        if (name11 !== null) facts.news.push({ line, name: name11 });
+        const name12 = lastName4(field3(node, "type"));
+        if (name12 !== null) facts.news.push({ line, name: name12 });
         break;
       }
       case "call_expression": {
@@ -8092,15 +8092,15 @@ function dotted2(node) {
   switch (node.type) {
     case "qualified_identifier": {
       const scope = node.childForFieldName("scope");
-      const name11 = node.childForFieldName("name");
+      const name12 = node.childForFieldName("name");
       const head = scope === null ? "" : dotted2(scope);
-      const tail2 = name11 === null ? "" : dotted2(name11);
+      const tail2 = name12 === null ? "" : dotted2(name12);
       return head === "" ? tail2 : `${head}.${tail2}`;
     }
     case "template_type":
     case "template_function": {
-      const name11 = node.childForFieldName("name");
-      return name11 === null ? plain(node) : dotted2(name11);
+      const name12 = node.childForFieldName("name");
+      return name12 === null ? plain(node) : dotted2(name12);
     }
     case "dependent_type":
     case "type_descriptor": {
@@ -8119,8 +8119,8 @@ function receiverType(type) {
     case "qualified_identifier":
     case "template_type": {
       const last = (type.type === "template_type" ? type.childForFieldName("name") : type.childForFieldName("name")) ?? null;
-      const name11 = last === null ? "" : plain(last.type === "template_type" ? last.childForFieldName("name") ?? last : last);
-      if (type.type === "template_type" && smartPointers.has(name11)) return receiverType(firstTemplateArgument(type));
+      const name12 = last === null ? "" : plain(last.type === "template_type" ? last.childForFieldName("name") ?? last : last);
+      if (type.type === "template_type" && smartPointers.has(name12)) return receiverType(firstTemplateArgument(type));
       if (type.type === "qualified_identifier" && last?.type === "template_type" && smartPointers.has(plain(last.childForFieldName("name") ?? last))) return receiverType(firstTemplateArgument(last));
       return dotted2(type);
     }
@@ -8226,14 +8226,14 @@ var Extractor5 = class {
         this.enumeration(node, context);
         return;
       case "alias_declaration": {
-        const name11 = node.childForFieldName("name");
-        if (name11 !== null) this.addDeclaration(name11.text, "type", void 0, context, node.startPosition.row + 1, true);
+        const name12 = node.childForFieldName("name");
+        if (name12 !== null) this.addDeclaration(name12.text, "type", void 0, context, node.startPosition.row + 1, true);
         this.visitChildren(node, context);
         return;
       }
       case "type_definition": {
-        const name11 = declaredIdentifier(node.childForFieldName("declarator")) ?? node.childForFieldName("declarator")?.text;
-        if (name11 !== void 0 && name11 !== null) this.addDeclaration(name11, "type", void 0, context, node.startPosition.row + 1, true);
+        const name12 = declaredIdentifier(node.childForFieldName("declarator")) ?? node.childForFieldName("declarator")?.text;
+        if (name12 !== void 0 && name12 !== null) this.addDeclaration(name12, "type", void 0, context, node.startPosition.row + 1, true);
         this.visitChildren(node, context);
         return;
       }
@@ -8278,8 +8278,8 @@ var Extractor5 = class {
       }
       case "init_declarator": {
         const value = node.childForFieldName("value");
-        const name11 = declaredIdentifier(node.childForFieldName("declarator"));
-        if (value?.type === "lambda_expression" && name11 !== null) this.namedLambda(node, value, name11, context);
+        const name12 = declaredIdentifier(node.childForFieldName("declarator"));
+        if (value?.type === "lambda_expression" && name12 !== null) this.namedLambda(node, value, name12, context);
         else this.visitChildren(node, context);
         return;
       }
@@ -8297,9 +8297,9 @@ var Extractor5 = class {
   /** A macro whose body holds declarations, or braces and statements, generates code the grammar never sees. */
   macroDefinition(node) {
     const value = node.childForFieldName("value")?.text ?? "";
-    const name11 = node.childForFieldName("name")?.text ?? "";
+    const name12 = node.childForFieldName("name")?.text ?? "";
     if (/[{};]/.test(value) && /\b(class|struct|union|enum|namespace|template|void|int|bool|return|if|for|while)\b|##/.test(value)) {
-      this.macros.push({ line: node.startPosition.row + 1, name: name11, kind: "definition" });
+      this.macros.push({ line: node.startPosition.row + 1, name: name12, kind: "definition" });
     }
   }
   /** A macro invoked where a declaration belongs, so what it declares is invisible. */
@@ -8311,14 +8311,14 @@ var Extractor5 = class {
     this.macros.push({ line: node.startPosition.row + 1, name: callee.text, kind: "invocation" });
   }
   namespace(node, context) {
-    const name11 = node.childForFieldName("name");
+    const name12 = node.childForFieldName("name");
     const body2 = node.childForFieldName("body");
     if (body2 === null) return;
-    if (name11 === null) {
+    if (name12 === null) {
       this.visitChildren(body2, { ...context, anonymous: true });
       return;
     }
-    const parts3 = name11.text.replace(/\binline\b/g, "").split("::").map((part) => part.trim()).filter((part) => part !== "");
+    const parts3 = name12.text.replace(/\binline\b/g, "").split("::").map((part) => part.trim()).filter((part) => part !== "");
     const namespaces = [...context.namespaces, ...parts3];
     this.namespaces.add(namespaces.join("."));
     this.visitChildren(body2, { ...context, namespaces });
@@ -8327,18 +8327,18 @@ var Extractor5 = class {
     const isNamespace = hasChildOfType(node, "namespace");
     const target2 = node.namedChildren.find((child) => child.type === "qualified_identifier" || child.type === "identifier");
     if (target2 === void 0) return;
-    const name11 = dotted2(target2);
-    if (isNamespace) this.uses.add(name11);
-    else if (name11.includes(".")) this.uses.add(name11.slice(0, name11.lastIndexOf(".")));
+    const name12 = dotted2(target2);
+    if (isNamespace) this.uses.add(name12);
+    else if (name12.includes(".")) this.uses.add(name12.slice(0, name12.lastIndexOf(".")));
   }
   // ---- declarations ----
   qualify(context, ...parts3) {
     return [...context.namespaces, ...context.owners, ...parts3].join(".");
   }
   /** `internal` marks a name with internal linkage: it names something private to this translation unit. */
-  addDeclaration(name11, kind, unit, context, line, exported, qualifier = [], internal = false) {
+  addDeclaration(name12, kind, unit, context, line, exported, qualifier = [], internal = false) {
     this.declarations.push({
-      name: this.qualify(context, ...qualifier, name11),
+      name: this.qualify(context, ...qualifier, name12),
       kind,
       ...unit === void 0 ? {} : { unit },
       exported: exported && !context.anonymous && context.publicMembers,
@@ -8347,9 +8347,9 @@ var Extractor5 = class {
     });
   }
   enumeration(node, context) {
-    const name11 = node.childForFieldName("name");
+    const name12 = node.childForFieldName("name");
     const body2 = node.childForFieldName("body");
-    if (name11 !== null && body2 !== null) this.addDeclaration(plain(name11), "enum", void 0, context, node.startPosition.row + 1, true);
+    if (name12 !== null && body2 !== null) this.addDeclaration(plain(name12), "enum", void 0, context, node.startPosition.row + 1, true);
     this.visitChildren(node, context);
   }
   templated(node, context) {
@@ -8381,9 +8381,9 @@ var Extractor5 = class {
       this.visitChildren(node, context);
       return;
     }
-    const name11 = plain(nameNode.type === "template_type" ? nameNode.childForFieldName("name") ?? nameNode : nameNode);
+    const name12 = plain(nameNode.type === "template_type" ? nameNode.childForFieldName("name") ?? nameNode : nameNode);
     const kind = classAbstraction(node);
-    const unitName2 = this.uniqueName(context.unit === void 0 ? unitId(context.namespaces, name11) : `${context.unit}.${name11}`);
+    const unitName2 = this.uniqueName(context.unit === void 0 ? unitId(context.namespaces, name12) : `${context.unit}.${name12}`);
     const unit = {
       qualifiedName: unitName2,
       kind: "class",
@@ -8394,8 +8394,8 @@ var Extractor5 = class {
     };
     if (context.unit !== void 0) unit.parent = context.unit;
     this.units.push(unit);
-    this.addDeclaration(name11, kind, unitName2, context, node.startPosition.row + 1, true);
-    const inner2 = { ...context, unit: unitName2, owners: [...context.owners, name11], scope: "class", publicMembers: true, types: this.fieldTypes(body2, context.types) };
+    this.addDeclaration(name12, kind, unitName2, context, node.startPosition.row + 1, true);
+    const inner2 = { ...context, unit: unitName2, owners: [...context.owners, name12], scope: "class", publicMembers: true, types: this.fieldTypes(body2, context.types) };
     for (let i2 = 0; i2 < node.childCount; i2++) {
       const part = node.child(i2);
       if (part !== null && part.isNamed && part.id !== body2.id) this.visit(part, inner2, node, node.fieldNameForChild(i2));
@@ -8420,8 +8420,8 @@ var Extractor5 = class {
       if (type === null) continue;
       for (let i2 = 0; i2 < member.childCount; i2++) {
         if (member.fieldNameForChild(i2) !== "declarator") continue;
-        const name11 = declaredIdentifier(member.child(i2));
-        if (name11 !== null) types.set(name11, type);
+        const name12 = declaredIdentifier(member.child(i2));
+        if (name12 !== null) types.set(name12, type);
       }
     }
     return types;
@@ -8432,11 +8432,11 @@ var Extractor5 = class {
     return seen === 0 ? base : `${base}~${seen + 1}`;
   }
   /** `auto f = [](...) {...};` binds a lambda to a name, which makes it a unit like a function. */
-  namedLambda(declarator, lambda, name11, context) {
+  namedLambda(declarator, lambda, name12, context) {
     const declaration = declarator.parent;
     const sole = declaration?.type === "declaration" && declaration.namedChildren.filter((child) => child.type === "init_declarator").length === 1;
     const extent = sole ? declaration : declarator;
-    const qualifiedName = this.uniqueName(context.unit === void 0 ? unitId(context.namespaces, name11) : `${context.unit}.${name11}`);
+    const qualifiedName = this.uniqueName(context.unit === void 0 ? unitId(context.namespaces, name12) : `${context.unit}.${name12}`);
     this.units.push(this.measuredUnit(qualifiedName, "arrow", lambda, extent, void 0, context));
     this.visitChildren(lambda, { ...context, unit: qualifiedName, scope: "function" });
   }
@@ -8478,7 +8478,7 @@ var Extractor5 = class {
     }
     return { namespaces: [...enclosing2, ...qualifier.slice(0, -1)], classes: [qualifier.at(-1)] };
   }
-  measuredUnit(qualifiedName, kind, fn, extent, name11, context) {
+  measuredUnit(qualifiedName, kind, fn, extent, name12, context) {
     this.codeRows ??= codeRowsOf(this.root, cppMetricRules);
     const unit = {
       qualifiedName,
@@ -8489,7 +8489,7 @@ var Extractor5 = class {
     };
     if (context.unit !== void 0) unit.parent = context.unit;
     if (kind === "method" && context.scope === "class" && !context.publicMembers) unit.hidden = true;
-    const measured = measureFunction(fn, { ...name11 === void 0 ? {} : { name: name11 }, startLine: unit.startLine, endLine: unit.endLine, codeRows: this.codeRows, explain: this.explain }, cppMetricRules);
+    const measured = measureFunction(fn, { ...name12 === void 0 ? {} : { name: name12 }, startLine: unit.startLine, endLine: unit.endLine, codeRows: this.codeRows, explain: this.explain }, cppMetricRules);
     unit.metrics = measured.metrics;
     unit.shape = functionShape3(fn, measured.metrics.parameters);
     const parameters = new Set(this.parameterNames(functionDeclarator(fn) ?? fn.childForFieldName("declarator")));
@@ -8504,8 +8504,8 @@ var Extractor5 = class {
     const list2 = declarator?.childForFieldName("parameters");
     const names2 = [];
     for (const parameter of list2?.namedChildren ?? []) {
-      const name11 = declaredIdentifier(parameter.childForFieldName("declarator"));
-      if (name11 !== null) names2.push(name11);
+      const name12 = declaredIdentifier(parameter.childForFieldName("declarator"));
+      if (name12 !== null) names2.push(name12);
     }
     return names2;
   }
@@ -8515,8 +8515,8 @@ var Extractor5 = class {
     const types = new Map(outer);
     for (const parameter of list2.namedChildren) {
       const type = receiverType(parameter.childForFieldName("type"));
-      const name11 = declaredIdentifier(parameter.childForFieldName("declarator"));
-      if (type !== null && name11 !== null) types.set(name11, type);
+      const name12 = declaredIdentifier(parameter.childForFieldName("declarator"));
+      if (type !== null && name12 !== null) types.set(name12, type);
     }
     return types;
   }
@@ -8530,10 +8530,10 @@ var Extractor5 = class {
         const type = node.type === "declaration" ? receiverType(node.childForFieldName("type")) : null;
         for (let i2 = 0; i2 < node.childCount; i2++) {
           if (node.fieldNameForChild(i2) !== "declarator") continue;
-          const name11 = declaredIdentifier(node.child(i2));
-          if (name11 === null) continue;
-          names2.add(name11);
-          if (type !== null) types.set(name11, type);
+          const name12 = declaredIdentifier(node.child(i2));
+          if (name12 === null) continue;
+          names2.add(name12);
+          if (type !== null) types.set(name12, type);
         }
       }
       for (const child of node.namedChildren) walk2(child);
@@ -8551,8 +8551,8 @@ var Extractor5 = class {
       } else if (declarator === null || named2 === null) {
         for (let i2 = 0; i2 < node.childCount; i2++) {
           if (node.fieldNameForChild(i2) !== "declarator") continue;
-          const name11 = declaredIdentifier(node.child(i2));
-          if (name11 !== null && type !== null) this.addDeclaration(name11, "variable", void 0, context, node.startPosition.row + 1, !isStatic(node) && !hasQualifier(node, "constexpr"), [], isStatic(node) || hasInternalConstant(node));
+          const name12 = declaredIdentifier(node.child(i2));
+          if (name12 !== null && type !== null) this.addDeclaration(name12, "variable", void 0, context, node.startPosition.row + 1, !isStatic(node) && !hasQualifier(node, "constexpr"), [], isStatic(node) || hasInternalConstant(node));
         }
       }
     }
@@ -8566,8 +8566,8 @@ var Extractor5 = class {
     this.visitChildren(node, context);
   }
   // ---- references ----
-  reference(name11, kind, node, context) {
-    const fact = { name: name11, kind, line: node.startPosition.row + 1 };
+  reference(name12, kind, node, context) {
+    const fact = { name: name12, kind, line: node.startPosition.row + 1 };
     if (context.unit !== void 0) fact.inUnit = context.unit;
     this.references.push(fact);
   }
@@ -8577,8 +8577,8 @@ var Extractor5 = class {
     else this.visit(type, context, type.parent ?? type, "type");
   }
   qualified(node, context) {
-    const name11 = dotted2(node);
-    if (name11 !== "") this.reference(name11.replace(/^\./, ""), "reference", node, context);
+    const name12 = dotted2(node);
+    if (name12 !== "") this.reference(name12.replace(/^\./, ""), "reference", node, context);
     for (const found of node.descendantsOfType(["template_argument_list"])) this.visitChildren(found, context);
   }
   call(node, context) {
@@ -8590,14 +8590,14 @@ var Extractor5 = class {
           if (!context.locals.has(callee.text)) this.reference(callee.text, "call", callee, context);
           break;
         case "qualified_identifier": {
-          const name11 = dotted2(callee);
-          this.reference(name11.replace(/^\./, ""), "call", callee, context);
+          const name12 = dotted2(callee);
+          this.reference(name12.replace(/^\./, ""), "call", callee, context);
           for (const found of callee.descendantsOfType(["template_argument_list"])) this.visitChildren(found, context);
           break;
         }
         case "template_function": {
-          const name11 = callee.childForFieldName("name");
-          if (name11 !== null) this.reference(dotted2(name11), "call", callee, context);
+          const name12 = callee.childForFieldName("name");
+          if (name12 !== null) this.reference(dotted2(name12), "call", callee, context);
           const list2 = callee.childForFieldName("arguments");
           if (list2 !== null) this.visitChildren(list2, context);
           break;
@@ -8791,22 +8791,22 @@ import { posix as posix9 } from "node:path";
 // packages/parse/src/languages/cpp/include-paths.ts
 import { posix as posix8 } from "node:path";
 var systemPrefixes = ["/usr/", "/lib/", "/System/", "/Library/", "/Applications/", "/etc/", "/bin/", "/sbin/", "/opt/homebrew/", "/opt/local/"];
-function splitCommand(command10) {
+function splitCommand(command11) {
   const out2 = [];
   let current = "";
   let quote = null;
   let started = false;
-  for (let i2 = 0; i2 < command10.length; i2++) {
-    const c2 = command10[i2];
+  for (let i2 = 0; i2 < command11.length; i2++) {
+    const c2 = command11[i2];
     if (quote !== null) {
       if (c2 === quote) quote = null;
-      else if (c2 === "\\" && quote === '"' && i2 + 1 < command10.length) current += command10[++i2];
+      else if (c2 === "\\" && quote === '"' && i2 + 1 < command11.length) current += command11[++i2];
       else current += c2;
     } else if (c2 === '"' || c2 === "'") {
       quote = c2;
       started = true;
-    } else if (c2 === "\\" && i2 + 1 < command10.length) {
-      current += command10[++i2];
+    } else if (c2 === "\\" && i2 + 1 < command11.length) {
+      current += command11[++i2];
       started = true;
     } else if (/\s/.test(c2)) {
       if (started || current !== "") out2.push(current);
@@ -8905,10 +8905,10 @@ function includePathsOf(paths, configs, options = {}) {
   }
   const reachable = (links, seen = /* @__PURE__ */ new Set()) => {
     const dirs = [];
-    for (const name11 of links) {
-      if (seen.has(name11)) continue;
-      seen.add(name11);
-      const found = publicOf.get(name11);
+    for (const name12 of links) {
+      if (seen.has(name12)) continue;
+      seen.add(name12);
+      const found = publicOf.get(name12);
       if (found !== void 0) dirs.push(...found.dirs, ...reachable(found.links, seen));
     }
     return dirs;
@@ -8940,37 +8940,37 @@ var MIN_INFERRED_COVERAGE = 2;
 function inferIncludeRoots(unresolved, paths) {
   const byBasename = /* @__PURE__ */ new Map();
   for (const path of paths) {
-    const name11 = posix8.basename(path);
-    byBasename.set(name11, [...byBasename.get(name11) ?? [], path]);
+    const name12 = posix8.basename(path);
+    byBasename.set(name12, [...byBasename.get(name12) ?? [], path]);
   }
   const wanted = /* @__PURE__ */ new Map();
   for (const { specifier } of unresolved) {
     if (specifier.startsWith("<")) continue;
-    const name11 = specifier;
-    wanted.set(name11, (wanted.get(name11) ?? 0) + 1);
+    const name12 = specifier;
+    wanted.set(name12, (wanted.get(name12) ?? 0) + 1);
   }
   const rootsOf = /* @__PURE__ */ new Map();
-  for (const name11 of wanted.keys()) {
-    const normal = posix8.normalize(name11);
+  for (const name12 of wanted.keys()) {
+    const normal = posix8.normalize(name12);
     const found = [];
     for (const path of byBasename.get(posix8.basename(normal)) ?? []) {
       if (path === normal) continue;
       if (path.endsWith(`/${normal}`)) found.push(path.slice(0, path.length - normal.length - 1));
     }
-    if (found.length > 0) rootsOf.set(name11, found);
+    if (found.length > 0) rootsOf.set(name12, found);
   }
   const chosen = [];
   const covered = /* @__PURE__ */ new Set();
   for (; ; ) {
     const gain = /* @__PURE__ */ new Map();
-    for (const [name11, roots] of rootsOf) {
-      if (covered.has(name11)) continue;
-      for (const root of new Set(roots)) gain.set(root, (gain.get(root) ?? 0) + (wanted.get(name11) ?? 0));
+    for (const [name12, roots] of rootsOf) {
+      if (covered.has(name12)) continue;
+      for (const root of new Set(roots)) gain.set(root, (gain.get(root) ?? 0) + (wanted.get(name12) ?? 0));
     }
     const best = [...gain].sort(([a, x2], [b, y2]) => y2 - x2 || a.split("/").length - b.split("/").length || (a < b ? -1 : a > b ? 1 : 0))[0];
     if (best === void 0 || best[1] < MIN_INFERRED_COVERAGE) return chosen;
     chosen.push(best[0]);
-    for (const [name11, roots] of rootsOf) if (roots.includes(best[0])) covered.add(name11);
+    for (const [name12, roots] of rootsOf) if (roots.includes(best[0])) covered.add(name12);
   }
 }
 
@@ -8978,11 +8978,11 @@ function inferIncludeRoots(unresolved, paths) {
 var systemDirectories = /* @__PURE__ */ new Set(["sys", "bits", "linux", "net", "netinet", "arpa", "asm", "mach", "os", "machine", "x86_64-linux-gnu", "CoreFoundation", "Foundation"]);
 function locateInclude(from, specifier, dirs, files) {
   const angle = specifier.startsWith("<");
-  const name11 = angle ? specifier.slice(1, -1) : specifier;
+  const name12 = angle ? specifier.slice(1, -1) : specifier;
   const own = posix9.dirname(from) === "." ? "" : posix9.dirname(from);
   const places = angle ? dirs : [own, ...dirs];
   for (const [index, dir] of places.entries()) {
-    const candidate = posix9.normalize(dir === "" ? name11 : `${dir}/${name11}`);
+    const candidate = posix9.normalize(dir === "" ? name12 : `${dir}/${name12}`);
     if (files.has(candidate)) return { path: candidate, via: dir, relativeToIncluder: !angle && index === 0 };
   }
   return void 0;
@@ -9006,9 +9006,9 @@ function resolveCpp(input) {
           considered++;
           if (target2 !== path) direct.add(target2);
         } else if (imported.specifier.startsWith("<")) {
-          const name11 = imported.specifier.slice(1, -1);
-          const head = name11.split("/")[0];
-          if (name11.includes("/") && !systemDirectories.has(head)) externals2.push({ from: path, packageName: head, typeOnly: false });
+          const name12 = imported.specifier.slice(1, -1);
+          const head = name12.split("/")[0];
+          if (name12.includes("/") && !systemDirectories.has(head)) externals2.push({ from: path, packageName: head, typeOnly: false });
         } else {
           considered++;
           unresolved2.push({ from: path, line: imported.line, specifier: imported.specifier, reason: "not-found" });
@@ -9366,7 +9366,7 @@ var pythonBoundaries = {
       const toml = parseToml(text3);
       const project = table(toml.project);
       const poetry = table(table(toml.tool).poetry);
-      const name11 = project.name ?? poetry.name;
+      const name12 = project.name ?? poetry.name;
       const priv = strings(project.classifiers).includes("Private :: Do Not Upload") ? true : null;
       const entries = /* @__PURE__ */ new Set();
       if (priv !== true) {
@@ -9383,7 +9383,7 @@ var pythonBoundaries = {
           }
         }
       }
-      boundaries.push({ dir, manifest: path, name: typeof name11 === "string" ? name11 : null, private: priv, entryFiles: [...entries].sort() });
+      boundaries.push({ dir, manifest: path, name: typeof name12 === "string" ? name12 : null, private: priv, entryFiles: [...entries].sort() });
     }
     for (const path of manifests) if (!boundaries.some((boundary) => boundary.manifest === path)) boundaries.push({ dir: posix10.dirname(path), manifest: path, name: null, private: null, entryFiles: [] });
     return boundaries.sort((a, b) => a.manifest < b.manifest ? -1 : a.manifest > b.manifest ? 1 : 0);
@@ -9452,19 +9452,19 @@ function parameterName(parameter) {
   if (parameter.type === "identifier") return parameter.text;
   return parameter.namedChildren.find((child) => child.type === "identifier")?.text;
 }
-function rebinds2(fn, name11) {
-  if (parameterNodes(fn).some((parameter) => parameterName(parameter) === name11)) return true;
+function rebinds2(fn, name12) {
+  if (parameterNodes(fn).some((parameter) => parameterName(parameter) === name12)) return true;
   for (const nested of fn.descendantsOfType(["function_definition", "assignment"])) {
     if (nested.id === fn.id) continue;
     if (nested.type === "function_definition") {
-      if (nested.childForFieldName("name")?.text === name11) return true;
-    } else if (nested.childForFieldName("left")?.type === "identifier" && nested.childForFieldName("left")?.text === name11) return true;
+      if (nested.childForFieldName("name")?.text === name12) return true;
+    } else if (nested.childForFieldName("left")?.type === "identifier" && nested.childForFieldName("left")?.text === name12) return true;
   }
   return false;
 }
-function recursionScope6(fn, name11) {
+function recursionScope6(fn, name12) {
   const own = fn.childForFieldName("name")?.text;
-  const names2 = [...new Set([name11, own].filter((candidate) => candidate !== void 0))];
+  const names2 = [...new Set([name12, own].filter((candidate) => candidate !== void 0))];
   const owner = enclosingClass(fn);
   const member = new Set(names2);
   const bare = new Set(owner === null ? names2.filter((candidate) => !rebinds2(fn, candidate)) : []);
@@ -9506,7 +9506,7 @@ function functionShape4(fn, parameters) {
 function members(body2) {
   return (body2?.namedChildren ?? []).map((member) => member.type === "decorated_definition" ? member.childForFieldName("definition") ?? member : member);
 }
-var isPrivate = (name11) => name11.startsWith("_") && !(name11.startsWith("__") && name11.endsWith("__"));
+var isPrivate = (name12) => name12.startsWith("_") && !(name12.startsWith("__") && name12.endsWith("__"));
 function memberNames(member) {
   if (member.type === "function_definition" || member.type === "class_definition") return [member.childForFieldName("name")?.text ?? ""];
   if (member.type !== "expression_statement") return [];
@@ -9520,9 +9520,9 @@ function classShape3(declaration) {
   const body2 = declaration.childForFieldName("body");
   let interfaceSize = 0;
   for (const member of members(body2)) {
-    for (const name11 of memberNames(member)) {
-      if (name11 === "" || isPrivate(name11)) continue;
-      if (name11 === "__init__" && member.type === "function_definition") interfaceSize += parameterNodes(member).length;
+    for (const name12 of memberNames(member)) {
+      if (name12 === "" || isPrivate(name12)) continue;
+      if (name12 === "__init__" && member.type === "function_definition") interfaceSize += parameterNodes(member).length;
       else interfaceSize++;
     }
   }
@@ -9552,8 +9552,8 @@ function boundParameterNames(fn) {
   const names2 = /* @__PURE__ */ new Set();
   const list2 = fn.childForFieldName("parameters");
   for (const entry of list2?.namedChildren ?? []) {
-    const name11 = parameterName(entry);
-    if (name11 !== void 0) names2.add(name11);
+    const name12 = parameterName(entry);
+    if (name12 !== void 0) names2.add(name12);
   }
   return names2;
 }
@@ -9605,7 +9605,7 @@ function classKind(declaration) {
   const named2 = bases.map((base) => base.type === "keyword_argument" ? `${base.childForFieldName("name")?.text}=${lastName5(base.childForFieldName("value"))}` : lastName5(base));
   if (named2.includes("Protocol")) return "interface";
   if (named2.includes("ABC") || named2.includes("metaclass=ABCMeta")) return "abstract-class";
-  if (named2.some((name11) => name11 !== void 0 && enumBases.has(name11))) return "enum";
+  if (named2.some((name12) => name12 !== void 0 && enumBases.has(name12))) return "enum";
   return "class";
 }
 function isTypeChecking(statement) {
@@ -9636,8 +9636,8 @@ function boundNames(scope, out2) {
       switch (child.type) {
         case "function_definition":
         case "class_definition": {
-          const name11 = child.childForFieldName("name")?.text;
-          if (name11 !== void 0) out2.add(name11);
+          const name12 = child.childForFieldName("name")?.text;
+          if (name12 !== void 0) out2.add(name12);
           continue;
         }
         case "lambda":
@@ -9646,22 +9646,22 @@ function boundNames(scope, out2) {
         case "augmented_assignment": {
           const names2 = [];
           targetNames(child.childForFieldName("left"), names2);
-          for (const name11 of names2) out2.add(name11);
+          for (const name12 of names2) out2.add(name12);
           break;
         }
         case "for_statement":
         case "for_in_clause": {
           const names2 = [];
           targetNames(child.childForFieldName("left"), names2);
-          if (child.type === "for_statement") for (const name11 of names2) out2.add(name11);
+          if (child.type === "for_statement") for (const name12 of names2) out2.add(name12);
           break;
         }
         case "as_pattern_target":
           for (const identifier of child.namedChildren) if (identifier.type === "identifier") out2.add(identifier.text);
           break;
         case "named_expression": {
-          const name11 = child.childForFieldName("name")?.text;
-          if (name11 !== void 0) out2.add(name11);
+          const name12 = child.childForFieldName("name")?.text;
+          if (name12 !== void 0) out2.add(name12);
           break;
         }
         case "global_statement":
@@ -9678,7 +9678,7 @@ function boundNames(scope, out2) {
     }
   };
   walk2(scope);
-  for (const name11 of globals) out2.delete(name11);
+  for (const name12 of globals) out2.delete(name12);
 }
 function comprehensionNames(node) {
   const names2 = [];
@@ -9688,10 +9688,10 @@ function comprehensionNames(node) {
 function importedModules(node) {
   if (node.type === "import_statement") {
     const modules = [];
-    for (const name11 of node.childrenForFieldName("name")) {
-      const dotted3 = name11.type === "aliased_import" ? name11.childForFieldName("name") : name11;
+    for (const name12 of node.childrenForFieldName("name")) {
+      const dotted3 = name12.type === "aliased_import" ? name12.childForFieldName("name") : name12;
       if (dotted3 === null) continue;
-      const alias = name11.type === "aliased_import" ? name11.childForFieldName("alias") : null;
+      const alias = name12.type === "aliased_import" ? name12.childForFieldName("alias") : null;
       modules.push({ specifier: dotted3.text, bindings: [{ imported: "*", local: alias?.text ?? dotted3.text, typeOnly: false }] });
     }
     return modules;
@@ -9699,9 +9699,9 @@ function importedModules(node) {
   const specifier = node.childForFieldName("module_name")?.text;
   if (specifier === void 0) return [];
   const bindings = [];
-  for (const name11 of node.childrenForFieldName("name")) {
-    const imported = name11.type === "aliased_import" ? name11.childForFieldName("name") : name11;
-    const alias = name11.type === "aliased_import" ? name11.childForFieldName("alias") : null;
+  for (const name12 of node.childrenForFieldName("name")) {
+    const imported = name12.type === "aliased_import" ? name12.childForFieldName("name") : name12;
+    const alias = name12.type === "aliased_import" ? name12.childForFieldName("alias") : null;
     if (imported !== null) bindings.push({ imported: imported.text, local: alias?.text ?? imported.text, typeOnly: false });
   }
   return [{ specifier, bindings }];
@@ -9774,8 +9774,8 @@ var Extractor6 = class {
   /** `importlib.import_module("x")` and `__import__("x")`: the specifier when it is a plain string, otherwise null. */
   dynamicImport(call) {
     const callee = call.childForFieldName("function");
-    const name11 = callee?.type === "identifier" ? callee.text : callee?.type === "attribute" ? callee.text : void 0;
-    if (name11 !== "__import__" && name11 !== "importlib.import_module" && name11 !== "import_module") return;
+    const name12 = callee?.type === "identifier" ? callee.text : callee?.type === "attribute" ? callee.text : void 0;
+    if (name12 !== "__import__" && name12 !== "importlib.import_module" && name12 !== "import_module") return;
     const first = call.childForFieldName("arguments")?.namedChildren[0] ?? null;
     this.imports.push({ specifier: stringValue2(first), kind: "dynamic", typeOnly: false, line: call.startPosition.row + 1, bindings: [] });
   }
@@ -9804,12 +9804,12 @@ var Extractor6 = class {
             if (assignment?.type !== "assignment") break;
             const names2 = [];
             targetNames(assignment.childForFieldName("left"), names2);
-            for (const name11 of names2) add(name11, line, "variable");
+            for (const name12 of names2) add(name12, line, "variable");
             break;
           }
           case "type_alias_statement": {
-            const name11 = definition.childForFieldName("left")?.namedChildren[0]?.text;
-            if (name11 !== void 0) add(name11, line, "type");
+            const name12 = definition.childForFieldName("left")?.namedChildren[0]?.text;
+            if (name12 !== void 0) add(name12, line, "type");
             break;
           }
           case "import_statement":
@@ -10005,14 +10005,14 @@ var Extractor6 = class {
     this.visit(right, context, node, "right");
   }
   functionDefinition(node, context) {
-    const name11 = node.childForFieldName("name")?.text;
+    const name12 = node.childForFieldName("name")?.text;
     const kind = enclosingClass(node) !== null ? "method" : "function";
-    const inner2 = name11 === void 0 ? context : this.declareUnit(name11, kind, node, context, node);
+    const inner2 = name12 === void 0 ? context : this.declareUnit(name12, kind, node, context, node);
     this.functionBody(node, inner2);
   }
   classDefinition(node, context) {
-    const name11 = node.childForFieldName("name")?.text;
-    const inner2 = name11 === void 0 ? context : this.declareUnit(name11, "class", node, context);
+    const name12 = node.childForFieldName("name")?.text;
+    const inner2 = name12 === void 0 ? context : this.declareUnit(name12, "class", node, context);
     const superclasses = node.childForFieldName("superclasses");
     if (superclasses !== null) this.visit(superclasses, context, node, "superclasses");
     const body2 = node.childForFieldName("body");
@@ -10034,8 +10034,8 @@ var Extractor6 = class {
     const inner2 = { unit: context.unit, shadow: /* @__PURE__ */ new Set([...context.shadow, ...names2]) };
     for (const child of node.namedChildren) if (child.id !== node.childForFieldName("name")?.id) this.visit(child, inner2, node, null);
   }
-  declareUnit(name11, kind, extent, context, fn) {
-    const base = context.unit === void 0 ? name11 : `${context.unit}.${name11}`;
+  declareUnit(name12, kind, extent, context, fn) {
+    const base = context.unit === void 0 ? name12 : `${context.unit}.${name12}`;
     const seen = this.nameCounts.get(base) ?? 0;
     this.nameCounts.set(base, seen + 1);
     const qualifiedName = seen === 0 ? base : `${base}~${seen + 1}`;
@@ -10047,11 +10047,11 @@ var Extractor6 = class {
       source: "structural"
     };
     if (context.unit !== void 0) unit.parent = context.unit;
-    if (name11.startsWith("_") && !(name11.startsWith("__") && name11.endsWith("__"))) unit.hidden = true;
+    if (name12.startsWith("_") && !(name12.startsWith("__") && name12.endsWith("__"))) unit.hidden = true;
     if (kind === "class") unit.shape = classShape3(extent);
     if (fn !== void 0 && kind !== "class") {
       this.codeRows ??= codeRowsOf(this.root, pythonMetricRules);
-      const measured = measureFunction(fn, { name: name11, startLine: unit.startLine, endLine: unit.endLine, codeRows: this.codeRows, explain: this.explain }, pythonMetricRules);
+      const measured = measureFunction(fn, { name: name12, startLine: unit.startLine, endLine: unit.endLine, codeRows: this.codeRows, explain: this.explain }, pythonMetricRules);
       unit.metrics = measured.metrics;
       unit.shape = functionShape4(fn, measured.metrics.parameters);
       const forwarded = passThroughOf6(fn);
@@ -10073,8 +10073,8 @@ var registryName6 = /(registry|registries|handlers|plugins|strategies|factories|
 var mapConstructors = /^(dict|defaultdict|OrderedDict|WeakValueDictionary|WeakKeyDictionary|ChainMap)$/;
 var mapAnnotations = /* @__PURE__ */ new Set(["dict", "Dict", "Mapping", "MutableMapping", "defaultdict", "DefaultDict", "OrderedDict"]);
 var dataclassDecorators = /* @__PURE__ */ new Set(["dataclass", "define", "frozen", "attrs", "s"]);
-function field4(node, name11) {
-  return node.childForFieldName(name11);
+function field4(node, name12) {
+  return node.childForFieldName(name12);
 }
 function receiverName2(node) {
   if (node === null) return null;
@@ -10112,8 +10112,8 @@ function parametersOf5(fn) {
     if (parameter.type !== "typed_parameter" && parameter.type !== "typed_default_parameter") continue;
     const type = field4(parameter, "type");
     if (type === null) continue;
-    const name11 = parameter.type === "typed_default_parameter" ? field4(parameter, "name")?.text ?? "" : parameter.namedChildren.find((child) => child.type === "identifier")?.text ?? "";
-    out2.push({ name: name11, type: annotation4(type) });
+    const name12 = parameter.type === "typed_default_parameter" ? field4(parameter, "name")?.text ?? "" : parameter.namedChildren.find((child) => child.type === "identifier")?.text ?? "";
+    out2.push({ name: name12, type: annotation4(type) });
   }
   return out2;
 }
@@ -10136,7 +10136,7 @@ function constructorTypes(declaration) {
 function holdsMap(value, type) {
   if (value?.type === "dictionary" || value?.type === "dictionary_comprehension") return true;
   if (value?.type === "call" && mapConstructors.test(lastName5(value) ?? "")) return true;
-  return annotation4(type).names.some((name11) => mapAnnotations.has(name11));
+  return annotation4(type).names.some((name12) => mapAnnotations.has(name12));
 }
 function isFunctionType(value) {
   if (value === null) return false;
@@ -10150,38 +10150,38 @@ function extractFileCensus6(root) {
     let nextOwner = owner;
     switch (node.type) {
       case "import_statement":
-        for (const name11 of node.childrenForFieldName("name")) {
-          const module3 = name11.type === "aliased_import" ? field4(name11, "name") : name11;
-          const alias = name11.type === "aliased_import" ? field4(name11, "alias") : null;
+        for (const name12 of node.childrenForFieldName("name")) {
+          const module3 = name12.type === "aliased_import" ? field4(name12, "name") : name12;
+          const alias = name12.type === "aliased_import" ? field4(name12, "alias") : null;
           if (module3 !== null) facts.imports.push({ local: alias?.text ?? module3.text, imported: "*", specifier: module3.text });
         }
         return;
       case "import_from_statement": {
         const specifier = field4(node, "module_name")?.text ?? "";
-        for (const name11 of node.childrenForFieldName("name")) {
-          const imported = name11.type === "aliased_import" ? field4(name11, "name") : name11;
-          const alias = name11.type === "aliased_import" ? field4(name11, "alias") : null;
+        for (const name12 of node.childrenForFieldName("name")) {
+          const imported = name12.type === "aliased_import" ? field4(name12, "name") : name12;
+          const alias = name12.type === "aliased_import" ? field4(name12, "alias") : null;
           if (imported !== null) facts.imports.push({ local: alias?.text ?? imported.text, imported: imported.text, specifier });
         }
         return;
       }
       case "class_definition": {
-        const name11 = field4(node, "name")?.text;
-        if (name11 !== void 0) {
-          const qualified = owner === null ? name11 : `${owner}.${name11}`;
+        const name12 = field4(node, "name")?.text;
+        if (name12 !== void 0) {
+          const qualified = owner === null ? name12 : `${owner}.${name12}`;
           const heritage = (field4(node, "superclasses")?.namedChildren ?? []).filter((base) => base.type !== "keyword_argument").map((base) => lastName5(base)).filter((base) => base !== void 0);
-          facts.classes.push({ name: name11, line, heritage, constructorTypes: constructorTypes(node) });
+          facts.classes.push({ name: name12, line, heritage, constructorTypes: constructorTypes(node) });
           const kind = classKind(node);
-          if (kind === "interface") facts.types.push({ name: name11, kind: "interface", line });
-          else if (kind === "abstract-class") facts.types.push({ name: name11, kind: "abstract-class", line });
+          if (kind === "interface") facts.types.push({ name: name12, kind: "interface", line });
+          else if (kind === "abstract-class") facts.types.push({ name: name12, kind: "abstract-class", line });
           nextOwner = qualified;
         }
         break;
       }
       case "function_definition": {
-        const name11 = field4(node, "name")?.text;
-        if (name11 !== void 0) {
-          const qualified = owner === null ? name11 : `${owner}.${name11}`;
+        const name12 = field4(node, "name")?.text;
+        if (name12 !== void 0) {
+          const qualified = owner === null ? name12 : `${owner}.${name12}`;
           const parameters = parametersOf5(node);
           facts.functions.push({ name: qualified, line, parameters });
           nextOwner = qualified;
@@ -10189,8 +10189,8 @@ function extractFileCensus6(root) {
         break;
       }
       case "type_alias_statement": {
-        const name11 = field4(node, "left")?.namedChildren[0]?.text;
-        if (name11 !== void 0 && isFunctionType(field4(node, "right")?.namedChildren[0] ?? null)) facts.types.push({ name: name11, kind: "function-type", line });
+        const name12 = field4(node, "left")?.namedChildren[0]?.text;
+        if (name12 !== void 0 && isFunctionType(field4(node, "right")?.namedChildren[0] ?? null)) facts.types.push({ name: name12, kind: "function-type", line });
         break;
       }
       case "assignment": {
@@ -10204,8 +10204,8 @@ function extractFileCensus6(root) {
       }
       case "decorator": {
         const expression = node.namedChildren[0] ?? null;
-        const name11 = lastName5(expression);
-        if (name11 !== void 0) facts.decorators.push({ line, name: name11 });
+        const name12 = lastName5(expression);
+        if (name12 !== void 0) facts.decorators.push({ line, name: name12 });
         break;
       }
       case "call": {
@@ -10529,9 +10529,9 @@ var PythonResolver = class {
   reexportsImplicitly(path) {
     return posix11.basename(path) === "__init__.py";
   }
-  submodule(modulePath, name11) {
+  submodule(modulePath, name12) {
     if (posix11.basename(modulePath) !== "__init__.py") return void 0;
-    return this.moduleFile(posix11.dirname(modulePath), [name11]);
+    return this.moduleFile(posix11.dirname(modulePath), [name12]);
   }
 };
 var isConfigPath2 = () => false;
@@ -10594,8 +10594,8 @@ function parseGoMod(path, text3) {
   for (const { verb, rest, comment: comment3 } of directives(text3)) {
     if (verb === "module") module3.path = unquote(rest.split(/\s+/)[0] ?? "");
     else if (verb === "require") {
-      const name11 = unquote(rest.split(/\s+/)[0] ?? "");
-      if (name11 !== "") module3.requires.push({ path: name11, indirect: /^indirect\b/.test(comment3) });
+      const name12 = unquote(rest.split(/\s+/)[0] ?? "");
+      if (name12 !== "") module3.requires.push({ path: name12, indirect: /^indirect\b/.test(comment3) });
     } else if (verb === "replace") {
       const [from = "", target2 = ""] = rest.split("=>").map((side) => side.trim());
       const to = unquote(target2.split(/\s+/)[0] ?? "");
@@ -10706,7 +10706,7 @@ function parametersOf6(list2) {
     const type = annotation5(parameter.childForFieldName("type"));
     const names2 = parameter.childrenForFieldName("name");
     if (names2.length === 0) out2.push({ name: "", type });
-    else for (const name11 of names2) out2.push({ name: name11.text, type });
+    else for (const name12 of names2) out2.push({ name: name12.text, type });
   }
   return out2;
 }
@@ -10717,8 +10717,8 @@ function embeddedTypes(struct) {
     let type = field6.childForFieldName("type");
     while (type?.type === "pointer_type") type = type.namedChildren[0] ?? null;
     if (type?.type === "generic_type") type = type.childForFieldName("type");
-    const name11 = type?.type === "qualified_type" ? type.childForFieldName("name") : type;
-    if (name11 !== null && name11 !== void 0) out2.push(name11.text);
+    const name12 = type?.type === "qualified_type" ? type.childForFieldName("name") : type;
+    if (name12 !== null && name12 !== void 0) out2.push(name12.text);
   }
   return out2;
 }
@@ -10743,8 +10743,8 @@ function extractFileCensus7(root) {
   const constructors = /* @__PURE__ */ new Map();
   for (const child of root.namedChildren) {
     if (child.type !== "function_declaration") continue;
-    const name11 = child.childForFieldName("name")?.text ?? "";
-    if (name11.startsWith("New")) constructors.set(name11, parametersOf6(child.childForFieldName("parameters")).flatMap((parameter) => parameter.type.names));
+    const name12 = child.childForFieldName("name")?.text ?? "";
+    if (name12.startsWith("New")) constructors.set(name12, parametersOf6(child.childForFieldName("parameters")).flatMap((parameter) => parameter.type.names));
   }
   const visit2 = (node) => {
     const line = node.startPosition.row + 1;
@@ -10757,47 +10757,47 @@ function extractFileCensus7(root) {
         break;
       }
       case "type_spec": {
-        const name11 = node.childForFieldName("name")?.text;
+        const name12 = node.childForFieldName("name")?.text;
         const type = node.childForFieldName("type");
-        if (name11 === void 0 || type === null) break;
-        if (type.type === "interface_type") facts.types.push({ name: name11, kind: "interface", line });
-        else if (type.type === "function_type") facts.types.push({ name: name11, kind: "function-type", line });
+        if (name12 === void 0 || type === null) break;
+        if (type.type === "interface_type") facts.types.push({ name: name12, kind: "interface", line });
+        else if (type.type === "function_type") facts.types.push({ name: name12, kind: "function-type", line });
         else if (type.type === "struct_type") {
-          facts.classes.push({ name: name11, line, heritage: embeddedTypes(type), constructorTypes: constructors.get(`New${name11}`) ?? constructors.get("New") ?? [] });
+          facts.classes.push({ name: name12, line, heritage: embeddedTypes(type), constructorTypes: constructors.get(`New${name12}`) ?? constructors.get("New") ?? [] });
         }
         break;
       }
       case "field_declaration": {
         const tag = node.childForFieldName("tag");
         if (tag !== null) for (const key of tagKeys(tag)) facts.decorators.push({ line, name: key });
-        const name11 = node.childrenForFieldName("name")[0]?.text;
-        if (name11 !== void 0 && registryName7.test(name11) && node.childForFieldName("type")?.type === "map_type") facts.keyedMaps.push({ line, name: name11 });
+        const name12 = node.childrenForFieldName("name")[0]?.text;
+        if (name12 !== void 0 && registryName7.test(name12) && node.childForFieldName("type")?.type === "map_type") facts.keyedMaps.push({ line, name: name12 });
         break;
       }
       case "function_declaration": {
-        const name11 = node.childForFieldName("name")?.text;
-        if (name11 !== void 0) facts.functions.push({ name: name11, line, parameters: parametersOf6(node.childForFieldName("parameters")) });
+        const name12 = node.childForFieldName("name")?.text;
+        if (name12 !== void 0) facts.functions.push({ name: name12, line, parameters: parametersOf6(node.childForFieldName("parameters")) });
         break;
       }
       case "method_declaration": {
-        const name11 = node.childForFieldName("name")?.text;
+        const name12 = node.childForFieldName("name")?.text;
         const type = receiverTypeOf(node);
-        if (name11 !== void 0 && type !== void 0) facts.functions.push({ name: `${type}.${name11}`, line, parameters: parametersOf6(node.childForFieldName("parameters")) });
+        if (name12 !== void 0 && type !== void 0) facts.functions.push({ name: `${type}.${name12}`, line, parameters: parametersOf6(node.childForFieldName("parameters")) });
         break;
       }
       case "var_spec":
       case "const_spec": {
         const values = node.childForFieldName("value")?.namedChildren ?? [];
         const declared = node.childForFieldName("type");
-        node.childrenForFieldName("name").forEach((name11, index) => {
-          if (registryName7.test(name11.text) && (declared?.type === "map_type" || isMapValue(values[index] ?? null))) facts.keyedMaps.push({ line: name11.startPosition.row + 1, name: name11.text });
+        node.childrenForFieldName("name").forEach((name12, index) => {
+          if (registryName7.test(name12.text) && (declared?.type === "map_type" || isMapValue(values[index] ?? null))) facts.keyedMaps.push({ line: name12.startPosition.row + 1, name: name12.text });
         });
         break;
       }
       case "short_var_declaration": {
         const values = node.childForFieldName("right")?.namedChildren ?? [];
-        (node.childForFieldName("left")?.namedChildren ?? []).forEach((name11, index) => {
-          if (registryName7.test(name11.text) && isMapValue(values[index] ?? null)) facts.keyedMaps.push({ line, name: name11.text });
+        (node.childForFieldName("left")?.namedChildren ?? []).forEach((name12, index) => {
+          if (registryName7.test(name12.text) && isMapValue(values[index] ?? null)) facts.keyedMaps.push({ line, name: name12.text });
         });
         break;
       }
@@ -10806,8 +10806,8 @@ function extractFileCensus7(root) {
         if (callee?.type === "identifier") {
           if (callee.text === "new") {
             const type = node.childForFieldName("arguments")?.namedChildren[0];
-            const name11 = type?.type === "qualified_type" ? type.childForFieldName("name")?.text : type?.text;
-            if (name11 !== void 0) facts.news.push({ line, name: name11 });
+            const name12 = type?.type === "qualified_type" ? type.childForFieldName("name")?.text : type?.text;
+            if (name12 !== void 0) facts.news.push({ line, name: name12 });
           }
           facts.calls.push({ line, receiver: null, method: callee.text });
         } else if (callee?.type === "selector_expression") {
@@ -10882,16 +10882,16 @@ function isStatement7(node) {
 }
 function receiverNameOf(fn) {
   const receiver = fn.childForFieldName("receiver");
-  const name11 = receiver?.namedChildren.find((child) => child.type === "parameter_declaration")?.childForFieldName("name")?.text;
-  return name11 === void 0 || name11 === "_" ? void 0 : name11;
+  const name12 = receiver?.namedChildren.find((child) => child.type === "parameter_declaration")?.childForFieldName("name")?.text;
+  return name12 === void 0 || name12 === "_" ? void 0 : name12;
 }
-function recursionScope7(fn, name11) {
+function recursionScope7(fn, name12) {
   if (fn.type === "method_declaration") {
     const own = fn.childForFieldName("name")?.text;
     const owner = receiverNameOf(fn);
     return { bare: /* @__PURE__ */ new Set(), member: new Set(own === void 0 ? [] : [own]), ...owner === void 0 ? {} : { owner } };
   }
-  return { bare: new Set(name11 === void 0 ? [] : [name11]), member: /* @__PURE__ */ new Set() };
+  return { bare: new Set(name12 === void 0 ? [] : [name12]), member: /* @__PURE__ */ new Set() };
 }
 function isRecursiveCall7(call, scope) {
   const callee = call.childForFieldName("function");
@@ -10922,8 +10922,8 @@ var goMetricRules = {
 };
 
 // packages/parse/src/languages/go/shape.ts
-function isExported(name11) {
-  return new RegExp("^\\p{Lu}", "u").test(name11);
+function isExported(name12) {
+  return new RegExp("^\\p{Lu}", "u").test(name12);
 }
 function functionShape5(fn) {
   return { nodes: nodeCount(fn), interfaceSize: Math.max(1, parameterCounts6(fn).parameters) };
@@ -10943,7 +10943,7 @@ function typeShape4(declaration, type, exportedMethods) {
       if (names2.length === 0) {
         if (isExported(embeddedName(field6.childForFieldName("type")))) size++;
       } else {
-        size += names2.filter((name11) => isExported(name11.text)).length;
+        size += names2.filter((name12) => isExported(name12.text)).length;
       }
     }
     size += exportedMethods;
@@ -10979,7 +10979,7 @@ function isForwarded5(argument, parameters) {
 function parameterNames4(fn) {
   const names2 = /* @__PURE__ */ new Set();
   for (const parameter of fn.childForFieldName("parameters")?.namedChildren ?? []) {
-    for (const name11 of parameter.childrenForFieldName("name")) names2.add(name11.text);
+    for (const name12 of parameter.childrenForFieldName("name")) names2.add(name12.text);
   }
   return names2;
 }
@@ -11076,7 +11076,7 @@ function receiverTypeParameters(method) {
   let type = method.childForFieldName("receiver")?.namedChildren.find((child) => child.type === "parameter_declaration")?.childForFieldName("type") ?? null;
   while (type !== null && type.type === "pointer_type") type = type.namedChildren[0] ?? null;
   if (type?.type !== "generic_type") return [];
-  return (type.childForFieldName("type_arguments")?.descendantsOfType("type_identifier") ?? []).map((name11) => name11.text);
+  return (type.childForFieldName("type_arguments")?.descendantsOfType("type_identifier") ?? []).map((name12) => name12.text);
 }
 function declaredIn(fn) {
   const names2 = /* @__PURE__ */ new Set();
@@ -11084,14 +11084,14 @@ function declaredIn(fn) {
     for (const identifier of node?.type === "identifier" ? [node] : node?.namedChildren ?? []) if (identifier.type === "identifier") names2.add(identifier.text);
   };
   const addParameters = (list2) => {
-    for (const parameter of list2?.namedChildren ?? []) for (const name11 of parameter.childrenForFieldName("name")) names2.add(name11.text);
+    for (const parameter of list2?.namedChildren ?? []) for (const name12 of parameter.childrenForFieldName("name")) names2.add(name12.text);
   };
   addParameters(fn.childForFieldName("receiver"));
   addParameters(fn.childForFieldName("parameters"));
   const result = fn.childForFieldName("result");
   if (result?.type === "parameter_list") addParameters(result);
-  for (const parameter of fn.childForFieldName("type_parameters")?.namedChildren ?? []) for (const name11 of parameter.childrenForFieldName("name")) names2.add(name11.text);
-  for (const name11 of fn.type === "method_declaration" ? receiverTypeParameters(fn) : []) names2.add(name11);
+  for (const parameter of fn.childForFieldName("type_parameters")?.namedChildren ?? []) for (const name12 of parameter.childrenForFieldName("name")) names2.add(name12.text);
+  for (const name12 of fn.type === "method_declaration" ? receiverTypeParameters(fn) : []) names2.add(name12);
   const walk2 = (node) => {
     for (const child of node.namedChildren) {
       switch (child.type) {
@@ -11113,12 +11113,12 @@ function declaredIn(fn) {
           break;
         case "var_spec":
         case "const_spec":
-          for (const name11 of child.childrenForFieldName("name")) names2.add(name11.text);
+          for (const name12 of child.childrenForFieldName("name")) names2.add(name12.text);
           break;
         case "type_spec":
         case "type_alias": {
-          const name11 = child.childForFieldName("name");
-          if (name11 !== null) names2.add(name11.text);
+          const name12 = child.childForFieldName("name");
+          if (name12 !== null) names2.add(name12.text);
           break;
         }
         default:
@@ -11162,13 +11162,13 @@ var Extractor7 = class {
       if (child.type === "type_declaration") {
         for (const spec of child.namedChildren) {
           const type = spec.childForFieldName("type");
-          const name11 = spec.childForFieldName("name")?.text;
-          if (spec.type === "type_spec" && name11 !== void 0 && (type?.type === "struct_type" || type?.type === "interface_type")) this.typeUnits.add(name11);
+          const name12 = spec.childForFieldName("name")?.text;
+          if (spec.type === "type_spec" && name12 !== void 0 && (type?.type === "struct_type" || type?.type === "interface_type")) this.typeUnits.add(name12);
         }
       } else if (child.type === "method_declaration") {
         const type = receiverTypeOf2(child);
-        const name11 = child.childForFieldName("name")?.text;
-        if (type !== void 0 && name11 !== void 0 && isExported(name11)) this.exportedMethods.set(type, (this.exportedMethods.get(type) ?? 0) + 1);
+        const name12 = child.childForFieldName("name")?.text;
+        if (type !== void 0 && name12 !== void 0 && isExported(name12)) this.exportedMethods.set(type, (this.exportedMethods.get(type) ?? 0) + 1);
       }
     }
     const context = { unit: void 0, locals: /* @__PURE__ */ new Set() };
@@ -11190,20 +11190,20 @@ var Extractor7 = class {
         this.importDeclaration(node);
         return;
       case "function_declaration": {
-        const name11 = node.childForFieldName("name")?.text;
-        if (name11 === void 0) return;
-        if (name11 !== "init" && name11 !== "_") this.addDeclaration(name11, "function", name11, node.startPosition.row + 1);
-        this.functionUnit(name11, node, node, void 0, context, "function");
+        const name12 = node.childForFieldName("name")?.text;
+        if (name12 === void 0) return;
+        if (name12 !== "init" && name12 !== "_") this.addDeclaration(name12, "function", name12, node.startPosition.row + 1);
+        this.functionUnit(name12, node, node, void 0, context, "function");
         return;
       }
       case "method_declaration": {
-        const name11 = node.childForFieldName("name")?.text;
+        const name12 = node.childForFieldName("name")?.text;
         const type = receiverTypeOf2(node);
-        if (name11 === void 0) return;
-        const qualified = type === void 0 ? name11 : `${type}.${name11}`;
+        if (name12 === void 0) return;
+        const qualified = type === void 0 ? name12 : `${type}.${name12}`;
         if (type !== void 0) this.addDeclaration(qualified, "function", qualified, node.startPosition.row + 1, false);
         const parent = type !== void 0 && this.typeUnits.has(type) ? type : void 0;
-        this.functionUnit(qualified, node, node, parent, { ...context, unit: void 0 }, "method", name11, type);
+        this.functionUnit(qualified, node, node, parent, { ...context, unit: void 0 }, "method", name12, type);
         return;
       }
       case "type_declaration":
@@ -11231,8 +11231,8 @@ var Extractor7 = class {
       });
     }
   }
-  addDeclaration(name11, kind, unit, line, exported = isExported(name11)) {
-    this.declarations.push({ name: name11, kind, ...unit === void 0 ? {} : { unit }, exported, line });
+  addDeclaration(name12, kind, unit, line, exported = isExported(name12)) {
+    this.declarations.push({ name: name12, kind, ...unit === void 0 ? {} : { unit }, exported, line });
   }
   nameOf(base) {
     const seen = this.nameCounts.get(base) ?? 0;
@@ -11271,18 +11271,18 @@ var Extractor7 = class {
   typeDeclaration(node, context) {
     const specs = node.namedChildren.filter((child) => child.type === "type_spec" || child.type === "type_alias");
     for (const spec of specs) {
-      const name11 = spec.childForFieldName("name")?.text;
+      const name12 = spec.childForFieldName("name")?.text;
       const type = spec.childForFieldName("type");
-      if (name11 === void 0 || type === null) continue;
+      if (name12 === void 0 || type === null) continue;
       const kind = type.type === "interface_type" ? "interface" : type.type === "struct_type" ? "class" : "type";
       const isUnit = kind !== "type" && spec.type === "type_spec";
-      this.addDeclaration(name11, kind, isUnit ? name11 : void 0, spec.startPosition.row + 1);
+      this.addDeclaration(name12, kind, isUnit ? name12 : void 0, spec.startPosition.row + 1);
       const parameters = new Set((spec.childForFieldName("type_parameters")?.namedChildren ?? []).flatMap((parameter) => parameter.childrenForFieldName("name").map((n) => n.text)));
       let inner2 = context;
       if (isUnit) {
         const extent = specs.length === 1 ? node : spec;
-        const unit = { qualifiedName: this.nameOf(name11), kind: "class", startLine: extent.startPosition.row + 1, endLine: extent.endPosition.row + 1, source: "structural" };
-        unit.shape = typeShape4(extent, type, this.exportedMethods.get(name11) ?? 0);
+        const unit = { qualifiedName: this.nameOf(name12), kind: "class", startLine: extent.startPosition.row + 1, endLine: extent.endPosition.row + 1, source: "structural" };
+        unit.shape = typeShape4(extent, type, this.exportedMethods.get(name12) ?? 0);
         this.units.push(unit);
         inner2 = { unit: unit.qualifiedName, locals: /* @__PURE__ */ new Set([...context.locals, ...parameters]) };
       } else if (parameters.size > 0) inner2 = { ...context, locals: /* @__PURE__ */ new Set([...context.locals, ...parameters]) };
@@ -11298,27 +11298,27 @@ var Extractor7 = class {
       const values = spec.childForFieldName("value")?.namedChildren ?? [];
       const type = spec.childForFieldName("type");
       if (type !== null) this.walk(type, context, spec, "type");
-      names2.forEach((name11, index) => {
+      names2.forEach((name12, index) => {
         const value = values[index];
         const bound = value?.type === "func_literal" && names2.length === values.length;
-        if (packageLevel && name11.text !== "_") this.addDeclaration(name11.text, bound ? "function" : "variable", bound ? name11.text : void 0, name11.startPosition.row + 1);
-        if (bound && value !== void 0) this.functionUnit(name11.text, value, sole ? node : spec, void 0, context, "function");
+        if (packageLevel && name12.text !== "_") this.addDeclaration(name12.text, bound ? "function" : "variable", bound ? name12.text : void 0, name12.startPosition.row + 1);
+        if (bound && value !== void 0) this.functionUnit(name12.text, value, sole ? node : spec, void 0, context, "function");
       });
       values.forEach((value, index) => {
         if (!(value.type === "func_literal" && names2.length === values.length && names2[index] !== void 0)) this.walk(value, context, spec, "value");
       });
     }
   }
-  reference(name11, kind, node, context) {
-    const fact = { name: name11, kind, line: node.startPosition.row + 1 };
+  reference(name12, kind, node, context) {
+    const fact = { name: name12, kind, line: node.startPosition.row + 1 };
     if (context.unit !== void 0) fact.inUnit = context.unit;
     this.references.push(fact);
     this.referenceNodes?.push(node);
   }
   bare(node, context, kind) {
-    const name11 = node.text;
-    if (predeclared.has(name11) || context.locals.has(name11)) return;
-    this.reference(name11, kind, node, context);
+    const name12 = node.text;
+    if (predeclared.has(name12) || context.locals.has(name12)) return;
+    this.reference(name12, kind, node, context);
   }
   walkChildren(node, context) {
     for (let i2 = 0; i2 < node.childCount; i2++) {
@@ -11361,8 +11361,8 @@ var Extractor7 = class {
         return;
       case "qualified_type": {
         const pkg = node.childForFieldName("package");
-        const name11 = node.childForFieldName("name");
-        if (pkg !== null && name11 !== null) this.reference(`${pkg.text}.${name11.text}`, "reference", node, context);
+        const name12 = node.childForFieldName("name");
+        if (pkg !== null && name12 !== null) this.reference(`${pkg.text}.${name12.text}`, "reference", node, context);
         return;
       }
       case "selector_expression":
@@ -11414,14 +11414,14 @@ var Extractor7 = class {
       this.walk(operand, context, node, "operand");
       return;
     }
-    const name11 = operand.text;
-    if (context.receiver !== void 0 && context.receiver.name === name11) {
+    const name12 = operand.text;
+    if (context.receiver !== void 0 && context.receiver.name === name12) {
       this.reference(`${context.receiver.type}.${field6}`, kind, node, context);
       return;
     }
-    if (context.locals.has(name11) || predeclared.has(name11)) return;
-    this.reference(`${name11}.${field6}`, kind, node, context);
-    this.reference(name11, "reference", operand, context);
+    if (context.locals.has(name12) || predeclared.has(name12)) return;
+    this.reference(`${name12}.${field6}`, kind, node, context);
+    this.reference(name12, "reference", operand, context);
   }
   /** `a := func() {}` and `a = func() {}` bind a unit when one name takes one literal. */
   binding(node, context) {
@@ -11430,9 +11430,9 @@ var Extractor7 = class {
     const pairs = left.length === right.length;
     for (const target2 of node.type === "assignment_statement" ? left : []) this.walk(target2, context, node.childForFieldName("left"), null);
     right.forEach((value, index) => {
-      const name11 = left[index];
-      if (pairs && value.type === "func_literal" && name11?.type === "identifier" && name11.text !== "_") {
-        this.functionUnit(name11.text, value, left.length === 1 ? node : value, void 0, context, "function");
+      const name12 = left[index];
+      if (pairs && value.type === "func_literal" && name12?.type === "identifier" && name12.text !== "_") {
+        this.functionUnit(name12.text, value, left.length === 1 ? node : value, void 0, context, "function");
       } else this.walk(value, context, node.childForFieldName("right"), null);
     });
   }
@@ -11491,8 +11491,8 @@ var PackageGraph = class _PackageGraph {
       }
     }
   }
-  static keyOf(dir, name11) {
-    return `${dir}${SEPARATOR}${name11}`;
+  static keyOf(dir, name12) {
+    return `${dir}${SEPARATOR}${name12}`;
   }
   keyOfFile(file) {
     return _PackageGraph.keyOf(posix13.dirname(file), this.facts.get(file)?.symbols?.namespaces[0] ?? "");
@@ -11535,7 +11535,7 @@ var PackageGraph = class _PackageGraph {
    */
   lookup(file, written, imports) {
     const own = this.keyOfFile(file);
-    const has = (key, name11) => this.declared.has(`${key}${SEPARATOR}${name11}`);
+    const has = (key, name12) => this.declared.has(`${key}${SEPARATOR}${name12}`);
     const dot = written.indexOf(".");
     if (dot >= 0) {
       const head = written.slice(0, dot);
@@ -11550,8 +11550,8 @@ var PackageGraph = class _PackageGraph {
     return void 0;
   }
   /** The files that declare a name in a package. */
-  declarers(key, name11) {
-    return this.declared.get(`${key}${SEPARATOR}${name11}`) ?? [];
+  declarers(key, name12) {
+    return this.declared.get(`${key}${SEPARATOR}${name12}`) ?? [];
   }
 };
 function resolvePackages(input) {
@@ -11586,7 +11586,7 @@ function resolvePackages(input) {
       result.importEdges.push({ from, to, kind: "import", typeOnly: false });
     }
   }
-  const unmangle = (name11) => name11.slice(name11.lastIndexOf(SEPARATOR) + 1);
+  const unmangle = (name12) => name12.slice(name12.lastIndexOf(SEPARATOR) + 1);
   return {
     ...result,
     consumers: result.consumers.map((consumer) => ({ ...consumer, toExport: unmangle(consumer.toExport) })),
@@ -11624,7 +11624,7 @@ var adapter7 = {
 // packages/parse/src/languages/rust/crates.ts
 import { posix as posix14 } from "node:path";
 var isManifestPath = (path) => path === "Cargo.toml" || path.endsWith("/Cargo.toml");
-var underscored = (name11) => name11.replaceAll("-", "_");
+var underscored = (name12) => name12.replaceAll("-", "_");
 var table2 = (value) => typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
 var text = (value) => typeof value === "string" ? value : void 0;
 var list = (value) => Array.isArray(value) ? value.filter((entry) => typeof entry === "object" && entry !== null && !Array.isArray(entry)) : [];
@@ -11670,25 +11670,25 @@ function readCrates(paths, configs) {
       continue;
     }
     const pkg = table2(toml.package);
-    const name11 = text(pkg.name) ?? null;
+    const name12 = text(pkg.name) ?? null;
     const lib = table2(toml.lib);
-    const libName2 = name11 === null ? null : text(lib.name) ?? underscored(name11);
+    const libName2 = name12 === null ? null : text(lib.name) ?? underscored(name12);
     const libPath = join10(dir, text(lib.path) ?? "src/lib.rs");
-    const libRoot = name11 !== null && tree.has(libPath) ? libPath : void 0;
+    const libRoot = name12 !== null && tree.has(libPath) ? libPath : void 0;
     const bins = /* @__PURE__ */ new Set();
     for (const bin of list(toml.bin)) {
-      const binName = text(bin.name) ?? name11 ?? "";
+      const binName = text(bin.name) ?? name12 ?? "";
       const declared = text(bin.path);
       const candidates = declared === void 0 ? [join10(dir, `src/bin/${binName}.rs`), join10(dir, `src/bin/${binName}/main.rs`), join10(dir, "src/main.rs")] : [join10(dir, declared)];
       const found = candidates.find((candidate) => tree.has(candidate));
       if (found !== void 0) bins.add(found);
     }
-    if (name11 !== null) {
+    if (name12 !== null) {
       if (tree.has(join10(dir, "src/main.rs"))) bins.add(join10(dir, "src/main.rs"));
       rootOfDirectory(dir, "src/bin", tree, bins);
     }
     const others = /* @__PURE__ */ new Set();
-    if (name11 !== null) {
+    if (name12 !== null) {
       if (tree.has(join10(dir, "build.rs"))) others.add(join10(dir, "build.rs"));
       for (const folder of ["tests", "examples", "benches"]) rootOfDirectory(dir, folder, tree, others);
       for (const key of ["test", "example", "bench"]) {
@@ -11712,7 +11712,7 @@ function readCrates(paths, configs) {
     crates.push({
       manifest,
       dir,
-      name: name11,
+      name: name12,
       libName: libName2,
       private: publish === false ? true : publish === void 0 ? null : false,
       libRoot,
@@ -11781,10 +11781,10 @@ var ModuleTree = class {
     return place;
   }
   /** The file of the child module `name` in a module directory: `name.rs`, else `name/mod.rs`. */
-  child(directory, name11) {
-    const flat = posix14.join(directory, `${name11}.rs`);
+  child(directory, name12) {
+    const flat = posix14.join(directory, `${name12}.rs`);
     if (this.tree.has(flat)) return flat;
-    const nested = posix14.join(directory, name11, "mod.rs");
+    const nested = posix14.join(directory, name12, "mod.rs");
     return this.tree.has(nested) ? nested : void 0;
   }
   /**
@@ -11798,14 +11798,14 @@ var ModuleTree = class {
     let directory = moduleDirectory(file, from.root);
     let consumed = 0;
     for (let index = 0; index < names2.length; index++) {
-      const name11 = names2[index];
-      const found = this.child(directory, name11);
+      const name12 = names2[index];
+      const found = this.child(directory, name12);
       if (found !== void 0) {
         file = found;
         directory = moduleDirectory(found, from.root);
         consumed = index + 1;
-      } else if (/^[a-z_]/.test(name11)) {
-        directory = posix14.join(directory, name11);
+      } else if (/^[a-z_]/.test(name12)) {
+        directory = posix14.join(directory, name12);
       } else break;
     }
     return { file, consumed };
@@ -11966,8 +11966,8 @@ function typeName(type) {
   }
   return void 0;
 }
-function recursionScope8(fn, name11) {
-  const own = fn.childForFieldName("name")?.text ?? name11;
+function recursionScope8(fn, name12) {
+  const own = fn.childForFieldName("name")?.text ?? name12;
   const owner = ownerOf2(fn);
   const names2 = own === void 0 || fn.type !== "function_item" ? [] : [own];
   const isMember = owner !== void 0;
@@ -11984,8 +11984,8 @@ function isRecursiveCall8(call, scope) {
   }
   if (callee.type === "scoped_identifier") {
     const path = callee.childForFieldName("path")?.text;
-    const name11 = callee.childForFieldName("name")?.text ?? "";
-    return scope.member.has(name11) && (path === "Self" || scope.owner !== void 0 && path === scope.owner);
+    const name12 = callee.childForFieldName("name")?.text ?? "";
+    return scope.member.has(name12) && (path === "Self" || scope.owner !== void 0 && path === scope.owner);
   }
   return false;
 }
@@ -12033,8 +12033,8 @@ function attributesOf(node) {
   }
   return out2;
 }
-function attributeNamed(node, name11) {
-  return attributesOf(node).map((item) => item.namedChildren.find((child) => child.type === "attribute")).find((attribute2) => attribute2?.namedChildren[0]?.text === name11);
+function attributeNamed(node, name12) {
+  return attributesOf(node).map((item) => item.namedChildren.find((child) => child.type === "attribute")).find((attribute2) => attribute2?.namedChildren[0]?.text === name12);
 }
 function isTestItem(node) {
   return attributesOf(node).some((item) => /^#\[\s*(cfg\s*\(\s*test\s*\)|(\w+::)*test(\s*\(.*\))?)\s*\]$/s.test(item.text.trim()));
@@ -12135,10 +12135,10 @@ function inlineModulesOf(scope, prefix, out2) {
   for (const child of scope.namedChildren) {
     if (child.type !== "mod_item") continue;
     const body2 = child.childForFieldName("body");
-    const name11 = child.childForFieldName("name")?.text;
-    if (body2 === null || name11 === void 0) continue;
-    out2.add([...prefix, name11].join("::"));
-    inlineModulesOf(body2, [...prefix, name11], out2);
+    const name12 = child.childForFieldName("name")?.text;
+    if (body2 === null || name12 === void 0) continue;
+    out2.add([...prefix, name12].join("::"));
+    inlineModulesOf(body2, [...prefix, name12], out2);
   }
 }
 var primitives = /* @__PURE__ */ new Set(["bool", "char", "str", "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i64", "i128", "isize", "f32", "f64"]);
@@ -12221,8 +12221,8 @@ var Extractor8 = class {
     const names2 = /* @__PURE__ */ new Set();
     for (const child of scope.namedChildren) {
       if (child.type === "mod_item") {
-        const name11 = child.childForFieldName("name")?.text;
-        if (name11 !== void 0) names2.add(name11);
+        const name12 = child.childForFieldName("name")?.text;
+        if (name12 !== void 0) names2.add(name12);
       }
     }
     return names2;
@@ -12242,9 +12242,9 @@ var Extractor8 = class {
   prefix(context) {
     return context.unit ?? context.mods.join(".");
   }
-  declareUnit(name11, kind, node, context, fn, memberOf) {
+  declareUnit(name12, kind, node, context, fn, memberOf) {
     const head = this.prefix(context);
-    const base = [head, memberOf, name11].filter((part) => part !== void 0 && part !== "").join(".");
+    const base = [head, memberOf, name12].filter((part) => part !== void 0 && part !== "").join(".");
     const seen = this.nameCounts.get(base) ?? 0;
     this.nameCounts.set(base, seen + 1);
     const qualifiedName = seen === 0 ? base : `${base}~${seen + 1}`;
@@ -12254,7 +12254,7 @@ var Extractor8 = class {
     if (fn === void 0) unit.shape = typeShape5(node);
     else {
       this.codeRows ??= codeRowsOf(this.root, rustMetricRules);
-      const measured = measureFunction(fn, { name: name11, startLine: unit.startLine, endLine: unit.endLine, codeRows: this.codeRows, explain: this.explain }, rustMetricRules);
+      const measured = measureFunction(fn, { name: name12, startLine: unit.startLine, endLine: unit.endLine, codeRows: this.codeRows, explain: this.explain }, rustMetricRules);
       unit.metrics = measured.metrics;
       unit.shape = functionShape6(fn, measured.metrics.parameters);
       const forwarded = passThroughOf8(fn, new Set(parameterNames5(fn)));
@@ -12267,10 +12267,10 @@ var Extractor8 = class {
     this.units.push(unit);
     return qualifiedName;
   }
-  export(node, name11, local, kind, visibility, context) {
+  export(node, name12, local, kind, visibility, context) {
     if (context.owner !== void 0 || context.unit !== void 0) return;
     const exposed = visibility === "public" && context.exposed;
-    const fact = { exported: name11, line: node.startPosition.row + 1 };
+    const fact = { exported: name12, line: node.startPosition.row + 1 };
     if (local !== void 0) fact.local = local;
     if (kind !== void 0) fact.kind = kind;
     if (!exposed) fact.internal = true;
@@ -12285,12 +12285,12 @@ var Extractor8 = class {
         this.modItem(node, context);
         return;
       case "function_item": {
-        const name11 = node.childForFieldName("name")?.text;
-        if (name11 === void 0) return;
+        const name12 = node.childForFieldName("name")?.text;
+        if (name12 === void 0) return;
         const member = context.owner;
         const kind = member === void 0 ? "function" : "method";
-        const qualified = this.declareUnit(name11, kind, node, context, node, member);
-        this.export(node, name11, qualified, "function", visibilityOf(node), context);
+        const qualified = this.declareUnit(name12, kind, node, context, node, member);
+        this.export(node, name12, qualified, "function", visibilityOf(node), context);
         this.functionParts(node, { ...context, unit: qualified, owner: void 0 });
         return;
       }
@@ -12298,15 +12298,15 @@ var Extractor8 = class {
       case "union_item":
       case "enum_item":
       case "trait_item": {
-        const name11 = node.childForFieldName("name")?.text;
-        if (name11 === void 0) return;
-        const qualified = this.declareUnit(name11, "class", node, context);
+        const name12 = node.childForFieldName("name")?.text;
+        if (name12 === void 0) return;
+        const qualified = this.declareUnit(name12, "class", node, context);
         const kind = node.type === "trait_item" ? "interface" : node.type === "enum_item" ? "enum" : "class";
-        this.export(node, name11, qualified, kind, visibilityOf(node), context);
+        this.export(node, name12, qualified, kind, visibilityOf(node), context);
         if (node.type === "trait_item") {
           const body2 = node.childForFieldName("body");
           this.visitChildrenExcept(node, body2, { ...context, unit: void 0, owner: void 0 });
-          if (body2 !== null) this.visitScope(body2, { ...context, unit: void 0, owner: name11 });
+          if (body2 !== null) this.visitScope(body2, { ...context, unit: void 0, owner: name12 });
         } else this.visitChildren(node, { ...context, owner: void 0 });
         return;
       }
@@ -12320,14 +12320,14 @@ var Extractor8 = class {
       case "type_item":
       case "const_item":
       case "static_item": {
-        const name11 = node.childForFieldName("name")?.text;
-        if (name11 !== void 0) this.export(node, name11, void 0, node.type === "type_item" ? "type" : "variable", visibilityOf(node), context);
+        const name12 = node.childForFieldName("name")?.text;
+        if (name12 !== void 0) this.export(node, name12, void 0, node.type === "type_item" ? "type" : "variable", visibilityOf(node), context);
         this.visitChildren(node, context);
         return;
       }
       case "macro_definition": {
-        const name11 = node.childForFieldName("name")?.text;
-        if (name11 !== void 0) this.export(node, name11, void 0, void 0, attributeNamed(node, "macro_export") === void 0 ? "private" : "public", context);
+        const name12 = node.childForFieldName("name")?.text;
+        if (name12 !== void 0) this.export(node, name12, void 0, void 0, attributeNamed(node, "macro_export") === void 0 ? "private" : "public", context);
         return;
       }
       case "let_declaration":
@@ -12386,8 +12386,8 @@ var Extractor8 = class {
   /** An attribute names a crate when its path has one (`#[tokio::main]`, `#[derive(thiserror::Error)]`). */
   attribute(node, context) {
     for (const attribute2 of node.namedChildren.filter((child) => child.type === "attribute")) {
-      const name11 = attribute2.namedChildren[0];
-      if (name11?.type === "scoped_identifier") this.path(name11, context, "reference");
+      const name12 = attribute2.namedChildren[0];
+      if (name12?.type === "scoped_identifier") this.path(name12, context, "reference");
       const args2 = attribute2.childForFieldName("arguments");
       if (args2 !== null) this.tokens(args2, context);
     }
@@ -12404,20 +12404,20 @@ var Extractor8 = class {
     this.visitChildren(fn, context);
   }
   modItem(node, context) {
-    const name11 = node.childForFieldName("name")?.text;
-    if (name11 === void 0) return;
+    const name12 = node.childForFieldName("name")?.text;
+    if (name12 === void 0) return;
     const visibility = visibilityOf(node);
     const body2 = node.childForFieldName("body");
     if (body2 !== null) {
-      this.export(node, name11, void 0, "namespace", visibility, context);
-      this.visitScope(body2, { ...context, mods: [...context.mods, name11], exposed: context.exposed && visibility === "public", ...isTestItem(node) ? { inTests: true } : {} });
+      this.export(node, name12, void 0, "namespace", visibility, context);
+      this.visitScope(body2, { ...context, mods: [...context.mods, name12], exposed: context.exposed && visibility === "public", ...isTestItem(node) ? { inTests: true } : {} });
       return;
     }
     const written = pathAttribute(node);
-    const specifier = `mod ${[...context.mods, name11].join("::")}${written === void 0 ? "" : `@${written}`}`;
+    const specifier = `mod ${[...context.mods, name12].join("::")}${written === void 0 ? "" : `@${written}`}`;
     const line = node.startPosition.row + 1;
-    this.imports.push({ specifier, kind: "import", typeOnly: false, line, bindings: [{ imported: "*", local: name11, typeOnly: false }] });
-    this.export(node, name11, name11, "namespace", visibility, context);
+    this.imports.push({ specifier, kind: "import", typeOnly: false, line, bindings: [{ imported: "*", local: name12, typeOnly: false }] });
+    this.export(node, name12, name12, "namespace", visibility, context);
   }
   useDeclaration(node, context) {
     const visibility = visibilityOf(node);
@@ -12534,9 +12534,9 @@ var Extractor8 = class {
     if (args2 !== null) this.visitChildren(args2, context);
   }
   macro(node, context) {
-    const name11 = node.childForFieldName("macro");
-    if (name11?.type === "identifier") this.reference(name11.text, name11, context, "call");
-    else if (name11?.type === "scoped_identifier") this.path(name11, context, "call");
+    const name12 = node.childForFieldName("macro");
+    if (name12?.type === "identifier") this.reference(name12.text, name12, context, "call");
+    else if (name12?.type === "scoped_identifier") this.path(name12, context, "call");
     for (const tree of node.namedChildren.filter((child) => child.type === "token_tree")) this.tokens(tree, context);
   }
   /** Macro arguments are not parsed, so names in them are read from the tokens: `a`, or `a::b`. */
@@ -12568,8 +12568,8 @@ function extractFacts8(root, options = {}) {
 // packages/parse/src/languages/rust/census.ts
 var registryName8 = /(registry|registries|handlers|plugins|strategies|factories|providers|adapters)$/i;
 var mapTypes4 = /^(HashMap|BTreeMap|IndexMap|DashMap)$/;
-function field5(node, name11) {
-  return node.childForFieldName(name11);
+function field5(node, name12) {
+  return node.childForFieldName(name12);
 }
 var comment2 = (node) => node.type === "line_comment" || node.type === "block_comment";
 function lastName7(node) {
@@ -12620,12 +12620,12 @@ function callbackGenerics(fn) {
   const names2 = /* @__PURE__ */ new Set();
   for (const parameter of field5(fn, "type_parameters")?.namedChildren ?? []) {
     const bounds = field5(parameter, "bounds");
-    const name11 = field5(parameter, "name")?.text;
-    if (name11 !== void 0 && bounds?.descendantsOfType("function_type").length) names2.add(name11);
+    const name12 = field5(parameter, "name")?.text;
+    if (name12 !== void 0 && bounds?.descendantsOfType("function_type").length) names2.add(name12);
   }
   for (const predicate of fn.namedChildren.filter((child) => child.type === "where_clause").flatMap((clause) => clause.namedChildren)) {
-    const name11 = field5(predicate, "left")?.text;
-    if (name11 !== void 0 && field5(predicate, "bounds")?.descendantsOfType("function_type").length) names2.add(name11);
+    const name12 = field5(predicate, "left")?.text;
+    if (name12 !== void 0 && field5(predicate, "bounds")?.descendantsOfType("function_type").length) names2.add(name12);
   }
   return names2;
 }
@@ -12639,9 +12639,9 @@ function parametersOf7(fn) {
   return out2;
 }
 function attributeNames(attribute2) {
-  const name11 = attribute2.namedChildren[0];
-  if (name11 === void 0) return [];
-  const own = nameOf2(name11) ?? lastName7(name11);
+  const name12 = attribute2.namedChildren[0];
+  if (name12 === void 0) return [];
+  const own = nameOf2(name12) ?? lastName7(name12);
   if (own === "derive") return field5(attribute2, "arguments")?.namedChildren.filter((child) => child.type === "identifier").map((child) => child.text) ?? [];
   return own === null ? [] : [own];
 }
@@ -12663,24 +12663,24 @@ function extractFileCensus8(root) {
         return;
       }
       case "trait_item": {
-        const name11 = field5(node, "name")?.text;
-        if (name11 !== void 0) facts.types.push({ name: name11, kind: "interface", line });
-        nextOwner = name11 ?? owner;
+        const name12 = field5(node, "name")?.text;
+        if (name12 !== void 0) facts.types.push({ name: name12, kind: "interface", line });
+        nextOwner = name12 ?? owner;
         break;
       }
       case "type_item": {
-        const name11 = field5(node, "name")?.text;
+        const name12 = field5(node, "name")?.text;
         const value = field5(node, "type");
-        if (name11 !== void 0 && value !== null && (value.type === "function_type" || value.descendantsOfType("function_type").length > 0)) facts.types.push({ name: name11, kind: "function-type", line });
+        if (name12 !== void 0 && value !== null && (value.type === "function_type" || value.descendantsOfType("function_type").length > 0)) facts.types.push({ name: name12, kind: "function-type", line });
         break;
       }
       case "struct_item":
       case "enum_item":
       case "union_item": {
-        const name11 = field5(node, "name")?.text;
-        if (name11 !== void 0) {
-          facts.classes.push({ name: name11, line, heritage: [], constructorTypes: [] });
-          nextOwner = name11;
+        const name12 = field5(node, "name")?.text;
+        if (name12 !== void 0) {
+          facts.classes.push({ name: name12, line, heritage: [], constructorTypes: [] });
+          nextOwner = name12;
         }
         break;
       }
@@ -12697,13 +12697,13 @@ function extractFileCensus8(root) {
         break;
       }
       case "function_item": {
-        const name11 = field5(node, "name")?.text;
-        if (name11 !== void 0) facts.functions.push({ name: owner === null ? name11 : `${owner}.${name11}`, line, parameters: parametersOf7(node) });
+        const name12 = field5(node, "name")?.text;
+        if (name12 !== void 0) facts.functions.push({ name: owner === null ? name12 : `${owner}.${name12}`, line, parameters: parametersOf7(node) });
         break;
       }
       case "attribute_item": {
         const attribute2 = node.namedChildren.find((child) => child.type === "attribute");
-        if (attribute2 !== void 0) for (const name11 of attributeNames(attribute2)) facts.decorators.push({ line, name: name11 });
+        if (attribute2 !== void 0) for (const name12 of attributeNames(attribute2)) facts.decorators.push({ line, name: name12 });
         return;
       }
       case "field_declaration":
@@ -12711,13 +12711,13 @@ function extractFileCensus8(root) {
       case "const_item":
       case "let_declaration": {
         const nameNode = field5(node, node.type === "let_declaration" ? "pattern" : "name");
-        const name11 = nameNode?.type === "identifier" || nameNode?.type === "field_identifier" ? nameNode.text : void 0;
-        if (name11 !== void 0 && registryName8.test(name11)) {
+        const name12 = nameNode?.type === "identifier" || nameNode?.type === "field_identifier" ? nameNode.text : void 0;
+        if (name12 !== void 0 && registryName8.test(name12)) {
           const declared = field5(node, "type");
           const value = field5(node, "value");
           const typeNames2 = annotation6(declared, /* @__PURE__ */ new Set()).names;
           const constructs9 = value?.type === "call_expression" && mapTypes4.test(nameOf2(field5(field5(value, "function") ?? value, "path")) ?? "");
-          if (typeNames2.some((type) => mapTypes4.test(type)) || constructs9) facts.keyedMaps.push({ line, name: name11 });
+          if (typeNames2.some((type) => mapTypes4.test(type)) || constructs9) facts.keyedMaps.push({ line, name: name12 });
         }
         break;
       }
@@ -12739,13 +12739,13 @@ function extractFileCensus8(root) {
         break;
       }
       case "macro_invocation": {
-        const name11 = lastName7(field5(node, "macro"));
-        if (name11 !== null) facts.calls.push({ line, receiver: null, method: name11 });
+        const name12 = lastName7(field5(node, "macro"));
+        if (name12 !== null) facts.calls.push({ line, receiver: null, method: name12 });
         break;
       }
       case "struct_expression": {
-        const name11 = nameOf2(field5(node, "name"));
-        if (name11 !== null) facts.news.push({ line, name: name11 });
+        const name12 = nameOf2(field5(node, "name"));
+        if (name12 !== null) facts.news.push({ line, name: name12 });
         break;
       }
       default:
@@ -12783,10 +12783,10 @@ var PathResolver = class {
     }
     const place = this.tree.placeOf(from);
     const names2 = declaration.split("::");
-    const name11 = names2.pop();
+    const name12 = names2.pop();
     let directory = moduleDirectory(from, place?.root ?? from);
     for (const inline of names2) directory = posix15.join(directory, inline);
-    const file = this.tree.child(directory, name11);
+    const file = this.tree.child(directory, name12);
     return file === void 0 ? { kind: "not-found" } : { kind: "file", path: file };
   }
   usedPath(from, segments) {
@@ -12816,9 +12816,9 @@ var PathResolver = class {
     return { kind: "file", path: walked.file };
   }
   /** The crate a name in a `use` path stands for: the importing crate's own library, one of its path dependencies, or a crate of the tree by that name. */
-  crateNamed(importer, name11) {
-    if (importer?.libName === name11) return importer;
-    const dependency = importer?.dependencies.get(name11);
+  crateNamed(importer, name12) {
+    if (importer?.libName === name12) return importer;
+    const dependency = importer?.dependencies.get(name12);
     if (dependency !== void 0) return this.tree.crates.find((crate) => crate.dir === dependency && crate.name !== null);
     return void 0;
   }
@@ -13094,19 +13094,19 @@ function readFixClassifier(section2) {
   }
 }
 function readLanguageProfiles(languages) {
-  for (const [extension, name11] of Object.entries(languages)) {
-    if (!(name11 in profiles)) {
-      throw configError(`code-health.json: languages.${extension} names the lexer profile "${name11}", which does not exist: use one of ${Object.keys(profiles).join(", ")}`);
+  for (const [extension, name12] of Object.entries(languages)) {
+    if (!(name12 in profiles)) {
+      throw configError(`code-health.json: languages.${extension} names the lexer profile "${name12}", which does not exist: use one of ${Object.keys(profiles).join(", ")}`);
     }
   }
   return languages;
 }
 function readGuidelines(value, where, number3) {
   const source = value;
-  const level = (name11) => {
-    const { warn, high } = source[name11];
-    const checked = { warn: number3(warn, `${where}.${name11}.warn`, 0), high: number3(high, `${where}.${name11}.high`, 0) };
-    if (checked.high < checked.warn) throw configError(`code-health.json: ${where}.${name11}.high must not be below warn`);
+  const level = (name12) => {
+    const { warn, high } = source[name12];
+    const checked = { warn: number3(warn, `${where}.${name12}.warn`, 0), high: number3(high, `${where}.${name12}.high`, 0) };
+    if (checked.high < checked.warn) throw configError(`code-health.json: ${where}.${name12}.high must not be below warn`);
     return checked;
   };
   return {
@@ -13127,9 +13127,9 @@ function readOverrides(value, where, number3, global) {
     }
     if (!isRecord(entry.guidelines)) throw configError(`code-health.json: ${here}.guidelines must be an object`);
     const merged = mergeGuidelines(global, entry.guidelines, `${here}.guidelines`, number3);
-    for (const name11 of ["cyclomatic", "cognitive"]) {
-      if (merged[name11].high < merged[name11].warn) {
-        throw configError(`code-health.json: ${here}.guidelines.${name11}.high must not be below warn (${merged[name11].warn}); set both when raising warn`);
+    for (const name12 of ["cyclomatic", "cognitive"]) {
+      if (merged[name12].high < merged[name12].warn) {
+        throw configError(`code-health.json: ${here}.guidelines.${name12}.high must not be below warn (${merged[name12].warn}); set both when raising warn`);
       }
     }
     return { matches: compileGlobs(entry.paths), guidelines: entry.guidelines };
@@ -13309,21 +13309,21 @@ function classifyHeader(segments, profile) {
   for (const pattern of functions) {
     const match = pattern.exec(text3);
     if (match !== null) {
-      const name11 = match.groups?.name;
-      return { kind: "function", name: name11 === void 0 ? void 0 : cleanName(name11), line };
+      const name12 = match.groups?.name;
+      return { kind: "function", name: name12 === void 0 ? void 0 : cleanName(name12), line };
     }
   }
   return { kind: "other" };
 }
-function cleanName(name11) {
-  return name11.replace(/<[^>]*>/g, "").replace(/[.:]+$/, "");
+function cleanName(name12) {
+  return name12.replace(/<[^>]*>/g, "").replace(/[.:]+$/, "");
 }
 function findFunctionBlocks(lines2, profile) {
   const blocks = profile.blocks === "indentation" ? findIndentedBlocks(lines2, profile) : findBracedBlocks(lines2, profile);
   return blocks.sort((a, b) => a.startLine - b.startLine || b.endLine - a.endLine);
 }
-function qualify(scopes2, name11) {
-  return name11 === void 0 ? void 0 : [...scopes2, name11].join(".");
+function qualify(scopes2, name12) {
+  return name12 === void 0 ? void 0 : [...scopes2, name12].join(".");
 }
 var modifiers = "(?:(?:public|private|protected|static|readonly|override|declare|export)\\s+)*";
 var boundArrow = [
@@ -13396,13 +13396,13 @@ function findBracedBlocks(lines2, profile) {
     const kept = [...header2, { line: line.number, text: before }].filter((part) => part.text.trim() !== "");
     if (kept.length === 0) return false;
     const text3 = kept.map((part) => part.text.trim()).join(" ").replace(/\s+/g, " ");
-    let name11;
+    let name12;
     let matched = false;
     const members2 = compile2(profile).members;
     if (members2 !== void 0) {
       const found = members2.map((pattern) => pattern.exec(text3)).find((match) => match !== null);
       if (found === void 0) return false;
-      name11 = found?.groups?.name;
+      name12 = found?.groups?.name;
       matched = true;
     }
     for (const [i2, pattern] of members2 === void 0 ? [...boundArrow.entries()] : []) {
@@ -13410,15 +13410,15 @@ function findBracedBlocks(lines2, profile) {
       if (match === null) continue;
       if (i2 === 0 && !inDeclaration && !keywordAssignment.test(text3) && top?.name === void 0) continue;
       if (i2 === 1 && (top === void 0 || top.name !== void 0)) continue;
-      name11 = match.groups?.name;
+      name12 = match.groups?.name;
       matched = true;
       break;
     }
     if (!matched) return false;
     const names2 = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
     const block = { startLine: kept[0].line, endLine: -1, source: "lexical" };
-    if (name11 !== void 0) {
-      block.name = cleanName(name11);
+    if (name12 !== void 0) {
+      block.name = cleanName(name12);
       block.qualifiedName = qualify(names2, block.name);
     }
     arrow = { block, scopes: stack.length, lastLine: line.number, declaration: inDeclaration || keywordAssignment.test(text3) };
@@ -13486,17 +13486,17 @@ function findBracedBlocks(lines2, profile) {
         const classification = classifyHeader(header2, profile);
         const names2 = stack.flatMap((scope) => scope.name === void 0 ? [] : [scope.name]);
         let block;
-        let name11;
+        let name12;
         if (classification.kind === "function") {
-          name11 = classification.name;
+          name12 = classification.name;
           block = { startLine: classification.line, endLine: -1, source: "lexical" };
-          if (name11 !== void 0) {
-            block.name = name11;
-            block.qualifiedName = qualify(names2, name11);
+          if (name12 !== void 0) {
+            block.name = name12;
+            block.qualifiedName = qualify(names2, name12);
           }
-        } else if (classification.kind === "type") name11 = classification.name;
+        } else if (classification.kind === "type") name12 = classification.name;
         const typeOnly = /^(?:export\s+)?(?:declare\s+)?(?:interface|type)\b/.test(headerText(""));
-        stack.push({ name: name11, block, parenDepth, ...typeOnly ? { typeOnly } : {} });
+        stack.push({ name: name12, block, parenDepth, ...typeOnly ? { typeOnly } : {} });
         header2 = [];
         segment3 = "";
         continue;
@@ -18227,8 +18227,8 @@ function parseLayer(value) {
 }
 function parseMetrics(value, settings) {
   if (value === void 0) return settings.metrics;
-  const names2 = String(value).split(",").map((name11) => name11.trim());
-  const unknown = names2.filter((name11) => !isMetricId(name11));
+  const names2 = String(value).split(",").map((name12) => name12.trim());
+  const unknown = names2.filter((name12) => !isMetricId(name12));
   if (unknown.length > 0) throw usageError(`unknown metric ${unknown.join(", ")}; metrics: ${metricIds.join(", ")}`);
   return metricIds.filter((metric) => names2.includes(metric));
 }
@@ -18239,13 +18239,13 @@ async function measureCurrent(context, layer) {
   const measurement = await measureTree(current.tree, { settings, layer, cache });
   return { settings, current, measurement };
 }
-function storeReport(context, command10, output) {
-  return writeReport(context, { tool: TOOL, schemaVersion: SCHEMA_VERSION2 }, command10, output, context.repo.head);
+function storeReport(context, command11, output) {
+  return writeReport(context, { tool: TOOL, schemaVersion: SCHEMA_VERSION2 }, command11, output, context.repo.head);
 }
-async function cachedAnalysis(context, command10, stated, compute4, cacheable = true, notStorableBecause = () => void 0) {
+async function cachedAnalysis(context, command11, stated, compute4, cacheable = true, notStorableBecause = () => void 0) {
   if (!cacheable) return cachedOutput(context, void 0, compute4, (run3) => skipReport(run3, "the run read the history of earlier revisions"));
   const uncommitted = await hasUncommittedWork(context);
-  const stored = uncommitted ? void 0 : { identity: { tool: TOOL, schemaVersion: SCHEMA_VERSION2 }, command: command10, head: context.repo.head, stated };
+  const stored = uncommitted ? void 0 : { identity: { tool: TOOL, schemaVersion: SCHEMA_VERSION2 }, command: command11, head: context.repo.head, stated };
   return cachedOutput(context, stored, compute4, (run3) => skipReport(run3, "the run did not analyse HEAD"), notStorableBecause);
 }
 
@@ -19309,11 +19309,426 @@ async function compute(context, paths) {
   return output;
 }
 
+// packages/complexity/src/commands/backtest.ts
+var backtest_exports = {};
+__export(backtest_exports, {
+  DEFAULT_MONTHS: () => DEFAULT_MONTHS,
+  DEFAULT_SAMPLES: () => DEFAULT_SAMPLES,
+  MAX_SAMPLES: () => MAX_SAMPLES,
+  MIN_FILES: () => MIN_FILES,
+  command: () => command2,
+  name: () => name3
+});
+
+// packages/history/src/trend-samples.ts
+async function firstParentLine(root, ref) {
+  const out2 = await runGit(root, ["log", "--first-parent", "--format=%H %ct", ref]);
+  return out2.split("\n").filter((line) => line !== "").map((line) => ({ sha: line.slice(0, line.indexOf(" ")), date: Number(line.slice(line.indexOf(" ") + 1)) })).reverse();
+}
+function sampleByTime(line, count4, since) {
+  const last = line.at(-1);
+  if (last === void 0) return [];
+  const within = line.filter((commit) => commit.date >= since);
+  const start2 = within[0]?.date ?? last.date;
+  const picked = /* @__PURE__ */ new Map();
+  for (let i2 = 0; i2 < count4; i2++) {
+    const instant = count4 === 1 ? last.date : start2 + (last.date - start2) * i2 / (count4 - 1);
+    const commit = i2 === count4 - 1 ? last : line.findLast((candidate) => candidate.date <= instant && candidate.date >= start2);
+    if (commit !== void 0) picked.set(commit.sha, commit);
+  }
+  return line.filter((commit) => picked.has(commit.sha));
+}
+var iso2 = (date) => new Date(date * 1e3).toISOString();
+function sampleLabels(samples) {
+  const distinct = (labels) => new Set(labels).size === labels.length;
+  const days = samples.map((sample) => iso2(sample.date).slice(0, 10));
+  if (distinct(days)) return days;
+  const minutes = samples.map((sample) => iso2(sample.date).slice(0, 16).replace("T", " "));
+  if (distinct(minutes)) return minutes;
+  return samples.map((sample, i2) => `${minutes[i2]} ${sample.sha.slice(0, 7)}`);
+}
+
+// packages/graph/src/graph.ts
+function compareIds(a, b) {
+  if (a === b) return 0;
+  return Buffer.compare(Buffer.from(a), Buffer.from(b));
+}
+
+// packages/graph/src/tree-distance.ts
+function assertPath(path) {
+  if (path === "" || path.startsWith("/") || path.endsWith("/") || path.includes("//")) {
+    throw new Error(`not a repo-relative POSIX path: "${path}"`);
+  }
+}
+function folderOf(path) {
+  assertPath(path);
+  const slash = path.lastIndexOf("/");
+  return slash === -1 ? "" : path.slice(0, slash);
+}
+function depthOf(folder) {
+  return folder === "" ? 0 : folder.split("/").length;
+}
+
+// packages/graph/src/folders.ts
+function withAncestors(folder) {
+  if (folder === "") return [""];
+  const parts3 = folder.split("/");
+  return ["", ...parts3.map((_, i2) => parts3.slice(0, i2 + 1).join("/"))];
+}
+function commonRoot(figures) {
+  const total = figures.get("")?.files ?? 0;
+  let root = "";
+  for (; ; ) {
+    const depth = depthOf(root) + 1;
+    const next = [...figures].find(([folder, figure2]) => depthOf(folder) === depth && (root === "" || folder.startsWith(`${root}/`)) && figure2.files === total);
+    if (next === void 0 || total === 0) return root;
+    root = next[0];
+  }
+}
+function foldersBelow(figures, root, levels) {
+  const base = depthOf(root);
+  return [...figures.keys()].filter((folder) => folder !== root && (root === "" || folder.startsWith(`${root}/`)) && depthOf(folder) <= base + levels).sort(compareIds);
+}
+
+// packages/parse/src/code-files.ts
+function isCodePath(path, mappings = {}) {
+  if (hasAdapter(path)) return true;
+  try {
+    return selectProfile(path, { ...mappings }) !== void 0;
+  } catch {
+    return false;
+  }
+}
+
+// packages/complexity/src/folder-measures.ts
+function weightOf(cyclomatic, codeLines) {
+  return cyclomatic * Math.sqrt(Math.max(codeLines, 1));
+}
+function empty() {
+  return { files: 0, codeLines: 0, functions: 0, cyclomatic: 0, maxCyclomatic: null, aboveGuideline: 0, weight: 0, weightAbove: 0, meanCyclomatic: null, shareAbove: null };
+}
+function productionCode(files, settings) {
+  return files.filter((file) => !file.test && isCodePath(file.path, settings.languageProfiles));
+}
+function folderMeasures(files, settings) {
+  const measures = /* @__PURE__ */ new Map();
+  const at2 = (folder) => {
+    let found = measures.get(folder);
+    if (found === void 0) {
+      found = empty();
+      measures.set(folder, found);
+    }
+    return found;
+  };
+  at2("");
+  for (const file of productionCode(files, settings)) {
+    const limit = guidelinesFor(settings, file.path).cyclomatic.warn;
+    const functions = topLevelUnits(file.units).flatMap((unit) => unit.test || unit.values.cyclomatic === void 0 ? [] : [{ cyclomatic: unit.values.cyclomatic, weight: weightOf(unit.values.cyclomatic, unit.values.length ?? 1) }]);
+    for (const folder of withAncestors(folderOf(file.path))) {
+      const measure = at2(folder);
+      measure.files++;
+      measure.codeLines += file.lines.codeLines;
+      for (const fn of functions) {
+        measure.functions++;
+        measure.cyclomatic += fn.cyclomatic;
+        measure.maxCyclomatic = Math.max(measure.maxCyclomatic ?? 0, fn.cyclomatic);
+        measure.weight += fn.weight;
+        if (fn.cyclomatic > limit) {
+          measure.aboveGuideline++;
+          measure.weightAbove += fn.weight;
+        }
+      }
+    }
+  }
+  for (const measure of measures.values()) {
+    measure.meanCyclomatic = measure.functions === 0 ? null : measure.cyclomatic / measure.functions;
+    measure.shareAbove = measure.weight === 0 ? null : measure.weightAbove / measure.weight;
+  }
+  return measures;
+}
+function meanInterfaceDepth(files, settings) {
+  const depths = productionCode(files, settings).flatMap((file) => {
+    const depth = meanDepth(file);
+    return depth === null ? [] : [depth];
+  });
+  return depths.length === 0 ? null : depths.reduce((sum, depth) => sum + depth, 0) / depths.length;
+}
+function splitCheck(before, after) {
+  const [was, now] = [before.measures.meanCyclomatic, after.measures.meanCyclomatic];
+  if (was === null || now === null || now >= was) return { flagged: false, reasons: [] };
+  if (after.measures.functions <= before.measures.functions || before.depth === null || after.depth === null || after.depth >= before.depth) return { flagged: false, reasons: [] };
+  return {
+    flagged: true,
+    reasons: [`the number of functions rose from ${before.measures.functions} to ${after.measures.functions} and mean interface depth fell from ${before.depth.toFixed(2)} to ${after.depth.toFixed(2)} while mean cyclomatic complexity fell`]
+  };
+}
+
+// packages/complexity/src/backtest.ts
+var MEASURES = ["codeLines", "functions", "cyclomaticSum", "cyclomaticMean", "cyclomaticMax", "shareAbove", "cognitiveSum", "cognitiveMax", "indentation", "priorChanges", "hotspot"];
+var MEASURE_SUMMARIES = {
+  codeLines: "Lines of code, blank and comment lines excluded",
+  functions: "Functions measured, a nested function counted in the function that holds it",
+  cyclomaticSum: "Sum of the functions' cyclomatic complexity",
+  cyclomaticMean: "Mean cyclomatic complexity per function",
+  cyclomaticMax: "Largest cyclomatic complexity of one function",
+  shareAbove: "Share of weighted complexity in functions above the cyclomatic guideline, where a function's weight is its cyclomatic complexity times the square root of its code lines",
+  cognitiveSum: "Sum of the functions' cognitive complexity",
+  cognitiveMax: "Largest cognitive complexity of one function",
+  indentation: "Indentation complexity of the file, the complexity half of a hotspot",
+  priorChanges: "Landed changes that touched the file in the period before the sample, as long as the period after it",
+  hotspot: "Indentation complexity times prior changes"
+};
+var OUTCOMES = ["changes", "linesChurned", "linesPerChange", "fixShare"];
+var OUTCOME_SUMMARIES = {
+  changes: "Landed changes that touched the file, over every file",
+  linesChurned: "Lines added plus deleted in the file, over every file",
+  linesPerChange: "Lines added plus deleted per landed change, over the files that changed",
+  fixShare: "Share of the file's landed changes that are fixes, over the files with at least the minimum number of changes"
+};
+function fileSamples(files, settings) {
+  const samples = [];
+  for (const file of productionCode(files, settings)) {
+    const limit = guidelinesFor(settings, file.path).cyclomatic.warn;
+    const functions = topLevelUnits(file.units).filter((unit) => !unit.test && unit.values.cyclomatic !== void 0);
+    if (functions.length === 0) continue;
+    let cyclomaticSum = 0;
+    let cyclomaticMax = 0;
+    let cognitiveSum = 0;
+    let cognitiveMax = 0;
+    let weight = 0;
+    let weightAbove = 0;
+    for (const unit of functions) {
+      const cyclomatic = unit.values.cyclomatic;
+      const cognitive = unit.values.cognitive ?? 0;
+      const own = weightOf(cyclomatic, unit.values.length ?? 1);
+      cyclomaticSum += cyclomatic;
+      cyclomaticMax = Math.max(cyclomaticMax, cyclomatic);
+      cognitiveSum += cognitive;
+      cognitiveMax = Math.max(cognitiveMax, cognitive);
+      weight += own;
+      if (cyclomatic > limit) weightAbove += own;
+    }
+    samples.push({
+      path: file.path,
+      codeLines: file.lines.codeLines,
+      functions: functions.length,
+      cyclomaticSum,
+      cyclomaticMean: cyclomaticSum / functions.length,
+      cyclomaticMax,
+      shareAbove: weight === 0 ? 0 : weightAbove / weight,
+      cognitiveSum,
+      cognitiveMax,
+      indentation: file.indentationComplexity,
+      priorChanges: 0,
+      hotspot: 0,
+      changes: 0,
+      linesChurned: 0,
+      fixes: 0
+    });
+  }
+  return samples;
+}
+function ranks(values) {
+  const order = values.map((_, i2) => i2).sort((a, b) => values[a] - values[b]);
+  const out2 = new Array(values.length).fill(0);
+  for (let i2 = 0; i2 < order.length; ) {
+    let j = i2;
+    while (j + 1 < order.length && values[order[j + 1]] === values[order[i2]]) j++;
+    for (let k = i2; k <= j; k++) out2[order[k]] = (i2 + j) / 2 + 1;
+    i2 = j + 1;
+  }
+  return out2;
+}
+function pearson(a, b) {
+  const n = a.length;
+  if (n === 0) return null;
+  const meanA = a.reduce((sum, v) => sum + v, 0) / n;
+  const meanB = b.reduce((sum, v) => sum + v, 0) / n;
+  let cross = 0;
+  let squareA = 0;
+  let squareB = 0;
+  for (let i2 = 0; i2 < n; i2++) {
+    cross += (a[i2] - meanA) * (b[i2] - meanB);
+    squareA += (a[i2] - meanA) ** 2;
+    squareB += (b[i2] - meanB) ** 2;
+  }
+  return squareA === 0 || squareB === 0 ? null : cross / Math.sqrt(squareA * squareB);
+}
+function partial(x2, y2, control) {
+  const xy = pearson(x2, y2);
+  const xz = pearson(x2, control);
+  const yz = pearson(y2, control);
+  if (xy === null || xz === null || yz === null || Math.abs(xz) > 0.9999 || Math.abs(yz) > 0.9999) return null;
+  return (xy - xz * yz) / Math.sqrt((1 - xz ** 2) * (1 - yz ** 2));
+}
+function population(outcome, files, minChanges) {
+  if (outcome === "linesPerChange") {
+    const changed = files.filter((file) => file.changes > 0);
+    return { files: changed, values: changed.map((file) => file.linesChurned / file.changes) };
+  }
+  if (outcome === "fixShare") {
+    const busy = files.filter((file) => file.changes >= minChanges);
+    return { files: busy, values: busy.map((file) => file.fixes / file.changes) };
+  }
+  return { files: [...files], values: files.map((file) => file[outcome]) };
+}
+var round32 = (value) => Math.round(value * 1e3) / 1e3;
+function correlate(periods, minFiles, minChanges) {
+  const out2 = [];
+  for (const outcome of OUTCOMES) {
+    const sums = new Map(MEASURES.map((measure) => [measure, { raw: 0, rawN: 0, part: 0, partN: 0, n: 0, periods: 0 }]));
+    for (const period of periods) {
+      const { files, values } = population(outcome, period, minChanges);
+      if (files.length < minFiles) continue;
+      const y2 = ranks(values);
+      const control = ranks(files.map((file) => file.codeLines));
+      for (const measure of MEASURES) {
+        const x2 = ranks(files.map((file) => file[measure]));
+        const sum = sums.get(measure);
+        sum.n += files.length;
+        sum.periods++;
+        const raw = pearson(x2, y2);
+        if (raw !== null) {
+          sum.raw += raw * files.length;
+          sum.rawN += files.length;
+        }
+        const held = measure === "codeLines" ? null : partial(x2, y2, control);
+        if (held !== null) {
+          sum.part += held * files.length;
+          sum.partN += files.length;
+        }
+      }
+    }
+    for (const measure of MEASURES) {
+      const sum = sums.get(measure);
+      out2.push({
+        outcome,
+        measure,
+        correlation: sum.rawN === 0 ? null : round32(sum.raw / sum.rawN),
+        partialOnCodeLines: sum.partN === 0 ? null : round32(sum.part / sum.partN),
+        fileSamples: sum.n,
+        periods: sum.periods
+      });
+    }
+  }
+  return out2;
+}
+
+// packages/complexity/src/commands/backtest.ts
+var name3 = "backtest";
+var DEFAULT_SAMPLES = 7;
+var MAX_SAMPLES = 60;
+var DEFAULT_MONTHS = 36;
+var MIN_FILES = 20;
+var LIMITS = [
+  "A correlation says how well a measure orders the files by what followed. It does not say the measure caused it, and it is not a threshold for any measure.",
+  "A larger file is touched by more changes because there is more of it. The partial correlation holds code lines fixed, and is the figure that says whether a measure adds anything to size.",
+  "The unit is a file. Whether a function's complexity predicts changes to that function is not measured.",
+  "Changes are counted for the files that had a measured function at the sample. A file added after the sample, or read by the lexical layer alone, is not in the period.",
+  "A change with more files than `history.maxChangesetSize` is left out, as are commits made through the suite's skills.",
+  "A fix is a landed change whose text matches `history.fixPatterns`. Some matches are not defects, and a repository that does not name its fixes gives no fix share.",
+  "Every sample is read with the config of the checkout and the parsers of this version, not those of the time."
+];
+function wholeNumber(context, option, fallback, least, most) {
+  const value = context.values[option];
+  if (value === void 0) return fallback;
+  if (typeof value !== "string" || !/^[1-9]\d*$/.test(value) || Number(value) < least || Number(value) > most) {
+    throw usageError(`--${option} must be a whole number from ${least} to ${most}`);
+  }
+  return Number(value);
+}
+var command2 = {
+  summary: "Whether a file's size and complexity at past revisions order the files by the changes, lines churned and fixes of the period that followed, with code lines held fixed",
+  hidden: true,
+  options: { samples: { type: "string" }, months: { type: "string" } },
+  optionHelp: {
+    samples: `how many revisions to sample, 3 to ${MAX_SAMPLES}; each one but the last starts a period that ends at the next (default ${DEFAULT_SAMPLES})`,
+    months: `how many months before HEAD's commit date the samples span (default ${DEFAULT_MONTHS})`
+  },
+  async run(context) {
+    if (context.positionals.length > 0) throw usageError("backtest takes no arguments");
+    const wanted = wholeNumber(context, "samples", DEFAULT_SAMPLES, 3, MAX_SAMPLES);
+    const months = wholeNumber(context, "months", DEFAULT_MONTHS, 1, 600);
+    const settings = readSettings(context.config);
+    const { root, head } = context.repo;
+    if ((await readShallowInfo(root)).isShallow) throw usageError("history is shallow, so the periods after each sample cannot be measured");
+    await refresh(root, { ref: "HEAD" });
+    const history = await analyseHistory(root, { ref: "HEAD", noise: { exclude: [...context.config.effective.exclude], botPatterns: settings.botPatterns, maxChangesetSize: settings.maxChangesetSize, excludeSuiteCommits: true } });
+    const line = await firstParentLine(root, head);
+    const commits = sampleByTime(line, wanted, monthsBefore(line.at(-1).date, months));
+    const labels = sampleLabels(commits);
+    const changes = [...history.filtered.changes].sort((a, b) => a.committerDate - b.committerDate);
+    const groups = groupByLanding(changes.filter((change) => !change.oversized), await readLandings(root, history.view.headSha));
+    const cache = await ParseCache.forRepository(root);
+    const grammars = new GrammarSet();
+    const identityAt = /* @__PURE__ */ new Map();
+    let seen = 0;
+    const periods = [];
+    const samples = [];
+    for (let i2 = 0; i2 + 1 < commits.length; i2++) {
+      const from = commits[i2];
+      const to = commits[i2 + 1];
+      for (; seen < changes.length && changes[seen].committerDate <= from.date; seen++) for (const file of changes[seen].files) identityAt.set(file.path, file.fileId);
+      const { files } = await measureTree(await treeFromRef(root, from.sha), { settings, layer: "auto", cache, grammars });
+      const rows11 = fileSamples(files, settings);
+      const byIdentity = new Map(rows11.map((row) => [identityAt.get(row.path) ?? row.path, row]));
+      const before = from.date - (to.date - from.date);
+      let landed = 0;
+      for (const { landing, changes: inLanding } of groups) {
+        const after = landing.time > from.date && landing.time <= to.date;
+        if (!after && !(landing.time > before && landing.time <= from.date)) continue;
+        if (after) landed++;
+        const churn = /* @__PURE__ */ new Map();
+        for (const change of inLanding) {
+          for (const file of change.files) {
+            const row = byIdentity.get(file.fileId);
+            if (row !== void 0) churn.set(row, (churn.get(row) ?? 0) + (file.added ?? 0) + (file.deleted ?? 0));
+          }
+        }
+        const fix = after && findFix(settings.fix, landing.id, [landing.text]) !== null;
+        for (const [row, lines2] of churn) {
+          if (!after) {
+            row.priorChanges++;
+            continue;
+          }
+          row.changes++;
+          row.linesChurned += lines2;
+          if (fix) row.fixes++;
+        }
+      }
+      for (const row of rows11) row.hotspot = row.indentation * row.priorChanges;
+      samples.push(rows11);
+      periods.push({
+        from: labels[i2],
+        to: labels[i2 + 1],
+        revision: from.sha,
+        files: rows11.length,
+        landedChanges: landed,
+        oversizedSkipped: changes.filter((change) => change.oversized && change.committerDate > from.date && change.committerDate <= to.date).length
+      });
+    }
+    const minChanges = settings.fixes.minRevisions;
+    return {
+      inputs: { samples: wanted, months, revisions: commits.map((commit) => commit.sha) },
+      extra: { evidence: { grade: history.evidence.grade, logicalChangesInWindow: history.evidence.logicalChangesInWindow, usableHistoryMonths: history.evidence.usableHistoryMonths } },
+      results: {
+        periods,
+        minFiles: MIN_FILES,
+        minChanges,
+        measures: MEASURE_SUMMARIES,
+        outcomes: OUTCOME_SUMMARIES,
+        correlations: correlate(samples, MIN_FILES, minChanges),
+        limits: LIMITS
+      }
+    };
+  }
+};
+
 // packages/complexity/src/commands/check.ts
 var check_exports = {};
 __export(check_exports, {
-  command: () => command2,
-  name: () => name3
+  command: () => command3,
+  name: () => name4
 });
 
 // packages/complexity/src/revisions.ts
@@ -19375,8 +19790,8 @@ async function compareToBase(context, settings, base, target2) {
 }
 
 // packages/complexity/src/commands/check.ts
-var name3 = "check";
-var command2 = {
+var name4 = "check";
+var command3 = {
   summary: "Exit with 1 when a new function is above a guideline, or an existing one above a guideline got worse than at a base revision",
   options: { base: { type: "string" } },
   async run(context) {
@@ -19437,16 +19852,16 @@ var command2 = {
 // packages/complexity/src/commands/depth.ts
 var depth_exports = {};
 __export(depth_exports, {
-  command: () => command3,
-  name: () => name4,
+  command: () => command4,
+  name: () => name5,
   rules: () => rules2
 });
-var name4 = "depth";
+var name5 = "depth";
 var rules2 = ruleDescriptions;
 function isPartial(context) {
   return context.positionals.length > 0 || wantsTests(context);
 }
-var command3 = {
+var command4 = {
   summary: "Rank exported functions, classes and modules by interface depth, exported pass-throughs first, with the tests counted apart",
   options: { ...includeTestsOption },
   optionHelp: { "include-tests": includeTestsHelp },
@@ -19473,7 +19888,7 @@ var command3 = {
       columns: ["path", "unit", "kind", "role", "exported", "nodes", "interface", "depth", "passThrough", "labels"],
       notices: tests === null || tests.count === 0 ? [] : [`${tests.count} test rows are not listed (--include-tests lists them with the production code, and the JSON has the first ${tests.listed} in \`tests\`)`]
     };
-    if (!isPartial(context) && current.kind === "head") await storeReport(context, name4, output);
+    if (!isPartial(context) && current.kind === "head") await storeReport(context, name5, output);
     else skipReport(context, current.kind === "head" ? "the run was limited by arguments or options" : "the run did not analyse HEAD");
     return output;
   }
@@ -19482,10 +19897,10 @@ var command3 = {
 // packages/complexity/src/commands/diff.ts
 var diff_exports = {};
 __export(diff_exports, {
-  command: () => command4,
-  name: () => name5
+  command: () => command5,
+  name: () => name6
 });
-var name5 = "diff";
+var name6 = "diff";
 function delta(before, after) {
   const out2 = {};
   for (const metric of metricIds) {
@@ -19494,7 +19909,7 @@ function delta(before, after) {
   }
   return out2;
 }
-var command4 = {
+var command5 = {
   summary: "Functions added or changed between two revisions, or a revision and the working tree, with before and after",
   async run(context) {
     const [range] = context.positionals;
@@ -19559,8 +19974,8 @@ var command4 = {
 // packages/complexity/src/commands/explain.ts
 var explain_exports = {};
 __export(explain_exports, {
-  command: () => command5,
-  name: () => name6
+  command: () => command6,
+  name: () => name7
 });
 import { createHash as createHash6 } from "node:crypto";
 
@@ -19715,17 +20130,17 @@ var complexityLanguages = Object.values(registered_languages_exports).sort((a, b
 function explainRule(rule, explanation) {
   const notes4 = complexityLanguages.flatMap((language9) => {
     const lines2 = language9.ruleNotes[rule];
-    const name11 = adapterById(language9.id)?.name ?? language9.id;
-    return lines2 === void 0 || lines2.length === 0 ? [] : [`${name11}: ${lines2.join(" ")}`];
+    const name12 = adapterById(language9.id)?.name ?? language9.id;
+    return lines2 === void 0 || lines2.length === 0 ? [] : [`${name12}: ${lines2.join(" ")}`];
   });
   return notes4.length === 0 ? explanation : `${explanation}
 ${notes4.join("\n")}`;
 }
 
 // packages/complexity/src/commands/explain.ts
-var name6 = "explain";
+var name7 = "explain";
 var metricOrder = { cognitive: 0, cyclomatic: 1 };
-var command5 = {
+var command6 = {
   summary: "Line-by-line breakdown of where a function's complexity comes from, or describe a rule",
   options: { ...noCacheOption },
   optionHelp: { "no-cache": noCacheHelp },
@@ -19749,7 +20164,7 @@ var command5 = {
     if (text3 === void 0) throw usageError(`${path} is not in the ${current.kind === "head" ? "commit at HEAD" : "working tree"}`);
     const stored = {
       identity: { tool: TOOL, schemaVersion: SCHEMA_VERSION2 },
-      command: name6,
+      command: name7,
       head: context.repo.head,
       stated: { path, unit: wanted, tree: current.kind, content: createHash6("sha256").update(text3).digest("hex") },
       describesCommit: true
@@ -19801,30 +20216,18 @@ async function breakdown(context, current, text3, path, wanted) {
 // packages/complexity/src/commands/files.ts
 var files_exports = {};
 __export(files_exports, {
-  command: () => command6,
-  name: () => name7
+  command: () => command7,
+  name: () => name8
 });
-
-// packages/parse/src/code-files.ts
-function isCodePath(path, mappings = {}) {
-  if (hasAdapter(path)) return true;
-  try {
-    return selectProfile(path, { ...mappings }) !== void 0;
-  } catch {
-    return false;
-  }
-}
-
-// packages/complexity/src/commands/files.ts
-var name7 = "files";
-var command6 = {
+var name8 = "files";
+var command7 = {
   summary: "File-level aggregates; a full run writes the complexity.files report other plugins read",
   options: { ...layerOption, ...includeTestsOption, ...noCacheOption },
   optionHelp: { "include-tests": includeTestsHelp, "no-cache": noCacheHelp },
   async run(context) {
     const layer = parseLayer(context.values.layer);
     const paths = normalisePaths(context.positionals);
-    const all = await cachedAnalysis(context, name7, { layer: context.values.layer, paths: paths.length === 0 ? void 0 : paths }, () => compute2(context, layer, paths));
+    const all = await cachedAnalysis(context, name8, { layer: context.values.layer, paths: paths.length === 0 ? void 0 : paths }, () => compute2(context, layer, paths));
     const rows11 = all.results;
     const listed = wantsTests(context) ? rows11 : rows11.filter((row) => row.role === "production");
     if (listed.length < rows11.length) {
@@ -19852,13 +20255,13 @@ async function compute2(context, layer, paths) {
 // packages/complexity/src/commands/fixes.ts
 var fixes_exports = {};
 __export(fixes_exports, {
-  command: () => command7,
-  name: () => name8,
+  command: () => command8,
+  name: () => name9,
   rules: () => rules3
 });
-var name8 = "fixes";
+var name9 = "fixes";
 var rules3 = { fixes: ruleDescriptions.fixes };
-var command7 = {
+var command8 = {
   summary: "Per function: fix commits in the history window, revisions touching it, fix share and current cognitive complexity, with the evidence commits",
   usage: "[paths...]",
   options: { ...includeTestsOption, ...fixOptions, ...noCacheOption },
@@ -19872,7 +20275,7 @@ var command7 = {
       evidence: context.values.evidence
     };
     const shallow = (output) => output.extra?.shallow === true ? "the clone is shallow, and the same commit may have more history later" : void 0;
-    return cachedAnalysis(context, name8, stated, () => compute3(context), true, shallow);
+    return cachedAnalysis(context, name9, stated, () => compute3(context), true, shallow);
   }
 };
 async function compute3(context) {
@@ -19896,8 +20299,8 @@ async function compute3(context) {
 // packages/complexity/src/commands/outcome.ts
 var outcome_exports = {};
 __export(outcome_exports, {
-  command: () => command8,
-  name: () => name9
+  command: () => command9,
+  name: () => name10
 });
 
 // packages/complexity/src/outcome.ts
@@ -19974,21 +20377,6 @@ function toRepoPath(path, roots) {
   return relative;
 }
 
-// packages/graph/src/tree-distance.ts
-function assertPath(path) {
-  if (path === "" || path.startsWith("/") || path.endsWith("/") || path.includes("//")) {
-    throw new Error(`not a repo-relative POSIX path: "${path}"`);
-  }
-}
-function folderOf(path) {
-  assertPath(path);
-  const slash = path.lastIndexOf("/");
-  return slash === -1 ? "" : path.slice(0, slash);
-}
-function depthOf(folder) {
-  return folder === "" ? 0 : folder.split("/").length;
-}
-
 // packages/transcripts/src/shell-command.ts
 import { posix as posix17 } from "node:path";
 var LITERAL_DOLLAR = "";
@@ -20048,11 +20436,11 @@ function tokenize(source) {
       i2 = end + 1;
       return true;
     }
-    const name11 = /^[A-Za-z_][A-Za-z0-9_]*/.exec(source.slice(i2 + 1));
-    if (name11 !== null) {
+    const name12 = /^[A-Za-z_][A-Za-z0-9_]*/.exec(source.slice(i2 + 1));
+    if (name12 !== null) {
       dynamic = true;
-      text3 += `$${name11[0]}`;
-      i2 += 1 + name11[0].length;
+      text3 += `$${name12[0]}`;
+      i2 += 1 + name12[0].length;
       return true;
     }
     if (next === void 0 || /\s|["'`]/.test(next)) {
@@ -20245,14 +20633,14 @@ function parseArgs2(args2, spec) {
       ended = true;
     } else if (text3.startsWith("--")) {
       const equals = text3.indexOf("=");
-      const name11 = equals === -1 ? text3 : text3.slice(0, equals);
-      flags2.add(name11);
+      const name12 = equals === -1 ? text3 : text3.slice(0, equals);
+      flags2.add(name12);
       if (equals !== -1) {
-        values.push({ name: name11, value: text3.slice(equals + 1) });
-      } else if (spec.valueLong?.includes(name11)) {
+        values.push({ name: name12, value: text3.slice(equals + 1) });
+      } else if (spec.valueLong?.includes(name12)) {
         const next = args2[k + 1];
         if (next === void 0) return null;
-        values.push({ name: name11, value: plain2(next) });
+        values.push({ name: name12, value: plain2(next) });
         k++;
       }
     } else {
@@ -20346,8 +20734,8 @@ var Interpretation = class {
     else this.access.edits.push(operand.path);
   }
 };
-function redirections(command10, run3) {
-  for (const { op, target: target2 } of command10.redirects) {
+function redirections(command11, run3) {
+  for (const { op, target: target2 } of command11.redirects) {
     if (target2 === null || op === "<<<") continue;
     const text3 = plain2(target2);
     if ((op === ">&" || op === "<&") && (/^[0-9]+$/.test(text3) || text3 === "-")) continue;
@@ -20422,8 +20810,8 @@ function awkLike(args2, run3) {
     run3.read(word);
   }
 }
-function grepLike(name11, args2, run3, piped, hasInput) {
-  const ripgrep = name11 === "rg";
+function grepLike(name12, args2, run3, piped, hasInput) {
+  const ripgrep = name12 === "rg";
   const parsed = parseArgs2(args2, {
     valueShort: ripgrep ? "efgtTABCmjMEdr" : "efmABCdD",
     valueLong: ripgrep ? RG_VALUE_LONG : GREP_VALUE_LONG
@@ -20491,12 +20879,12 @@ function gitLike(args2, run3) {
   }
   run3.cwd = saved;
 }
-function moveLike(name11, args2, run3) {
+function moveLike(name12, args2, run3) {
   const parsed = parseArgs2(args2, { valueShort: "tS", valueLong: ["--target-directory", "--suffix"] });
   if (parsed === null) return run3.fail();
   const recursive = parsed.flags.has("r") || parsed.flags.has("R") || parsed.flags.has("d") || parsed.flags.has("--recursive") || parsed.flags.has("a");
   const operands = parsed.operands.filter((word) => !endsLikeDirectory(plain2(word)) || word.dynamic);
-  if (name11 === "rm") {
+  if (name12 === "rm") {
     if (recursive) return;
     for (const word of operands) run3.edit(word);
     return;
@@ -20528,16 +20916,16 @@ function moveLike(name11, args2, run3) {
   for (const word of sources) {
     if (word.dynamic || word.glob && !word.quoted) return run3.fail();
   }
-  if (name11 === "mv") {
+  if (name12 === "mv") {
     for (const word of sources) if (!recursive && !endsLikeDirectory(plain2(word))) run3.edit(word);
   }
-  if (recursive && name11 === "cp") return;
+  if (recursive && name12 === "cp") return;
   run3.access.edits.push(...targets);
 }
-function interpreterLike(args2, command10, run3, name11) {
-  if (command10.heredoc) return run3.fail();
+function interpreterLike(args2, command11, run3, name12) {
+  if (command11.heredoc) return run3.fail();
   const parsed = parseArgs2(args2, {
-    valueShort: name11.startsWith("python") ? "WXmc" : "rCeEpr",
+    valueShort: name12.startsWith("python") ? "WXmc" : "rCeEpr",
     valueLong: ["--require", "--import", "--loader", "--eval", "--print", "--experimental-loader"]
   });
   if (parsed === null) return run3.fail();
@@ -20563,18 +20951,18 @@ function findLike(args2, run3) {
   if (paths.length === 0) run3.search(null);
   for (const word of paths) run3.search(word);
 }
-function execute2(command10, run3, piped) {
-  let words3 = command10.words.map((word) => run3.substitute(word));
-  const redirects = command10.redirects.map((r) => ({ ...r, target: r.target === null ? null : run3.substitute(r.target) }));
-  const substituted = { ...command10, words: words3, redirects };
+function execute2(command11, run3, piped) {
+  let words3 = command11.words.map((word) => run3.substitute(word));
+  const redirects = command11.redirects.map((r) => ({ ...r, target: r.target === null ? null : run3.substitute(r.target) }));
+  const substituted = { ...command11, words: words3, redirects };
   while (words3[0] !== void 0 && !words3[0].quoted && !words3[0].dynamic && SKIPPED_KEYWORDS.has(plain2(words3[0]))) words3 = words3.slice(1);
   if (words3[0] !== void 0 && !words3[0].quoted && UNPARSED_KEYWORDS.has(plain2(words3[0]))) return run3.fail();
   while (words3[0] !== void 0 && !words3[0].dynamic && /^[A-Za-z_][A-Za-z0-9_]*=/.test(plain2(words3[0]))) {
     const text3 = plain2(words3[0]);
     const equals = text3.indexOf("=");
-    const name12 = text3.slice(0, equals);
-    if (words3[0].glob) run3.variables.delete(name12);
-    else run3.variables.set(name12, text3.slice(equals + 1));
+    const name13 = text3.slice(0, equals);
+    if (words3[0].glob) run3.variables.delete(name13);
+    else run3.variables.set(name13, text3.slice(equals + 1));
     words3 = words3.slice(1);
   }
   redirections(substituted, run3);
@@ -20590,70 +20978,70 @@ function execute2(command10, run3, piped) {
   }
   const head = words3[0];
   if (head.dynamic) return run3.fail();
-  const name11 = posix17.basename(plain2(head));
+  const name12 = posix17.basename(plain2(head));
   const args2 = words3.slice(1);
-  const hasInput = command10.redirects.some((r) => r.op === "<" || r.op === "<<<") || command10.heredoc;
-  if (HIDING_COMMANDS.has(name11)) return run3.fail();
-  if (SHELLS.has(name11)) {
+  const hasInput = command11.redirects.some((r) => r.op === "<" || r.op === "<<<") || command11.heredoc;
+  if (HIDING_COMMANDS.has(name12)) return run3.fail();
+  if (SHELLS.has(name12)) {
     const parsed = parseArgs2(args2, { valueShort: "co" });
-    if (parsed === null || parsed.flags.has("c") || command10.heredoc) return run3.fail();
+    if (parsed === null || parsed.flags.has("c") || command11.heredoc) return run3.fail();
     const script = parsed.operands[0];
     if (script !== void 0 && !(script.dynamic === false && !looksLikeFile(plain2(script)))) run3.read(script);
     return;
   }
-  if (name11 === "cd") {
+  if (name12 === "cd") {
     const target2 = args2.find((word) => !/^-[A-Za-z]+$/.test(plain2(word)) || word.quoted);
     if (target2 === void 0) run3.cwd = "~";
     else if (target2.dynamic || plain2(target2) === "-") run3.cwd = null;
     else run3.cwd = run3.resolve(plain2(target2));
     return;
   }
-  if (name11 === "pushd" || name11 === "popd") {
+  if (name12 === "pushd" || name12 === "popd") {
     run3.cwd = null;
     return;
   }
-  if (READERS.has(name11)) {
-    const parsed = parseArgs2(args2, { valueShort: name11 === "head" || name11 === "tail" ? "nc" : "", valueLong: ["--lines", "--bytes", "--files0-from"] });
+  if (READERS.has(name12)) {
+    const parsed = parseArgs2(args2, { valueShort: name12 === "head" || name12 === "tail" ? "nc" : "", valueLong: ["--lines", "--bytes", "--files0-from"] });
     if (parsed === null) return run3.fail();
     for (const word of parsed.operands) run3.read(word);
     return;
   }
-  if (name11 === "sed") return sedLike(args2, run3);
-  if (name11 === "perl") return perlLike(args2, run3);
-  if (name11 === "awk" || name11 === "gawk" || name11 === "mawk") return awkLike(args2, run3);
-  if (name11 === "grep" || name11 === "egrep" || name11 === "fgrep" || name11 === "rg") return grepLike(name11 === "rg" ? "rg" : "grep", args2, run3, piped, hasInput);
-  if (name11 === "diff") return diffLike(args2, run3);
-  if (name11 === "git") return gitLike(args2, run3);
-  if (name11 === "tee") {
+  if (name12 === "sed") return sedLike(args2, run3);
+  if (name12 === "perl") return perlLike(args2, run3);
+  if (name12 === "awk" || name12 === "gawk" || name12 === "mawk") return awkLike(args2, run3);
+  if (name12 === "grep" || name12 === "egrep" || name12 === "fgrep" || name12 === "rg") return grepLike(name12 === "rg" ? "rg" : "grep", args2, run3, piped, hasInput);
+  if (name12 === "diff") return diffLike(args2, run3);
+  if (name12 === "git") return gitLike(args2, run3);
+  if (name12 === "tee") {
     const parsed = parseArgs2(args2, {});
     if (parsed === null) return run3.fail();
     for (const word of parsed.operands) if (plain2(word) !== "-" && !plain2(word).startsWith("/dev/")) run3.edit(word);
     return;
   }
-  if (name11 === "cp" || name11 === "mv" || name11 === "rm") return moveLike(name11, args2, run3);
-  if (name11 === "find") return findLike(args2, run3);
-  if (INTERPRETERS.has(name11)) return interpreterLike(args2, command10, run3, name11);
+  if (name12 === "cp" || name12 === "mv" || name12 === "rm") return moveLike(name12, args2, run3);
+  if (name12 === "find") return findLike(args2, run3);
+  if (INTERPRETERS.has(name12)) return interpreterLike(args2, command11, run3, name12);
 }
-var headOf = (command10) => {
-  const word = command10.words.find((candidate) => candidate.quoted || !SKIPPED_KEYWORDS.has(plain2(candidate)));
+var headOf = (command11) => {
+  const word = command11.words.find((candidate) => candidate.quoted || !SKIPPED_KEYWORDS.has(plain2(candidate)));
   return word === void 0 || word.quoted ? null : plain2(word);
 };
 function run2(commands3, from, to, interpretation) {
   let i2 = from;
   while (i2 < to && interpretation.ok) {
-    const command10 = commands3[i2];
-    if (command10.marker === "(") {
+    const command11 = commands3[i2];
+    if (command11.marker === "(") {
       interpretation.stack.push(interpretation.cwd);
       i2++;
       continue;
     }
-    if (command10.marker === ")") {
+    if (command11.marker === ")") {
       if (interpretation.stack.length === 0) return interpretation.fail();
       interpretation.cwd = interpretation.stack.pop();
       i2++;
       continue;
     }
-    const head = headOf(command10);
+    const head = headOf(command11);
     if (head === "done") return interpretation.fail();
     if (head === "for") {
       let depth = 1;
@@ -20664,8 +21052,8 @@ function run2(commands3, from, to, interpretation) {
         else if (inner2 === "done" && --depth === 0) break;
       }
       if (j >= to) return interpretation.fail();
-      const start2 = command10.words.findIndex((word) => !word.quoted && plain2(word) === "for");
-      const words3 = command10.words.slice(start2 + 1).map((word) => interpretation.substitute(word));
+      const start2 = command11.words.findIndex((word) => !word.quoted && plain2(word) === "for");
+      const words3 = command11.words.slice(start2 + 1).map((word) => interpretation.substitute(word));
       const [variable, keyword, ...items] = words3;
       if (variable === void 0 || keyword === void 0 || plain2(keyword) !== "in" || variable.dynamic) return interpretation.fail();
       if (items.some((item) => item.dynamic || item.glob && !item.quoted)) return interpretation.fail();
@@ -20679,12 +21067,12 @@ function run2(commands3, from, to, interpretation) {
       continue;
     }
     const previous = i2 > from ? commands3[i2 - 1].separator : "";
-    execute2(command10, interpretation, previous === "|" || previous === "|&");
+    execute2(command11, interpretation, previous === "|" || previous === "|&");
     i2++;
   }
 }
-function shellAccess(command10, cwd) {
-  const tokens2 = tokenize(command10);
+function shellAccess(command11, cwd) {
+  const tokens2 = tokenize(command11);
   if (tokens2 === null) return null;
   const commands3 = segment(tokens2);
   if (commands3 === null) return null;
@@ -20712,19 +21100,19 @@ function pathOf(input) {
   return asString(input["file_path"]) ?? asString(input["notebook_path"]) ?? asString(input["path"]);
 }
 function actionOf(block) {
-  const name11 = asString(block["name"]);
-  if (name11 === null) return null;
+  const name12 = asString(block["name"]);
+  if (name12 === null) return null;
   const input = isObject(block["input"]) ? block["input"] : {};
-  if (READ_TOOLS.has(name11)) return { kind: "read", origin: "tool", path: pathOf(input) };
-  if (SEARCH_TOOLS.has(name11)) return { kind: "search", origin: "tool", path: pathOf(input) };
-  if (EDIT_TOOLS.has(name11)) return { kind: "edit", origin: "tool", path: pathOf(input) };
+  if (READ_TOOLS.has(name12)) return { kind: "read", origin: "tool", path: pathOf(input) };
+  if (SEARCH_TOOLS.has(name12)) return { kind: "search", origin: "tool", path: pathOf(input) };
+  if (EDIT_TOOLS.has(name12)) return { kind: "edit", origin: "tool", path: pathOf(input) };
   return null;
 }
 var SHELL_TOOLS = /* @__PURE__ */ new Set(["Bash"]);
 function shellActionsOf(block, cwd) {
   const input = isObject(block["input"]) ? block["input"] : {};
-  const command10 = asString(input["command"]);
-  const access = command10 === null ? null : shellAccess(command10, cwd);
+  const command11 = asString(input["command"]);
+  const access = command11 === null ? null : shellAccess(command11, cwd);
   if (access === null) return null;
   return [
     ...access.reads.map((path) => ({ kind: "read", origin: "shell", path })),
@@ -20842,8 +21230,8 @@ function parseTranscript(text3, scope = "main") {
     }
     for (const block of message["content"]) {
       if (!isObject(block) || block["type"] !== "tool_use") continue;
-      const name11 = asString(block["name"]);
-      if (name11 !== null && SHELL_TOOLS.has(name11)) {
+      const name12 = asString(block["name"]);
+      if (name12 !== null && SHELL_TOOLS.has(name12)) {
         const actions = shellActionsOf(block, asString(line["cwd"]));
         turn.shell.calls++;
         if (actions === null) turn.shell.unparsed++;
@@ -21047,8 +21435,8 @@ function subagentFiles(projectsDir, root) {
     const subagents = join12(dir, entry.name, "subagents");
     if (!entry.isDirectory() || !existsSync9(subagents)) continue;
     for (const path of agentFilesUnder(subagents)) {
-      const name11 = path.slice(path.lastIndexOf("/") + 1);
-      files.push({ sessionId: entry.name, agentId: name11.slice("agent-".length, -".jsonl".length), path });
+      const name12 = path.slice(path.lastIndexOf("/") + 1);
+      files.push({ sessionId: entry.name, agentId: name12.slice("agent-".length, -".jsonl".length), path });
     }
   }
   return files.sort((a, b) => compareBytes2(a.path, b.path));
@@ -21146,11 +21534,11 @@ function stampOf(input) {
 }
 
 // packages/complexity/src/outcome.ts
-var round32 = (value) => Math.round(value * 1e3) / 1e3;
-var mean = (values) => values.length === 0 ? null : round32(values.reduce((sum, value) => sum + value, 0) / values.length);
+var round33 = (value) => Math.round(value * 1e3) / 1e3;
+var mean = (values) => values.length === 0 ? null : round33(values.reduce((sum, value) => sum + value, 0) / values.length);
 var fixOfLanding = (landing, fix) => findFix(fix, landing.id, [landing.text]);
 var day2 = (seconds) => new Date(seconds * 1e3).toISOString().slice(0, 10);
-var iso2 = (seconds) => new Date(seconds * 1e3).toISOString();
+var iso3 = (seconds) => new Date(seconds * 1e3).toISOString();
 async function resolveRevision2(root, rev) {
   try {
     return (await runGit(root, ["rev-parse", "--verify", `${rev}^{commit}`])).trim();
@@ -21189,7 +21577,7 @@ function changeFigures(changes, members2, fix, landings) {
   return {
     changes: churn.length,
     linesChurnedPerChange: mean(churn),
-    fixCommitRate: churn.length === 0 ? null : round32(fixes.length / churn.length),
+    fixCommitRate: churn.length === 0 ? null : round33(fixes.length / churn.length),
     fixCommits: fixEvidence(fixes)
   };
 }
@@ -21229,8 +21617,8 @@ function rankFigures(files, members2, selected, changes, until, settings) {
     meanComplexityScore: mean(ranked.map((entry) => entry.complexityScore))
   };
 }
-var delta2 = (before, after) => before === null || after === null ? null : round32(after - before);
-var gap = (own, other) => own === null || other === null ? null : round32(own - other);
+var delta2 = (before, after) => before === null || after === null ? null : round33(after - before);
+var gap = (own, other) => own === null || other === null ? null : round33(own - other);
 async function measureOutcome(root, settings, exclude, options) {
   const at2 = await resolveRevision2(root, options.at);
   const first = options.from === void 0 ? at2 : await resolveRevision2(root, options.from);
@@ -21329,8 +21717,8 @@ async function measureOutcome(root, settings, exclude, options) {
       basis: "unchanged files with functions, matched one to one to the acted-on files by the highest metric percentile of their functions before the change"
     },
     windows: {
-      before: { since: iso2(monthsBefore(date, settings.windowMonths)), until: iso2(date) },
-      after: { since: iso2(date), until: iso2(anchor), complete: fullEnd <= headDate }
+      before: { since: iso3(monthsBefore(date, settings.windowMonths)), until: iso3(date) },
+      after: { since: iso3(date), until: iso3(anchor), complete: fullEnd <= headDate }
     },
     fixConvention,
     changeCost,
@@ -21348,9 +21736,9 @@ async function measureOutcome(root, settings, exclude, options) {
 }
 
 // packages/complexity/src/commands/outcome.ts
-var name9 = "outcome";
+var name10 = "outcome";
 var usage = "usage: outcome <rev> [--from <rev>] [--projects-dir <dir>]; <rev> is the last commit of the simplification";
-var command8 = {
+var command9 = {
   summary: "Whether a simplification made code cheaper to change: change cost, fix rate, rank, the function-count gaming check and agent effort, before and after, against files left alone",
   options: { from: { type: "string" }, "projects-dir": { type: "string" } },
   async run(context) {
@@ -21373,8 +21761,8 @@ var command8 = {
 // packages/complexity/src/commands/report.ts
 var report_exports = {};
 __export(report_exports, {
-  command: () => command9,
-  name: () => name10
+  command: () => command10,
+  name: () => name11
 });
 
 // packages/cli-kit/src/report-command.ts
@@ -21536,8 +21924,8 @@ function codeSpan(text3) {
   return `${fence}${pad}${line}${pad}${fence}`;
 }
 function targetId(prefix, subject) {
-  const name11 = subject.split("/").filter((part) => part !== "").at(-1) ?? subject;
-  return `${prefix}-${slug(name11).slice(0, 40)}-${shortHash(subject)}`;
+  const name12 = subject.split("/").filter((part) => part !== "").at(-1) ?? subject;
+  return `${prefix}-${slug(name12).slice(0, 40)}-${shortHash(subject)}`;
 }
 
 // packages/report/src/links.ts
@@ -22477,8 +22865,8 @@ var END = "";
 var linkNames = (line) => escapeHtml(line).replace(new RegExp(`${START}(.*?)${HREF}(.*?)${END}`, "g"), (_, label, href) => href === "" ? label : `<a href="${href}">${label}</a>`);
 var display = (value) => value === null ? "" : formatNumber(value);
 var markOf = (data, i2, j) => {
-  const name11 = data.cellMarks?.[i2]?.[j] ?? null;
-  return name11 === null ? void 0 : data.marks?.[name11];
+  const name12 = data.cellMarks?.[i2]?.[j] ?? null;
+  return name12 === null ? void 0 : data.marks?.[name12];
 };
 function cellText(data, i2, j) {
   const value = data.cells[i2]?.[j] ?? null;
@@ -22491,19 +22879,19 @@ var usableGroups = (data) => isSquare(data) ? (data.groups ?? []).filter((g) => 
 function markLegend(data) {
   if (data.marks === void 0 || data.cellMarks === void 0) return void 0;
   const counts = /* @__PURE__ */ new Map();
-  for (const row of data.cellMarks) for (const name11 of row) if (name11 !== null && data.marks[name11] !== void 0) counts.set(name11, (counts.get(name11) ?? 0) + 1);
-  const parts3 = Object.entries(data.marks).filter(([name11]) => counts.has(name11)).map(([name11, mark]) => `${mark.symbol} is ${mark.text} (${count3(counts.get(name11), "cell")})`);
+  for (const row of data.cellMarks) for (const name12 of row) if (name12 !== null && data.marks[name12] !== void 0) counts.set(name12, (counts.get(name12) ?? 0) + 1);
+  const parts3 = Object.entries(data.marks).filter(([name12]) => counts.has(name12)).map(([name12, mark]) => `${mark.symbol} is ${mark.text} (${count3(counts.get(name12), "cell")})`);
   return parts3.length === 0 ? void 0 : `${parts3.join("; ")}.`;
 }
 var usableSpans = (data) => (data.spans ?? []).filter((g) => g.start >= 0 && g.end >= g.start && g.end < data.rows.length).sort((a, b) => a.start - b.start);
-function spanLegend(spans, square, name11 = (g) => g.label) {
+function spanLegend(spans, square, name12 = (g) => g.label) {
   if (spans.length === 0) return void 0;
   const where = square ? "above the columns and left of the rows" : "left of the rows";
-  return `Bars ${where} mark ${count3(spans.length, "span")}: ${spans.map((g) => `${name11(g)} (${count3(g.end - g.start + 1, "row")})`).join(", ")}.`;
+  return `Bars ${where} mark ${count3(spans.length, "span")}: ${spans.map((g) => `${name12(g)} (${count3(g.end - g.start + 1, "row")})`).join(", ")}.`;
 }
-function groupLegend(groups, name11 = (g) => g.label) {
+function groupLegend(groups, name12 = (g) => g.label) {
   if (groups.length === 0) return void 0;
-  return `Boxes along the diagonal mark ${count3(groups.length, "group")}: ${groups.map((g) => `${name11(g)} (${count3(g.end - g.start + 1, "row")})`).join(", ")}.`;
+  return `Boxes along the diagonal mark ${count3(groups.length, "group")}: ${groups.map((g) => `${name12(g)} (${count3(g.end - g.start + 1, "row")})`).join(", ")}.`;
 }
 function cellList(data, spans, groups) {
   const square = isSquare(data);
@@ -22577,8 +22965,8 @@ function matrixHtml(data) {
   const cells = data.rows.flatMap(
     (_, i2) => data.columns.map((_2, j) => {
       const value = data.cells[i2]?.[j] ?? null;
-      const name11 = data.cellMarks?.[i2]?.[j] ?? null;
-      const markClass = name11 !== null && data.marks?.[name11] !== void 0 ? ` mark-${name11}` : "";
+      const name12 = data.cellMarks?.[i2]?.[j] ?? null;
+      const markClass = name12 !== null && data.marks?.[name12] !== void 0 ? ` mark-${name12}` : "";
       const x2 = gridX + j * cell2;
       const y2 = gridY + i2 * cell2;
       return `<g class="cell band-${value === null ? "none" : bands.of(value)}${markClass}"><rect x="${x2}" y="${y2}" width="${cell2 - 2}" height="${cell2 - 2}"/>${cellText(data, i2, j) === "" ? "" : `<text x="${x2 + (cell2 - 2) / 2}" y="${y2 + (cell2 - 2) / 2}" text-anchor="middle" dominant-baseline="central">${escapeHtml(cellText(data, i2, j))}</text>`}</g>`;
@@ -23076,8 +23464,8 @@ function trendChartHtml(data) {
     const paths = segments.filter((seg) => seg.length > 1).map((seg) => `<polyline points="${seg.join(" ")}"/>`);
     const dots = s.values.map((v, i2) => v === null ? "" : `<circle cx="${at2(px(i2))}" cy="${at2(py(v))}" r="2.5"><title>${escapeHtml(`${s.name}, ${data.labels[i2]}: ${formatNumber(v)}`)}</title></circle>`);
     const end = ends[k];
-    const name11 = end === null || end === void 0 ? "" : `<text class="name" x="${at2(LEFT3 + PLOT_W2 + 10)}" y="${at2(labelYs[k])}">${escapeHtml(clip(s.name, MAX_NAME2))} ${formatNumber(s.values.findLast((v) => v !== null))}</text>`;
-    return `<g class="series cat-${k + 1}">${paths.join("")}${dots.join("")}${name11}</g>`;
+    const name12 = end === null || end === void 0 ? "" : `<text class="name" x="${at2(LEFT3 + PLOT_W2 + 10)}" y="${at2(labelYs[k])}">${escapeHtml(clip(s.name, MAX_NAME2))} ${formatNumber(s.values.findLast((v) => v !== null))}</text>`;
+    return `<g class="series cat-${k + 1}">${paths.join("")}${dots.join("")}${name12}</g>`;
   });
   const left = data.series.length - drawn.length;
   const notes4 = [
@@ -23192,12 +23580,12 @@ function trendGridHtml(data) {
     const dot = lastIndex === -1 ? "" : `<circle cx="${at2(px(lastIndex))}" cy="${at2(py(item.values[lastIndex]))}" r="3"/>`;
     const values = reading.first === null ? "no value" : `${formatNumber(reading.first.value)} to ${formatNumber(reading.last.value)}`;
     const arrow = reading.trend === null || reading.ended ? "" : `<tspan aria-hidden="true">${ARROW[reading.trend]} </tspan>`;
-    const name11 = linked(`<text class="name" x="${x0 + PAD2}" y="${y0 + 14}">${escapeHtml(clip(item.name, MAX_NAME3))}</text>`, item.href);
+    const name12 = linked(`<text class="name" x="${x0 + PAD2}" y="${y0 + 14}">${escapeHtml(clip(item.name, MAX_NAME3))}</text>`, item.href);
     return [
       `<g class="panel${reading.trend === null ? "" : ` ${reading.trend}`}"><title>${escapeHtml(`${item.name}: ${values}, ${wordOf2(data, reading)}`)}</title>`,
       `<rect class="frame" x="${x0 + 2}" y="${y0 + 2}" width="${CELL_W - 4}" height="${CELL_H - 4}"/>`,
       `<line class="grid" x1="${x0 + PAD2}" y1="${at2(y0 + LINE_TOP + LINE_H)}" x2="${x0 + CELL_W - PAD2}" y2="${at2(y0 + LINE_TOP + LINE_H)}"/>`,
-      name11,
+      name12,
       line,
       dot,
       `<text class="reading" x="${x0 + PAD2}" y="${y0 + CELL_H - 22}">${escapeHtml(values)}</text>`,
@@ -24404,7 +24792,7 @@ var contrast = (a, b) => {
   return (hi + 0.05) / (lo + 0.05);
 };
 var textOn = (fill) => contrast(fill, INK) >= contrast(fill, WHITE) ? INK : WHITE;
-var fills = (name11, colours, indent = "  ") => colours.map((c2, i2) => `--${name11}-${i2 + 1}: ${c2}; --on-${name11}-${i2 + 1}: ${textOn(c2)};`).join(`
+var fills = (name12, colours, indent = "  ") => colours.map((c2, i2) => `--${name12}-${i2 + 1}: ${c2}; --on-${name12}-${i2 + 1}: ${textOn(c2)};`).join(`
 ${indent}`);
 var themeCss = `
 :root {
@@ -24685,11 +25073,11 @@ function stat(file) {
 }
 function statDirectory(dir, accept) {
   if (!existsSync11(dir)) return [];
-  return readdirSync4(dir).filter(accept).sort().map((name11) => `${name11}=${stat(join13(dir, name11))}`);
+  return readdirSync4(dir).filter(accept).sort().map((name12) => `${name12}=${stat(join13(dir, name12))}`);
 }
 function dependencyState(root) {
   const common = git3(root, "rev-parse", "--path-format=absolute", "--git-common-dir");
-  const written = statDirectory(join13(root, ".cache", "code-health", "reports"), (name11) => name11.endsWith(".json")).map((s) => `reports/${s}`);
+  const written = statDirectory(join13(root, ".cache", "code-health", "reports"), (name12) => name12.endsWith(".json")).map((s) => `reports/${s}`);
   const other = [...WATCHED.map((file) => `${file}=${stat(join13(root, file))}`), `shallow=${stat(join13(common, "shallow"))}`];
   return { written: written.join("\n"), other: other.join("\n") };
 }
@@ -24835,7 +25223,7 @@ function reportCommand(kinds) {
   const names2 = Object.keys(kinds);
   const kindOptions = Object.assign({}, ...Object.values(kinds).map((k) => k.options ?? {}));
   const subcommands = Object.fromEntries(
-    Object.entries(kinds).map(([name11, kind]) => [name11, { summary: kind.summary, options: [.../* @__PURE__ */ new Set([...protocolOptionNames, ...Object.keys(kind.options ?? {})])] }])
+    Object.entries(kinds).map(([name12, kind]) => [name12, { summary: kind.summary, options: [.../* @__PURE__ */ new Set([...protocolOptionNames, ...Object.keys(kind.options ?? {})])] }])
   );
   return {
     summary: "Write a report: --slots prints its data and judgement slots, --notes renders the notes as html or markdown",
@@ -24844,18 +25232,18 @@ function reportCommand(kinds) {
     optionHelp: Object.assign({}, ...Object.values(kinds).map((k) => k.optionHelp ?? {}), protocolOptionHelp),
     subcommands,
     async run(context) {
-      const [name11, ...args2] = context.positionals;
-      if (name11 === void 0) throw usageError(`report needs a report name: ${names2.join(", ")}`);
-      const kind = kinds[name11];
-      if (kind === void 0) throw usageError(`unknown report "${name11}"; reports: ${names2.join(", ")}`);
+      const [name12, ...args2] = context.positionals;
+      if (name12 === void 0) throw usageError(`report needs a report name: ${names2.join(", ")}`);
+      const kind = kinds[name12];
+      if (kind === void 0) throw usageError(`unknown report "${name12}"; reports: ${names2.join(", ")}`);
       const request = readRequest(context);
       const own = { ...context, positionals: args2 };
-      const build = await cachedBuild(own, name11, kind.dependsOn === void 0 ? void 0 : () => kind.dependsOn(own), async () => kind.build(own));
+      const build = await cachedBuild(own, name12, kind.dependsOn === void 0 ? void 0 : () => kind.dependsOn(own), async () => kind.build(own));
       const report = {
         ...build,
-        kind: name11,
+        kind: name12,
         header: { repo: repoName(context.repo.root), commit: context.repo.head, date: context.repo.headCommitDate.slice(0, 10), configHash: context.config.hash, ...build.header },
-        stamp: makeStamp(name11, context.repo.head, context.config.hash, build.inputs)
+        stamp: makeStamp(name12, context.repo.head, context.config.hash, build.inputs)
       };
       try {
         const text3 = request.slots ? serialise(slotsDocument(report)) : produce(report, request, context.cwd);
@@ -24908,127 +25296,9 @@ function repoName(root) {
   return root.split(/[\\/]/).filter(Boolean).pop() ?? root;
 }
 
-// packages/graph/src/graph.ts
-function compareIds(a, b) {
-  if (a === b) return 0;
-  return Buffer.compare(Buffer.from(a), Buffer.from(b));
-}
-
-// packages/graph/src/folders.ts
-function withAncestors(folder) {
-  if (folder === "") return [""];
-  const parts3 = folder.split("/");
-  return ["", ...parts3.map((_, i2) => parts3.slice(0, i2 + 1).join("/"))];
-}
-function commonRoot(figures) {
-  const total = figures.get("")?.files ?? 0;
-  let root = "";
-  for (; ; ) {
-    const depth = depthOf(root) + 1;
-    const next = [...figures].find(([folder, figure2]) => depthOf(folder) === depth && (root === "" || folder.startsWith(`${root}/`)) && figure2.files === total);
-    if (next === void 0 || total === 0) return root;
-    root = next[0];
-  }
-}
-function foldersBelow(figures, root, levels) {
-  const base = depthOf(root);
-  return [...figures.keys()].filter((folder) => folder !== root && (root === "" || folder.startsWith(`${root}/`)) && depthOf(folder) <= base + levels).sort(compareIds);
-}
-
-// packages/history/src/trend-samples.ts
-async function firstParentLine(root, ref) {
-  const out2 = await runGit(root, ["log", "--first-parent", "--format=%H %ct", ref]);
-  return out2.split("\n").filter((line) => line !== "").map((line) => ({ sha: line.slice(0, line.indexOf(" ")), date: Number(line.slice(line.indexOf(" ") + 1)) })).reverse();
-}
-function sampleByTime(line, count4, since) {
-  const last = line.at(-1);
-  if (last === void 0) return [];
-  const within = line.filter((commit) => commit.date >= since);
-  const start2 = within[0]?.date ?? last.date;
-  const picked = /* @__PURE__ */ new Map();
-  for (let i2 = 0; i2 < count4; i2++) {
-    const instant = count4 === 1 ? last.date : start2 + (last.date - start2) * i2 / (count4 - 1);
-    const commit = i2 === count4 - 1 ? last : line.findLast((candidate) => candidate.date <= instant && candidate.date >= start2);
-    if (commit !== void 0) picked.set(commit.sha, commit);
-  }
-  return line.filter((commit) => picked.has(commit.sha));
-}
-var iso3 = (date) => new Date(date * 1e3).toISOString();
-function sampleLabels(samples) {
-  const distinct = (labels) => new Set(labels).size === labels.length;
-  const days = samples.map((sample) => iso3(sample.date).slice(0, 10));
-  if (distinct(days)) return days;
-  const minutes = samples.map((sample) => iso3(sample.date).slice(0, 16).replace("T", " "));
-  if (distinct(minutes)) return minutes;
-  return samples.map((sample, i2) => `${minutes[i2]} ${sample.sha.slice(0, 7)}`);
-}
-
-// packages/complexity/src/folder-measures.ts
-function weightOf(cyclomatic, codeLines) {
-  return cyclomatic * Math.sqrt(Math.max(codeLines, 1));
-}
-function empty() {
-  return { files: 0, codeLines: 0, functions: 0, cyclomatic: 0, maxCyclomatic: null, aboveGuideline: 0, weight: 0, weightAbove: 0, meanCyclomatic: null, shareAbove: null };
-}
-function productionCode(files, settings) {
-  return files.filter((file) => !file.test && isCodePath(file.path, settings.languageProfiles));
-}
-function folderMeasures(files, settings) {
-  const measures = /* @__PURE__ */ new Map();
-  const at2 = (folder) => {
-    let found = measures.get(folder);
-    if (found === void 0) {
-      found = empty();
-      measures.set(folder, found);
-    }
-    return found;
-  };
-  at2("");
-  for (const file of productionCode(files, settings)) {
-    const limit = guidelinesFor(settings, file.path).cyclomatic.warn;
-    const functions = topLevelUnits(file.units).flatMap((unit) => unit.test || unit.values.cyclomatic === void 0 ? [] : [{ cyclomatic: unit.values.cyclomatic, weight: weightOf(unit.values.cyclomatic, unit.values.length ?? 1) }]);
-    for (const folder of withAncestors(folderOf(file.path))) {
-      const measure = at2(folder);
-      measure.files++;
-      measure.codeLines += file.lines.codeLines;
-      for (const fn of functions) {
-        measure.functions++;
-        measure.cyclomatic += fn.cyclomatic;
-        measure.maxCyclomatic = Math.max(measure.maxCyclomatic ?? 0, fn.cyclomatic);
-        measure.weight += fn.weight;
-        if (fn.cyclomatic > limit) {
-          measure.aboveGuideline++;
-          measure.weightAbove += fn.weight;
-        }
-      }
-    }
-  }
-  for (const measure of measures.values()) {
-    measure.meanCyclomatic = measure.functions === 0 ? null : measure.cyclomatic / measure.functions;
-    measure.shareAbove = measure.weight === 0 ? null : measure.weightAbove / measure.weight;
-  }
-  return measures;
-}
-function meanInterfaceDepth(files, settings) {
-  const depths = productionCode(files, settings).flatMap((file) => {
-    const depth = meanDepth(file);
-    return depth === null ? [] : [depth];
-  });
-  return depths.length === 0 ? null : depths.reduce((sum, depth) => sum + depth, 0) / depths.length;
-}
-function splitCheck(before, after) {
-  const [was, now] = [before.measures.meanCyclomatic, after.measures.meanCyclomatic];
-  if (was === null || now === null || now >= was) return { flagged: false, reasons: [] };
-  if (after.measures.functions <= before.measures.functions || before.depth === null || after.depth === null || after.depth >= before.depth) return { flagged: false, reasons: [] };
-  return {
-    flagged: true,
-    reasons: [`the number of functions rose from ${before.measures.functions} to ${after.measures.functions} and mean interface depth fell from ${before.depth.toFixed(2)} to ${after.depth.toFixed(2)} while mean cyclomatic complexity fell`]
-  };
-}
-
 // packages/complexity/src/reports/trends.ts
-var DEFAULT_SAMPLES = 12;
-var MAX_SAMPLES = 60;
+var DEFAULT_SAMPLES2 = 12;
+var MAX_SAMPLES2 = 60;
 var TREND_TOLERANCE = 0.05;
 var LEVELS = 2;
 var CHART_FOLDERS = 6;
@@ -25045,9 +25315,9 @@ var valueText = (value) => value === null ? "none" : formatNumber(value);
 var firstAndLast = (first, last) => `${valueText(first)} at the first sample, ${valueText(last)} at the last`;
 function samplesOption(context) {
   const value = context.values.samples;
-  if (value === void 0) return DEFAULT_SAMPLES;
-  if (typeof value !== "string" || !/^[1-9]\d*$/.test(value) || Number(value) < 2 || Number(value) > MAX_SAMPLES) {
-    throw usageError(`--samples must be a whole number from 2 to ${MAX_SAMPLES}`);
+  if (value === void 0) return DEFAULT_SAMPLES2;
+  if (typeof value !== "string" || !/^[1-9]\d*$/.test(value) || Number(value) < 2 || Number(value) > MAX_SAMPLES2) {
+    throw usageError(`--samples must be a whole number from 2 to ${MAX_SAMPLES2}`);
   }
   return Number(value);
 }
@@ -25086,7 +25356,7 @@ function slotsFor(folders) {
 var trendsReport = {
   summary: "Size and cyclomatic complexity over time: code lines, mean and largest complexity, and how much of the complexity sits in functions above the guideline, for the repository and its folders at revisions sampled along the first-parent line",
   options: { samples: { type: "string" } },
-  optionHelp: { samples: `trends: how many revisions to sample, 2 to ${MAX_SAMPLES} (default ${DEFAULT_SAMPLES})` },
+  optionHelp: { samples: `trends: how many revisions to sample, 2 to ${MAX_SAMPLES2} (default ${DEFAULT_SAMPLES2})` },
   async build(context) {
     if (context.positionals.length > 0) throw usageError("report trends takes no arguments");
     const settings = readSettings(context.config);
@@ -25253,7 +25523,7 @@ var trendsReport = {
 };
 
 // packages/report/src/table-cap.ts
-function capRows(table3, max, command10) {
+function capRows(table3, max, command11) {
   const total = Math.max(table3.total ?? table3.rows.length, table3.rows.length);
   if (table3.rows.length <= max && total === table3.rows.length) return table3;
   return {
@@ -25262,14 +25532,14 @@ function capRows(table3, max, command10) {
     ...table3.rowIds === void 0 ? {} : { rowIds: table3.rowIds.slice(0, max) },
     ...table3.cellHrefs === void 0 ? {} : { cellHrefs: table3.cellHrefs.slice(0, max) },
     total,
-    fullIn: command10
+    fullIn: command11
   };
 }
 
 // packages/report/src/xray.ts
 var XRAY_ROWS = 25;
-function displayName(name11) {
-  return name11.replace(/~(\d+)/g, " (variant $1)");
+function displayName(name12) {
+  return name12.replace(/~(\d+)/g, " (variant $1)");
 }
 function byComplexity(a, b) {
   const desc = (x2, y2) => (y2 ?? -1) - (x2 ?? -1);
@@ -25366,9 +25636,9 @@ var MATRIX_LABEL_CHARS = 16;
 function matrixLabels(names2) {
   const first = names2[0] ?? "";
   let prefix = first.slice(0, first.lastIndexOf(".") + 1);
-  while (prefix !== "" && !names2.every((name11) => name11.startsWith(prefix))) prefix = prefix.slice(0, prefix.slice(0, -1).lastIndexOf(".") + 1);
-  const shortened = names2.map((name11) => {
-    const rest = name11.slice(prefix.length);
+  while (prefix !== "" && !names2.every((name12) => name12.startsWith(prefix))) prefix = prefix.slice(0, prefix.slice(0, -1).lastIndexOf(".") + 1);
+  const shortened = names2.map((name12) => {
+    const rest = name12.slice(prefix.length);
     return rest.length <= MATRIX_LABEL_CHARS ? rest : `…${rest.slice(rest.length - MATRIX_LABEL_CHARS + 1)}`;
   });
   return new Set(shortened).size === names2.length ? shortened : [...names2];
@@ -25538,12 +25808,13 @@ var xray = {
 };
 
 // packages/complexity/src/commands/report.ts
-var name10 = "report";
-var command9 = reportCommand({ xray, trends: trendsReport });
+var name11 = "report";
+var command10 = reportCommand({ xray, trends: trendsReport });
 
 // packages/complexity/src/commands.ts
 var commandModules = [
   analyse_exports,
+  backtest_exports,
   check_exports,
   depth_exports,
   diff_exports,

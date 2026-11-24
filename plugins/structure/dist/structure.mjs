@@ -691,7 +691,7 @@ var commonOptionHelp = [
 ];
 function helpText(cli2) {
   const commands3 = [
-    ...Object.entries(cli2.commands).map(([name14, command13]) => [name14, command13.summary]),
+    ...Object.entries(cli2.commands).filter(([, command13]) => command13.hidden !== true).map(([name14, command13]) => [name14, command13.summary]),
     ["config explain", configExplain.summary],
     ...cli2.rules ? [["explain <rule>", "Describe a recommendation rule"]] : []
   ];
