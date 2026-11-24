@@ -16,6 +16,7 @@ import type { ExcludedCount, Slot } from "@code-health/report/protocol";
 import { capRows } from "@code-health/report/table-cap";
 import type { ReportBuild, Section } from "@code-health/report/report-model";
 import { runGit } from "@code-health/history/git";
+import { footprintBlocks } from "./change-footprint.ts";
 import { loadHistory } from "../history-access.ts";
 import { assessBranch, type Assessed } from "../risk/assess.ts";
 import { INDENTATION_PROXY } from "../risk/composition.ts";
@@ -580,7 +581,7 @@ export const change: ReportKind = {
           { id: "guidance", heading: "Reviewer guidance", blocks: [{ type: "judgement", slot: "guidance" }] },
         ]
       : [
-          { id: "change", heading: "The change", blocks: changeBlocks(assessed) },
+          { id: "change", heading: "The change", blocks: [...changeBlocks(assessed), ...footprintBlocks(assessed)] },
           { id: "guidance", heading: "Reviewer guidance", blocks: [{ type: "judgement", slot: "guidance" }] },
           attentionSection(assessed, shown, total, false),
           { id: "factors", heading: "Risk factors", blocks: [...factorBlocks(assessed, false), ...levelBlocks(level)] },
