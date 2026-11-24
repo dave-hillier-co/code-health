@@ -1,16 +1,53 @@
+import type { Node } from "web-tree-sitter";
 import type { FileFacts } from "./facts.ts";
 import { cacheKeyOf, type LoadedGrammar } from "./grammars.ts";
 import type { LanguageAdapter } from "./language-adapter.ts";
 import { adapterForPath } from "./languages.ts";
 import type { ParseCache } from "./parse-cache.ts";
 
-/** Parses one file's text and extracts its facts with the given adapter. With `explain`, function units also carry their metric increments. */
+/**
+ * The deepest syntax tree the extractors read. They walk the tree by recursion, and a chain of thousands of binary
+ * operators (a string built from thousands of `+`, which test inputs and generated tables contain) nests as deep as
+ * it is long and would exhaust the call stack. Hand-written code does not come near this depth.
+ */
+export const MAX_TREE_DEPTH = 1000;
+
+/** Whether any node of the tree is more than `limit` levels below the root. Walks with a cursor, so the tree's depth costs no stack. */
+export function nestsDeeperThan(root: Node, limit: number): boolean {
+  const cursor = root.walk();
+  try {
+    let depth = 0;
+    for (;;) {
+      if (cursor.gotoFirstChild()) {
+        if (++depth > limit) return true;
+        continue;
+      }
+      while (!cursor.gotoNextSibling()) {
+        if (!cursor.gotoParent()) return false;
+        depth--;
+      }
+    }
+  } finally {
+    cursor.delete();
+  }
+}
+
+/**
+ * Parses one file's text and extracts its facts with the given adapter. With `explain`, function units also carry
+ * their metric increments. A file whose tree nests deeper than `MAX_TREE_DEPTH` is read as empty and marked `tooDeep`.
+ */
 export function parseWith(adapter: LanguageAdapter, grammar: LoadedGrammar, source: string, options: { explain?: boolean } = {}): FileFacts {
   const tree = grammar.parse(source);
   try {
-    return adapter.extract(tree.rootNode, options);
+    if (!nestsDeeperThan(tree.rootNode, MAX_TREE_DEPTH)) return adapter.extract(tree.rootNode, options);
   } finally {
     tree.delete();
+  }
+  const empty = grammar.parse("");
+  try {
+    return { ...adapter.extract(empty.rootNode, options), tooDeep: true };
+  } finally {
+    empty.delete();
   }
 }
 

@@ -17,16 +17,17 @@ import { parameterCounts } from "./metric-rules.ts";
 /** Named, non-comment nodes of the subtree, the node itself included. */
 export function nodeCount(node: Node, skip?: (child: Node) => boolean): number {
   let count = 0;
-  const walk = (current: Node): void => {
-    if (!current.isNamed || current.type === "comment") return;
-    if (skip?.(current) === true) return;
+  // An explicit stack, not recursion: a chain of thousands of binary operators nests as deep as it is long.
+  const pending: Node[] = [node];
+  for (let current = pending.pop(); current !== undefined; current = pending.pop()) {
+    if (!current.isNamed || current.type === "comment") continue;
+    if (skip?.(current) === true) continue;
     count++;
     for (let i = 0; i < current.childCount; i++) {
       const child = current.child(i);
-      if (child !== null) walk(child);
+      if (child !== null) pending.push(child);
     }
-  };
-  walk(node);
+  }
   return count;
 }
 

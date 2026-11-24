@@ -3850,16 +3850,16 @@ var typescriptMetricRules = {
 // packages/parse/src/languages/typescript/interface-shape.ts
 function nodeCount(node, skip) {
   let count4 = 0;
-  const walk2 = (current) => {
-    if (!current.isNamed || current.type === "comment") return;
-    if (skip?.(current) === true) return;
+  const pending = [node];
+  for (let current = pending.pop(); current !== void 0; current = pending.pop()) {
+    if (!current.isNamed || current.type === "comment") continue;
+    if (skip?.(current) === true) continue;
     count4++;
     for (let i2 = 0; i2 < current.childCount; i2++) {
       const child = current.child(i2);
-      if (child !== null) walk2(child);
+      if (child !== null) pending.push(child);
     }
-  };
-  walk2(node);
+  }
   return count4;
 }
 function functionShape(fn, parameters) {
@@ -18031,12 +18031,37 @@ var GrammarSet = class {
 };
 
 // packages/parse/src/file-facts.ts
+var MAX_TREE_DEPTH = 1e3;
+function nestsDeeperThan(root, limit) {
+  const cursor = root.walk();
+  try {
+    let depth = 0;
+    for (; ; ) {
+      if (cursor.gotoFirstChild()) {
+        if (++depth > limit) return true;
+        continue;
+      }
+      while (!cursor.gotoNextSibling()) {
+        if (!cursor.gotoParent()) return false;
+        depth--;
+      }
+    }
+  } finally {
+    cursor.delete();
+  }
+}
 function parseWith(adapter9, grammar, source, options = {}) {
   const tree = grammar.parse(source);
   try {
-    return adapter9.extract(tree.rootNode, options);
+    if (!nestsDeeperThan(tree.rootNode, MAX_TREE_DEPTH)) return adapter9.extract(tree.rootNode, options);
   } finally {
     tree.delete();
+  }
+  const empty2 = grammar.parse("");
+  try {
+    return { ...adapter9.extract(empty2.rootNode, options), tooDeep: true };
+  } finally {
+    empty2.delete();
   }
 }
 async function factsForBlob(language9, blob, source, cache) {
@@ -18105,7 +18130,8 @@ async function measureTree(tree, options) {
         structural = {
           units: structuralUnits(path, facts.units, settings),
           interfaces: interfaceUnits(path, facts),
-          syntaxErrors: facts.hasSyntaxErrors
+          syntaxErrors: facts.hasSyntaxErrors,
+          tooDeep: facts.tooDeep === true
         };
       }
       files.push(fileRecord(path, text3, lexical, structural, options));
@@ -18169,6 +18195,7 @@ function fileRecord(path, text3, lexical, structural, options) {
   if (structural !== void 0) {
     units = structural.units;
     source = "structural";
+    if (structural.tooDeep) skipped.push(`per-function metrics: the syntax tree of ${path} nests deeper than ${MAX_TREE_DEPTH} levels`);
   } else if (options.layer === "structural") {
     skipped.push(`per-function metrics: no structural adapter for ${path}`);
   } else if (lexical.profile === null) {
@@ -19579,7 +19606,7 @@ function correlate(periods, minFiles, minChanges) {
     const sums = new Map(MEASURES.map((measure) => [measure, { raw: 0, rawN: 0, part: 0, partN: 0, n: 0, periods: 0 }]));
     for (const period of periods) {
       const { files, values } = population(outcome, period, minChanges);
-      if (files.length < minFiles) continue;
+      if (files.length < minFiles || files.filter((file) => file.changes > 0).length < minFiles) continue;
       const y2 = ranks(values);
       const control = ranks(files.map((file) => file.codeLines));
       for (const measure of MEASURES) {

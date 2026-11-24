@@ -17,7 +17,7 @@ import {
 } from "./chunk-QOYPGNKA.mjs";
 import {
   isSourceFile
-} from "./chunk-KH2LNDQK.mjs";
+} from "./chunk-ITRJFKEQ.mjs";
 import {
   BUILTIN_EXCLUDE_ENTRIES,
   GitError,
@@ -39,8 +39,8 @@ import {
 } from "./chunk-JT6DRCII.mjs";
 import {
   analyseTree
-} from "./chunk-F46LLJIS.mjs";
-import "./chunk-LYITVUNB.mjs";
+} from "./chunk-VV4AMH5C.mjs";
+import "./chunk-WNRHKF6K.mjs";
 import {
   adapterForPath,
   discoverBoundaries,
@@ -48,7 +48,7 @@ import {
   isBoundaryManifest,
   isCppPath,
   isTestPath
-} from "./chunk-BAXRC4U5.mjs";
+} from "./chunk-NPRTSUT5.mjs";
 import {
   __export
 } from "./chunk-OQRLKAKZ.mjs";
@@ -6261,7 +6261,7 @@ var command4 = {
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-FIFNIFUE.mjs");
+    const { performMove } = await import("./chunk-2WZTBCCH.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
     for (const broken of moved?.breaks ?? []) refusals.push({ code: "does-not-compile", detail: broken });
@@ -9965,7 +9965,7 @@ async function dryRun(context, candidate, settings, files, go) {
   const base = { destination: plan.destination, filesMoved: plan.operations.length, refusal: plan.refusals.length === 0 ? null : refusalLine(plan.refusals) };
   if (plan.refusals.length > 0) return { ...base, rewrites: 0, filesRewritten: 0, filesEdited: 0, failure: null, warnings: [] };
   try {
-    const { performMove } = await import("./chunk-FIFNIFUE.mjs");
+    const { performMove } = await import("./chunk-2WZTBCCH.mjs");
     const tree = await treeFromRef(context.repo.root, "HEAD");
     const moved = await performMove(tree, plan.operations);
     if ((moved.breaks ?? []).length > 0) {
@@ -10729,7 +10729,7 @@ var command6 = {
     let results = [];
     if (chosen.length > 0) {
       const { scrutinise } = await import("./chunk-MOK677SR.mjs");
-      const { buildProject } = await import("./chunk-DEUYKDLO.mjs");
+      const { buildProject } = await import("./chunk-WYXL6EIQ.mjs");
       const loaded = await buildProject(await treeFromRef(context.repo.root, "HEAD"));
       typed = loaded;
       results = chosen.map((candidate) => scrutinise(candidate, candidate.recommendation === "scrutinise" ? "high-fan-in" : "requested", loaded, project.isTest));
@@ -10949,7 +10949,7 @@ var command8 = {
     const commitTree = await treeFromRef(root, ref);
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" }, goPackagesOf(project));
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-O7H4ID67.mjs");
+    const { verifyMove } = await import("./chunk-WZYM2TTN.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;

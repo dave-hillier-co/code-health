@@ -7007,16 +7007,16 @@ var typescriptMetricRules = {
 // packages/parse/src/languages/typescript/interface-shape.ts
 function nodeCount(node, skip) {
   let count3 = 0;
-  const walk2 = (current) => {
-    if (!current.isNamed || current.type === "comment") return;
-    if (skip?.(current) === true) return;
+  const pending = [node];
+  for (let current = pending.pop(); current !== void 0; current = pending.pop()) {
+    if (!current.isNamed || current.type === "comment") continue;
+    if (skip?.(current) === true) continue;
     count3++;
     for (let i2 = 0; i2 < current.childCount; i2++) {
       const child2 = current.child(i2);
-      if (child2 !== null) walk2(child2);
+      if (child2 !== null) pending.push(child2);
     }
-  };
-  walk2(node);
+  }
   return count3;
 }
 function functionShape(fn, parameters) {
@@ -16165,12 +16165,37 @@ var GrammarSet = class {
 };
 
 // packages/parse/src/file-facts.ts
+var MAX_TREE_DEPTH = 1e3;
+function nestsDeeperThan(root, limit) {
+  const cursor = root.walk();
+  try {
+    let depth = 0;
+    for (; ; ) {
+      if (cursor.gotoFirstChild()) {
+        if (++depth > limit) return true;
+        continue;
+      }
+      while (!cursor.gotoNextSibling()) {
+        if (!cursor.gotoParent()) return false;
+        depth--;
+      }
+    }
+  } finally {
+    cursor.delete();
+  }
+}
 function parseWith(adapter9, grammar, source, options2 = {}) {
   const tree = grammar.parse(source);
   try {
-    return adapter9.extract(tree.rootNode, options2);
+    if (!nestsDeeperThan(tree.rootNode, MAX_TREE_DEPTH)) return adapter9.extract(tree.rootNode, options2);
   } finally {
     tree.delete();
+  }
+  const empty = grammar.parse("");
+  try {
+    return { ...adapter9.extract(empty.rootNode, options2), tooDeep: true };
+  } finally {
+    empty.delete();
   }
 }
 

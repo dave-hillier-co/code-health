@@ -112,7 +112,7 @@
         },
         "minFiles": {
           "$ref": "common.schema.json#/$defs/count",
-          "description": "A period with fewer files than this for an outcome is left out of that outcome."
+          "description": "A period with fewer files than this for an outcome, or fewer than this many of them changed, is left out of that outcome."
         },
         "minChanges": {
           "$ref": "common.schema.json#/$defs/count",

@@ -49,6 +49,12 @@ describe("correlate", () => {
     expect(of("changes", "functions")).toMatchObject({ correlation: null, partialOnCodeLines: null, fileSamples: 10 });
   });
 
+  test("a period in which too few files changed is left out, so a quiet period does not count for as much as a busy one", () => {
+    const quiet = period(0).map((f, i) => ({ ...f, changes: i === 0 ? 1 : 0, linesChurned: i === 0 ? 3 : 0, fixes: 0 }));
+    const rows = correlate([period(0), quiet], 5, 4);
+    expect(rows.find((row) => row.outcome === "changes" && row.measure === "codeLines")).toMatchObject({ correlation: 1, fileSamples: 5, periods: 1 });
+  });
+
   test("lines per change covers the files that changed, fix share the files with enough changes, and a small period is left out", () => {
     const rows = correlate([period(0)], 2, 4);
     const of = (outcome: string) => rows.find((row) => row.outcome === outcome && row.measure === "codeLines")!;

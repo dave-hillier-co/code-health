@@ -1111,16 +1111,16 @@ var typescriptMetricRules = {
 // packages/parse/src/languages/typescript/interface-shape.ts
 function nodeCount(node, skip) {
   let count = 0;
-  const walk = (current) => {
-    if (!current.isNamed || current.type === "comment") return;
-    if (skip?.(current) === true) return;
+  const pending = [node];
+  for (let current = pending.pop(); current !== void 0; current = pending.pop()) {
+    if (!current.isNamed || current.type === "comment") continue;
+    if (skip?.(current) === true) continue;
     count++;
     for (let i = 0; i < current.childCount; i++) {
       const child = current.child(i);
-      if (child !== null) walk(child);
+      if (child !== null) pending.push(child);
     }
-  };
-  walk(node);
+  }
   return count;
 }
 function functionShape(fn, parameters) {

@@ -159,7 +159,8 @@ const round3 = (value: number) => Math.round(value * 1000) / 1000;
 /**
  * Each measure against each outcome. A correlation is taken within a period and never across periods, so that a
  * repository that grew and got busier over the years does not show that as a link between size and change.
- * A period with fewer than `minFiles` files for an outcome is left out of that outcome.
+ * A period with fewer than `minFiles` files for an outcome, or fewer than `minFiles` of them changed, is left out of
+ * that outcome.
  */
 export function correlate(periods: readonly (readonly FileSample[])[], minFiles: number, minChanges: number): Correlation[] {
   const out: Correlation[] = [];
@@ -167,7 +168,8 @@ export function correlate(periods: readonly (readonly FileSample[])[], minFiles:
     const sums = new Map<MeasureId, { raw: number; rawN: number; part: number; partN: number; n: number; periods: number }>(MEASURES.map((measure) => [measure, { raw: 0, rawN: 0, part: 0, partN: 0, n: 0, periods: 0 }]));
     for (const period of periods) {
       const { files, values } = population(outcome, period, minChanges);
-      if (files.length < minFiles) continue;
+      // A period in which almost nothing changed orders the files by nothing, and would count for as much as a busy one.
+      if (files.length < minFiles || files.filter((file) => file.changes > 0).length < minFiles) continue;
       const y = ranks(values);
       const control = ranks(files.map((file) => file.codeLines));
       for (const measure of MEASURES) {
