@@ -77,7 +77,7 @@ Default outputs contain no author identities. The knowledge analysis is off unti
 - `shared/` single-source files: `red-flags.md` and `reports.md`, copied into every skill at build time, and the pinned eval settings
 - `fixtures/` helpers that build deterministic git repositories for tests, and the per-language conformance fixtures
 - `scripts/` the build, the checks, the plugin scaffold and the eval runner
-- `docs/` [basis.md](docs/basis.md), why the suite is built as it is, and [languages.md](docs/languages.md), how each language is read
+- `docs/` [basis.md](docs/basis.md), why the suite is built as it is, [languages.md](docs/languages.md), how each language is read, and [slopcodebench.md](docs/slopcodebench.md), what the SlopCodeBench paper reports about static measures and the next change's cost
 
 ## Build and test
 
