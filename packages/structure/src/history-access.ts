@@ -3,6 +3,9 @@ import { analyseHistory, monthsBefore, type HistoryAnalysis } from "@code-health
 import { requireWindowWhenShallow } from "@code-health/history/cli-errors";
 import { runGit } from "@code-health/history/git";
 import { refresh, readShallowInfo, type RefreshResult } from "@code-health/history/refresh";
+import { createNonPersonMatcher } from "@code-health/history/identity-classify";
+import { identityFiles, readDecisions } from "@code-health/history/identity-decisions";
+import { existsSync } from "node:fs";
 import { readSettings, type StructureSettings } from "./config.ts";
 
 /** Brings the shared history cache up to date for the configured ref. */
@@ -68,12 +71,23 @@ export async function loadHistory(context: CommandContext, options: HistoryOptio
   // (clock skew, a rebase) is outside it. `until` is exclusive, so the anchor itself stays in.
   const until = options.window?.until ?? anchor + 1;
 
+  // The same author classification and local mailmap cochange reads history with, so a file's
+  // revision count and the excluded counts are the same in both reports for one window.
+  const files = identityFiles(root);
+  const nonPerson = createNonPersonMatcher({
+    botPatterns: settings.botPatterns,
+    servicePatterns: [],
+    agentPatterns: [],
+    decisions: readDecisions(root).classifications,
+  });
   const analysis = await analyseHistory(root, {
     ref: settings.ref,
     firstParent: settings.firstParent,
+    mailmapFile: existsSync(files.localMailmap) ? files.localMailmap : undefined,
     noise: {
       exclude: settings.exclude,
       botPatterns: settings.botPatterns,
+      nonPerson,
       maxChangesetSize: settings.maxChangesetSize,
       since,
       until,
