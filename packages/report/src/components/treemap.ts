@@ -10,6 +10,8 @@ export interface TreemapItem {
   size: number;
   /** Decides the tile's band. null draws the tile hatched and marks it "none". */
   colour: number | null;
+  /** A short mark, such as a rank. A marked tile is outlined and prints the mark before its name, and the table lists it first. */
+  mark?: string;
 }
 
 export interface TreemapData {
@@ -21,8 +23,12 @@ export interface TreemapData {
   items: TreemapItem[];
   /** Four ascending values that split the bands. Without them the colour range splits into five equal steps. */
   breaks?: number[];
-  /** The most tiles drawn, largest first. The rest are counted under the chart. Default 80. */
+  /** The most tiles drawn, largest first. The rest are counted under the chart. Default: every item is drawn. */
   maxTiles?: number;
+  /** The most rows in the table under the chart: the marked items, then the largest. The rest are counted. Default 20. */
+  tableRows?: number;
+  /** Words for what the marks mean, printed in the legend, such as "files of the friction list". */
+  markLabel?: string;
 }
 
 export interface Rect {
@@ -47,7 +53,6 @@ const WIDTH = 960;
 const HEIGHT = 520;
 const HEADER = 14;
 const PAD = 2;
-const DEFAULT_MAX_TILES = 80;
 
 interface Node {
   name: string;
@@ -144,7 +149,13 @@ export function squarify(sizes: readonly number[], rect: Rect): Rect[] {
   return out;
 }
 
-/** The tiles and folder boxes of a layout: folders nest their children, and each level is ordered largest first, then by name. */
+/** Padding inside a folder box: none in a box too small to show it, so thousands of small folders keep their area. */
+function paddingOf(r: Rect): number {
+  const least = Math.min(r.w, r.h);
+  return least < 12 ? 0 : least < 40 ? 1 : PAD;
+}
+
+/** The tiles and folder boxes of a layout: folders nest their children, and each level is ordered largest first, then by name. The same items always give the same layout, so two maps of one item set put every tile in the same place. */
 export function layoutTreemap(items: readonly TreemapItem[], width = WIDTH, height = HEIGHT): { tiles: Tile[]; folders: FolderBox[] } {
   const tiles: Tile[] = [];
   const folders: FolderBox[] = [];
@@ -158,12 +169,103 @@ export function layoutTreemap(items: readonly TreemapItem[], width = WIDTH, heig
         return;
       }
       folders.push({ ...r, path: child.path, name: child.name });
+      const pad = paddingOf(r);
       const header = r.h > HEADER * 2 && r.w > 40 ? HEADER : 0;
-      place(child, { x: r.x + PAD, y: r.y + PAD + header, w: Math.max(0, r.w - PAD * 2), h: Math.max(0, r.h - PAD * 2 - header) });
+      place(child, { x: r.x + pad, y: r.y + pad + header, w: Math.max(0, r.w - pad * 2), h: Math.max(0, r.h - pad * 2 - header) });
     });
   };
   place(buildTree(items), { x: 0, y: 0, w: width, h: height });
   return { tiles, folders };
+}
+
+/** A tile to draw: what the layout needs and what each component says about it. */
+export interface MapItem {
+  path: string;
+  size: number;
+  /** The class suffix of its fill: a band number from 1 to 5, or "none". */
+  band: string;
+  /** The second line of a tile large enough for two. */
+  value: string;
+  /** The tooltip. */
+  title: string;
+  mark?: string;
+}
+
+/** A tile with less area than this (in svg units squared) is drawn as a bare rectangle, with no name and no tooltip. */
+const BARE_AREA = 100;
+/** A folder box smaller than this on a side is not outlined; its tiles are still drawn. */
+const OUTLINE_SIDE = 8;
+const CHAR = 6.2;
+
+/** What the drawing holds, so the notes can say how much of it is bare. */
+export interface MapDrawing {
+  drawing: string;
+  /** Tiles drawn without a name or tooltip, and the size they hold. */
+  bare: { tiles: number; size: number };
+  width: number;
+  height: number;
+}
+
+/**
+ * The svg inside a code map: folder boxes, then the tiles. Tiles large enough print their name and value (a marked
+ * tile prints its mark first, and is outlined however small it is). Smaller tiles are bare rectangles grouped by
+ * band, which keeps a map of thousands of files to a size a page can hold. Every item is drawn.
+ */
+export function drawMap(items: readonly MapItem[]): MapDrawing {
+  const byPath = new Map(items.map((item) => [item.path, item]));
+  const { tiles, folders } = layoutTreemap(items.map((item) => ({ path: item.path, size: item.size, colour: null })));
+  const fmt = (n: number) => n.toFixed(1);
+  const out: string[] = [];
+  for (const f of folders) {
+    if (f.w < OUTLINE_SIDE || f.h < OUTLINE_SIDE) continue;
+    const label = f.w > 40 && f.h > HEADER * 2 ? `<text x="${fmt(f.x + 4)}" y="${fmt(f.y + 11)}">${escapeHtml(clip(f.name, Math.floor((f.w - 8) / CHAR)))}</text>` : "";
+    out.push(`<g class="folder"><rect x="${fmt(f.x)}" y="${fmt(f.y)}" width="${fmt(f.w)}" height="${fmt(f.h)}"/>${label}</g>`);
+  }
+  const bare = new Map<string, string[]>();
+  let bareTiles = 0;
+  let bareSize = 0;
+  for (const t of tiles) {
+    const item = byPath.get(t.path)!;
+    const rect = `<rect x="${fmt(t.x)}" y="${fmt(t.y)}" width="${fmt(t.w)}" height="${fmt(t.h)}"/>`;
+    if (item.mark === undefined && t.w * t.h < BARE_AREA) {
+      bare.set(item.band, [...(bare.get(item.band) ?? []), rect]);
+      bareTiles++;
+      bareSize += item.size;
+      continue;
+    }
+    const room = Math.floor((t.w - 6) / CHAR);
+    const markText = item.mark === undefined ? "" : `${item.mark} `;
+    const first = t.w >= 36 && t.h >= 16 ? clip(`${markText}${t.name}`, room) : item.mark !== undefined && t.w >= 14 && t.h >= 14 ? clip(item.mark, Math.floor((t.w - 4) / CHAR)) : "";
+    const labels = first === "" ? [] : [`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 12)}">${escapeHtml(first)}</text>`];
+    if (t.w >= 36 && t.h >= 30) labels.push(`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 25)}">${escapeHtml(clip(item.value, room))}</text>`);
+    out.push(`<g class="tile band-${item.band}${item.mark === undefined ? "" : " marked"}"><title>${escapeHtml(item.title)}</title>${rect}${labels.join("")}</g>`);
+  }
+  for (const band of [...bare.keys()].sort()) out.push(`<g class="tile bare band-${band}">${bare.get(band)!.join("")}</g>`);
+  return { drawing: out.join("\n"), bare: { tiles: bareTiles, size: bareSize }, width: WIDTH, height: HEIGHT };
+}
+
+/** The items of a map set in the order of its table: marked ones first, in the order given, then the largest. */
+export function tableOrder<T extends { path: string; size: number; mark?: string }>(items: readonly T[]): T[] {
+  const marked = items.filter((item) => item.mark !== undefined);
+  const rest = items.filter((item) => item.mark === undefined).sort((a, b) => b.size - a.size || byName(a.path, b.path));
+  return [...marked, ...rest];
+}
+
+/** The items to draw, largest first, and the counts of what a map leaves out. */
+export function selectMapItems<T extends { path: string; size: number }>(all: readonly T[], maxTiles: number | undefined): { drawn: T[]; unsized: number; beyondLimit: number } {
+  const sized = all.filter((item) => item.size > 0).sort((a, b) => b.size - a.size || byName(a.path, b.path));
+  const drawn = maxTiles === undefined ? sized : sized.slice(0, maxTiles);
+  return { drawn, unsized: all.length - sized.length, beyondLimit: sized.length - drawn.length };
+}
+
+/** The sentences under a map that count what the table and the drawing leave out. */
+export function mapOmissions(parts: { beyondLimit: number; unsized: number; tableRows: number; tableTotal: number; bare: MapDrawing["bare"]; sizeLabel: string }): string[] {
+  const out: string[] = [];
+  if (parts.beyondLimit > 0) out.push(`${count(parts.beyondLimit, "smaller item")} not drawn`);
+  if (parts.unsized > 0) out.push(`${count(parts.unsized, "item")} of no size not drawn`);
+  if (parts.bare.tiles > 0) out.push(`${count(parts.bare.tiles, "tile")} holding ${formatNumber(parts.bare.size)} ${parts.sizeLabel} too small for a name or tooltip are drawn as bare rectangles`);
+  if (parts.tableTotal > parts.tableRows) out.push(`the table lists ${parts.tableRows} of the ${formatNumber(parts.tableTotal)} items drawn (the marked ones, then the largest), and the other ${formatNumber(parts.tableTotal - parts.tableRows)} are on the map only`);
+  return out;
 }
 
 interface Prepared {
@@ -173,62 +275,71 @@ interface Prepared {
 }
 
 function prepare(data: TreemapData): Prepared {
-  const sized = data.items.filter((item) => item.size > 0).sort((a, b) => b.size - a.size || byName(a.path, b.path));
-  const limit = data.maxTiles ?? DEFAULT_MAX_TILES;
-  const drawn = sized.slice(0, limit);
+  const { drawn, unsized, beyondLimit } = selectMapItems(data.items, data.maxTiles);
   const coloured = drawn.flatMap((item) => (item.colour === null ? [] : [item.colour]));
-  return { drawn, notDrawn: { unsized: data.items.length - sized.length, beyondLimit: sized.length - drawn.length }, bands: makeBands(coloured, data.breaks) };
+  return { drawn, notDrawn: { unsized, beyondLimit }, bands: makeBands(coloured, data.breaks) };
 }
 
 const bandName = (item: TreemapItem, bands: Bands) => (item.colour === null ? "none" : String(bands.of(item.colour)));
 
-function omissions(prepared: Prepared): string[] {
-  const out: string[] = [];
-  if (prepared.notDrawn.beyondLimit > 0) out.push(`${count(prepared.notDrawn.beyondLimit, "smaller item")} not drawn`);
-  if (prepared.notDrawn.unsized > 0) out.push(`${count(prepared.notDrawn.unsized, "item")} of no size not drawn`);
-  return out;
-}
-
-const rows = (prepared: Prepared) => prepared.drawn.map((item) => [item.path, formatNumber(item.size), item.colour === null ? "none" : formatNumber(item.colour), bandName(item, prepared.bands)]);
+const rowsOf = (prepared: Prepared, limit: number) => tableOrder(prepared.drawn).slice(0, limit).map((item) => [`${item.mark === undefined ? "" : `${item.mark} `}${item.path}`, formatNumber(item.size), item.colour === null ? "none" : formatNumber(item.colour), bandName(item, prepared.bands)]);
 
 function columns(data: TreemapData) {
   return [{ label: "Path" }, { label: `Size (${data.sizeLabel})`, align: "right" as const }, { label: `Colour (${data.colourLabel})`, align: "right" as const }, { label: "Band", align: "right" as const }];
 }
 
+const DEFAULT_TABLE_ROWS = 20;
+
+/** How many items and how much size each band holds, for the legend. */
+function perBand(prepared: Prepared): { band: string; items: number; size: number }[] {
+  const totals = new Map<string, { items: number; size: number }>();
+  for (const item of prepared.drawn) {
+    const key = bandName(item, prepared.bands);
+    const at = totals.get(key) ?? { items: 0, size: 0 };
+    totals.set(key, { items: at.items + 1, size: at.size + item.size });
+  }
+  return [...totals.keys()].sort().map((band) => ({ band, ...totals.get(band)! }));
+}
+
 export function treemapHtml(data: TreemapData): string {
   const prepared = prepare(data);
-  const { tiles, folders } = layoutTreemap(prepared.drawn);
-  const fmt = (n: number) => n.toFixed(1);
-  const drawing = [
-    ...folders.map((f) => `<g class="folder"><rect x="${fmt(f.x)}" y="${fmt(f.y)}" width="${fmt(f.w)}" height="${fmt(f.h)}"/>${f.w > 40 && f.h > HEADER * 2 ? `<text x="${fmt(f.x + 4)}" y="${fmt(f.y + 11)}">${escapeHtml(clip(f.name, Math.floor((f.w - 8) / 6.2)))}</text>` : ""}</g>`),
-    ...tiles.map((t) => {
-      const room = Math.floor((t.w - 6) / 6.2);
-      const labels = t.w >= 36 && t.h >= 16 ? [`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 12)}">${escapeHtml(clip(t.name, room))}</text>`] : [];
-      if (t.w >= 36 && t.h >= 30) labels.push(`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 25)}">${escapeHtml(clip(t.item.colour === null ? "none" : formatNumber(t.item.colour), room))}</text>`);
-      return `<g class="tile band-${bandName(t.item, prepared.bands)}"><title>${escapeHtml(`${t.path}: ${formatNumber(t.item.size)} ${data.sizeLabel}, ${t.item.colour === null ? "no" : formatNumber(t.item.colour)} ${data.colourLabel}`)}</title><rect x="${fmt(t.x)}" y="${fmt(t.y)}" width="${fmt(t.w)}" height="${fmt(t.h)}"/>${labels.join("")}</g>`;
-    }),
-  ].join("\n");
-  const left = omissions(prepared);
-  const notes = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in ${bandCountText(prepared.bands)}, and each tile prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.</p>\n${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>\n`}`;
+  const marked = prepared.drawn.filter((item) => item.mark !== undefined).length;
+  const map = drawMap(
+    prepared.drawn.map((item) => ({
+      path: item.path,
+      size: item.size,
+      band: bandName(item, prepared.bands),
+      value: item.colour === null ? "none" : formatNumber(item.colour),
+      title: `${item.mark === undefined ? "" : `${item.mark} `}${item.path}: ${formatNumber(item.size)} ${data.sizeLabel}, ${item.colour === null ? "no" : formatNumber(item.colour)} ${data.colourLabel}`,
+      ...(item.mark === undefined ? {} : { mark: item.mark }),
+    })),
+  );
+  const tableRows = data.tableRows ?? DEFAULT_TABLE_ROWS;
+  const left = mapOmissions({ ...prepared.notDrawn, tableRows: Math.min(tableRows, prepared.drawn.length), tableTotal: prepared.drawn.length, bare: map.bare, sizeLabel: data.sizeLabel });
+  const bands = perBand(prepared).map((b) => `<li>${b.band === "none" ? "hatched, no value" : `band ${escapeHtml(b.band)}`}: ${count(b.items, "item")}, ${formatNumber(b.size)} ${escapeHtml(data.sizeLabel)}</li>`).join("\n");
+  const markNote = marked === 0 ? "" : ` Outlined tiles are ${escapeHtml(data.markLabel ?? "marked items")} (${marked}), and each prints its mark.`;
+  const notes = `<p class="legend">Area is ${escapeHtml(data.sizeLabel)}. Colour is ${escapeHtml(data.colourLabel)} in ${bandCountText(prepared.bands)}, and a tile large enough prints its value: ${escapeHtml(bandLegend(prepared.bands))}. Hatched tiles have no value.${markNote} The items and ${escapeHtml(data.sizeLabel)} in each band:</p>\n<ul class="legend">\n${bands}\n</ul>\n${left.length === 0 ? "" : `<p class="omitted">${escapeHtml(left.join("; "))}.</p>\n`}`;
   return figureHtml({
     kind: "treemap",
     title: data.title,
-    description: `A treemap of ${count(prepared.drawn.length, "item")} nested by folder. Area is ${data.sizeLabel}; colour is ${data.colourLabel}. The table below lists the same items.`,
-    width: WIDTH,
-    height: HEIGHT,
-    drawing,
-    table: htmlTable(`${data.title}: the items drawn, largest first`, columns(data), rows(prepared).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    description: `A treemap of ${count(prepared.drawn.length, "item")} nested by folder. Area is ${data.sizeLabel}; colour is ${data.colourLabel}. The table below lists ${prepared.drawn.length > tableRows ? `${tableRows} of them` : "the same items"}.`,
+    width: map.width,
+    height: map.height,
+    drawing: map.drawing,
+    table: htmlTable(`${data.title}: ${prepared.drawn.length > tableRows ? "the marked items, then the largest" : "the items drawn, marked first, then largest first"}`, columns(data), rowsOf(prepared, tableRows).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
     notes,
   });
 }
 
 export function treemapMd(data: TreemapData): string {
   const prepared = prepare(data);
-  const left = omissions(prepared);
+  const tableRows = data.tableRows ?? DEFAULT_TABLE_ROWS;
+  const left = mapOmissions({ ...prepared.notDrawn, tableRows: Math.min(tableRows, prepared.drawn.length), tableTotal: prepared.drawn.length, bare: { tiles: 0, size: 0 }, sizeLabel: data.sizeLabel });
+  const bands = perBand(prepared).map((b) => `${b.band === "none" ? "no value" : `band ${b.band}`}: ${count(b.items, "item")}, ${formatNumber(b.size)} ${data.sizeLabel}`).join("; ");
   return [
-    `**${escapeMd(data.title)}** (the items by ${data.sizeLabel}, largest first; band is ${data.colourLabel}, ${bandLegend(prepared.bands)})`,
+    `**${escapeMd(data.title)}** (the items by ${data.sizeLabel}, marked first, then largest first; band is ${data.colourLabel}, ${bandLegend(prepared.bands)}; ${bands})`,
     "",
-    mdTable(columns(data), rows(prepared)),
+    mdTable(columns(data), rowsOf(prepared, tableRows)),
     ...(left.length === 0 ? [] : ["", `${left.join("; ")}.`]),
   ].join("\n");
 }

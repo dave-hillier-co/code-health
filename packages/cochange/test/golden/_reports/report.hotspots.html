@@ -67,6 +67,7 @@ figure.chart svg text { fill: var(--text); }
 svg .folder rect { fill: none; stroke: var(--rule); }
 svg .folder text { fill: var(--muted); }
 svg .tile rect, svg .cell rect { stroke: var(--bg); stroke-width: 1; }
+svg .tile.marked rect { stroke: var(--text); stroke-width: 2; }
 svg .band-1 rect { fill: var(--band-1); } svg .band-1 text { fill: var(--on-band-1); }
 svg .band-2 rect { fill: var(--band-2); } svg .band-2 text { fill: var(--on-band-2); }
 svg .band-3 rect { fill: var(--band-3); } svg .band-3 text { fill: var(--on-band-3); }
@@ -137,32 +138,36 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <section id="map" aria-labelledby="map-heading">
 <h2 id="map-heading">Map of the code</h2>
 <figure class="chart treemap">
-<figcaption>The 4 largest files, nested by folder: size is lines, colour is revisions in the window</figcaption>
-<svg role="img" aria-labelledby="the-4-largest-files-nested-by-folder-size-is-lines-colour-is-revisions-in-the-window-93b653-title the-4-largest-files-nested-by-folder-size-is-lines-colour-is-revisions-in-the-window-93b653-desc" viewBox="0 0 960 520" preserveAspectRatio="xMinYMin meet">
-<title id="the-4-largest-files-nested-by-folder-size-is-lines-colour-is-revisions-in-the-window-93b653-title">The 4 largest files, nested by folder: size is lines, colour is revisions in the window</title>
-<desc id="the-4-largest-files-nested-by-folder-size-is-lines-colour-is-revisions-in-the-window-93b653-desc">A treemap of 4 items nested by folder. Area is lines; colour is revisions in the window. The table below lists the same items.</desc>
+<figcaption>The code, nested by folder: size is lines, colour is revisions in the window, outlined tiles are the friction list</figcaption>
+<svg role="img" aria-labelledby="the-code-nested-by-folder-size-is-lines-colour-is-revisions-in-the-window-outlined-tiles-are-the-friction-list-ae66a8-title the-code-nested-by-folder-size-is-lines-colour-is-revisions-in-the-window-outlined-tiles-are-the-friction-list-ae66a8-desc" viewBox="0 0 960 520" preserveAspectRatio="xMinYMin meet">
+<title id="the-code-nested-by-folder-size-is-lines-colour-is-revisions-in-the-window-outlined-tiles-are-the-friction-list-ae66a8-title">The code, nested by folder: size is lines, colour is revisions in the window, outlined tiles are the friction list</title>
+<desc id="the-code-nested-by-folder-size-is-lines-colour-is-revisions-in-the-window-outlined-tiles-are-the-friction-list-ae66a8-desc">A treemap of 4 items nested by folder. Area is lines; colour is revisions in the window. The table below lists the same items.</desc>
 <g class="folder"><rect x="0.0" y="0.0" width="960.0" height="520.0"/><text x="4.0" y="11.0">src</text></g>
 <g class="folder"><rect x="2.0" y="16.0" width="514.8" height="502.0"/><text x="6.0" y="27.0">core</text></g>
 <g class="folder"><rect x="516.8" y="16.0" width="441.2" height="292.8"/><text x="520.8" y="27.0">legacy</text></g>
 <g class="folder"><rect x="516.8" y="308.8" width="441.2" height="209.2"/><text x="520.8" y="319.8">ui</text></g>
-<g class="tile band-2"><title>src/core/engine.ts: 13 lines, 5 revisions in the window</title><rect x="4.0" y="32.0" width="474.3" height="484.0"/><text x="7.0" y="44.0">engine.ts</text><text x="7.0" y="57.0">5</text></g>
+<g class="tile band-2 marked"><title>1 src/core/engine.ts: 13 lines, 5 revisions in the window</title><rect x="4.0" y="32.0" width="474.3" height="484.0"/><text x="7.0" y="44.0">1 engine.ts</text><text x="7.0" y="57.0">5</text></g>
 <g class="tile band-2"><title>src/core/util.ts: 1 lines, 5 revisions in the window</title><rect x="478.3" y="32.0" width="36.5" height="484.0"/><text x="481.3" y="44.0">uti…</text><text x="481.3" y="57.0">5</text></g>
 <g class="tile band-1"><title>src/legacy/old.ts: 7 lines, 3 revisions in the window</title><rect x="518.8" y="32.0" width="437.2" height="274.8"/><text x="521.8" y="44.0">old.ts</text><text x="521.8" y="57.0">3</text></g>
 <g class="tile band-1"><title>src/ui/page.ts: 5 lines, 2 revisions in the window</title><rect x="518.8" y="324.8" width="437.2" height="191.2"/><text x="521.8" y="336.8">page.ts</text><text x="521.8" y="349.8">2</text></g>
 </svg>
 <table>
-<caption>The 4 largest files, nested by folder: size is lines, colour is revisions in the window: the items drawn, largest first</caption>
+<caption>The code, nested by folder: size is lines, colour is revisions in the window, outlined tiles are the friction list: the items drawn, marked first, then largest first</caption>
 <thead><tr><th scope="col">Path</th><th scope="col" class="number">Size (lines)</th><th scope="col" class="number">Colour (revisions in the window)</th><th scope="col" class="number">Band</th></tr></thead>
 <tbody>
-<tr><th scope="row">src/core/engine.ts</th><td class="number">13</td><td class="number">5</td><td class="number">2</td></tr>
+<tr><th scope="row">1 src/core/engine.ts</th><td class="number">13</td><td class="number">5</td><td class="number">2</td></tr>
 <tr><th scope="row">src/legacy/old.ts</th><td class="number">7</td><td class="number">3</td><td class="number">1</td></tr>
 <tr><th scope="row">src/ui/page.ts</th><td class="number">5</td><td class="number">2</td><td class="number">1</td></tr>
 <tr><th scope="row">src/core/util.ts</th><td class="number">1</td><td class="number">5</td><td class="number">2</td></tr>
 </tbody>
 </table>
-<p class="legend">Area is lines. Colour is revisions in the window in five bands, and each tile prints its value: band 1: 2 to 5, band 2: 5 to 6, band 3: 6 to 7, band 4: 7 to 8, band 5: 8. Hatched tiles have no value.</p>
+<p class="legend">Area is lines. Colour is revisions in the window in five bands, and a tile large enough prints its value: band 1: 2 to 5, band 2: 5 to 6, band 3: 6 to 7, band 4: 7 to 8, band 5: 8. Hatched tiles have no value. Outlined tiles are the files of the friction list below, each marked with its position in it (1), and each prints its mark. The items and lines in each band:</p>
+<ul class="legend">
+<li>band 1: 2 items, 12 lines</li>
+<li>band 2: 2 items, 14 lines</li>
+</ul>
 </figure>
-<p>Colour bands are rank steps of the files shown: the band edges sit at the 50th, 75th, 90th and 97th percentile of their revisions, so band 5 is the most changed and says nothing about good or bad.</p>
+<p>The map draws all 4 production code files at HEAD (26 lines), including 0 that nothing in the window changed (0 revisions). The band edges sit at the 50th, 75th, 90th and 97th percentile of the revisions of the 4 files that changed, so band 5 is the most changed and says nothing about good or bad.</p>
 </section>
 <section id="friction" aria-labelledby="friction-heading">
 <h2 id="friction-heading">Friction list</h2>
