@@ -46,6 +46,7 @@
             "items": [
               {
                 "colour": 5,
+                "href": "#friction-engine-ts-e1acc1",
                 "mark": "1",
                 "path": "src/core/engine.ts",
                 "size": 13
@@ -88,6 +89,11 @@
           },
           {
             "caption": "Friction list: files in the top change-frequency percentile with a function above the cognitive guideline, by hotspot score",
+            "cellHrefs": [
+              {
+                "path": "#xray-1"
+              }
+            ],
             "columns": [
               {
                 "key": "path",
@@ -153,6 +159,9 @@
             ],
             "emptyText": "No file is on the friction list.",
             "noun": "files",
+            "rowIds": [
+              "friction-engine-ts-e1acc1"
+            ],
             "rows": [
               {
                 "complexity": 36,
@@ -188,6 +197,11 @@
         "blocks": [
           {
             "caption": "Complexity and size of the first friction files across their history (cochange trend). The direction compares the first sample with the last sample only: worsening is a rise of at least the guideline, improving a fall of at least the guideline, and a fall in the last step does not change it",
+            "cellHrefs": [
+              {
+                "path": "#xray-1"
+              }
+            ],
             "columns": [
               {
                 "key": "path",
@@ -229,6 +243,9 @@
             ],
             "emptyText": "No friction file has a history to sample.",
             "noun": "friction files",
+            "rowIds": [
+              "history-engine-ts-e1acc1"
+            ],
             "rows": [
               {
                 "change": 0,
@@ -334,6 +351,10 @@
               }
             ],
             "noun": "functions",
+            "rowIds": [
+              "function-src/core/engine.ts-engine-ts-tune-2bdd1d",
+              "function-src/core/engine.ts-engine-ts-start-04a9e3"
+            ],
             "rows": [
               {
                 "cognitive": 30,
@@ -356,6 +377,12 @@
                 "nesting": 6,
                 "revisions": null,
                 "smells": "none"
+              }
+            ],
+            "seeAlso": [
+              {
+                "href": "report:xray?title=X-Ray%20of%20src%2Fcore%2Fengine.ts",
+                "text": "The X-Ray report of src/core/engine.ts lists every function."
               }
             ],
             "total": 2,

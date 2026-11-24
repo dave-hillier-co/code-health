@@ -52,6 +52,12 @@ test("ids on a page are unique", () => {
   expect(new Set(ids).size).toBe(ids.length);
 });
 
+test("every link to a place on the page has a target on the page", () => {
+  const html = renderReport(sampleReport(), "html", sampleNotes);
+  const ids = new Set([...html.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]));
+  for (const [, target] of html.matchAll(/ href="#([^"]+)"/g)) expect(ids.has(target!), target).toBe(true);
+});
+
 test("a marked value carries words as well as the triangle", () => {
   const html = renderBlock(sampleBlocks["ranked-table"]!, "html", context);
   expect(html).toContain("above guideline");

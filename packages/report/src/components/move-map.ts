@@ -1,6 +1,7 @@
 import { escapeHtml, escapeMd, formatNumber } from "../text.ts";
 import { htmlTable, mdTable, type TableColumn } from "../tables.ts";
 import { figureHtml } from "./figure.ts";
+import { linked } from "../links.ts";
 
 /** A kind of arrow or marker. It is named in the legend and styled through its class. */
 export interface MoveMapKind {
@@ -26,6 +27,8 @@ export interface MoveMapEdge {
   valueText?: string;
   /** Printed in the row text after the value, such as the blocker of a blocked move. */
   note?: string;
+  /** Links the arrow, its row text and its number in the table to where the unit is described. Html only. */
+  href?: string;
 }
 
 /** A marker on a folder, for a unit with no single target. */
@@ -35,6 +38,8 @@ export interface MoveMapMark {
   kind: string;
   /** Printed in the row text after the label, such as the blocker of a blocked unit. */
   note?: string;
+  /** Links the label in the row text, and its number in the table, to where the unit is described. Html only. */
+  href?: string;
 }
 
 export interface MoveMapData {
@@ -112,21 +117,38 @@ function lanesFor(spans: readonly [number, number][]): number[] {
   });
 }
 
+/** A piece of a line of row text; a piece with an `href` is a link. */
+interface Piece {
+  text: string;
+  href?: string | undefined;
+}
+
+const lineText = (line: readonly Piece[]) => line.map((p) => p.text).join("");
+
 /** The lines of text at the right of each row: the arrows that start and end there, then the markers, grouped by kind. */
-function rowTexts(data: MoveMapData, rows: readonly TreeRow[]): string[][] {
+function rowTexts(data: MoveMapData, rows: readonly TreeRow[]): Piece[][][] {
   const word = (kind: string) => data.kinds.find((k) => k.kind === kind)?.word ?? kind;
   return rows.map((row) => {
-    const parts: string[] = [];
+    const parts: Piece[][] = [];
     for (const edge of data.edges.filter((e) => e.from === row.path)) {
       const value = edge.valueText ?? `${data.valueLabel} ${formatNumber(edge.value)}`;
-      parts.push(`${word(edge.kind)} ${edge.label} out: ${value}${edge.note === undefined ? "" : `, ${edge.note}`}`);
+      parts.push([{ text: `${word(edge.kind)} ${edge.label} out: ${value}${edge.note === undefined ? "" : `, ${edge.note}`}`, href: edge.href }]);
     }
-    for (const edge of data.edges.filter((e) => e.to === row.path)) parts.push(`${word(edge.kind)} ${edge.label} in`);
+    for (const edge of data.edges.filter((e) => e.to === row.path)) parts.push([{ text: `${word(edge.kind)} ${edge.label} in`, href: edge.href }]);
     const kinds = [...new Set(data.marks.filter((m) => m.folder === row.path).map((m) => m.kind))];
-    for (const kind of kinds) parts.push(`${word(kind)} ${data.marks.filter((m) => m.folder === row.path && m.kind === kind).map((m) => `${m.label}${m.note === undefined ? "" : ` (${m.note})`}`).join(", ")}`);
+    for (const kind of kinds) {
+      const here = data.marks.filter((m) => m.folder === row.path && m.kind === kind);
+      parts.push([{ text: `${word(kind)} ` }, ...here.flatMap((m, k): Piece[] => [{ text: k === 0 ? "" : ", " }, { text: m.label, href: m.href }, ...(m.note === undefined ? [] : [{ text: ` (${m.note})` }])])]);
+    }
     return parts;
   });
 }
+
+/** The piece as svg: a link wraps its text in an anchor, other text stays bare. */
+const pieceSvg = (piece: Piece): string => (piece.href === undefined ? escapeHtml(piece.text) : linked(`<tspan>${escapeHtml(piece.text)}</tspan>`, piece.href));
+
+/** The link of the arrow or marker whose number is `label`: the table's first column prints the number. */
+const labelHref = (data: MoveMapData, label: string): string | undefined => data.edges.find((e) => e.label === label)?.href ?? data.marks.find((m) => m.label === label && m.href !== undefined)?.href;
 
 function legendLines(data: MoveMapData): string[] {
   const kindLines = data.kinds.map((k) => `${k.word}${k.dashed === true ? " (dashed line)" : ""}: ${k.meaning}`);
@@ -173,7 +195,7 @@ export function moveMapHtml(data: MoveMapData): string {
     const y = tops[i]! + 15;
     const x = MARGIN + row.depth * INDENT;
     const guide = `<line class="guide" x1="${(x + row.label.length * CHAR).toFixed(1)}" y1="${y - 4}" x2="${treeRight.toFixed(1)}" y2="${y - 4}"/>`;
-    const notes = texts[i]!.map((text, k) => `<text class="row-note" x="${textX.toFixed(1)}" y="${y + k * LINE}">${escapeHtml(text)}</text>`).join("");
+    const notes = texts[i]!.map((line, k) => `<text class="row-note" x="${textX.toFixed(1)}" y="${y + k * LINE}">${line.map(pieceSvg).join("")}</text>`).join("");
     return `<g class="folder-row"><text class="folder-name" x="${x}" y="${y}">${escapeHtml(row.label)}</text>${guide}${notes}</g>`;
   });
   const arrows = edges.map(({ edge, from, to }, i) => {
@@ -183,9 +205,9 @@ export function moveMapHtml(data: MoveMapData): string {
     const width = THIN + ((edge.value / greatest) * (THICK - THIN));
     const style = kindOf(edge.kind)?.dashed === true ? "dashed" : "solid";
     const tip = treeRight + 1;
-    return `<g class="edge ${escapeHtml(edge.kind)} ${style}"><path d="M${tip + 4} ${y1.toFixed(1)}H${x}V${y2.toFixed(1)}H${tip + 5}" stroke-width="${width.toFixed(1)}"/><polygon points="${tip},${y2.toFixed(1)} ${tip + 7},${(y2 - 3.5).toFixed(1)} ${tip + 7},${(y2 + 3.5).toFixed(1)}"/><title>${escapeHtml(`${edge.label}: ${edge.from === "" ? data.rootText : edge.from} to ${edge.to === "" ? data.rootText : edge.to}`)}</title></g>`;
+    return linked(`<g class="edge ${escapeHtml(edge.kind)} ${style}"><path d="M${tip + 4} ${y1.toFixed(1)}H${x}V${y2.toFixed(1)}H${tip + 5}" stroke-width="${width.toFixed(1)}"/><polygon points="${tip},${y2.toFixed(1)} ${tip + 7},${(y2 - 3.5).toFixed(1)} ${tip + 7},${(y2 + 3.5).toFixed(1)}"/><title>${escapeHtml(`${edge.label}: ${edge.from === "" ? data.rootText : edge.from} to ${edge.to === "" ? data.rootText : edge.to}`)}</title></g>`, edge.href);
   });
-  const widest = Math.max(0, ...texts.flat().map((t) => t.length)) * CHAR;
+  const widest = Math.max(0, ...texts.flat().map((line) => lineText(line).length)) * CHAR;
   const kindText = data.kinds.map((k) => `${k.word}${k.dashed === true ? " (dashed)" : ""}`).join(", ");
   const notes = legendLines(data).map((line) => `<p class="legend">${escapeHtml(line)}</p>`).join("\n");
   return figureHtml({
@@ -195,7 +217,7 @@ export function moveMapHtml(data: MoveMapData): string {
     width: Math.ceil(textX + widest + MARGIN),
     height: Math.max(ROW, heights.reduce((sum, h) => sum + h, 0)),
     drawing: [...lines, ...arrows].join("\n"),
-    table: htmlTable(tableCaption(data), data.table.columns, data.table.rows.map((row) => row.map(escapeHtml)), { rowHeaders: true }),
+    table: htmlTable(tableCaption(data), data.table.columns, data.table.rows.map((row) => row.map((cell, c) => (c === 0 ? linked(escapeHtml(cell), labelHref(data, cell)) : escapeHtml(cell)))), { rowHeaders: true }),
     notes: `${notes}\n`,
   });
 }

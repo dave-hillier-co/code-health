@@ -2,7 +2,9 @@ import type { Block } from "./block.ts";
 import type { MatrixData } from "./components/matrix.ts";
 import type { Cell, RankedTableData } from "./components/ranked-table.ts";
 import type { Slot } from "./protocol.ts";
+import { pageHref } from "./links.ts";
 import { capRows } from "./table-cap.ts";
+import { targetId } from "./text.ts";
 
 /** One function of an X-Ray, as the complexity plugin measures it. A figure the source does not give is null. */
 export interface XrayFunction {
@@ -44,6 +46,8 @@ export interface XrayData {
   allCommand?: string;
   /** Landed changes of the window shared by pairs of functions, for the functions with the most revisions. Absent when no fix result is available. */
   shared?: { ids: string[]; cells: (number | null)[][] };
+  /** A link printed under the table, such as to the X-Ray report page of the file. */
+  seeAlso?: { href: string; text: string }[];
 }
 
 /** The functions an X-Ray table lists unless the data says otherwise: a guideline, not a limit on what is measured. */
@@ -90,6 +94,15 @@ const guidelineOf = (value: number | undefined, guidelines: XrayGuidelines | und
 
 const lines = (fn: XrayFunction) => `${fn.startLine}-${fn.endLine}`;
 
+/** The html id of a function's row in the table, unique on a page that holds the tables of several files. */
+const rowIdOf = (data: XrayData, fn: XrayFunction) => targetId(`function-${data.file}`, fn.id);
+
+/** The link to a function's row, or undefined when the table cuts the function off. */
+function rowLink(data: XrayData, id: string): string | undefined {
+  const index = [...data.functions].sort(byComplexity).findIndex((fn) => fn.id === id);
+  return index === -1 || index >= (data.rows ?? XRAY_ROWS) ? undefined : pageHref(rowIdOf(data, data.functions.find((fn) => fn.id === id)!));
+}
+
 /** The table of an X-Ray, with the guidelines as its legend, and a notice when no fix result covers the functions. */
 export function xrayBlocks(data: XrayData): Block[] {
   const withFixes = data.functions.some((fn) => fn.fixes !== null);
@@ -110,6 +123,8 @@ export function xrayBlocks(data: XrayData): Block[] {
       { key: "fixes", label: "Fixes", align: "right" },
       { key: "smells", label: "Code smells" },
     ],
+    rowIds: sorted.map((fn) => rowIdOf(data, fn)),
+    ...(data.seeAlso === undefined ? {} : { seeAlso: data.seeAlso }),
     rows: sorted.map((fn): Record<string, Cell> => ({
       function: displayName(fn.name),
       lines: lines(fn),
@@ -168,6 +183,8 @@ export function sharedChanges(functions: readonly XrayFunction[], changesOf: (id
   return { ids: chosen.map((fn) => fn.id), cells: chosen.map((row) => chosen.map((column) => (row.id === column.id ? null : overlap(row.id, column.id)))) };
 }
 
+const hrefOf = (href: string | undefined) => (href === undefined ? {} : { href });
+
 const MATRIX_LABEL_CHARS = 16;
 
 /**
@@ -202,7 +219,7 @@ export function xrayFigures(data: XrayData): Block[] {
       unit: "cognitive complexity",
       guideline: data.guidelines.cognitive,
       source: `The guideline is ${data.guidelines.note}. Revisions and fixes count landed changes in the history window.`,
-      bars: drawn.map((fn) => ({ label: displayName(fn.name), value: fn.cognitive!, revisions: fn.revisions, fixes: fn.fixes })),
+      bars: drawn.map((fn) => ({ label: displayName(fn.name), value: fn.cognitive!, revisions: fn.revisions, fixes: fn.fixes, ...hrefOf(rowLink(data, fn.id)) })),
       omitted: { count: data.functions.length - drawn.length, reason: `the chart draws the ${XRAY_BARS} most complex, and the X-Ray table lists the ${Math.min(data.rows ?? XRAY_ROWS, data.functions.length)} most complex` },
     });
   }
@@ -216,6 +233,8 @@ export function xrayFigures(data: XrayData): Block[] {
       rows: names,
       columns: names,
       cells: data.shared.cells,
+      rowHrefs: data.shared.ids.map((id) => rowLink(data, id) ?? null),
+      columnHrefs: data.shared.ids.map((id) => rowLink(data, id) ?? null),
       orderText: `Rows and columns are the ${data.shared.ids.length} functions with the most revisions (at least ${XRAY_MATRIX_MIN_REVISIONS}), most first. A cell is the number of landed changes in the window that touched both functions; the diagonal is empty.`,
     });
   }

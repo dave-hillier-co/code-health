@@ -9,5 +9,12 @@ import type { RankedTableData } from "./components/ranked-table.ts";
 export function capRows(table: RankedTableData, max: number, command: string): RankedTableData {
   const total = Math.max(table.total ?? table.rows.length, table.rows.length);
   if (table.rows.length <= max && total === table.rows.length) return table;
-  return { ...table, rows: table.rows.slice(0, max), total, fullIn: command };
+  return {
+    ...table,
+    rows: table.rows.slice(0, max),
+    ...(table.rowIds === undefined ? {} : { rowIds: table.rowIds.slice(0, max) }),
+    ...(table.cellHrefs === undefined ? {} : { cellHrefs: table.cellHrefs.slice(0, max) }),
+    total,
+    fullIn: command,
+  };
 }

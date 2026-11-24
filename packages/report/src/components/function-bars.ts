@@ -1,6 +1,7 @@
 import { count, escapeHtml, escapeMd, formatNumber } from "../text.ts";
 import { htmlTable, mdTable } from "../tables.ts";
 import { figureHtml } from "./figure.ts";
+import { linked } from "../links.ts";
 
 export interface FunctionBar {
   /** The function's name as the page prints it. */
@@ -11,6 +12,8 @@ export interface FunctionBar {
   revisions: number | null;
   /** Fix changes among them, or null when no fix figure exists. */
   fixes: number | null;
+  /** Links the bar and its table row to where the function is described, on this page or another report page. Html only. */
+  href?: string;
 }
 
 export interface FunctionBarsData {
@@ -64,7 +67,7 @@ export function functionBarsHtml(data: FunctionBarsData): string {
       const y = HEADER + i * ROW;
       const width = b.value * scale;
       const above = b.value > data.guideline;
-      return `<g class="bar ${above ? "above" : "within"}"><text x="${LABEL - 6}" y="${y + 17}" text-anchor="end">${escapeHtml(shorten(b.label))}<title>${escapeHtml(b.label)}</title></text><rect x="${LABEL}" y="${y + 4}" width="${width.toFixed(1)}" height="${ROW - 8}"/><line x1="${marker.toFixed(1)}" x2="${marker.toFixed(1)}" y1="${y + 1}" y2="${y + ROW - 1}"/><text x="${(LABEL + Math.max(width, data.guideline * scale) + 8).toFixed(1)}" y="${y + 17}">${above ? "▲ " : ""}${formatNumber(b.value)}</text><text x="${REVISIONS_X}" y="${y + 17}" text-anchor="end">${figure(b.revisions)}</text><text x="${FIXES_X}" y="${y + 17}" text-anchor="end">${figure(b.fixes)}</text></g>`;
+      return linked(`<g class="bar ${above ? "above" : "within"}"><text x="${LABEL - 6}" y="${y + 17}" text-anchor="end">${escapeHtml(shorten(b.label))}<title>${escapeHtml(b.label)}</title></text><rect x="${LABEL}" y="${y + 4}" width="${width.toFixed(1)}" height="${ROW - 8}"/><line x1="${marker.toFixed(1)}" x2="${marker.toFixed(1)}" y1="${y + 1}" y2="${y + ROW - 1}"/><text x="${(LABEL + Math.max(width, data.guideline * scale) + 8).toFixed(1)}" y="${y + 17}">${above ? "▲ " : ""}${formatNumber(b.value)}</text><text x="${REVISIONS_X}" y="${y + 17}" text-anchor="end">${figure(b.revisions)}</text><text x="${FIXES_X}" y="${y + 17}" text-anchor="end">${figure(b.fixes)}</text></g>`, b.href);
     }),
   ].join("\n");
   const omitted = omittedText(data);
@@ -79,7 +82,7 @@ export function functionBarsHtml(data: FunctionBarsData): string {
     width: WIDTH,
     height: HEADER + Math.max(1, data.bars.length) * ROW,
     drawing,
-    table: htmlTable(`${data.title}: ${data.unit}, revisions and fixes`, columns(data), rows(data).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    table: htmlTable(`${data.title}: ${data.unit}, revisions and fixes`, columns(data), rows(data).map((r, k) => r.map((cell, c) => (c === 0 ? linked(escapeHtml(cell), data.bars[k]?.href) : escapeHtml(cell)))), { rowHeaders: true }),
     notes: notes.map((line) => `<p class="legend">${line}</p>\n`).join(""),
   });
 }

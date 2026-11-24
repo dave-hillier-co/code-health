@@ -15,6 +15,7 @@ import { stabilityChartHtml, stabilityChartMd, type StabilityChartData } from ".
 import { sparklineHtml, sparklineMd, type SparklineData } from "./components/sparkline.ts";
 import { trendMarkerHtml, trendMarkerMd, type TrendMarkerData } from "./components/trend-marker.ts";
 import { treemapHtml, treemapMd, type TreemapData } from "./components/treemap.ts";
+import { resolveLinks, type Siblings } from "./links.ts";
 import { ReportError, type Format, type Notes, type Slot } from "./protocol.ts";
 import { escapeHtml } from "./text.ts";
 
@@ -62,6 +63,8 @@ export interface BlockContext {
   slots: readonly Slot[];
   /** The validated entries. Undefined in a data-only markdown draft. */
   notes: Notes | undefined;
+  /** The report pages beside this one, so a link to one of them is kept only when it is there. Without it a link to another page is dropped. */
+  siblings?: Siblings;
 }
 
 function slotOf(id: string, context: BlockContext): Slot {
@@ -97,6 +100,10 @@ function renderJudgedItems(block: JudgedItemsData, format: Format, context: Bloc
 
 /** Renders one block as html or markdown. A block with nothing to show prints one notice line (see `emptyNotice`). */
 export function renderBlock(block: Block, format: Format, context: BlockContext): string {
+  return renderResolved(format === "html" ? resolveLinks(block, context.siblings) : block, format, context);
+}
+
+function renderResolved(block: Block, format: Format, context: BlockContext): string {
   switch (block.type) {
     case "paragraph": return format === "html" ? paragraphHtml(block) : paragraphMd(block);
     case "facts": return format === "html" ? factsHtml(block) : factsMd(block);

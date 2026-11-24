@@ -103,6 +103,10 @@ svg .guideline line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray:
 svg circle.point { fill: var(--point); fill-opacity: .45; }
 svg rect.point, svg .point.named rect { fill: var(--bar-above); stroke: var(--bg); stroke-width: 1; }
 svg .point.named text { paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
+svg a:hover text { text-decoration: underline; }
+svg a > text, svg a > tspan { fill: var(--link); text-decoration: underline; }
+svg a:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+svg a .tile rect, svg a .tile.marked rect { stroke: var(--link); stroke-width: 2; }
 svg polyline { fill: none; stroke: var(--bar-above); stroke-width: 2; } svg circle { fill: var(--bar-above); }
 .notice { border-left: 4px solid var(--notice-rule); background: var(--notice-bg); padding: .5rem .75rem; margin: .75rem 0; }
 .judgement { border: 1px solid var(--rule); border-left: 4px solid var(--link); background: var(--panel); padding: .25rem 1rem .5rem; margin: 1rem 0; }
@@ -168,13 +172,13 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </table>
 <figure class="chart matrix">
 <figcaption>Change footprint: 1 changed file against 3 files</figcaption>
-<svg role="img" aria-labelledby="change-footprint-1-changed-file-against-3-files-40da2b-title change-footprint-1-changed-file-against-3-files-40da2b-desc" width="363" height="122" viewBox="0 0 363 122" preserveAspectRatio="xMinYMin meet">
-<title id="change-footprint-1-changed-file-against-3-files-40da2b-title">Change footprint: 1 changed file against 3 files</title>
-<desc id="change-footprint-1-changed-file-against-3-files-40da2b-desc">A grid of 1 rows by 3 columns holding shared changes of the row file and the column file in the analysis window. Each cell prints its value; the table below lists every cell that has a value or a mark.</desc>
-<text x="194" y="84" transform="rotate(-35 194 84)">...illing/invoice.ts</text>
-<text x="222" y="84" transform="rotate(-35 222 84)">...g/invoice.test.ts</text>
-<text x="250" y="84" transform="rotate(-35 250 84)">src/billing/tax.ts</text>
-<text x="174" y="103" dominant-baseline="central" text-anchor="end">...illing/invoice.ts</text>
+<svg role="img" aria-labelledby="change-footprint-1-changed-file-against-3-files-a39683-title change-footprint-1-changed-file-against-3-files-a39683-desc" width="363" height="122" viewBox="0 0 363 122" preserveAspectRatio="xMinYMin meet">
+<title id="change-footprint-1-changed-file-against-3-files-a39683-title">Change footprint: 1 changed file against 3 files</title>
+<desc id="change-footprint-1-changed-file-against-3-files-a39683-desc">A grid of 1 rows by 3 columns holding shared changes of the row file and the column file in the analysis window. Each cell prints its value; the table below lists every cell that has a value or a mark.</desc>
+<a href="#missing-invoice-test-ts-82c8e9"><text x="194" y="84" transform="rotate(-35 194 84)">...illing/invoice.ts</text></a>
+<a href="#missing-invoice-test-ts-82c8e9"><text x="222" y="84" transform="rotate(-35 222 84)">...g/invoice.test.ts</text></a>
+<a href="#missing-tax-ts-6966ca"><text x="250" y="84" transform="rotate(-35 250 84)">src/billing/tax.ts</text></a>
+<a href="#missing-invoice-test-ts-82c8e9"><text x="174" y="103" dominant-baseline="central" text-anchor="end">...illing/invoice.ts</text></a>
 <g class="cell band-none"><rect x="180" y="90" width="26" height="26"/></g>
 <g class="cell band-1 mark-missing"><rect x="208" y="90" width="26" height="26"/><text x="221" y="103" text-anchor="middle" dominant-baseline="central">6 !</text></g>
 <g class="cell band-1 mark-missing"><rect x="236" y="90" width="26" height="26"/><text x="249" y="103" text-anchor="middle" dominant-baseline="central">6 !</text></g>
@@ -183,8 +187,8 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <caption>Change footprint: 1 changed file against 3 files: the cells that have a value or a mark</caption>
 <thead><tr><th scope="col">Row</th><th scope="col">Column</th><th scope="col" class="number">Value</th><th scope="col">Mark</th></tr></thead>
 <tbody>
-<tr><td>...illing/invoice.ts</td><td>...g/invoice.test.ts</td><td class="number">6</td><td>a usual partner of the row file that the change left out, as listed under Missing co-change partners</td></tr>
-<tr><td>...illing/invoice.ts</td><td>src/billing/tax.ts</td><td class="number">6</td><td>a usual partner of the row file that the change left out, as listed under Missing co-change partners</td></tr>
+<tr><td><a href="#missing-invoice-test-ts-82c8e9">...illing/invoice.ts</a></td><td><a href="#missing-invoice-test-ts-82c8e9">...g/invoice.test.ts</a></td><td class="number">6</td><td>a usual partner of the row file that the change left out, as listed under Missing co-change partners</td></tr>
+<tr><td><a href="#missing-invoice-test-ts-82c8e9">...illing/invoice.ts</a></td><td><a href="#missing-tax-ts-6966ca">src/billing/tax.ts</a></td><td class="number">6</td><td>a usual partner of the row file that the change left out, as listed under Missing co-change partners</td></tr>
 </tbody>
 </table>
 <p class="legend">Colour is shared changes of the row file and the column file in the analysis window in one band, and each cell prints its value: band 1: 6. Grey blank cells have no value (1 cell of 3 cells). ! is a usual partner of the row file that the change left out, as listed under Missing co-change partners (2 cells). Columns are the changed files, then the missing partners. Rows are ordered by missing partners, then by partners in the change, then by path. Missing columns follow the order of the Missing co-change partners section, and each is marked at the file it usually changes with.</p>
@@ -192,7 +196,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </section>
 <section id="guidance" aria-labelledby="guidance-heading">
 <h2 id="guidance-heading">Reviewer guidance</h2>
-<section class="judgement">
+<section class="judgement" id="judgement-guidance-f8aac5">
 <h3>Judgement: reviewer guidance</h3>
 <p>Open the files the tables name first, then ask the author about each item.</p>
 </section>
@@ -202,11 +206,11 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <section class="evidence">
 <h3>missing-co-change (moderate): 2 files that usually change with the touched files are not in the change</h3>
 <ul>
-<li><code>src/billing/invoice.test.ts</code> towards src/billing/invoice.ts, confidence 85.7, support 6</li>
-<li><code>src/billing/tax.ts</code> towards src/billing/invoice.ts, confidence 85.7, support 6</li>
+<li><a href="#missing-invoice-test-ts-82c8e9"><code>src/billing/invoice.test.ts</code></a> towards src/billing/invoice.ts, confidence 85.7, support 6</li>
+<li><a href="#missing-tax-ts-6966ca"><code>src/billing/tax.ts</code></a> towards src/billing/invoice.ts, confidence 85.7, support 6</li>
 </ul>
 </section>
-<section class="judgement">
+<section class="judgement" id="judgement-finding-missing-co-change-3812da">
 <h3>Judgement: missing-co-change</h3>
 <p><strong class="subject">2 files that usually change with the touched files are not in the change: src/billing/invoice.test.ts, src/billing/tax.ts</strong>: <span class="verdict">Verdict: accepted-with-reason.</span> The author's reason is the one the history supports.</p>
 </section>
@@ -216,7 +220,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <li><code>src/billing/invoice.ts</code> test src/billing/invoice.test.ts, kind not-updated, together 6, revisions 7</li>
 </ul>
 </section>
-<section class="judgement">
+<section class="judgement" id="judgement-finding-test-evidence-4ee51f">
 <h3>Judgement: test-evidence</h3>
 <p><strong class="subject">1 source file changed without the tests that usually change with it, or tests deleted: src/billing/invoice.ts</strong>: <span class="verdict">Verdict: accepted-with-reason.</span> The author's reason is the one the history supports.</p>
 </section>
@@ -226,7 +230,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <li><code>cycle:src/billing+src/reports</code> 2 modules at the folder level: src/billing, src/reports</li>
 </ul>
 </section>
-<section class="judgement">
+<section class="judgement" id="judgement-structure-1-465c27">
 <h3>Judgement: new import cycle cycle:src/billing+src/reports</h3>
 <p><strong class="subject">new import cycle cycle:src/billing+src/reports: 2 modules at the folder level: src/billing, src/reports</strong>: <span class="verdict">Verdict: accepted-with-reason.</span> The author's reason is the one the history supports.</p>
 </section>
@@ -236,7 +240,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <li><code>src/billing/invoice.ts-&gt;src/reports/summary.ts</code> domain imports reporting</li>
 </ul>
 </section>
-<section class="judgement">
+<section class="judgement" id="judgement-structure-2-da0a23">
 <h3>Judgement: new layer violation src/billing/invoice.ts-&gt;src/reports/summary.ts</h3>
 <p><strong class="subject">new layer violation src/billing/invoice.ts-&gt;src/reports/summary.ts: domain imports reporting</strong>: <span class="verdict">Verdict: accepted-with-reason.</span> The author's reason is the one the history supports.</p>
 </section>
@@ -246,7 +250,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <li><code>cognitive</code> worsened: before 18, after 27, guideline 15</li>
 </ul>
 </section>
-<section class="judgement">
+<section class="judgement" id="judgement-complexity-1-d3ecd7">
 <h3>Judgement: complexity of src/billing/invoice.ts#total</h3>
 <p><strong class="subject">src/billing/invoice.ts#total (worsened): cognitive 18 to 27 (guideline 15)</strong>: <span class="verdict">Verdict: accepted-with-reason.</span> The author's reason is the one the history supports.</p>
 </section>
@@ -256,7 +260,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <li><code>cognitive</code> new function: after 22, guideline 15</li>
 </ul>
 </section>
-<section class="judgement">
+<section class="judgement" id="judgement-complexity-2-7157fb">
 <h3>Judgement: complexity of src/billing/tax.ts#surcharge</h3>
 <p><strong class="subject">src/billing/tax.ts#surcharge (new): cognitive 22 (guideline 15)</strong>: <span class="verdict">Verdict: accepted-with-reason.</span> The author's reason is the one the history supports.</p>
 </section>
@@ -272,18 +276,18 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">spread</th><td>low</td><td>spread 0, folders 1</td><td>spread: above 0 is high, with no moderate band: the moderate and high cutoffs are the same value</td><td class="number">0</td></tr>
 <tr><th scope="row">entropy</th><td>low</td><td>entropy 0, filesWithLineChanges 1</td><td>entropy: above 1.5 is high, with no moderate band: the moderate and high cutoffs are the same value</td><td class="number">0</td></tr>
 <tr><th scope="row">mixed-purpose</th><td>low</td><td>moved 0, edited 1, editedWhileMoved 0</td><td>count: moderate from 1, high from 3</td><td class="number">0</td></tr>
-<tr><th scope="row">hotspots-touched</th><td>low</td><td>share 1, hotFiles 1</td><td>share: above 1 is high, with no moderate band: the moderate and high cutoffs are the same value</td><td class="number">1</td></tr>
+<tr><th scope="row"><a href="#hotspots">hotspots-touched</a></th><td>low</td><td>share 1, hotFiles 1</td><td>share: above 1 is high, with no moderate band: the moderate and high cutoffs are the same value</td><td class="number">1</td></tr>
 <tr><th scope="row">defect-history</th><td>unavailable</td><td>share 0.142857, fixes 1, revisions 7</td><td>share: no cutoff, the baseline is too small</td><td class="number">1</td></tr>
 <tr><th scope="row">contention</th><td>low</td><td>authors 0</td><td>authors: moderate above 0, high above 1</td><td class="number">0</td></tr>
 <tr><th scope="row">age</th><td>low</td><td>stale 0, settling 0, known 1</td><td>stale: above 0 is high, with no moderate band: the moderate and high cutoffs are the same value; settling: above 0 is high, with no moderate band: the moderate and high cutoffs are the same value</td><td class="number">0</td></tr>
-<tr><th scope="row">missing-co-change</th><td>moderate</td><td>count 2</td><td>count: moderate from 1, high from 3</td><td class="number">2</td></tr>
+<tr><th scope="row"><a href="#missing-co-change">missing-co-change</a></th><td>moderate</td><td>count 2</td><td>count: moderate from 1, high from 3</td><td class="number">2</td></tr>
 <tr><th scope="row">novel-coupling</th><td>low</td><td>count 0</td><td>count: moderate from 1, high from 3</td><td class="number">0</td></tr>
 <tr><th scope="row">test-evidence</th><td>moderate</td><td>count 1</td><td>count: moderate from 1, high from 3</td><td class="number">1</td></tr>
 <tr><th scope="row">blast-radius</th><td>moderate</td><td>files 2, signatureChanges 0, symbolFanIn 0</td><td>files: moderate above 0, high above 2</td><td class="number">2</td></tr>
 <tr><th scope="row">sensitive-paths</th><td>low</td><td>count 0</td><td>count: moderate from 1, high from 3</td><td class="number">0</td></tr>
-<tr><th scope="row">complexity-delta</th><td>low</td><td>indentation proxy, not a complexity comparison: count 0, files 1, newFiles 0</td><td>count: moderate from 1, high from 3</td><td class="number">0</td></tr>
-<tr><th scope="row">structure-delta</th><td>moderate</td><td>count 2</td><td>count: moderate from 1, high from 3</td><td class="number">2</td></tr>
-<tr><th scope="row">abandoned-touched</th><td>unavailable</td><td>none</td><td>none</td><td class="number">0</td></tr>
+<tr><th scope="row"><a href="#complexity">complexity-delta</a></th><td>low</td><td>indentation proxy, not a complexity comparison: count 0, files 1, newFiles 0</td><td>count: moderate from 1, high from 3</td><td class="number">0</td></tr>
+<tr><th scope="row"><a href="#structure">structure-delta</a></th><td>moderate</td><td>count 2</td><td>count: moderate from 1, high from 3</td><td class="number">2</td></tr>
+<tr><th scope="row"><a href="#abandoned">abandoned-touched</a></th><td>unavailable</td><td>none</td><td>none</td><td class="number">0</td></tr>
 </tbody>
 </table>
 <section class="evidence">
@@ -301,8 +305,8 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <caption>Files that usually change with a touched file and are not in the change</caption>
 <thead><tr><th scope="col" class="number">#</th><th scope="col">Missing file</th><th scope="col">Usually changes with</th><th scope="col" class="number">Confidence (%)</th><th scope="col" class="number">Shared changes</th></tr></thead>
 <tbody>
-<tr><td class="number">1</td><td>src/billing/invoice.test.ts</td><td>src/billing/invoice.ts</td><td class="number">85.7</td><td class="number">6</td></tr>
-<tr><td class="number">2</td><td>src/billing/tax.ts</td><td>src/billing/invoice.ts</td><td class="number">85.7</td><td class="number">6</td></tr>
+<tr id="missing-invoice-test-ts-82c8e9"><td class="number">1</td><td>src/billing/invoice.test.ts</td><td>src/billing/invoice.ts</td><td class="number">85.7</td><td class="number">6</td></tr>
+<tr id="missing-tax-ts-6966ca"><td class="number">2</td><td>src/billing/tax.ts</td><td>src/billing/invoice.ts</td><td class="number">85.7</td><td class="number">6</td></tr>
 </tbody>
 </table>
 <p class="legend">Guidelines order and label the rows and decide nothing. Confidence (%) 80 (cochange.risk.missingConfidence), ▼ marks a value below it; Shared changes 5 (cochange.minSupport), ▼ marks a value below it.</p>
@@ -346,7 +350,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <caption>Hot files the change touches, by revisions in the window ending at the base commit (the change itself is not counted)</caption>
 <thead><tr><th scope="col" class="number">#</th><th scope="col">File</th><th scope="col" class="number">Revisions</th></tr></thead>
 <tbody>
-<tr><td class="number">1</td><td>src/billing/invoice.ts</td><td class="number">7</td></tr>
+<tr id="hot-invoice-ts-aa2833"><td class="number">1</td><td>src/billing/invoice.ts</td><td class="number">7</td></tr>
 </tbody>
 </table>
 </section>
@@ -399,7 +403,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <li>No level is shown, because no stored backtest of this repository says the levels separate past changes.</li>
 <li>Who wrote the touched code (placement) is about people, so this report leaves it out. Names of people appear nowhere on this page.</li>
 </ul>
-<section class="judgement">
+<section class="judgement" id="judgement-limits-8a46fd">
 <h3>Judgement: what limits this summary</h3>
 <p>Open the files the tables name first, then ask the author about each item.</p>
 </section>

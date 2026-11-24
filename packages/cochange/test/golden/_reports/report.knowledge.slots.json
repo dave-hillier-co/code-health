@@ -71,6 +71,7 @@
             "items": [
               {
                 "category": "single-owner-hotspot",
+                "href": "#pattern-single-owner-hotspot-auth-ts-493728",
                 "path": "src/api/auth.ts",
                 "size": 10
               },
@@ -81,31 +82,37 @@
               },
               {
                 "category": "former-contributors-complex",
+                "href": "#pattern-former-contributors-complex-engine-ts-e1acc1",
                 "path": "src/core/engine.ts",
                 "size": 10
               },
               {
                 "category": "former-contributors-complex",
+                "href": "#pattern-former-contributors-complex-lexer-ts-36ffe2",
                 "path": "src/core/lexer.ts",
                 "size": 10
               },
               {
                 "category": "former-contributors-complex",
+                "href": "#pattern-former-contributors-complex-parser-ts-779296",
                 "path": "src/core/parser.ts",
                 "size": 10
               },
               {
                 "category": "inconclusive",
+                "href": "#pattern-inconclusive-deps-ts-cc4ec5",
                 "path": "src/gen/deps.ts",
                 "size": 10
               },
               {
                 "category": "single-owner",
+                "href": "#pattern-single-owner-view-ts-3a573a",
                 "path": "src/ui/view.ts",
                 "size": 10
               },
               {
                 "category": "single-owner",
+                "href": "#pattern-single-owner-log-ts-ca343b",
                 "path": "src/util/log.ts",
                 "size": 10
               }
@@ -276,6 +283,9 @@
             ],
             "emptyText": "No file's first pattern is single-owner hotspot.",
             "noun": "files",
+            "rowIds": [
+              "pattern-single-owner-hotspot-auth-ts-493728"
+            ],
             "rows": [
               {
                 "active": 1,
@@ -345,6 +355,11 @@
             ],
             "emptyText": "No file's first pattern is complex code by former contributors.",
             "noun": "files",
+            "rowIds": [
+              "pattern-former-contributors-complex-engine-ts-e1acc1",
+              "pattern-former-contributors-complex-lexer-ts-36ffe2",
+              "pattern-former-contributors-complex-parser-ts-779296"
+            ],
             "rows": [
               {
                 "active": 0,
@@ -436,6 +451,10 @@
             ],
             "emptyText": "No file's first pattern is single owner.",
             "noun": "files",
+            "rowIds": [
+              "pattern-single-owner-view-ts-3a573a",
+              "pattern-single-owner-log-ts-ca343b"
+            ],
             "rows": [
               {
                 "active": 1,
@@ -516,6 +535,9 @@
             ],
             "emptyText": "No file's first pattern is inconclusive.",
             "noun": "files",
+            "rowIds": [
+              "pattern-inconclusive-deps-ts-cc4ec5"
+            ],
             "rows": [
               {
                 "active": 0,

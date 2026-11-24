@@ -2,6 +2,7 @@ import { clip, count, escapeHtml, escapeMd, formatNumber } from "../text.ts";
 import { htmlTable, mdTable, type TableColumn } from "../tables.ts";
 import { bandCountText, bandLegend, makeBands } from "./bands.ts";
 import { figureHtml } from "./figure.ts";
+import { linked } from "../links.ts";
 
 /** A kind of cell a matrix marks beside its value, such as an expected pair or a dependency against the layering. */
 export interface MatrixMark {
@@ -13,6 +14,8 @@ export interface MatrixMark {
 
 export interface MatrixGroup {
   label: string;
+  /** A link to where the group is described, on this page or another report page. Html only. */
+  href?: string;
   /** Index of the first row in the group. */
   start: number;
   /** Index of the last row in the group, inclusive. */
@@ -22,6 +25,8 @@ export interface MatrixGroup {
 /** Consecutive rows (and, for a square matrix, the same columns) that belong together, such as the components of one tree. */
 export interface MatrixSpan {
   label: string;
+  /** A link to where the span is described, on this page or another report page. Html only. */
+  href?: string;
   /** Index of the first row in the span. */
   start: number;
   /** Index of the last row in the span, inclusive. */
@@ -50,6 +55,10 @@ export interface MatrixData {
    * (`span-1` to `span-6`, repeating), and its label is printed, so colour is not the only signal.
    */
   spans?: MatrixSpan[];
+  /** `rowHrefs[i]` links the label of row i, and the row's cell in the table; null for a row with no link. Html only. */
+  rowHrefs?: (string | null)[];
+  /** The same for the columns. */
+  columnHrefs?: (string | null)[];
   /** How the rows are ordered, printed under the chart, such as "Rows are ordered by cluster, then by sum of coupling". */
   orderText?: string;
 }
@@ -70,6 +79,13 @@ const LABEL_ANGLE = 35;
 const SPAN_BAR = 18;
 const SPAN_GAP = 4;
 const SPAN_COLOURS = 6;
+
+/** Marks where a legend line prints a name that may be a link; `linkNames` turns each into the name or its link. */
+const START = "\u0001";
+const HREF = "\u0002";
+const END = "\u0003";
+const linkNames = (line: string): string =>
+  escapeHtml(line).replace(new RegExp(`${START}(.*?)${HREF}(.*?)${END}`, "g"), (_, label: string, href: string) => (href === "" ? label : `<a href="${href}">${label}</a>`));
 
 const display = (value: number | null) => (value === null ? "" : formatNumber(value));
 
@@ -103,15 +119,16 @@ function markLegend(data: MatrixData): string | undefined {
 const usableSpans = (data: MatrixData): MatrixSpan[] =>
   (data.spans ?? []).filter((g) => g.start >= 0 && g.end >= g.start && g.end < data.rows.length).sort((a, b) => a.start - b.start);
 
-function spanLegend(spans: readonly MatrixSpan[], square: boolean): string | undefined {
+/** The legend line for the spans. `name` turns a span's label into what the line prints. */
+function spanLegend(spans: readonly MatrixSpan[], square: boolean, name: (g: MatrixSpan) => string = (g) => g.label): string | undefined {
   if (spans.length === 0) return undefined;
   const where = square ? "above the columns and left of the rows" : "left of the rows";
-  return `Bars ${where} mark ${count(spans.length, "span")}: ${spans.map((g) => `${g.label} (${count(g.end - g.start + 1, "row")})`).join(", ")}.`;
+  return `Bars ${where} mark ${count(spans.length, "span")}: ${spans.map((g) => `${name(g)} (${count(g.end - g.start + 1, "row")})`).join(", ")}.`;
 }
 
-function groupLegend(groups: readonly MatrixGroup[]): string | undefined {
+function groupLegend(groups: readonly MatrixGroup[], name: (g: MatrixGroup) => string = (g) => g.label): string | undefined {
   if (groups.length === 0) return undefined;
-  return `Boxes along the diagonal mark ${count(groups.length, "group")}: ${groups.map((g) => `${g.label} (${count(g.end - g.start + 1, "row")})`).join(", ")}.`;
+  return `Boxes along the diagonal mark ${count(groups.length, "group")}: ${groups.map((g) => `${name(g)} (${count(g.end - g.start + 1, "row")})`).join(", ")}.`;
 }
 
 /**
@@ -131,6 +148,7 @@ function cellList(data: MatrixData, spans: readonly MatrixSpan[], groups: readon
     ...(named ? [{ label: "Row group" }, ...(square ? [{ label: "Column group" }] : [])] : []),
   ];
   const rows: string[][] = [];
+  const at: [number, number][] = [];
   const symmetric = isSymmetric(data);
   let blank = 0;
   for (const [i, r] of data.rows.entries()) {
@@ -142,10 +160,11 @@ function cellList(data: MatrixData, spans: readonly MatrixSpan[], groups: readon
         continue;
       }
       if (symmetric && j < i) continue;
+      at.push([i, j]);
       rows.push([r, c, display(value), mark?.text ?? "", ...(named ? [namesOf(i), ...(square ? [namesOf(j)] : [])] : [])]);
     }
   }
-  return { columns, rows, blank, symmetric };
+  return { columns, rows, at, blank, symmetric };
 }
 
 /** A square matrix whose cell [i][j] holds the same value and mark as [j][i], such as co-change, lists each pair once. */
@@ -188,9 +207,9 @@ export function matrixHtml(data: MatrixData): string {
     ...data.columns.map((c, j) => {
       const x = gridX + j * cell + cell / 2;
       const y = gridY - 6;
-      return `<text x="${x}" y="${y}" transform="rotate(-${LABEL_ANGLE} ${x} ${y})">${escapeHtml(columnText[j]!)}${columnText[j] === c ? "" : `<title>${escapeHtml(c)}</title>`}</text>`;
+      return linked(`<text x="${x}" y="${y}" transform="rotate(-${LABEL_ANGLE} ${x} ${y})">${escapeHtml(columnText[j]!)}${columnText[j] === c ? "" : `<title>${escapeHtml(c)}</title>`}</text>`, data.columnHrefs?.[j]);
     }),
-    ...data.rows.map((r, i) => `<text x="${gridX - 6}" y="${gridY + i * cell + (cell - 2) / 2}" dominant-baseline="central" text-anchor="end">${escapeHtml(rowText[i]!)}${rowText[i] === r ? "" : `<title>${escapeHtml(r)}</title>`}</text>`),
+    ...data.rows.map((r, i) => linked(`<text x="${gridX - 6}" y="${gridY + i * cell + (cell - 2) / 2}" dominant-baseline="central" text-anchor="end">${escapeHtml(rowText[i]!)}${rowText[i] === r ? "" : `<title>${escapeHtml(r)}</title>`}</text>`, data.rowHrefs?.[i])),
   ];
   const cells = data.rows.flatMap((_, i) =>
     data.columns.map((_, j) => {
@@ -206,18 +225,18 @@ export function matrixHtml(data: MatrixData): string {
     const x = gridX + g.start * cell - 1;
     const y = gridY + g.start * cell - 1;
     const span = g.end - g.start + 1;
-    return `<g class="group"><rect x="${x}" y="${y}" width="${span * cell}" height="${span * cell}"><title>${escapeHtml(g.label)}</title></rect></g>`;
+    return linked(`<g class="group"><rect x="${x}" y="${y}" width="${span * cell}" height="${span * cell}"><title>${escapeHtml(g.label)}</title></rect></g>`, g.href);
   });
   const bars = spans.flatMap((g, k) => {
     const colour = `span span-${(k % SPAN_COLOURS) + 1}`;
     const rows = g.end - g.start + 1;
     const y = gridY + g.start * cell;
     const cy = y + (rows * cell - 2) / 2;
-    const side = `<g class="${colour}"><rect x="0" y="${y}" width="${SPAN_BAR}" height="${rows * cell - 2}"/><text x="${SPAN_BAR / 2}" y="${cy}" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 ${SPAN_BAR / 2} ${cy})">${escapeHtml(clip(g.label, Math.floor((rows * cell - 6) / CHAR_W)))}</text><title>${escapeHtml(g.label)}</title></g>`;
+    const side = linked(`<g class="${colour}"><rect x="0" y="${y}" width="${SPAN_BAR}" height="${rows * cell - 2}"/><text x="${SPAN_BAR / 2}" y="${cy}" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 ${SPAN_BAR / 2} ${cy})">${escapeHtml(clip(g.label, Math.floor((rows * cell - 6) / CHAR_W)))}</text><title>${escapeHtml(g.label)}</title></g>`, g.href);
     if (!square) return [side];
     const x = gridX + g.start * cell;
     const w = rows * cell - 2;
-    return [side, `<g class="${colour}"><rect x="${x}" y="0" width="${w}" height="${SPAN_BAR}"/><text x="${x + w / 2}" y="${SPAN_BAR / 2}" text-anchor="middle" dominant-baseline="central">${escapeHtml(clip(g.label, Math.floor((w - 6) / CHAR_W)))}</text><title>${escapeHtml(g.label)}</title></g>`];
+    return [side, linked(`<g class="${colour}"><rect x="${x}" y="0" width="${w}" height="${SPAN_BAR}"/><text x="${x + w / 2}" y="${SPAN_BAR / 2}" text-anchor="middle" dominant-baseline="central">${escapeHtml(clip(g.label, Math.floor((w - 6) / CHAR_W)))}</text><title>${escapeHtml(g.label)}</title></g>`, g.href)];
   });
   const lines = spans.slice(1).flatMap((g) => {
     const y = gridY + g.start * cell - 1;
@@ -227,11 +246,12 @@ export function matrixHtml(data: MatrixData): string {
     return [horizontal, `<line class="span-boundary" x1="${x}" y1="${top}" x2="${x}" y2="${gridY + data.rows.length * cell}"/>`];
   });
   const list = cellList(data, spans, groups);
+  const marker = (g: { label: string; href?: string }) => `${START}${g.label}${HREF}${g.href ?? ""}${END}`;
   const notes = [
     `Colour is ${data.valueLabel} in ${bandCountText(bands)}, and each cell prints its value: ${bandLegend(bands)}. Grey blank cells have no value (${count(list.blank, "cell")} of ${count(data.rows.length * data.columns.length, "cell")}).`,
     markLegend(data),
-    spanLegend(spans, square),
-    groupLegend(groups),
+    spanLegend(spans, square, marker),
+    groupLegend(groups, marker),
     data.orderText,
   ].filter((line): line is string => line !== undefined);
   const description = [
@@ -247,8 +267,12 @@ export function matrixHtml(data: MatrixData): string {
     width: Math.ceil(gridX + Math.max(data.columns.length * cell + 40, (data.columns.length - 0.5) * cell + reach + 8)),
     height: gridY + data.rows.length * cell + 4,
     drawing: [...bars, ...labels, ...cells, ...boxes, ...lines].join("\n"),
-    table: htmlTable(`${data.title}: the cells that have a value or a mark${list.symmetric ? ", each pair once" : ""}`, list.columns, list.rows.map((row) => row.map(escapeHtml))),
-    notes: `<p class="legend">${notes.map(escapeHtml).join(" ")}</p>\n`,
+    table: htmlTable(
+      `${data.title}: the cells that have a value or a mark${list.symmetric ? ", each pair once" : ""}`,
+      list.columns,
+      list.rows.map((row, k) => row.map((cell, c) => (c === 0 ? linked(escapeHtml(cell), data.rowHrefs?.[list.at[k]![0]]) : c === 1 ? linked(escapeHtml(cell), data.columnHrefs?.[list.at[k]![1]]) : escapeHtml(cell)))),
+    ),
+    notes: `<p class="legend">${notes.map(linkNames).join(" ")}</p>\n`,
   });
 }
 

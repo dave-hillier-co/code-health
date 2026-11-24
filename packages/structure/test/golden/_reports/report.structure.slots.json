@@ -633,6 +633,24 @@
                 null
               ]
             ],
+            "columnHrefs": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
             "columns": [
               "…kages/p1/src/use.ts",
               "packages/p1/src/x.ts",
@@ -654,11 +672,13 @@
             "groups": [
               {
                 "end": 5,
+                "href": "#cycle-1",
                 "label": "cycle 1",
                 "start": 3
               },
               {
                 "end": 12,
+                "href": "#cycle-2",
                 "label": "cycle 2",
                 "start": 11
               }
@@ -678,6 +698,24 @@
               }
             },
             "orderText": "A row is a module and the cells in it are the modules it depends on. Rows are ordered by layer, top first: a module comes after every module that depends on it, so in a layered design every cell is above the diagonal. The members of one cycle stay together in a box labelled as in the cycles table, ordered so that only the edges of its breaking set lie below the diagonal. Names are cut from the left to 20 characters; the cycles table gives them whole.",
+            "rowHrefs": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
             "rows": [
               "…kages/p1/src/use.ts",
               "packages/p1/src/x.ts",
@@ -720,6 +758,14 @@
           },
           {
             "caption": "Import cycles, largest first",
+            "cellHrefs": [
+              {
+                "modules": "#judgement-cycle-1-cade40"
+              },
+              {
+                "modules": "#judgement-cycle-2-ac39e9"
+              }
+            ],
             "columns": [
               {
                 "key": "modules",
@@ -751,6 +797,10 @@
             ],
             "emptyText": "No import cycle at the default level.",
             "noun": "cycles",
+            "rowIds": [
+              "cycle-1",
+              "cycle-2"
+            ],
             "rows": [
               {
                 "coChange": 5,
@@ -769,6 +819,12 @@
                 "modules": "src/a.ts, src/b.ts",
                 "nested": "no",
                 "size": 2
+              }
+            ],
+            "seeAlso": [
+              {
+                "href": "report:coupling",
+                "text": "The coupling report lists the files that change together, which the changes touching two members of a cycle count."
               }
             ],
             "total": 2,
@@ -1173,6 +1229,7 @@
             ],
             "emptyText": "No file is listed as a hub: each of the 2 files with at least 3 changes reached fewer than 2 of the 4 signals (2 of them without reading their diffs, because the other three signals left them unable to reach 2). 8 more files have fewer than 3 changes.",
             "noun": "hubs",
+            "rowIds": [],
             "rows": [],
             "total": 0,
             "type": "ranked-table"

@@ -39,6 +39,7 @@
             "points": [
               {
                 "highlight": false,
+                "href": "#hotspot-invoice-ts-aa2833",
                 "label": "src/billing/invoice.ts",
                 "short": "invoice.ts",
                 "x": 4,
@@ -46,6 +47,7 @@
               },
               {
                 "highlight": false,
+                "href": "#hotspot-summary-ts-db18cd",
                 "label": "src/reporting/summary.ts",
                 "short": "summary.ts",
                 "x": 3,
@@ -313,6 +315,10 @@
             ],
             "emptyText": "The hotspot ranking lists no file.",
             "noun": "files",
+            "rowIds": [
+              "hotspot-invoice-ts-aa2833",
+              "hotspot-summary-ts-db18cd"
+            ],
             "rows": [
               {
                 "complexity": 0,
@@ -329,6 +335,12 @@
                 "path": "src/reporting/summary.ts",
                 "recommendation": null,
                 "score": 0.125
+              }
+            ],
+            "seeAlso": [
+              {
+                "href": "report:hotspots#friction",
+                "text": "The hotspots report draws the map of the code and lists the friction list."
               }
             ],
             "total": 2,

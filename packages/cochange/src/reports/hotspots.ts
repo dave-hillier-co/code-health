@@ -13,7 +13,8 @@ import type { TreemapItem } from "@code-health/report/components/treemap";
 import type { Cell } from "@code-health/report/components/ranked-table";
 import { dropEmptySlots } from "@code-health/report/empty-block";
 import { capRows } from "@code-health/report/table-cap";
-import { codeSpan } from "@code-health/report/text";
+import { pageHref, reportHref } from "@code-health/report/links";
+import { codeSpan, targetId } from "@code-health/report/text";
 import { reportPath } from "@code-health/history/reports";
 import { statSync } from "node:fs";
 import type { ExcludedCount, Slot } from "@code-health/report/protocol";
@@ -45,6 +46,13 @@ const RECOMMENDATIONS = ["refactor", "split", "leave", "review", "dismiss"];
 const number = (value: unknown): number | null => (typeof value === "number" && Number.isFinite(value) ? value : null);
 const percentOf = (share: number) => Math.round(share * 1000) / 10;
 const byScore = (a: HotspotRow, b: HotspotRow) => (b.score ?? -1) - (a.score ?? -1) || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+
+/** The id of a file's row in the friction list table, which the map's marked tiles link to. */
+const frictionId = (path: string) => targetId("friction", path);
+/** The id of a file's row in the history table. */
+const historyId = (path: string) => targetId("history", path);
+/** The id of the X-Ray section of the `i`th friction file. */
+const xrayId = (i: number) => `xray-${i + 1}`;
 
 /** A file of the friction list: change frequency is at or above the guideline percentile, and the file is complex. */
 interface Friction {
@@ -113,7 +121,7 @@ function bandBreaks(values: readonly number[]): number[] {
 function mapBlocks(rows: readonly HotspotRow[], code: CodeMapFiles, marked: readonly Friction[]): Block[] {
   const revisions = new Map(rows.map((row) => [row.path, row.frequency]));
   const rank = new Map(marked.map(({ row }, i) => [row.path, String(i + 1)]));
-  const items: TreemapItem[] = code.files.map((file) => ({ path: file.path, size: file.lines, colour: revisions.get(file.path) ?? 0, ...(rank.has(file.path) ? { mark: rank.get(file.path)! } : {}) }));
+  const items: TreemapItem[] = code.files.map((file) => ({ path: file.path, size: file.lines, colour: revisions.get(file.path) ?? 0, ...(rank.has(file.path) ? { mark: rank.get(file.path)!, href: pageHref(frictionId(file.path)) } : {}) }));
   const changed = items.flatMap((item) => (item.colour! > 0 ? [item.colour!] : []));
   const lines = items.reduce((sum, item) => sum + item.size, 0);
   const blocks: Block[] = [
@@ -140,7 +148,7 @@ function mapBlocks(rows: readonly HotspotRow[], code: CodeMapFiles, marked: read
   return blocks;
 }
 
-function frictionBlocks(friction: readonly Friction[], shown: readonly Friction[], judged: readonly Friction[], percentile: number, basis: ComplexityBasis, complexityLabel: string, considered: number, judgedGuideline: number): Block[] {
+function frictionBlocks(friction: readonly Friction[], shown: readonly Friction[], judged: readonly Friction[], percentile: number, basis: ComplexityBasis, complexityLabel: string, considered: number, judgedGuideline: number, historyPaths: ReadonlySet<string>): Block[] {
   const byFunctions = basis === "functions";
   const table = capRows(
     {
@@ -150,6 +158,9 @@ function frictionBlocks(friction: readonly Friction[], shown: readonly Friction[
       noun: "files",
       total: friction.length,
       emptyText: "No file is on the friction list.",
+      rowIds: shown.map(({ row }) => frictionId(row.path)),
+      // A file with an X-Ray section links to it, one with only a history row to that row.
+      cellHrefs: shown.map(({ row }, i): Record<string, string> => (i < XRAY_FILES ? { path: pageHref(xrayId(i)) } : historyPaths.has(row.path) ? { path: pageHref(historyId(row.path)) } : {})),
       columns: [
         { key: "path", label: "File" },
         { key: "revisions", label: "Revisions", align: "right" },
@@ -221,6 +232,8 @@ function historyBlocks(trends: readonly (Trend | undefined)[], paths: readonly s
       noun: "friction files",
       total: paths.length + omitted,
       emptyText: "No friction file has a history to sample.",
+      rowIds: found.map((t) => historyId(t.path)),
+      cellHrefs: found.map((t): Record<string, string> => (paths.indexOf(t.path) < XRAY_FILES ? { path: pageHref(xrayId(paths.indexOf(t.path))) } : {})),
       columns: [
         { key: "path", label: "File" },
         { key: "revisions", label: "Revisions in history", align: "right" },
@@ -300,11 +313,11 @@ function xraySections(shown: readonly Friction[], analyse: SiblingResult | undef
   ];
   return files.map(({ row }, i): Section => {
     const heading = `X-Ray: ${row.path}`;
-    const id = `xray-${i + 1}`;
+    const id = xrayId(i);
     if (analyse === undefined) return { id, heading, blocks: missing };
     const functions = xrayFunctions(row.path, analyse, fixes);
     if (functions.length === 0) return { id, heading, blocks: [{ type: "notice", level: "notice", text: `The stored complexity analyse result lists no functions of ${row.path}, so there is nothing to X-Ray.` }] };
-    const data: XrayData = { file: row.path, functions, guidelines: guidelinesOf(analyse), rows: XRAY_ROWS };
+    const data: XrayData = { file: row.path, functions, guidelines: guidelinesOf(analyse), rows: XRAY_ROWS, seeAlso: [{ href: reportHref("xray", { title: `X-Ray of ${row.path}` }), text: `The X-Ray report of ${row.path} lists every function.` }] };
     const table = xrayBlocks(data).filter((block) => block.type !== "notice");
     const revisions: Block[] = [{ type: "notice", level: "notice", text: `The table has no revisions column: the stored fix result lists only the functions that have a fix, so it cannot give the revisions of the others. \`complexity report xray ${row.path}\` shows them for its most complex functions, and \`complexity analyse ${row.path} --with-fixes --limit all\` for every function.` }];
     return { id, heading, blocks: [...table, ...missing, ...revisions] };
@@ -418,7 +431,7 @@ export const hotspots: ReportKind = {
           friction.length === 0
             ? [{ type: "notice", level: "notice", text: basis === "functions" ? `No file in the top ${100 - percentile} percent of change frequency among the ${rows.length} files ranked has a function above the cognitive guideline.` : `No file is in the top ${100 - percentile} percent of both change frequency and complexity among the ${rows.length} files ranked.` }]
             : [
-                ...frictionBlocks(friction, shown, judged, percentile, basis, complexityLabel, rows.length, settings.hotspotJudged),
+                ...frictionBlocks(friction, shown, judged, percentile, basis, complexityLabel, rows.length, settings.hotspotJudged, new Set(trends.flatMap((t) => (t === undefined ? [] : [t.path])))),
               ],
       },
       { id: "history", heading: "History of the top files", blocks: trendPaths.length === 0 ? [{ type: "notice", level: "notice", text: "There is no friction file to draw." }] : historyBlocks(trends, trendPaths, Math.max(0, shown.length - trendPaths.length)) },

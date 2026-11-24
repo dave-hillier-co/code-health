@@ -1,5 +1,5 @@
 import type { ChoiceEntry, NoteEntry, Slot, SlotEntry } from "../protocol.ts";
-import { escapeHtml, escapeMd, oneLine } from "../text.ts";
+import { escapeHtml, escapeMd, oneLine, targetId } from "../text.ts";
 
 export interface JudgementData {
   slot: Slot;
@@ -26,6 +26,9 @@ function parts(slot: Slot, entry: SlotEntry): { subject: string; verdict?: strin
   return [{ subject: slot.about.label, verdict: note.verdict, text: note.text }];
 }
 
+/** The id of the section a slot prints, so a link on the page can point at its judgement. */
+export const judgementId = (slotId: string): string => targetId("judgement", slotId);
+
 /**
  * A slot's verdict and text. A note prints as a paragraph under the slot title, led by its subject only when the title
  * does not name it and the slot is not about the whole report; a choosing slot prints a numbered list, each item led by its subject. The text is the
@@ -33,16 +36,17 @@ function parts(slot: Slot, entry: SlotEntry): { subject: string; verdict?: strin
  */
 export function judgementHtml(data: JudgementData): string {
   const heading = `<h3>${escapeHtml(data.slot.title)}</h3>`;
-  if (data.entry === undefined) return `<section class="judgement unwritten">\n${heading}\n<p class="empty">Judgement not yet written.</p>\n</section>`;
+  const id = ` id="${judgementId(data.slot.id)}"`;
+  if (data.entry === undefined) return `<section class="judgement unwritten"${id}>\n${heading}\n<p class="empty">Judgement not yet written.</p>\n</section>`;
   if (!isChoice(data.entry)) {
     const verdict = data.entry.verdict === undefined ? "" : `<span class="verdict">Verdict: ${escapeHtml(data.entry.verdict)}.</span> `;
     const lead = leadOf(data.slot);
-    return `<section class="judgement">\n${heading}\n<p>${lead === undefined ? "" : `<strong class="subject">${escapeHtml(lead)}</strong>: `}${verdict}${escapeHtml(oneLine(data.entry.text))}</p>\n</section>`;
+    return `<section class="judgement"${id}>\n${heading}\n<p>${lead === undefined ? "" : `<strong class="subject">${escapeHtml(lead)}</strong>: `}${verdict}${escapeHtml(oneLine(data.entry.text))}</p>\n</section>`;
   }
   const items = parts(data.slot, data.entry).map(
     (p) => `<li><strong class="subject">${escapeHtml(p.subject)}</strong>${p.verdict === undefined ? "" : ` <span class="verdict">Verdict: ${escapeHtml(p.verdict)}.</span>`} ${escapeHtml(oneLine(p.text))}</li>`,
   );
-  return `<section class="judgement">\n${heading}\n<ol>\n${items.join("\n")}\n</ol>\n</section>`;
+  return `<section class="judgement"${id}>\n${heading}\n<ol>\n${items.join("\n")}\n</ol>\n</section>`;
 }
 
 export function judgementMd(data: JudgementData): string {

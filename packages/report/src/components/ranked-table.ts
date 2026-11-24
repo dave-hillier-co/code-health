@@ -1,3 +1,4 @@
+import { linked } from "../links.ts";
 import { escapeHtml, escapeMd, formatNumber, inlineHtml } from "../text.ts";
 import { noticeHtml, noticeMd } from "./notice.ts";
 import { htmlTable, mdTable, type Align } from "../tables.ts";
@@ -32,6 +33,12 @@ export interface RankedTableData {
   numbered?: boolean;
   /** What to print when `rows` is empty, and why: "No cycles were found at the default level." Without it the line is "<caption>: no rows." */
   emptyText?: string;
+  /** `rowIds[i]` is the html id of `rows[i]`, which links on the page point at. Build it with `targetId`, so ids stay unique on the page. */
+  rowIds?: (string | null)[];
+  /** `cellHrefs[i][key]` links the cell of column `key` in `rows[i]` (a `#id` on the page or a `report:` reference). Html only. */
+  cellHrefs?: Record<string, string>[];
+  /** Links printed under the table, each to a page or place that tells more of it. A link whose `href` is dropped (its page is not beside this one) is not printed. Html only. */
+  seeAlso?: { href?: string; text: string }[];
   /** The command whose output lists every row, set by `capRows`. With it the omitted-rows line reads "N of M shown; the rest are in `<command>` output." */
   fullIn?: string;
 }
@@ -76,16 +83,17 @@ function omitted(data: RankedTableData): string | undefined {
 export function rankedTableHtml(data: RankedTableData): string {
   const empty = rankedTableEmpty(data);
   if (empty !== undefined) return noticeHtml({ level: "notice", text: empty });
-  const cell = (column: RankedColumn, value: Cell): string => {
-    const shown = escapeHtml(text(value));
+  const cell = (column: RankedColumn, value: Cell, href: string | undefined): string => {
+    const shown = linked(escapeHtml(text(value)), href);
     if (!marked(column, value)) return shown;
     const side = column.guideline?.direction === "below" ? "below" : "above";
     return `${shown} <span class="marker ${side}" title="${side} guideline">${MARK[side]}<span class="visually-hidden"> ${side} guideline</span></span>`;
   };
   const columns = [...rankColumn(data), ...data.columns.map((c) => ({ label: c.label, align: c.align }))];
-  const rows = data.rows.map((row, i) => [...rankCell(data, i), ...data.columns.map((c) => cell(c, row[c.key] ?? null))]);
-  const table = htmlTable(data.caption, columns, rows, { rowHeaders: data.numbered === false, className: "ranked" });
+  const rows = data.rows.map((row, i) => [...rankCell(data, i), ...data.columns.map((c) => cell(c, row[c.key] ?? null, data.cellHrefs?.[i]?.[c.key]))]);
+  const table = htmlTable(data.caption, columns, rows, { rowHeaders: data.numbered === false, className: "ranked", ...(data.rowIds === undefined ? {} : { rowIds: data.rowIds }) });
   const notes = [legend(data), omitted(data)].flatMap((n) => (n === undefined ? [] : [`<p class="legend">${inlineHtml(n)}</p>`]));
+  for (const see of data.seeAlso ?? []) if (see.href !== undefined) notes.push(`<p class="legend">${linked(escapeHtml(see.text), see.href)}</p>`);
   return [table, ...notes].join("\n");
 }
 

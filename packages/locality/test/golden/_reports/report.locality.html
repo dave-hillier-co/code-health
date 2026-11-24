@@ -103,6 +103,10 @@ svg .guideline line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray:
 svg circle.point { fill: var(--point); fill-opacity: .45; }
 svg rect.point, svg .point.named rect { fill: var(--bar-above); stroke: var(--bg); stroke-width: 1; }
 svg .point.named text { paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
+svg a:hover text { text-decoration: underline; }
+svg a > text, svg a > tspan { fill: var(--link); text-decoration: underline; }
+svg a:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+svg a .tile rect, svg a .tile.marked rect { stroke: var(--link); stroke-width: 2; }
 svg polyline { fill: none; stroke: var(--bar-above); stroke-width: 2; } svg circle { fill: var(--bar-above); }
 .notice { border-left: 4px solid var(--notice-rule); background: var(--notice-bg); padding: .5rem .75rem; margin: .75rem 0; }
 .judgement { border: 1px solid var(--rule); border-left: 4px solid var(--link); background: var(--panel); padding: .25rem 1rem .5rem; margin: 1rem 0; }
@@ -159,48 +163,48 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <main id="main">
 <section id="summary" aria-labelledby="summary-heading">
 <h2 id="summary-heading">Summary</h2>
-<section class="judgement">
+<section class="judgement" id="judgement-summary-761b7a">
 <h3>Judgement: what this report says</h3>
 <p>The helpers sit far from their consumers.</p>
 </section>
 <figure class="chart move-map">
 <figcaption>Where the top candidates would move</figcaption>
-<svg role="img" aria-labelledby="where-the-top-candidates-would-move-c04108-title where-the-top-candidates-would-move-c04108-desc" width="577" height="337" viewBox="0 0 577 337" preserveAspectRatio="xMinYMin meet">
-<title id="where-the-top-candidates-would-move-c04108-title">Where the top candidates would move</title>
-<desc id="where-the-top-candidates-would-move-c04108-desc">A folder tree of 10 rows with 5 arrows from a unit's folder to its target folder and 12 markers. Kinds: move, blocked move (dashed), blocked unit, review, split, inline, consumers of. Each arrow is numbered and its row prints its gain; the table below lists every arrow and marker.</desc>
-<g class="folder-row"><text class="folder-name" x="8" y="15">src</text><line class="guide" x1="26.6" y1="11" x2="94.0" y2="11"/><text class="row-note" x="190.0" y="15">move 2 in</text><text class="row-note" x="190.0" y="28">move 5 in</text><text class="row-note" x="190.0" y="41">review R3</text></g>
-<g class="folder-row"><text class="folder-name" x="22" y="63">billing</text><line class="guide" x1="65.4" y1="59" x2="94.0" y2="59"/><text class="row-note" x="190.0" y="63">move 4 in</text><text class="row-note" x="190.0" y="76">inline R4</text><text class="row-note" x="190.0" y="89">consumers of 2, 5</text></g>
-<g class="folder-row"><text class="folder-name" x="22" y="111">lib/kernel</text><line class="guide" x1="84.0" y1="107" x2="94.0" y2="107"/><text class="row-note" x="190.0" y="111">blocked unit B1 (blocked by core.ts)</text></g>
-<g class="folder-row"><text class="folder-name" x="22" y="133">orders</text><line class="guide" x1="59.2" y1="129" x2="94.0" y2="129"/><text class="row-note" x="190.0" y="133">move 3 in</text><text class="row-note" x="190.0" y="146">inline R5</text><text class="row-note" x="190.0" y="159">consumers of 2, 5</text></g>
-<g class="folder-row"><text class="folder-name" x="22" y="181">reports</text><line class="guide" x1="65.4" y1="177" x2="94.0" y2="177"/><text class="row-note" x="190.0" y="181">move 1 in</text></g>
-<g class="folder-row"><text class="folder-name" x="22" y="203">shared</text><line class="guide" x1="59.2" y1="199" x2="94.0" y2="199"/><text class="row-note" x="190.0" y="203">move 5 out: gain 2</text></g>
-<g class="folder-row"><text class="folder-name" x="36" y="225">cycle</text><line class="guide" x1="67.0" y1="221" x2="94.0" y2="221"/><text class="row-note" x="190.0" y="225">move 3 out: gain 3</text></g>
-<g class="folder-row"><text class="folder-name" x="36" y="247">helpers</text><line class="guide" x1="79.4" y1="243" x2="94.0" y2="243"/><text class="row-note" x="190.0" y="247">split R1</text></g>
-<g class="folder-row"><text class="folder-name" x="36" y="269">pair</text><line class="guide" x1="60.8" y1="265" x2="94.0" y2="265"/><text class="row-note" x="190.0" y="269">move 1 out: gain 6</text><text class="row-note" x="190.0" y="282">blocked unit B2 (blocked by core.ts), B3 (blocked by core.ts)</text></g>
-<g class="folder-row"><text class="folder-name" x="36" y="304">utils</text><line class="guide" x1="67.0" y1="300" x2="94.0" y2="300"/><text class="row-note" x="190.0" y="304">move 2 out: gain 4</text><text class="row-note" x="190.0" y="317">move 4 out: gain 3</text><text class="row-note" x="190.0" y="330">inline R2</text></g>
-<g class="edge move solid"><path d="M99 271.5H112V177.0H100" stroke-width="4.5"/><polygon points="95,177.0 102,173.5 102,180.5"/><title>1: src/shared/pair to src/reports</title></g>
-<g class="edge move solid"><path d="M99 311.0H124V22.0H100" stroke-width="3.5"/><polygon points="95,22.0 102,18.5 102,25.5"/><title>2: src/shared/utils to src</title></g>
-<g class="edge move solid"><path d="M99 221.0H136V142.0H100" stroke-width="3.0"/><polygon points="95,142.0 102,138.5 102,145.5"/><title>3: src/shared/cycle to src/orders</title></g>
-<g class="edge move solid"><path d="M99 315.0H148V72.0H100" stroke-width="3.0"/><polygon points="95,72.0 102,68.5 102,75.5"/><title>4: src/shared/utils to src/billing</title></g>
-<g class="edge move solid"><path d="M99 199.0H160V26.0H100" stroke-width="2.5"/><polygon points="95,26.0 102,22.5 102,29.5"/><title>5: src/shared to src</title></g>
+<svg role="img" aria-labelledby="where-the-top-candidates-would-move-31452a-title where-the-top-candidates-would-move-31452a-desc" width="577" height="337" viewBox="0 0 577 337" preserveAspectRatio="xMinYMin meet">
+<title id="where-the-top-candidates-would-move-31452a-title">Where the top candidates would move</title>
+<desc id="where-the-top-candidates-would-move-31452a-desc">A folder tree of 10 rows with 5 arrows from a unit's folder to its target folder and 12 markers. Kinds: move, blocked move (dashed), blocked unit, review, split, inline, consumers of. Each arrow is numbered and its row prints its gain; the table below lists every arrow and marker.</desc>
+<g class="folder-row"><text class="folder-name" x="8" y="15">src</text><line class="guide" x1="26.6" y1="11" x2="94.0" y2="11"/><text class="row-note" x="190.0" y="15"><a href="#candidate-2"><tspan>move 2 in</tspan></a></text><text class="row-note" x="190.0" y="28"><a href="#candidate-5"><tspan>move 5 in</tspan></a></text><text class="row-note" x="190.0" y="41">review <a href="#candidate-8"><tspan>R3</tspan></a></text></g>
+<g class="folder-row"><text class="folder-name" x="22" y="63">billing</text><line class="guide" x1="65.4" y1="59" x2="94.0" y2="59"/><text class="row-note" x="190.0" y="63"><a href="#candidate-4"><tspan>move 4 in</tspan></a></text><text class="row-note" x="190.0" y="76">inline <a href="#candidate-9"><tspan>R4</tspan></a></text><text class="row-note" x="190.0" y="89">consumers of 2, 5</text></g>
+<g class="folder-row"><text class="folder-name" x="22" y="111">lib/kernel</text><line class="guide" x1="84.0" y1="107" x2="94.0" y2="107"/><text class="row-note" x="190.0" y="111">blocked unit <a href="#blocked-tool-ts-572d68"><tspan>B1</tspan></a> (blocked by core.ts)</text></g>
+<g class="folder-row"><text class="folder-name" x="22" y="133">orders</text><line class="guide" x1="59.2" y1="129" x2="94.0" y2="129"/><text class="row-note" x="190.0" y="133"><a href="#candidate-3"><tspan>move 3 in</tspan></a></text><text class="row-note" x="190.0" y="146">inline <a href="#candidate-10"><tspan>R5</tspan></a></text><text class="row-note" x="190.0" y="159">consumers of 2, 5</text></g>
+<g class="folder-row"><text class="folder-name" x="22" y="181">reports</text><line class="guide" x1="65.4" y1="177" x2="94.0" y2="177"/><text class="row-note" x="190.0" y="181"><a href="#candidate-1"><tspan>move 1 in</tspan></a></text></g>
+<g class="folder-row"><text class="folder-name" x="22" y="203">shared</text><line class="guide" x1="59.2" y1="199" x2="94.0" y2="199"/><text class="row-note" x="190.0" y="203"><a href="#candidate-5"><tspan>move 5 out: gain 2</tspan></a></text></g>
+<g class="folder-row"><text class="folder-name" x="36" y="225">cycle</text><line class="guide" x1="67.0" y1="221" x2="94.0" y2="221"/><text class="row-note" x="190.0" y="225"><a href="#candidate-3"><tspan>move 3 out: gain 3</tspan></a></text></g>
+<g class="folder-row"><text class="folder-name" x="36" y="247">helpers</text><line class="guide" x1="79.4" y1="243" x2="94.0" y2="243"/><text class="row-note" x="190.0" y="247">split <a href="#candidate-6"><tspan>R1</tspan></a></text></g>
+<g class="folder-row"><text class="folder-name" x="36" y="269">pair</text><line class="guide" x1="60.8" y1="265" x2="94.0" y2="265"/><text class="row-note" x="190.0" y="269"><a href="#candidate-1"><tspan>move 1 out: gain 6</tspan></a></text><text class="row-note" x="190.0" y="282">blocked unit <a href="#blocked-a-ts-3d07b0"><tspan>B2</tspan></a> (blocked by core.ts), <a href="#blocked-b-ts-dd34f9"><tspan>B3</tspan></a> (blocked by core.ts)</text></g>
+<g class="folder-row"><text class="folder-name" x="36" y="304">utils</text><line class="guide" x1="67.0" y1="300" x2="94.0" y2="300"/><text class="row-note" x="190.0" y="304"><a href="#candidate-2"><tspan>move 2 out: gain 4</tspan></a></text><text class="row-note" x="190.0" y="317"><a href="#candidate-4"><tspan>move 4 out: gain 3</tspan></a></text><text class="row-note" x="190.0" y="330">inline <a href="#candidate-7"><tspan>R2</tspan></a></text></g>
+<a href="#candidate-1"><g class="edge move solid"><path d="M99 271.5H112V177.0H100" stroke-width="4.5"/><polygon points="95,177.0 102,173.5 102,180.5"/><title>1: src/shared/pair to src/reports</title></g></a>
+<a href="#candidate-2"><g class="edge move solid"><path d="M99 311.0H124V22.0H100" stroke-width="3.5"/><polygon points="95,22.0 102,18.5 102,25.5"/><title>2: src/shared/utils to src</title></g></a>
+<a href="#candidate-3"><g class="edge move solid"><path d="M99 221.0H136V142.0H100" stroke-width="3.0"/><polygon points="95,142.0 102,138.5 102,145.5"/><title>3: src/shared/cycle to src/orders</title></g></a>
+<a href="#candidate-4"><g class="edge move solid"><path d="M99 315.0H148V72.0H100" stroke-width="3.0"/><polygon points="95,72.0 102,68.5 102,75.5"/><title>4: src/shared/utils to src/billing</title></g></a>
+<a href="#candidate-5"><g class="edge move solid"><path d="M99 199.0H160V26.0H100" stroke-width="2.5"/><polygon points="95,26.0 102,22.5 102,29.5"/><title>5: src/shared to src</title></g></a>
 </svg>
 <table>
 <caption>Where the top candidates would move: each arrow and marker</caption>
 <thead><tr><th scope="col">#</th><th scope="col">Unit</th><th scope="col">From folder</th><th scope="col">To folder</th><th scope="col" class="number">Gain</th><th scope="col">Status</th></tr></thead>
 <tbody>
-<tr><th scope="row">1</th><td>src/shared/pair</td><td>src/shared/pair</td><td>src/reports</td><td class="number">6</td><td>move: the planner can plan it</td></tr>
-<tr><th scope="row">2</th><td>src/shared/utils/money.ts</td><td>src/shared/utils</td><td>src</td><td class="number">4</td><td>move: the planner can plan it</td></tr>
-<tr><th scope="row">3</th><td>src/shared/cycle/a.ts</td><td>src/shared/cycle</td><td>src/orders</td><td class="number">3</td><td>move: the planner can plan it</td></tr>
-<tr><th scope="row">4</th><td>src/shared/utils/invoice.ts</td><td>src/shared/utils</td><td>src/billing</td><td class="number">3</td><td>move: the planner can plan it</td></tr>
-<tr><th scope="row">5</th><td>src/shared/log.ts</td><td>src/shared</td><td>src</td><td class="number">2</td><td>move: the planner can plan it</td></tr>
-<tr><th scope="row">B1</th><td>src/lib/kernel/tool.ts</td><td>src/lib/kernel</td><td>none: its own folder is its best until the blockers are resolved</td><td class="number">4</td><td>blocked unit, marker on its folder; gain if unblocked; blocked by src/lib/kernel/core.ts</td></tr>
-<tr><th scope="row">B2</th><td>src/shared/pair/a.ts</td><td>src/shared/pair</td><td>none: its own folder is its best until the blockers are resolved</td><td class="number">3</td><td>blocked unit, marker on its folder; gain if unblocked; blocked by src/shared/pair/core.ts</td></tr>
-<tr><th scope="row">B3</th><td>src/shared/pair/b.ts</td><td>src/shared/pair</td><td>none: its own folder is its best until the blockers are resolved</td><td class="number">3</td><td>blocked unit, marker on its folder; gain if unblocked; blocked by src/shared/pair/core.ts</td></tr>
-<tr><th scope="row">R1</th><td>src/shared/helpers/mixed.ts</td><td>src/shared/helpers</td><td>no single target</td><td class="number">4</td><td>split: marker on its folder, no arrow</td></tr>
-<tr><th scope="row">R2</th><td>src/shared/utils/slug.ts</td><td>src/shared/utils</td><td>no single target</td><td class="number">3</td><td>inline: marker on its folder, no arrow</td></tr>
-<tr><th scope="row">R3</th><td>src/orders/place.ts</td><td>src</td><td>no single target</td><td class="number">2</td><td>review: marker on its folder, no arrow</td></tr>
-<tr><th scope="row">R4</th><td>src/billing/index.ts</td><td>src/billing</td><td>no single target</td><td class="number">0</td><td>inline: marker on its folder, no arrow</td></tr>
-<tr><th scope="row">R5</th><td>src/orders/audit.ts</td><td>src/orders</td><td>no single target</td><td class="number">0</td><td>inline: marker on its folder, no arrow</td></tr>
+<tr><th scope="row"><a href="#candidate-1">1</a></th><td>src/shared/pair</td><td>src/shared/pair</td><td>src/reports</td><td class="number">6</td><td>move: the planner can plan it</td></tr>
+<tr><th scope="row"><a href="#candidate-2">2</a></th><td>src/shared/utils/money.ts</td><td>src/shared/utils</td><td>src</td><td class="number">4</td><td>move: the planner can plan it</td></tr>
+<tr><th scope="row"><a href="#candidate-3">3</a></th><td>src/shared/cycle/a.ts</td><td>src/shared/cycle</td><td>src/orders</td><td class="number">3</td><td>move: the planner can plan it</td></tr>
+<tr><th scope="row"><a href="#candidate-4">4</a></th><td>src/shared/utils/invoice.ts</td><td>src/shared/utils</td><td>src/billing</td><td class="number">3</td><td>move: the planner can plan it</td></tr>
+<tr><th scope="row"><a href="#candidate-5">5</a></th><td>src/shared/log.ts</td><td>src/shared</td><td>src</td><td class="number">2</td><td>move: the planner can plan it</td></tr>
+<tr><th scope="row"><a href="#blocked-tool-ts-572d68">B1</a></th><td>src/lib/kernel/tool.ts</td><td>src/lib/kernel</td><td>none: its own folder is its best until the blockers are resolved</td><td class="number">4</td><td>blocked unit, marker on its folder; gain if unblocked; blocked by src/lib/kernel/core.ts</td></tr>
+<tr><th scope="row"><a href="#blocked-a-ts-3d07b0">B2</a></th><td>src/shared/pair/a.ts</td><td>src/shared/pair</td><td>none: its own folder is its best until the blockers are resolved</td><td class="number">3</td><td>blocked unit, marker on its folder; gain if unblocked; blocked by src/shared/pair/core.ts</td></tr>
+<tr><th scope="row"><a href="#blocked-b-ts-dd34f9">B3</a></th><td>src/shared/pair/b.ts</td><td>src/shared/pair</td><td>none: its own folder is its best until the blockers are resolved</td><td class="number">3</td><td>blocked unit, marker on its folder; gain if unblocked; blocked by src/shared/pair/core.ts</td></tr>
+<tr><th scope="row"><a href="#candidate-6">R1</a></th><td>src/shared/helpers/mixed.ts</td><td>src/shared/helpers</td><td>no single target</td><td class="number">4</td><td>split: marker on its folder, no arrow</td></tr>
+<tr><th scope="row"><a href="#candidate-7">R2</a></th><td>src/shared/utils/slug.ts</td><td>src/shared/utils</td><td>no single target</td><td class="number">3</td><td>inline: marker on its folder, no arrow</td></tr>
+<tr><th scope="row"><a href="#candidate-8">R3</a></th><td>src/orders/place.ts</td><td>src</td><td>no single target</td><td class="number">2</td><td>review: marker on its folder, no arrow</td></tr>
+<tr><th scope="row"><a href="#candidate-9">R4</a></th><td>src/billing/index.ts</td><td>src/billing</td><td>no single target</td><td class="number">0</td><td>inline: marker on its folder, no arrow</td></tr>
+<tr><th scope="row"><a href="#candidate-10">R5</a></th><td>src/orders/audit.ts</td><td>src/orders</td><td>no single target</td><td class="number">0</td><td>inline: marker on its folder, no arrow</td></tr>
 </tbody>
 </table>
 <p class="legend">Each folder is a row, indented under its parent. A folder with nothing of its own and one child is joined to that child.</p>
@@ -236,11 +240,11 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <caption>Moves the planner can plan without --reason (kind move), ordered by gain over the locality.minDistance guideline</caption>
 <thead><tr><th scope="col" class="number">#</th><th scope="col">Unit</th><th scope="col">Kind</th><th scope="col">Target</th><th scope="col" class="number">Gain (net distance removed)</th><th scope="col" class="number">Gain ÷ guideline (2)</th><th scope="col" class="number">Unit files</th><th scope="col" class="number">Consumer files</th><th scope="col" class="number">Consumer folders</th><th scope="col" class="number">Distance</th><th scope="col">Confidence</th></tr></thead>
 <tbody>
-<tr><td class="number">1</td><td>src/shared/pair</td><td>move</td><td>src/reports</td><td class="number">6 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">3</td><td class="number">3</td><td class="number">2</td><td class="number">1</td><td class="number">3</td><td>normal</td></tr>
-<tr><td class="number">2</td><td>src/shared/utils/money.ts</td><td>move</td><td>src</td><td class="number">4 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">2</td><td class="number">1</td><td class="number">2</td><td class="number">2</td><td class="number">2</td><td>normal</td></tr>
-<tr><td class="number">3</td><td>src/shared/cycle/a.ts</td><td>move</td><td>src/orders</td><td class="number">3 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">1.5</td><td class="number">2</td><td class="number">1</td><td class="number">1</td><td class="number">3</td><td>normal</td></tr>
-<tr><td class="number">4</td><td>src/shared/utils/invoice.ts</td><td>move</td><td>src/billing</td><td class="number">3 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">1.5</td><td class="number">1</td><td class="number">1</td><td class="number">1</td><td class="number">3</td><td>normal</td></tr>
-<tr><td class="number">5</td><td>src/shared/log.ts</td><td>move</td><td>src</td><td class="number">2</td><td class="number">1</td><td class="number">1</td><td class="number">2</td><td class="number">2</td><td class="number">1</td><td>normal</td></tr>
+<tr id="move-pair-40a361"><td class="number">1</td><td><a href="#candidate-1">src/shared/pair</a></td><td>move</td><td>src/reports</td><td class="number">6 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">3</td><td class="number">3</td><td class="number">2</td><td class="number">1</td><td class="number">3</td><td>normal</td></tr>
+<tr id="move-money-ts-b491d0"><td class="number">2</td><td><a href="#candidate-2">src/shared/utils/money.ts</a></td><td>move</td><td>src</td><td class="number">4 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">2</td><td class="number">1</td><td class="number">2</td><td class="number">2</td><td class="number">2</td><td>normal</td></tr>
+<tr id="move-a-ts-c36ecd"><td class="number">3</td><td><a href="#candidate-3">src/shared/cycle/a.ts</a></td><td>move</td><td>src/orders</td><td class="number">3 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">1.5</td><td class="number">2</td><td class="number">1</td><td class="number">1</td><td class="number">3</td><td>normal</td></tr>
+<tr id="move-invoice-ts-062432"><td class="number">4</td><td><a href="#candidate-4">src/shared/utils/invoice.ts</a></td><td>move</td><td>src/billing</td><td class="number">3 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">1.5</td><td class="number">1</td><td class="number">1</td><td class="number">1</td><td class="number">3</td><td>normal</td></tr>
+<tr id="move-log-ts-af08e0"><td class="number">5</td><td><a href="#candidate-5">src/shared/log.ts</a></td><td>move</td><td>src</td><td class="number">2</td><td class="number">1</td><td class="number">1</td><td class="number">2</td><td class="number">2</td><td class="number">1</td><td>normal</td></tr>
 </tbody>
 </table>
 <p class="legend">Guidelines order and label the rows and decide nothing. Gain (net distance removed) 2 (locality.minDistance), ▲ marks a value above it.</p>
@@ -248,11 +252,11 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <caption>Reviews, splits and inlines (the planner needs --reason for these), ordered by gain over the locality.minDistance guideline</caption>
 <thead><tr><th scope="col" class="number">#</th><th scope="col">Unit</th><th scope="col">Kind</th><th scope="col">Target</th><th scope="col" class="number">Gain (net distance removed)</th><th scope="col" class="number">Gain ÷ guideline (2)</th><th scope="col" class="number">Unit files</th><th scope="col" class="number">Consumer files</th><th scope="col" class="number">Consumer folders</th><th scope="col" class="number">Distance</th><th scope="col">Confidence</th></tr></thead>
 <tbody>
-<tr><td class="number">1</td><td>src/shared/helpers/mixed.ts</td><td>split</td><td>src</td><td class="number">4 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">3</td><td class="number">1</td><td class="number">2</td><td class="number">2</td><td class="number">2</td><td>normal</td></tr>
-<tr><td class="number">2</td><td>src/shared/utils/slug.ts</td><td>inline</td><td>src/orders</td><td class="number">3 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">1.5</td><td class="number">1</td><td class="number">1</td><td class="number">1</td><td class="number">3</td><td>normal</td></tr>
-<tr><td class="number">3</td><td>src/orders/place.ts</td><td>review</td><td>src/shared</td><td class="number">2</td><td class="number">1</td><td class="number">5</td><td class="number">1</td><td class="number">1</td><td class="number">1</td><td>normal</td></tr>
-<tr><td class="number">4</td><td>src/billing/index.ts</td><td>inline</td><td>src/billing</td><td class="number">0</td><td class="number">0</td><td class="number">1</td><td class="number">0</td><td class="number">0</td><td class="number">0</td><td>normal</td></tr>
-<tr><td class="number">5</td><td>src/orders/audit.ts</td><td>inline</td><td>src/orders</td><td class="number">0</td><td class="number">0</td><td class="number">1</td><td class="number">1</td><td class="number">1</td><td class="number">0</td><td>normal</td></tr>
+<tr id="review-mixed-ts-628e47"><td class="number">1</td><td><a href="#candidate-6">src/shared/helpers/mixed.ts</a></td><td>split</td><td>src</td><td class="number">4 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">3</td><td class="number">1</td><td class="number">2</td><td class="number">2</td><td class="number">2</td><td>normal</td></tr>
+<tr id="review-slug-ts-0b8e25"><td class="number">2</td><td><a href="#candidate-7">src/shared/utils/slug.ts</a></td><td>inline</td><td>src/orders</td><td class="number">3 <span class="marker above" title="above guideline">▲<span class="visually-hidden"> above guideline</span></span></td><td class="number">1.5</td><td class="number">1</td><td class="number">1</td><td class="number">1</td><td class="number">3</td><td>normal</td></tr>
+<tr id="review-place-ts-a3a2e3"><td class="number">3</td><td><a href="#candidate-8">src/orders/place.ts</a></td><td>review</td><td>src/shared</td><td class="number">2</td><td class="number">1</td><td class="number">5</td><td class="number">1</td><td class="number">1</td><td class="number">1</td><td>normal</td></tr>
+<tr id="review-index-ts-bf03d5"><td class="number">4</td><td><a href="#candidate-9">src/billing/index.ts</a></td><td>inline</td><td>src/billing</td><td class="number">0</td><td class="number">0</td><td class="number">1</td><td class="number">0</td><td class="number">0</td><td class="number">0</td><td>normal</td></tr>
+<tr id="review-audit-ts-fb8ac5"><td class="number">5</td><td><a href="#candidate-10">src/orders/audit.ts</a></td><td>inline</td><td>src/orders</td><td class="number">0</td><td class="number">0</td><td class="number">1</td><td class="number">1</td><td class="number">1</td><td class="number">0</td><td>normal</td></tr>
 </tbody>
 </table>
 <p class="legend">Guidelines order and label the rows and decide nothing. Gain (net distance removed) 2 (locality.minDistance), ▲ marks a value above it.</p>
@@ -282,7 +286,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">Move plan (dry run)</th><td>3 files moved to src/reports, 2 imports rewritten in 2 files; 2 files outside the move edited to follow it</td></tr>
 </tbody>
 </table>
-<section class="judgement">
+<section class="judgement" id="judgement-candidate-1-fed53e">
 <h3>Judgement: src/shared/pair</h3>
 <p><span class="verdict">Verdict: do-it.</span> It has few consumers and nothing blocks it. Risk: a missed consumer.</p>
 </section>
@@ -304,7 +308,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">Move plan (dry run)</th><td>1 file moved to src, 3 imports rewritten in 3 files; 3 files outside the move edited to follow it</td></tr>
 </tbody>
 </table>
-<section class="judgement">
+<section class="judgement" id="judgement-candidate-2-5b9f45">
 <h3>Judgement: src/shared/utils/money.ts</h3>
 <p><span class="verdict">Verdict: do-it.</span> It has few consumers and nothing blocks it. Risk: a missed consumer.</p>
 </section>
@@ -326,7 +330,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">Move plan (dry run)</th><td>2 files moved to src/orders, 1 import rewritten in 1 file; 1 file outside the move edited to follow it</td></tr>
 </tbody>
 </table>
-<section class="judgement">
+<section class="judgement" id="judgement-candidate-3-40863b">
 <h3>Judgement: src/shared/cycle/a.ts</h3>
 <p><span class="verdict">Verdict: do-it.</span> It has few consumers and nothing blocks it. Risk: a missed consumer.</p>
 </section>
@@ -348,7 +352,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">Move plan (dry run)</th><td>1 file moved to src/billing, 1 import rewritten in 1 file; 1 file outside the move edited to follow it</td></tr>
 </tbody>
 </table>
-<section class="judgement">
+<section class="judgement" id="judgement-candidate-4-9897e7">
 <h3>Judgement: src/shared/utils/invoice.ts</h3>
 <p><span class="verdict">Verdict: do-it.</span> It has few consumers and nothing blocks it. Risk: a missed consumer.</p>
 </section>
@@ -370,7 +374,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">Move plan (dry run)</th><td>1 file moved to src, 2 imports rewritten in 2 files; 2 files outside the move edited to follow it</td></tr>
 </tbody>
 </table>
-<section class="judgement">
+<section class="judgement" id="judgement-candidate-5-efd32c">
 <h3>Judgement: src/shared/log.ts</h3>
 <p><span class="verdict">Verdict: do-it.</span> It has few consumers and nothing blocks it. Risk: a missed consumer.</p>
 </section>
@@ -392,7 +396,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">Move plan (dry run)</th><td>no plan: needs-reason; first: the analyser recommends split (mixed-exports), not a move: pass --reason to record why it moves anyway</td></tr>
 </tbody>
 </table>
-<section class="judgement">
+<section class="judgement" id="judgement-candidate-6-0f38fb">
 <h3>Judgement: src/shared/helpers/mixed.ts</h3>
 <p><span class="verdict">Verdict: do-it.</span> It has few consumers and nothing blocks it. Risk: a missed consumer.</p>
 </section>
@@ -414,7 +418,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">Move plan (dry run)</th><td>no plan: needs-reason; first: the analyser recommends inline (single-consumer-tiny), not a move: pass --reason to record why it moves anyway</td></tr>
 </tbody>
 </table>
-<section class="judgement">
+<section class="judgement" id="judgement-candidate-7-2e943b">
 <h3>Judgement: src/shared/utils/slug.ts</h3>
 <p><span class="verdict">Verdict: do-it.</span> It has few consumers and nothing blocks it. Risk: a missed consumer.</p>
 </section>
@@ -436,7 +440,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">Move plan (dry run)</th><td>no plan: needs-reason; first: the analyser recommends review (scattered-unit), not a move: pass --reason to record why it moves anyway</td></tr>
 </tbody>
 </table>
-<section class="judgement">
+<section class="judgement" id="judgement-candidate-8-c87ae8">
 <h3>Judgement: src/orders/place.ts</h3>
 <p><span class="verdict">Verdict: do-it.</span> It has few consumers and nothing blocks it. Risk: a missed consumer.</p>
 </section>
@@ -458,7 +462,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">Move plan (dry run)</th><td>no plan: barrel; first: a barrel is inlined by rewriting its importer to the real definitions, not moved</td></tr>
 </tbody>
 </table>
-<section class="judgement">
+<section class="judgement" id="judgement-candidate-9-3b5803">
 <h3>Judgement: src/billing/index.ts</h3>
 <p><span class="verdict">Verdict: do-it.</span> It has few consumers and nothing blocks it. Risk: a missed consumer.</p>
 </section>
@@ -480,7 +484,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">Move plan (dry run)</th><td>no plan: no-change; first: the unit already lives in src/orders</td></tr>
 </tbody>
 </table>
-<section class="judgement">
+<section class="judgement" id="judgement-candidate-10-d4bec0">
 <h3>Judgement: src/orders/audit.ts</h3>
 <p><span class="verdict">Verdict: do-it.</span> It has few consumers and nothing blocks it. Risk: a missed consumer.</p>
 </section>
@@ -532,9 +536,9 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <caption>Units held back by blockers, by the gain if the blockers were resolved: units recommended blocked, and units of kind move that still have blockers (a blocker is a file the unit depends on that stays behind and lowers the gain)</caption>
 <thead><tr><th scope="col" class="number">#</th><th scope="col">Unit</th><th scope="col">Kind</th><th scope="col" class="number">Gain now (net distance removed)</th><th scope="col" class="number">Gain if the blockers were resolved (net distance removed)</th><th scope="col">Blockers</th></tr></thead>
 <tbody>
-<tr><td class="number">1</td><td>src/lib/kernel/tool.ts</td><td>blocked</td><td class="number">0</td><td class="number">4</td><td>src/lib/kernel/core.ts</td></tr>
-<tr><td class="number">2</td><td>src/shared/pair/a.ts</td><td>blocked</td><td class="number">0</td><td class="number">3</td><td>src/shared/pair/core.ts</td></tr>
-<tr><td class="number">3</td><td>src/shared/pair/b.ts</td><td>blocked</td><td class="number">0</td><td class="number">3</td><td>src/shared/pair/core.ts</td></tr>
+<tr id="blocked-tool-ts-572d68"><td class="number">1</td><td>src/lib/kernel/tool.ts</td><td>blocked</td><td class="number">0</td><td class="number">4</td><td>src/lib/kernel/core.ts</td></tr>
+<tr id="blocked-a-ts-3d07b0"><td class="number">2</td><td>src/shared/pair/a.ts</td><td>blocked</td><td class="number">0</td><td class="number">3</td><td>src/shared/pair/core.ts</td></tr>
+<tr id="blocked-b-ts-dd34f9"><td class="number">3</td><td>src/shared/pair/b.ts</td><td>blocked</td><td class="number">0</td><td class="number">3</td><td>src/shared/pair/core.ts</td></tr>
 </tbody>
 </table>
 <aside class="notice notice" role="note"><strong>Notice:</strong> The history counts are zero because history is weak (12 months, 34 logical changes in the window, 1 active author address, agent identities included); history-only candidates need moderate or strong evidence.</aside>
@@ -548,7 +552,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <li>Gain is the net distance a move removes, against the locality.minDistance guideline. It does not say the move is worth its churn.</li>
 <li>The evidence grade is weak, so history-based evidence is tentative and the structure leads.</li>
 </ul>
-<section class="judgement">
+<section class="judgement" id="judgement-limits-8a46fd">
 <h3>Judgement: what limits these results</h3>
 <p>The helpers sit far from their consumers.</p>
 </section>

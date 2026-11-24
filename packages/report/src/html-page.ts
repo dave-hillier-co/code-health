@@ -1,5 +1,6 @@
 import { emptySection } from "./empty-block.ts";
 import { renderBlock } from "./block.ts";
+import type { Siblings } from "./links.ts";
 import type { Notes } from "./protocol.ts";
 import type { Report, Section } from "./report-model.ts";
 import { escapeHtml, formatNumber, inlineHtml } from "./text.ts";
@@ -23,10 +24,10 @@ function headerFacts(report: Report): string {
   return `<dl class="header">\n${rows.map(([term, value]) => `<dt>${term}</dt><dd>${value}</dd>`).join("\n")}\n</dl>`;
 }
 
-function section(s: Section, report: Report, notes: Notes): string {
+function section(s: Section, report: Report, notes: Notes, siblings: Siblings | undefined): string {
   const empty = emptySection(s);
   if (empty !== undefined) return `<section id="${escapeHtml(s.id)}" aria-labelledby="${escapeHtml(s.id)}-heading">\n<p class="empty"><strong id="${escapeHtml(s.id)}-heading">${escapeHtml(s.heading)}:</strong> ${inlineHtml(empty)}</p>\n</section>`;
-  const body = s.blocks.map((block) => renderBlock(block, "html", { slots: report.slots, notes })).join("\n");
+  const body = s.blocks.map((block) => renderBlock(block, "html", { slots: report.slots, notes, ...(siblings === undefined ? {} : { siblings }) })).join("\n");
   return `<section id="${escapeHtml(s.id)}" aria-labelledby="${escapeHtml(s.id)}-heading">\n<h2 id="${escapeHtml(s.id)}-heading">${escapeHtml(s.heading)}</h2>\n${body}\n</section>`;
 }
 
@@ -38,7 +39,7 @@ function limitsSection(report: Report, notes: Notes): string {
 }
 
 /** The report as one self-contained html page: inline CSS and svg, no script, no external request. */
-export function htmlPage(report: Report, notes: Notes): string {
+export function htmlPage(report: Report, notes: Notes, siblings?: Siblings): string {
   const ids = [...report.sections.map((s) => [s.id, s.heading] as const), ["limits", "Limits"] as const];
   const nav = `<nav aria-label="Sections">\n<ul>\n${ids.map(([id, heading]) => `<li><a href="#${escapeHtml(id)}">${escapeHtml(heading)}</a></li>`).join("\n")}\n</ul>\n</nav>`;
   return [
@@ -56,7 +57,7 @@ export function htmlPage(report: Report, notes: Notes): string {
     `<header>\n<h1>${escapeHtml(report.title)}</h1>\n${headerFacts(report)}\n</header>`,
     nav,
     '<main id="main">',
-    ...report.sections.map((s) => section(s, report, notes)),
+    ...report.sections.map((s) => section(s, report, notes, siblings)),
     limitsSection(report, notes),
     "</main>",
     `<footer>\n<p>Report <code>${escapeHtml(report.kind)}</code> for commit <code>${escapeHtml(report.header.commit.slice(0, 12))}</code>. Every number comes from the command's data. The judgements were written by an agent from that data and checked against the report's slots.</p>\n</footer>`,

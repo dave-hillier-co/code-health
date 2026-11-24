@@ -6,7 +6,9 @@ import type { ReportKind } from "@code-health/cli-kit/report-command";
 import type { Block } from "@code-health/report/block";
 import type { Cell, RankedTableData } from "@code-health/report/components/ranked-table";
 import { dropEmptySlots } from "@code-health/report/empty-block";
+import { pageHref } from "@code-health/report/links";
 import { capRows } from "@code-health/report/table-cap";
+import { targetId } from "@code-health/report/text";
 import type { ExcludedCount, Slot } from "@code-health/report/protocol";
 import type { ReportBuild } from "@code-health/report/report-model";
 import { excludedCounts, historyWindowText } from "@code-health/history/report-header";
@@ -145,9 +147,20 @@ function patternRow(file: PatternFile, names: Names): Record<string, Cell> {
   };
 }
 
+/** The id of a file's row in the table of its first pattern, which the map's tile of the file links to. */
+const patternRowId = (pattern: Pattern, path: string) => targetId(`pattern-${pattern}`, path);
+
+/** The files of each pattern's table: the first `TOP` files whose first pattern it is, for the patterns that have a table. */
+function listedFiles(files: readonly PatternFile[], patterns: readonly Pattern[]): Map<string, Pattern> {
+  const listed = new Map<string, Pattern>();
+  for (const pattern of patterns) for (const file of files.filter((f) => f.pattern === pattern).slice(0, TOP)) listed.set(file.path, pattern);
+  return listed;
+}
+
 function patternTable(pattern: Pattern, files: readonly PatternFile[], names: Names): Block {
   const own = files.filter((f) => f.pattern === pattern);
   return cappedTable({
+    rowIds: own.map((f) => patternRowId(pattern, f.path)),
     caption: `Top files whose first pattern is ${PATTERN_INFO[pattern].label.toLowerCase()}, hottest first`,
     noun: "files",
     total: own.length,
@@ -209,9 +222,10 @@ function guidelineFacts(p: Prepared): Block {
  * knowledge-risk pattern of the file. A file with no blame has no pattern and is grey. The map prints paths and
  * patterns only, never names.
  */
-function treemapBlock(measured: MeasuredPatterns, code: CodeMapFiles): Block[] {
+function treemapBlock(measured: MeasuredPatterns, code: CodeMapFiles, listed: ReadonlyMap<string, Pattern>): Block[] {
   const pattern = new Map(measured.files.map((f) => [f.path, f.pattern]));
-  const items = code.files.map((file) => ({ path: file.path, size: file.lines, category: pattern.get(file.path) ?? null }));
+  // A file in a pattern's table links to its row there.
+  const items = code.files.map((file) => ({ path: file.path, size: file.lines, category: pattern.get(file.path) ?? null, ...(listed.has(file.path) ? { href: pageHref(patternRowId(listed.get(file.path)!, file.path)) } : {}) }));
   const lines = items.reduce((sum, item) => sum + item.size, 0);
   const noBlame = items.filter((item) => !pattern.has(item.path)).length;
   const blocks: Block[] = [
@@ -487,7 +501,7 @@ export const knowledge: ReportKind = {
           blocks: [
             ...(single ? [{ type: "notice" as const, level: "notice" as const, text: ONE_CONTRIBUTOR }] : []),
             { type: "judgement", slot: "summary" },
-            ...treemapBlock(measured, code),
+            ...treemapBlock(measured, code, listedFiles(measured.files, withFiles)),
           ],
         },
         {

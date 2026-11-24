@@ -7,7 +7,8 @@ import { folderDistance, folderOf } from "@code-health/graph/tree-distance";
 import { FILE_KINDS, FILES_READ, historyWindowText, READ_BY_COMMANDS } from "@code-health/history/report-header";
 import { dropEmptySlots } from "@code-health/report/empty-block";
 import { capRows } from "@code-health/report/table-cap";
-import { clip } from "@code-health/report/text";
+import { pageHref } from "@code-health/report/links";
+import { clip, targetId } from "@code-health/report/text";
 import { treeFromRef } from "@code-health/parse/source-tree";
 import type { Block } from "@code-health/report/block";
 import type { MoveMapEdge, MoveMapMark } from "@code-health/report/components/move-map";
@@ -119,6 +120,19 @@ function planText(plan: PlanSummary): string {
   return `${moved}; ${plural(plan.warnings.length, "warning")} from the mover: ${shown.join("; ")}${rest}`;
 }
 
+/** The ids of the rows of the candidate tables, which the move map's numbers link to, and of a planned candidate's section. */
+const moveId = (c: Candidate) => targetId("move", c.path);
+const reviewId = (c: Candidate) => targetId("review", c.path);
+const blockedId = (c: Candidate) => targetId("blocked", c.path);
+const candidateSectionId = (rank: number) => `candidate-${rank}`;
+
+/** The links of a table of candidates: a unit that has a section (a move plan and a judgement) links to it from its Unit cell. */
+const planLinks = (rows: readonly Candidate[], planned: readonly Candidate[]): Record<string, string>[] =>
+  rows.map((c): Record<string, string> => {
+    const at = planned.indexOf(c);
+    return at === -1 ? {} : { path: pageHref(candidateSectionId(at + 1)) };
+  });
+
 const gainColumns = (settings: LocalitySettings) => [
   { key: "path", label: "Unit" },
   { key: "kind", label: "Kind" },
@@ -165,7 +179,7 @@ const gainRow = (c: Candidate): Record<string, Cell> => ({
 });
 
 /** Units the planner can plan without a reason: kind move, ordered by gain over the locality.minDistance guideline. */
-function moveTable(rows: Candidate[], settings: LocalitySettings): Block {
+function moveTable(rows: Candidate[], settings: LocalitySettings, planned: readonly Candidate[]): Block {
   return {
     type: "ranked-table",
     ...capRows(
@@ -173,6 +187,8 @@ function moveTable(rows: Candidate[], settings: LocalitySettings): Block {
         caption: "Moves the planner can plan without --reason (kind move), ordered by gain over the locality.minDistance guideline",
         noun: "moves",
         emptyText: "No candidate has kind move, so no unit can be planned without --reason.",
+        rowIds: rows.map(moveId),
+        cellHrefs: planLinks(rows, planned),
         columns: gainColumns(settings),
         rows: rows.map(gainRow),
       },
@@ -183,7 +199,7 @@ function moveTable(rows: Candidate[], settings: LocalitySettings): Block {
 }
 
 /** Units whose move or split needs a reason or a decision first: kind review, split or inline. */
-function reviewTable(rows: Candidate[], settings: LocalitySettings): Block {
+function reviewTable(rows: Candidate[], settings: LocalitySettings, planned: readonly Candidate[]): Block {
   return {
     type: "ranked-table",
     ...capRows(
@@ -191,6 +207,8 @@ function reviewTable(rows: Candidate[], settings: LocalitySettings): Block {
         caption: "Reviews, splits and inlines (the planner needs --reason for these), ordered by gain over the locality.minDistance guideline",
         noun: "candidates",
         emptyText: "No candidate has kind review, split or inline.",
+        rowIds: rows.map(reviewId),
+        cellHrefs: planLinks(rows, planned),
         columns: gainColumns(settings),
         rows: rows.map(gainRow),
       },
@@ -324,6 +342,7 @@ function blockedTable(units: Candidate[]): Block {
         "Units held back by blockers, by the gain if the blockers were resolved: units recommended blocked, and units of kind move that still have blockers (a blocker is a file the unit depends on that stays behind and lowers the gain)",
       noun: "units",
       emptyText: "No unit is held back by blockers.",
+      rowIds: sorted.map(blockedId),
       columns: [
         { key: "path", label: "Unit" },
         { key: "kind", label: "Kind" },
@@ -349,7 +368,7 @@ function blockedTable(units: Candidate[]): Block {
  * their folders. Labels are the row numbers of the moves, blocked and reviews tables (a plain number, B and R). The folders drawn are those of
  * the units, their targets and the folders of the consumers of each arrow's unit.
  */
-function moveMap(moves: Candidate[], blocked: Candidate[], reviews: Candidate[], settings: LocalitySettings): Block {
+function moveMap(moves: Candidate[], blocked: Candidate[], reviews: Candidate[], settings: LocalitySettings, planned: readonly Candidate[]): Block {
   const drawnMoves = moves.slice(0, MAP_MOVES);
   const drawnBlocked = byUnblockedGain(blocked).slice(0, MAP_BLOCKED);
   const drawnReviews = reviews.slice(0, MAP_REVIEWS);
@@ -357,17 +376,34 @@ function moveMap(moves: Candidate[], blocked: Candidate[], reviews: Candidate[],
     ...drawnMoves.map((c, i) => ({ c, label: String(i + 1), held: false })),
     ...drawnBlocked.map((c, i) => ({ c, label: `B${i + 1}`, held: true })),
   ];
+  // A number links to the unit's section when it has a move plan, and otherwise to its row in the table it is numbered in (when that table lists it).
+  const planOrRow = (c: Candidate, row: string | undefined): string | undefined => {
+    const at = planned.indexOf(c);
+    return at === -1 ? row : pageHref(candidateSectionId(at + 1));
+  };
+  const hrefOf = (c: Candidate, label: string): string | undefined => {
+    if (label.startsWith("B")) return Number(label.slice(1)) <= TOP_BLOCKED ? pageHref(blockedId(c)) : undefined;
+    return planOrRow(c, Number(label) <= TOP ? pageHref(moveId(c)) : undefined);
+  };
   const arrowed = entries.filter(({ c }) => c.target !== c.location);
   // A blocked unit whose best folder is its own has no target to draw: its folder carries a marker.
   const stuck = entries.filter(({ c, held }) => held && c.target === c.location);
-  const edges = arrowed.map(({ c, label, held }): MoveMapEdge =>
-    held
-      ? { label, from: c.location, to: c.target, kind: "blocked", value: c.unblockedGain, valueText: `gain if unblocked ${c.unblockedGain}`, note: `blocked by ${nameList(c.blockers.map((b) => posix.basename(b.path)), 1)}` }
-      : { label, from: c.location, to: c.target, kind: "move", value: c.gain },
-  );
+  const edges = arrowed.map(({ c, label, held }): MoveMapEdge => {
+    const href = hrefOf(c, label);
+    const link = href === undefined ? {} : { href };
+    return held
+      ? { label, from: c.location, to: c.target, kind: "blocked", value: c.unblockedGain, valueText: `gain if unblocked ${c.unblockedGain}`, note: `blocked by ${nameList(c.blockers.map((b) => posix.basename(b.path)), 1)}`, ...link }
+      : { label, from: c.location, to: c.target, kind: "move", value: c.gain, ...link };
+  });
   const marks: MoveMapMark[] = [
-    ...drawnReviews.map((c, i) => ({ folder: c.location, label: `R${i + 1}`, kind: c.recommendation })),
-    ...stuck.map(({ c, label }) => ({ folder: c.location, label, kind: "blocked-unit", note: `blocked by ${nameList(c.blockers.map((b) => posix.basename(b.path)), 1)}` })),
+    ...drawnReviews.map((c, i): MoveMapMark => {
+      const href = planOrRow(c, i + 1 <= TOP_REVIEW ? pageHref(reviewId(c)) : undefined);
+      return { folder: c.location, label: `R${i + 1}`, kind: c.recommendation, ...(href === undefined ? {} : { href }) };
+    }),
+    ...stuck.map(({ c, label }): MoveMapMark => {
+      const href = hrefOf(c, label);
+      return { folder: c.location, label, kind: "blocked-unit", note: `blocked by ${nameList(c.blockers.map((b) => posix.basename(b.path)), 1)}`, ...(href === undefined ? {} : { href }) };
+    }),
     ...arrowed.flatMap(({ c, label }) => [...consumerFolders(c)].filter((folder) => folder !== c.location && folder !== c.target).map((folder) => ({ folder, label, kind: "consumer" }))),
   ];
   const folders = [...new Set([...edges.flatMap((e) => [e.from, e.to]), ...marks.map((m) => m.folder)])].sort();
@@ -486,7 +522,7 @@ export const localityReport: ReportKind = {
     const history = extra.history;
     const inputs = output.inputs as Record<string, unknown>;
     const sections: Section[] = [
-      { id: "summary", heading: "Summary", blocks: [{ type: "judgement", slot: "summary" }, ...(moves.length + blocked.length + reviews.length === 0 ? [] : [moveMap(moves, blocked, reviews, settings)])] },
+      { id: "summary", heading: "Summary", blocks: [{ type: "judgement", slot: "summary" }, ...(moves.length + blocked.length + reviews.length === 0 ? [] : [moveMap(moves, blocked, reviews, settings, planned)])] },
       {
         id: "candidates",
         heading: "Candidates",
@@ -503,8 +539,8 @@ export const localityReport: ReportKind = {
           },
           ofKind.length === 0
             ? { type: "notice", level: "notice", text: "The analysis found no candidate of kind move, split, inline, scrutinise or review." }
-            : moveTable(moves, settings),
-          ...(ofKind.length === 0 ? [] : [reviewTable(reviews, settings), scrutiniseTable(scrutinise, settings)]),
+            : moveTable(moves, settings, planned),
+          ...(ofKind.length === 0 ? [] : [reviewTable(reviews, settings, planned), scrutiniseTable(scrutinise, settings)]),
         ],
       },
       ...planned.map((candidate, index) => candidateSection(index + 1, candidate, plans[index]!, settings)),

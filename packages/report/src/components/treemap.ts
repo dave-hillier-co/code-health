@@ -2,6 +2,7 @@ import { clip, count, escapeHtml, escapeMd, formatNumber } from "../text.ts";
 import { htmlTable, mdTable } from "../tables.ts";
 import { bandCountText, bandLegend, makeBands, type Bands } from "./bands.ts";
 import { figureHtml } from "./figure.ts";
+import { linked } from "../links.ts";
 
 export interface TreemapItem {
   /** Repo-relative path. Folders nest the tiles. */
@@ -12,6 +13,8 @@ export interface TreemapItem {
   colour: number | null;
   /** A short mark, such as a rank. A marked tile is outlined and prints the mark before its name, and the table lists it first. */
   mark?: string;
+  /** Links the tile and its row in the table to where the file is described, on this page or another report page. Html only. */
+  href?: string;
 }
 
 export interface TreemapData {
@@ -189,6 +192,8 @@ export interface MapItem {
   /** The tooltip. */
   title: string;
   mark?: string;
+  /** Wraps the tile in a link. A linked tile is always drawn on its own, however small. */
+  href?: string;
 }
 
 /** A tile with less area than this (in svg units squared) is drawn as a bare rectangle, with no name and no tooltip. */
@@ -227,7 +232,7 @@ export function drawMap(items: readonly MapItem[]): MapDrawing {
   for (const t of tiles) {
     const item = byPath.get(t.path)!;
     const rect = `<rect x="${fmt(t.x)}" y="${fmt(t.y)}" width="${fmt(t.w)}" height="${fmt(t.h)}"/>`;
-    if (item.mark === undefined && t.w * t.h < BARE_AREA) {
+    if (item.mark === undefined && item.href === undefined && t.w * t.h < BARE_AREA) {
       bare.set(item.band, [...(bare.get(item.band) ?? []), rect]);
       bareTiles++;
       bareSize += item.size;
@@ -238,7 +243,7 @@ export function drawMap(items: readonly MapItem[]): MapDrawing {
     const first = t.w >= 36 && t.h >= 16 ? clip(`${markText}${t.name}`, room) : item.mark !== undefined && t.w >= 14 && t.h >= 14 ? clip(item.mark, Math.floor((t.w - 4) / CHAR)) : "";
     const labels = first === "" ? [] : [`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 12)}">${escapeHtml(first)}</text>`];
     if (t.w >= 36 && t.h >= 30 && item.value !== "") labels.push(`<text x="${fmt(t.x + 3)}" y="${fmt(t.y + 25)}">${escapeHtml(clip(item.value, room))}</text>`);
-    out.push(`<g class="tile ${item.band}${item.mark === undefined ? "" : " marked"}"><title>${escapeHtml(item.title)}</title>${rect}${labels.join("")}</g>`);
+    out.push(linked(`<g class="tile ${item.band}${item.mark === undefined ? "" : " marked"}"><title>${escapeHtml(item.title)}</title>${rect}${labels.join("")}</g>`, item.href));
   }
   for (const band of [...bare.keys()].sort()) out.push(`<g class="tile bare ${band}">${bare.get(band)!.join("")}</g>`);
   return { drawing: out.join("\n"), bare: { tiles: bareTiles, size: bareSize }, width: WIDTH, height: HEIGHT };
@@ -282,13 +287,19 @@ function prepare(data: TreemapData): Prepared {
 
 const bandName = (item: TreemapItem, bands: Bands) => (item.colour === null ? "none" : String(bands.of(item.colour)));
 
-const rowsOf = (prepared: Prepared, limit: number) => tableOrder(prepared.drawn).slice(0, limit).map((item) => [`${item.mark === undefined ? "" : `${item.mark} `}${item.path}`, formatNumber(item.size), item.colour === null ? "none" : formatNumber(item.colour), bandName(item, prepared.bands)]);
+const tableItems = (prepared: Prepared, limit: number) => tableOrder(prepared.drawn).slice(0, limit);
+/** Whether the table has a column for the marks: only when some tile has one. */
+const hasMarks = (prepared: Prepared) => prepared.drawn.some((item) => item.mark !== undefined);
 
-function columns(data: TreemapData) {
-  return [{ label: "Path" }, { label: `Size (${data.sizeLabel})`, align: "right" as const }, { label: `Colour (${data.colourLabel})`, align: "right" as const }, { label: "Band", align: "right" as const }];
+const rowsOf = (prepared: Prepared, limit: number) => tableItems(prepared, limit).map((item) => [...(hasMarks(prepared) ? [item.mark ?? ""] : []), item.path, formatNumber(item.size), item.colour === null ? "none" : formatNumber(item.colour), bandName(item, prepared.bands)]);
+
+function columns(data: TreemapData, prepared: Prepared) {
+  return [...(hasMarks(prepared) ? [{ label: "#", align: "right" as const }] : []), { label: "Path" }, { label: `Size (${data.sizeLabel})`, align: "right" as const }, { label: `Colour (${data.colourLabel})`, align: "right" as const }, { label: "Band", align: "right" as const }];
 }
 
 const DEFAULT_TABLE_ROWS = 20;
+
+const pathColumn = (prepared: Prepared) => (hasMarks(prepared) ? 1 : 0);
 
 /** How many items and how much size each band holds, for the legend. */
 function perBand(prepared: Prepared): { band: string; items: number; size: number }[] {
@@ -312,6 +323,7 @@ export function treemapHtml(data: TreemapData): string {
       value: item.colour === null ? "" : formatNumber(item.colour),
       title: `${item.mark === undefined ? "" : `${item.mark} `}${item.path}: ${formatNumber(item.size)} ${data.sizeLabel}, ${item.colour === null ? "no" : formatNumber(item.colour)} ${data.colourLabel}`,
       ...(item.mark === undefined ? {} : { mark: item.mark }),
+      ...(item.href === undefined ? {} : { href: item.href }),
     })),
   );
   const tableRows = data.tableRows ?? DEFAULT_TABLE_ROWS;
@@ -326,7 +338,7 @@ export function treemapHtml(data: TreemapData): string {
     width: map.width,
     height: map.height,
     drawing: map.drawing,
-    table: htmlTable(`${data.title}: ${prepared.drawn.length > tableRows ? "the marked items, then the largest" : "the items drawn, marked first, then largest first"}`, columns(data), rowsOf(prepared, tableRows).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    table: htmlTable(`${data.title}: ${prepared.drawn.length > tableRows ? "the marked items, then the largest" : "the items drawn, marked first, then largest first"}`, columns(data, prepared), rowsOf(prepared, tableRows).map((r, k) => r.map((cell, c) => (c === pathColumn(prepared) ? linked(escapeHtml(cell), tableItems(prepared, tableRows)[k]?.href) : escapeHtml(cell)))), { rowHeaders: true, rowHeaderColumn: pathColumn(prepared) }),
     notes,
   });
 }
@@ -339,7 +351,7 @@ export function treemapMd(data: TreemapData): string {
   return [
     `**${escapeMd(data.title)}** (the items by ${data.sizeLabel}, marked first, then largest first; band is ${data.colourLabel}, ${bandLegend(prepared.bands)}; ${bands})`,
     "",
-    mdTable(columns(data), rowsOf(prepared, tableRows)),
+    mdTable(columns(data, prepared), rowsOf(prepared, tableRows)),
     ...(left.length === 0 ? [] : ["", `${left.join("; ")}.`]),
   ].join("\n");
 }

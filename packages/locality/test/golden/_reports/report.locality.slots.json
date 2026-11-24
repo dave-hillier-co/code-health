@@ -36,6 +36,7 @@
             "edges": [
               {
                 "from": "src/shared/pair",
+                "href": "#candidate-1",
                 "kind": "move",
                 "label": "1",
                 "to": "src/reports",
@@ -43,6 +44,7 @@
               },
               {
                 "from": "src/shared/utils",
+                "href": "#candidate-2",
                 "kind": "move",
                 "label": "2",
                 "to": "src",
@@ -50,6 +52,7 @@
               },
               {
                 "from": "src/shared/cycle",
+                "href": "#candidate-3",
                 "kind": "move",
                 "label": "3",
                 "to": "src/orders",
@@ -57,6 +60,7 @@
               },
               {
                 "from": "src/shared/utils",
+                "href": "#candidate-4",
                 "kind": "move",
                 "label": "4",
                 "to": "src/billing",
@@ -64,6 +68,7 @@
               },
               {
                 "from": "src/shared",
+                "href": "#candidate-5",
                 "kind": "move",
                 "label": "5",
                 "to": "src",
@@ -123,43 +128,51 @@
             "marks": [
               {
                 "folder": "src/shared/helpers",
+                "href": "#candidate-6",
                 "kind": "split",
                 "label": "R1"
               },
               {
                 "folder": "src/shared/utils",
+                "href": "#candidate-7",
                 "kind": "inline",
                 "label": "R2"
               },
               {
                 "folder": "src",
+                "href": "#candidate-8",
                 "kind": "review",
                 "label": "R3"
               },
               {
                 "folder": "src/billing",
+                "href": "#candidate-9",
                 "kind": "inline",
                 "label": "R4"
               },
               {
                 "folder": "src/orders",
+                "href": "#candidate-10",
                 "kind": "inline",
                 "label": "R5"
               },
               {
                 "folder": "src/lib/kernel",
+                "href": "#blocked-tool-ts-572d68",
                 "kind": "blocked-unit",
                 "label": "B1",
                 "note": "blocked by core.ts"
               },
               {
                 "folder": "src/shared/pair",
+                "href": "#blocked-a-ts-3d07b0",
                 "kind": "blocked-unit",
                 "label": "B2",
                 "note": "blocked by core.ts"
               },
               {
                 "folder": "src/shared/pair",
+                "href": "#blocked-b-ts-dd34f9",
                 "kind": "blocked-unit",
                 "label": "B3",
                 "note": "blocked by core.ts"
@@ -370,6 +383,23 @@
           },
           {
             "caption": "Moves the planner can plan without --reason (kind move), ordered by gain over the locality.minDistance guideline",
+            "cellHrefs": [
+              {
+                "path": "#candidate-1"
+              },
+              {
+                "path": "#candidate-2"
+              },
+              {
+                "path": "#candidate-3"
+              },
+              {
+                "path": "#candidate-4"
+              },
+              {
+                "path": "#candidate-5"
+              }
+            ],
             "columns": [
               {
                 "key": "path",
@@ -424,6 +454,13 @@
             ],
             "emptyText": "No candidate has kind move, so no unit can be planned without --reason.",
             "noun": "moves",
+            "rowIds": [
+              "move-pair-40a361",
+              "move-money-ts-b491d0",
+              "move-a-ts-c36ecd",
+              "move-invoice-ts-062432",
+              "move-log-ts-af08e0"
+            ],
             "rows": [
               {
                 "confidence": "normal",
@@ -490,6 +527,23 @@
           },
           {
             "caption": "Reviews, splits and inlines (the planner needs --reason for these), ordered by gain over the locality.minDistance guideline",
+            "cellHrefs": [
+              {
+                "path": "#candidate-6"
+              },
+              {
+                "path": "#candidate-7"
+              },
+              {
+                "path": "#candidate-8"
+              },
+              {
+                "path": "#candidate-9"
+              },
+              {
+                "path": "#candidate-10"
+              }
+            ],
             "columns": [
               {
                 "key": "path",
@@ -544,6 +598,13 @@
             ],
             "emptyText": "No candidate has kind review, split or inline.",
             "noun": "candidates",
+            "rowIds": [
+              "review-mixed-ts-628e47",
+              "review-slug-ts-0b8e25",
+              "review-place-ts-a3a2e3",
+              "review-index-ts-bf03d5",
+              "review-audit-ts-fb8ac5"
+            ],
             "rows": [
               {
                 "confidence": "normal",
@@ -1316,6 +1377,11 @@
             ],
             "emptyText": "No unit is held back by blockers.",
             "noun": "units",
+            "rowIds": [
+              "blocked-tool-ts-572d68",
+              "blocked-a-ts-3d07b0",
+              "blocked-b-ts-dd34f9"
+            ],
             "rows": [
               {
                 "blockers": "src/lib/kernel/core.ts",

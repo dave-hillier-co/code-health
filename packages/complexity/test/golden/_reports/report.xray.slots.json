@@ -44,12 +44,14 @@
             "bars": [
               {
                 "fixes": 2,
+                "href": "#function-src/billing.ts-billing-ts-priceorder-781a9d",
                 "label": "priceOrder",
                 "revisions": 5,
                 "value": 8
               },
               {
                 "fixes": 1,
+                "href": "#function-src/billing.ts-billing-ts-describe-15a13e",
                 "label": "describe",
                 "revisions": 2,
                 "value": 1
@@ -76,11 +78,19 @@
                 null
               ]
             ],
+            "columnHrefs": [
+              "#function-src/billing.ts-billing-ts-priceorder-781a9d",
+              "#function-src/billing.ts-billing-ts-describe-15a13e"
+            ],
             "columns": [
               "priceOrder",
               "describe"
             ],
             "orderText": "Rows and columns are the 2 functions with the most revisions (at least 2), most first. A cell is the number of landed changes in the window that touched both functions; the diagonal is empty.",
+            "rowHrefs": [
+              "#function-src/billing.ts-billing-ts-priceorder-781a9d",
+              "#function-src/billing.ts-billing-ts-describe-15a13e"
+            ],
             "rows": [
               "priceOrder",
               "describe"
@@ -158,6 +168,10 @@
               }
             ],
             "noun": "functions",
+            "rowIds": [
+              "function-src/billing.ts-billing-ts-priceorder-781a9d",
+              "function-src/billing.ts-billing-ts-describe-15a13e"
+            ],
             "rows": [
               {
                 "cognitive": 8,

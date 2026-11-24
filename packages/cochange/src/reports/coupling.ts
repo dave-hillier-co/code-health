@@ -12,7 +12,9 @@ import type { Evidence } from "@code-health/history/evidence";
 import type { FiltersApplied } from "@code-health/history/noise";
 import { noCacheOption } from "@code-health/history/results-cache";
 import { dropEmptySlots } from "@code-health/report/empty-block";
+import { pageHref, reportHref } from "@code-health/report/links";
 import { capRows } from "@code-health/report/table-cap";
+import { targetId } from "@code-health/report/text";
 import type { RankedTableData } from "@code-health/report/components/ranked-table";
 import { testClassifier } from "@code-health/parse/test-files";
 import { command as clustersCommand } from "../commands/clusters.ts";
@@ -107,6 +109,11 @@ function trendCell(row: PairRow): string {
 
 const pairRef = (row: PairRow) => `${row.path} <-> ${row.with}`;
 
+/** The ids of the rows the figures and tables link to: a pair in the coupled pairs table, a file in the sum table, a cluster in the clusters table. */
+const pairId = (row: PairRow) => targetId("pair", pairRef(row));
+const sumId = (file: string) => targetId("sum", file);
+const clusterId = (n: number) => `cluster-${n}`;
+
 /** A ranked table cut to its first rows, with the command that lists the rest. */
 const cappedTable = (table: RankedTableData, max: number, command: string): Block => ({ type: "ranked-table", ...capRows(table, max, command) });
 
@@ -159,7 +166,8 @@ const pairCells = (row: PairRow, withTrend: boolean): Record<string, Cell> => ({
   ...(withTrend ? { trend: trendCell(row) } : {}),
 });
 
-function pairsSection(production: readonly PairRow[], total: number, settings: { minDegree: number }, withTrend: boolean): Block[] {
+function pairsSection(production: readonly PairRow[], total: number, settings: { minDegree: number }, withTrend: boolean, summed: ReadonlySet<string>): Block[] {
+  const listed = production.slice(0, TOP_PAIRS);
   return [
     cappedTable(
       {
@@ -167,6 +175,8 @@ function pairsSection(production: readonly PairRow[], total: number, settings: {
         noun: "pairs",
         total: production.length,
         emptyText: `None of the ${total} pairs that reach the support floor is a pair of production files; they are all in the table of expected pairs.`,
+        rowIds: listed.map(pairId),
+        cellHrefs: listed.map((row): Record<string, string> => ({ ...(summed.has(row.path) ? { file: pageHref(sumId(row.path)) } : {}), ...(summed.has(row.with) ? { with: pageHref(sumId(row.with)) } : {}) })),
         columns: pairColumns(settings, withTrend),
         rows: production.map((row) => pairCells(row, withTrend)),
       },
@@ -271,6 +281,7 @@ function sumSection(sums: readonly FileSum[]): Block[] {
       noun: "files",
       total: sums.length,
       emptyText: "No production pair reaches the support floor, so no file has a sum of coupling.",
+      rowIds: sums.slice(0, TOP_FILES).map((s) => sumId(s.file)),
       columns: [
         { key: "file", label: "File" },
         { key: "shared", label: "Sum of shared changes", align: "right" },
@@ -312,6 +323,14 @@ function matrixFiles(clusters: readonly ClusterRow[], sums: readonly FileSum[]):
 
 function matrixSection(classified: readonly ClassifiedPair[], clusters: readonly ClusterRow[], sums: readonly FileSum[], settings: { minSupport: number; minDegree: number }): Block[] {
   const drawn = matrixFiles(clusters, sums);
+  // A file links to its row in the sum table, or else to the first listed pair it is in.
+  const summed = new Set(sums.slice(0, TOP_FILES).map((s) => s.file));
+  const listedPairs = classified.filter((c) => c.reason === null).slice(0, TOP_PAIRS).map((c) => c.row);
+  const fileHref = (file: string): string | null => {
+    if (summed.has(file)) return pageHref(sumId(file));
+    const pair = listedPairs.find((row) => row.path === file || row.with === file);
+    return pair === undefined ? null : pageHref(pairId(pair));
+  };
   if (drawn.length < 2) return [];
   const pair = new Map<string, ClassifiedPair>();
   for (const c of classified) {
@@ -326,7 +345,7 @@ function matrixSection(classified: readonly ClassifiedPair[], clusters: readonly
     if (d.cluster === null) continue;
     const last = groups[groups.length - 1];
     if (last !== undefined && last.label === `cluster ${d.cluster}`) last.end = i;
-    else groups.push({ label: `cluster ${d.cluster}`, start: i, end: i });
+    else groups.push({ label: `cluster ${d.cluster}`, start: i, end: i, ...(d.cluster <= TOP_CLUSTERS ? { href: pageHref(clusterId(d.cluster)) } : {}) });
   }
   const clustersDrawn = new Set(drawn.flatMap((d) => (d.cluster === null ? [] : [d.cluster])));
   const trailing = drawn.filter((d) => d.cluster === null).length;
@@ -354,6 +373,8 @@ function matrixSection(classified: readonly ClassifiedPair[], clusters: readonly
       rows: labels,
       columns: labels,
       cells: drawn.map((_, i) => drawn.map((_, j) => at(i, j)?.row.degree ?? null)),
+      rowHrefs: drawn.map((d) => fileHref(d.file)),
+      columnHrefs: drawn.map((d) => fileHref(d.file)),
       breaks: MATRIX_BREAKS,
       marks: MATRIX_MARKS,
       cellMarks: drawn.map((_, i) => drawn.map((_, j) => { const c = at(i, j); return c === undefined ? null : c.reason !== null ? "expected" : boxed(i, j) ? null : "across"; })),
@@ -391,6 +412,7 @@ function clustersSection(rows: readonly ClusterRow[]): Block[] {
       caption: "Clusters of mutually coupled files, with their spread",
       noun: "clusters",
       total: rows.length,
+      rowIds: rows.slice(0, TOP_CLUSTERS).map((_, i) => clusterId(i + 1)),
       columns: [
         { key: "files", label: "Files" },
         { key: "size", label: "Files in cluster", align: "right" },
@@ -432,6 +454,7 @@ function hiddenSection(stored: SiblingResult | undefined): { blocks: Block[]; re
               caption: "Pairs with high co-change and low static coupling, from structure hidden",
               noun: "pairs",
               total: rows.length,
+              seeAlso: [{ href: reportHref("structure"), text: "The structure report shows the dependencies between modules: import cycles, layer violations and stability." }],
               columns: [
                 { key: "from", label: "Module" },
                 { key: "to", label: "Module" },
@@ -565,7 +588,7 @@ export const coupling: ReportKind = {
       ...(rows.length === 0
         ? []
         : [
-            ...pairsSection(production, rows.length, guideline, withTrend),
+            ...pairsSection(production, rows.length, guideline, withTrend, new Set(sums.slice(0, TOP_FILES).map((s) => s.file))),
             ...(tie === null ? [] : [tie]),
             ...judged.map((_, i): Block => ({ type: "judgement", slot: `pair-${i + 1}` })),
             ...expectedSection(expected, guideline),

@@ -1,6 +1,7 @@
 import { clip, escapeHtml, escapeMd, formatNumber } from "../text.ts";
 import { htmlTable, mdTable } from "../tables.ts";
 import { figureHtml } from "./figure.ts";
+import { linked } from "../links.ts";
 import { noticeHtml, noticeMd } from "./notice.ts";
 
 export interface ScatterPoint {
@@ -12,6 +13,8 @@ export interface ScatterPoint {
   y: number;
   /** Drawn as a square and, within `maxLabels`, named in the drawing and listed in the table. */
   highlight?: boolean;
+  /** Links the point and its table row to where it is described, on this page or another report page. Only a named point is linked. Html only. */
+  href?: string;
 }
 
 /** A dashed line at a value of one axis. The value is printed beside the line and the name is in the legend. */
@@ -210,7 +213,7 @@ export function scatterHtml(data: ScatterData): string {
   const marks = named.map((p, i) => {
     const label = placed[i];
     const text = label === null || label === undefined ? "" : `<text class="name" x="${at(label.x)}" y="${at(label.y)}" text-anchor="${label.anchor}">${escapeHtml(label.text)}</text>`;
-    return `<g class="point named"><title>${escapeHtml(`${i + 1}. ${p.label}: ${formatNumber(p.x)} ${data.xLabel}, ${formatNumber(p.y)} ${data.yLabel}`)}</title><rect x="${at(px(p.x) - 4)}" y="${at(py(p.y) - 4)}" width="8" height="8"/>${text}</g>`;
+    return linked(`<g class="point named"><title>${escapeHtml(`${i + 1}. ${p.label}: ${formatNumber(p.x)} ${data.xLabel}, ${formatNumber(p.y)} ${data.yLabel}`)}</title><rect x="${at(px(p.x) - 4)}" y="${at(py(p.y) - 4)}" width="8" height="8"/>${text}</g>`, p.href);
   });
   const byNumber = placed.filter((p) => p?.byNumber === true).length;
   const unplaced = placed.filter((p) => p === null).length;
@@ -226,7 +229,7 @@ export function scatterHtml(data: ScatterData): string {
     width: WIDTH,
     height: HEIGHT,
     drawing: [frame, ...lines, ...ticks, ...axisNames, ...dots, ...marks].join("\n"),
-    table: htmlTable(`${data.title}: the named points`, columns(data), rows(data).map((r) => r.map(escapeHtml)), { rowHeaders: false }),
+    table: htmlTable(`${data.title}: the named points`, columns(data), rows(data).map((r, k) => r.map((cell, c) => (c === 1 ? linked(escapeHtml(cell), labelled(data)[k]?.href) : escapeHtml(cell)))), { rowHeaders: false }),
     notes: [...notes(data), ...extra].map((n) => `<p class="legend">${escapeHtml(n)}</p>\n`).join(""),
   });
 }

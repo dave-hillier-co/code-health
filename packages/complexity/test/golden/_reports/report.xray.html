@@ -103,6 +103,10 @@ svg .guideline line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray:
 svg circle.point { fill: var(--point); fill-opacity: .45; }
 svg rect.point, svg .point.named rect { fill: var(--bar-above); stroke: var(--bg); stroke-width: 1; }
 svg .point.named text { paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
+svg a:hover text { text-decoration: underline; }
+svg a > text, svg a > tspan { fill: var(--link); text-decoration: underline; }
+svg a:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+svg a .tile rect, svg a .tile.marked rect { stroke: var(--link); stroke-width: 2; }
 svg polyline { fill: none; stroke: var(--bar-above); stroke-width: 2; } svg circle { fill: var(--bar-above); }
 .notice { border-left: 4px solid var(--notice-rule); background: var(--notice-bg); padding: .5rem .75rem; margin: .75rem 0; }
 .judgement { border: 1px solid var(--rule); border-left: 4px solid var(--link); background: var(--panel); padding: .25rem 1rem .5rem; margin: 1rem 0; }
@@ -158,32 +162,32 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </table>
 <figure class="chart function-bars">
 <figcaption>Functions of src/billing.ts by cognitive complexity</figcaption>
-<svg role="img" aria-labelledby="functions-of-src-billing-ts-by-cognitive-complexity-8e0db8-title functions-of-src-billing-ts-by-cognitive-complexity-8e0db8-desc" width="760" height="74" viewBox="0 0 760 74" preserveAspectRatio="xMinYMin meet">
-<title id="functions-of-src-billing-ts-by-cognitive-complexity-8e0db8-title">Functions of src/billing.ts by cognitive complexity</title>
-<desc id="functions-of-src-billing-ts-by-cognitive-complexity-8e0db8-desc">2 functions by cognitive complexity, each with its revisions and fixes in the history window. A bar longer than the guideline marker is above guideline, shown with a triangle and the words in the table.</desc>
+<svg role="img" aria-labelledby="functions-of-src-billing-ts-by-cognitive-complexity-c97f7a-title functions-of-src-billing-ts-by-cognitive-complexity-c97f7a-desc" width="760" height="74" viewBox="0 0 760 74" preserveAspectRatio="xMinYMin meet">
+<title id="functions-of-src-billing-ts-by-cognitive-complexity-c97f7a-title">Functions of src/billing.ts by cognitive complexity</title>
+<desc id="functions-of-src-billing-ts-by-cognitive-complexity-c97f7a-desc">2 functions by cognitive complexity, each with its revisions and fixes in the history window. A bar longer than the guideline marker is above guideline, shown with a triangle and the words in the table.</desc>
 <g class="column-heads"><text x="244" y="14" text-anchor="end">Function</text><text x="250" y="14">cognitive complexity</text><text x="660" y="14" text-anchor="end">Revisions</text><text x="740" y="14" text-anchor="end">Fixes</text></g>
-<g class="bar within"><text x="244" y="39" text-anchor="end">priceOrder<title>priceOrder</title></text><rect x="250" y="26" width="138.7" height="18"/><line x1="510.0" x2="510.0" y1="23" y2="47"/><text x="518.0" y="39">8</text><text x="660" y="39" text-anchor="end">5</text><text x="740" y="39" text-anchor="end">2</text></g>
-<g class="bar within"><text x="244" y="65" text-anchor="end">describe<title>describe</title></text><rect x="250" y="52" width="17.3" height="18"/><line x1="510.0" x2="510.0" y1="49" y2="73"/><text x="518.0" y="65">1</text><text x="660" y="65" text-anchor="end">2</text><text x="740" y="65" text-anchor="end">1</text></g>
+<a href="#function-src/billing.ts-billing-ts-priceorder-781a9d"><g class="bar within"><text x="244" y="39" text-anchor="end">priceOrder<title>priceOrder</title></text><rect x="250" y="26" width="138.7" height="18"/><line x1="510.0" x2="510.0" y1="23" y2="47"/><text x="518.0" y="39">8</text><text x="660" y="39" text-anchor="end">5</text><text x="740" y="39" text-anchor="end">2</text></g></a>
+<a href="#function-src/billing.ts-billing-ts-describe-15a13e"><g class="bar within"><text x="244" y="65" text-anchor="end">describe<title>describe</title></text><rect x="250" y="52" width="17.3" height="18"/><line x1="510.0" x2="510.0" y1="49" y2="73"/><text x="518.0" y="65">1</text><text x="660" y="65" text-anchor="end">2</text><text x="740" y="65" text-anchor="end">1</text></g></a>
 </svg>
 <table>
 <caption>Functions of src/billing.ts by cognitive complexity: cognitive complexity, revisions and fixes</caption>
 <thead><tr><th scope="col">Function</th><th scope="col" class="number">cognitive complexity</th><th scope="col" class="number">Guideline</th><th scope="col">Position</th><th scope="col" class="number">Revisions</th><th scope="col" class="number">Fixes</th></tr></thead>
 <tbody>
-<tr><th scope="row">priceOrder</th><td class="number">8</td><td class="number">15</td><td>below guideline</td><td class="number">5</td><td class="number">2</td></tr>
-<tr><th scope="row">describe</th><td class="number">1</td><td class="number">15</td><td>below guideline</td><td class="number">2</td><td class="number">1</td></tr>
+<tr><th scope="row"><a href="#function-src/billing.ts-billing-ts-priceorder-781a9d">priceOrder</a></th><td class="number">8</td><td class="number">15</td><td>below guideline</td><td class="number">5</td><td class="number">2</td></tr>
+<tr><th scope="row"><a href="#function-src/billing.ts-billing-ts-describe-15a13e">describe</a></th><td class="number">1</td><td class="number">15</td><td>below guideline</td><td class="number">2</td><td class="number">1</td></tr>
 </tbody>
 </table>
 <p class="legend">The vertical line marks the guideline of 15 and ▲ marks a function above it. A guideline orders and labels results; it decides nothing. The guideline is complexity.guidelines, the warn level. Revisions and fixes count landed changes in the history window.</p>
 </figure>
 <figure class="chart matrix">
 <figcaption>Changes shared by the most changed functions of src/billing.ts</figcaption>
-<svg role="img" aria-labelledby="changes-shared-by-the-most-changed-functions-of-src-billing-ts-718a6d-title changes-shared-by-the-most-changed-functions-of-src-billing-ts-718a6d-desc" width="277" height="142" viewBox="0 0 277 142" preserveAspectRatio="xMinYMin meet">
-<title id="changes-shared-by-the-most-changed-functions-of-src-billing-ts-718a6d-title">Changes shared by the most changed functions of src/billing.ts</title>
-<desc id="changes-shared-by-the-most-changed-functions-of-src-billing-ts-718a6d-desc">A grid of 2 rows by 2 columns holding shared changes. Each cell prints its value; the table below lists every cell that has a value or a mark.</desc>
-<text x="192" y="84" transform="rotate(-35 192 84)">priceOrder</text>
-<text x="216" y="84" transform="rotate(-35 216 84)">describe</text>
-<text x="174" y="101" dominant-baseline="central" text-anchor="end">priceOrder</text>
-<text x="174" y="125" dominant-baseline="central" text-anchor="end">describe</text>
+<svg role="img" aria-labelledby="changes-shared-by-the-most-changed-functions-of-src-billing-ts-43b4a9-title changes-shared-by-the-most-changed-functions-of-src-billing-ts-43b4a9-desc" width="277" height="142" viewBox="0 0 277 142" preserveAspectRatio="xMinYMin meet">
+<title id="changes-shared-by-the-most-changed-functions-of-src-billing-ts-43b4a9-title">Changes shared by the most changed functions of src/billing.ts</title>
+<desc id="changes-shared-by-the-most-changed-functions-of-src-billing-ts-43b4a9-desc">A grid of 2 rows by 2 columns holding shared changes. Each cell prints its value; the table below lists every cell that has a value or a mark.</desc>
+<a href="#function-src/billing.ts-billing-ts-priceorder-781a9d"><text x="192" y="84" transform="rotate(-35 192 84)">priceOrder</text></a>
+<a href="#function-src/billing.ts-billing-ts-describe-15a13e"><text x="216" y="84" transform="rotate(-35 216 84)">describe</text></a>
+<a href="#function-src/billing.ts-billing-ts-priceorder-781a9d"><text x="174" y="101" dominant-baseline="central" text-anchor="end">priceOrder</text></a>
+<a href="#function-src/billing.ts-billing-ts-describe-15a13e"><text x="174" y="125" dominant-baseline="central" text-anchor="end">describe</text></a>
 <g class="cell band-none"><rect x="180" y="90" width="22" height="22"/></g>
 <g class="cell band-1"><rect x="204" y="90" width="22" height="22"/><text x="215" y="101" text-anchor="middle" dominant-baseline="central">1</text></g>
 <g class="cell band-1"><rect x="180" y="114" width="22" height="22"/><text x="191" y="125" text-anchor="middle" dominant-baseline="central">1</text></g>
@@ -193,12 +197,12 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <caption>Changes shared by the most changed functions of src/billing.ts: the cells that have a value or a mark, each pair once</caption>
 <thead><tr><th scope="col">Row</th><th scope="col">Column</th><th scope="col" class="number">Value</th><th scope="col">Mark</th></tr></thead>
 <tbody>
-<tr><td>priceOrder</td><td>describe</td><td class="number">1</td><td></td></tr>
+<tr><td><a href="#function-src/billing.ts-billing-ts-priceorder-781a9d">priceOrder</a></td><td><a href="#function-src/billing.ts-billing-ts-describe-15a13e">describe</a></td><td class="number">1</td><td></td></tr>
 </tbody>
 </table>
 <p class="legend">Colour is shared changes in one band, and each cell prints its value: band 1: 1. Grey blank cells have no value (2 cells of 4 cells). Rows and columns are the 2 functions with the most revisions (at least 2), most first. A cell is the number of landed changes in the window that touched both functions; the diagonal is empty.</p>
 </figure>
-<section class="judgement">
+<section class="judgement" id="judgement-summary-761b7a">
 <h3>Judgement: the file as a whole</h3>
 <p><strong class="subject">src/billing.ts</strong>: The pricing function holds most of the complexity and most of the fixes.</p>
 </section>
@@ -209,16 +213,16 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <caption>X-Ray of src/billing.ts: its functions, most complex first</caption>
 <thead><tr><th scope="col" class="number">#</th><th scope="col">Function</th><th scope="col">Lines</th><th scope="col" class="number">Length</th><th scope="col" class="number">Cognitive</th><th scope="col" class="number">Nesting</th><th scope="col" class="number">Cyclomatic</th><th scope="col" class="number">Revisions</th><th scope="col" class="number">Fixes</th><th scope="col">Code smells</th></tr></thead>
 <tbody>
-<tr><td class="number">1</td><td>priceOrder</td><td>4-14</td><td class="number">11</td><td class="number">8</td><td class="number">2</td><td class="number">5</td><td class="number">5</td><td class="number">2</td><td>none</td></tr>
-<tr><td class="number">2</td><td>describe</td><td>16-22</td><td class="number">7</td><td class="number">1</td><td class="number">1</td><td class="number">2</td><td class="number">2</td><td class="number">1</td><td>none</td></tr>
+<tr id="function-src/billing.ts-billing-ts-priceorder-781a9d"><td class="number">1</td><td>priceOrder</td><td>4-14</td><td class="number">11</td><td class="number">8</td><td class="number">2</td><td class="number">5</td><td class="number">5</td><td class="number">2</td><td>none</td></tr>
+<tr id="function-src/billing.ts-billing-ts-describe-15a13e"><td class="number">2</td><td>describe</td><td>16-22</td><td class="number">7</td><td class="number">1</td><td class="number">1</td><td class="number">2</td><td class="number">2</td><td class="number">1</td><td>none</td></tr>
 </tbody>
 </table>
 <p class="legend">Guidelines order and label the rows and decide nothing. Cognitive 15 (complexity.guidelines, the warn level), ▲ marks a value above it; Nesting 4 (complexity.guidelines, the warn level), ▲ marks a value above it; Cyclomatic 10 (complexity.guidelines, the warn level), ▲ marks a value above it.</p>
-<section class="judgement">
+<section class="judgement" id="judgement-billing-ts-priceorder-cfb9a1">
 <h3>Judgement: priceOrder</h3>
 <p><strong class="subject">priceOrder (src/billing.ts, lines 4-14)</strong>: <span class="verdict">Verdict: nonobvious-code.</span> It is long and has been fixed more than once.</p>
 </section>
-<section class="judgement">
+<section class="judgement" id="judgement-billing-ts-describe-171db9">
 <h3>Judgement: describe</h3>
 <p><strong class="subject">describe (src/billing.ts, lines 16-22)</strong>: <span class="verdict">Verdict: nonobvious-code.</span> It is long and has been fixed more than once.</p>
 </section>
@@ -231,7 +235,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <li>Revisions and fixes are counts of landed changes in the window that touched the function, and a fix is a count of commit messages, not of defects.</li>
 <li>Only the first 2 functions have a judgement, because the table is ordered by cognitive complexity.</li>
 </ul>
-<section class="judgement">
+<section class="judgement" id="judgement-limits-8a46fd">
 <h3>Judgement: what limits these results</h3>
 <p>The pricing function holds most of the complexity and most of the fixes.</p>
 </section>

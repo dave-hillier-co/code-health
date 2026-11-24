@@ -19,12 +19,12 @@ Nesting and change meet in one file, and the history is short.
 
 **The code, nested by folder: size is lines, colour is revisions in the window, outlined tiles are the friction list** (the items by lines, marked first, then largest first; band is revisions in the window, band 1: 2 to 5, band 2: 5 to 6, band 3: 6 to 7, band 4: 7 to 8, band 5: 8; band 1: 2 items, 12 lines; band 2: 2 items, 14 lines)
 
-| Path | Size (lines) | Colour (revisions in the window) | Band |
-| --- | ---: | ---: | ---: |
-| 1 src/core/engine.ts | 13 | 5 | 2 |
-| src/legacy/old.ts | 7 | 3 | 1 |
-| src/ui/page.ts | 5 | 2 | 1 |
-| src/core/util.ts | 1 | 5 | 2 |
+| # | Path | Size (lines) | Colour (revisions in the window) | Band |
+| ---: | --- | ---: | ---: | ---: |
+| 1 | src/core/engine.ts | 13 | 5 | 2 |
+|  | src/legacy/old.ts | 7 | 3 | 1 |
+|  | src/ui/page.ts | 5 | 2 | 1 |
+|  | src/core/util.ts | 1 | 5 | 2 |
 
 The map draws all 4 production code files at HEAD (26 lines), including 0 that nothing in the window changed (0 revisions). The band edges sit at the 50th, 75th, 90th and 97th percentile of the revisions of the 4 files that changed, so band 5 is the most changed and says nothing about good or bad.
 

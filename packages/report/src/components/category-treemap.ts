@@ -1,6 +1,7 @@
 import { count, escapeHtml, escapeMd, formatNumber } from "../text.ts";
 import { htmlTable, mdTable } from "../tables.ts";
 import { figureHtml } from "./figure.ts";
+import { linked } from "../links.ts";
 import { drawMap, mapOmissions, selectMapItems, tableOrder } from "./treemap.ts";
 
 /** One kind of item. Its `band` (1 to 6) picks the fill from the page's categorical colours, and the label is printed in each tile. */
@@ -20,6 +21,8 @@ export interface CategoryTreemapItem {
   size: number;
   /** A category id, or null for an item of no category: it is drawn grey and marked "none". */
   category: string | null;
+  /** Links the tile and its row in the table to where the file is described, on this page or another report page. Html only. */
+  href?: string;
 }
 
 /** A treemap whose tiles are coloured by kind rather than by a value on a scale. */
@@ -52,7 +55,8 @@ function prepare(data: CategoryTreemapData): Prepared {
   return { drawn, unsized, beyondLimit, categoryOf: (item) => (item.category === null ? null : (byId.get(item.category) ?? null)) };
 }
 
-const rows = (prepared: Prepared, limit: number) => tableOrder(prepared.drawn).slice(0, limit).map((item) => [item.path, formatNumber(item.size), prepared.categoryOf(item)?.label ?? "none"]);
+const tableItems = (prepared: Prepared, limit: number) => tableOrder(prepared.drawn).slice(0, limit);
+const rows = (prepared: Prepared, limit: number) => tableItems(prepared, limit).map((item) => [item.path, formatNumber(item.size), prepared.categoryOf(item)?.label ?? "none"]);
 const columns = (data: CategoryTreemapData) => [{ label: "Path" }, { label: `Size (${data.sizeLabel})`, align: "right" as const }, { label: data.categoryLabel }];
 
 type Totals = Map<string, { items: number; size: number }>;
@@ -80,6 +84,7 @@ export function categoryTreemapHtml(data: CategoryTreemapData): string {
         band: category === null ? "band-none" : `cat-${category.band}`,
         value: category?.mark ?? "",
         title: `${item.path}: ${formatNumber(item.size)} ${data.sizeLabel}, ${category === null ? `no ${data.categoryLabel}` : `${data.categoryLabel} ${category.label}`}`,
+        ...(item.href === undefined ? {} : { href: item.href }),
       };
     }),
   );
@@ -97,7 +102,7 @@ export function categoryTreemapHtml(data: CategoryTreemapData): string {
     width: map.width,
     height: map.height,
     drawing: map.drawing,
-    table: htmlTable(`${data.title}: ${prepared.drawn.length > tableRows ? "the largest items" : "the items drawn, largest first"}`, columns(data), rows(prepared, tableRows).map((r) => r.map(escapeHtml)), { rowHeaders: true }),
+    table: htmlTable(`${data.title}: ${prepared.drawn.length > tableRows ? "the largest items" : "the items drawn, largest first"}`, columns(data), rows(prepared, tableRows).map((r, k) => r.map((cell, c) => (c === 0 ? linked(escapeHtml(cell), tableItems(prepared, tableRows)[k]?.href) : escapeHtml(cell)))), { rowHeaders: true }),
     notes,
   });
 }

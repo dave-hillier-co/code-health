@@ -7,16 +7,17 @@ export interface TableColumn {
   align?: Align;
 }
 
-/** A table whose cells are already html. The first column's cells are row headers when `rowHeaders` is set. */
-export function htmlTable(caption: string, columns: TableColumn[], rows: string[][], options: { rowHeaders?: boolean; className?: string } = {}): string {
+/** A table whose cells are already html. The first column's cells (or those of `rowHeaderColumn`) are row headers when `rowHeaders` is set. `rowIds` gives a row the id that links point at. */
+export function htmlTable(caption: string, columns: TableColumn[], rows: string[][], options: { rowHeaders?: boolean; rowHeaderColumn?: number; className?: string; rowIds?: readonly (string | null | undefined)[] } = {}): string {
   const head = columns.map((c) => `<th scope="col"${c.align === "right" ? ' class="number"' : ""}>${escapeHtml(c.label)}</th>`).join("");
   const body = rows
-    .map((row) => {
+    .map((row, r) => {
       const cells = row.map((cell, i) => {
         const number = columns[i]?.align === "right" ? ' class="number"' : "";
-        return i === 0 && options.rowHeaders === true ? `<th scope="row">${cell}</th>` : `<td${number}>${cell}</td>`;
+        return i === (options.rowHeaderColumn ?? 0) && options.rowHeaders === true ? `<th scope="row">${cell}</th>` : `<td${number}>${cell}</td>`;
       });
-      return `<tr>${cells.join("")}</tr>`;
+      const id = options.rowIds?.[r];
+      return `<tr${id === null || id === undefined ? "" : ` id="${escapeHtml(id)}"`}>${cells.join("")}</tr>`;
     })
     .join("\n");
   return `<table${options.className === undefined ? "" : ` class="${options.className}"`}>\n<caption>${escapeHtml(caption)}</caption>\n<thead><tr>${head}</tr></thead>\n<tbody>\n${body}\n</tbody>\n</table>`;

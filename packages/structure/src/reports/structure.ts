@@ -11,6 +11,9 @@ import type { Block } from "@code-health/report/block";
 import type { Cell } from "@code-health/report/components/ranked-table";
 import type { StabilityPoint } from "@code-health/report/components/stability-chart";
 import { dropEmptySlots } from "@code-health/report/empty-block";
+import { judgementId } from "@code-health/report/components/judgement";
+import { pageHref, reportHref } from "@code-health/report/links";
+import { targetId } from "@code-health/report/text";
 import type { Slot } from "@code-health/report/protocol";
 import type { ReportBuild, Section } from "@code-health/report/report-model";
 import { command as census } from "../commands/census.ts";
@@ -119,8 +122,19 @@ function matrixLabels(modules: readonly string[]): string[] {
   });
 }
 
+/** The id of a cycle's row in the cycles table, which a cycle box of the matrix links to. */
+const cycleId = (n: number) => `cycle-${n}`;
+/** The id of a registration hub's row in the hubs table. */
+const hubId = (file: string) => targetId("hub", file);
+
+/** The link of a matrix box labelled `cycle N`, when the cycles table lists cycle N. */
+function cycleLink(label: string, listed: number): { href?: string } {
+  const n = /^cycle (\d+)$/.exec(label)?.[1];
+  return n !== undefined && Number(n) <= listed ? { href: pageHref(cycleId(Number(n))) } : {};
+}
+
 /** The dependency structure matrix of the modules at the default level, and the lines that say what it draws and leaves out. */
-export function dsmBlocks(dsm: Dsm | null | undefined, layered: boolean): Block[] {
+export function dsmBlocks(dsm: Dsm | null | undefined, layered: boolean, hubs: ReadonlySet<string> = new Set(), cyclesShown = 0): Block[] {
   if (dsm === null || dsm === undefined) return [{ type: "notice", level: "notice", text: "No module depends on another at the default level, so there is no dependency structure matrix." }];
   const drawn = dsm.modules.length;
   const labels = matrixLabels(dsm.modules);
@@ -146,12 +160,15 @@ export function dsmBlocks(dsm: Dsm | null | undefined, layered: boolean): Block[
       rows: labels,
       columns: labels,
       cells: dsm.cells,
+      // A module that is a registration hub in the hubs table links to its row there.
+      rowHrefs: dsm.modules.map((m) => (hubs.has(m) ? pageHref(hubId(m)) : null)),
+      columnHrefs: dsm.modules.map((m) => (hubs.has(m) ? pageHref(hubId(m)) : null)),
       marks: {
         against: { symbol: "!", text: "a dependency against the order: below the diagonal, inside an import cycle" },
         ...(layered ? { layer: { symbol: "L", text: "an import the configured layer rules forbid" }, both: { symbol: "!L", text: "against the order and forbidden by the layer rules" } } : {}),
       },
       cellMarks,
-      groups: dsm.groups.map((g) => ({ label: g.size > g.end - g.start + 1 ? `${g.label}, ${g.end - g.start + 1} of ${g.size} modules drawn` : g.label, start: g.start, end: g.end })),
+      groups: dsm.groups.map((g) => ({ label: g.size > g.end - g.start + 1 ? `${g.label}, ${g.end - g.start + 1} of ${g.size} modules drawn` : g.label, start: g.start, end: g.end, ...cycleLink(g.label, cyclesShown) })),
       orderText: `A row is a module and the cells in it are the modules it depends on. Rows are ordered by layer, top first: a module comes after every module that depends on it, so in a layered design every cell is above the diagonal. The members of one cycle stay together in a box labelled as in the cycles table, ordered so that only the edges of its breaking set lie below the diagonal. Names are cut from the left to ${LABEL_CHARS} characters; the cycles table gives them whole.${layered && dsm.layerViolations.length === 0 ? " No drawn import breaks a layer rule." : ""}`,
     },
     {
@@ -182,6 +199,13 @@ function cycleBlocks(rows: readonly CycleRow[], projectFolderCycles: ProjectFold
       noun: "cycles",
       total: rows.length,
       emptyText: "No import cycle at the default level.",
+      rowIds: shown.map((_, i) => cycleId(i + 1)),
+      // The cycle's breaking set and judgement follow the table.
+      cellHrefs: shown.map((_, i): Record<string, string> => ({ modules: pageHref(judgementId(`cycle-${i + 1}`)) })),
+      seeAlso: [
+        { href: reportHref("coupling"), text: "The coupling report lists the files that change together, which the changes touching two members of a cycle count." },
+        ...(shown.some((row) => row.unblockedGain !== null) ? [{ href: reportHref("locality"), text: "The locality report lists the moves that resolving a cycle unblocks." }] : []),
+      ],
       columns: [
         { key: "modules", label: "Modules in the cycle" },
         { key: "size", label: "Size", align: "right" },
@@ -380,6 +404,7 @@ function hubBlocks(rows: readonly Hub[], notices: readonly string[]): Block[] {
       noun: "hubs",
       total: rows.length,
       emptyText: notices.join(" "),
+      rowIds: rows.slice(0, TOP_HUBS).map((hub) => hubId(hub.file)),
       columns: [
         { key: "file", label: "File" },
         { key: "reached", label: "Signals reached of 4", align: "right" },
@@ -500,7 +525,7 @@ export const structure: ReportKind = {
               { label: "Packages", value: String(results.packages.length) },
             ],
           },
-          ...dsmBlocks(results.extra.dsm, results.layerViolations !== null),
+          ...dsmBlocks(results.extra.dsm, results.layerViolations !== null, new Set(results.hubs.slice(0, TOP_HUBS).map((hub) => hub.file)), Math.min(results.cycles.length, TOP_CYCLES)),
           { type: "judgement", slot: "summary" },
         ],
       },

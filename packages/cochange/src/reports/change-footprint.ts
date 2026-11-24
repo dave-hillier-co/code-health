@@ -1,5 +1,7 @@
 import type { Block } from "@code-health/report/block";
 import type { MatrixData } from "@code-health/report/components/matrix";
+import { pageHref } from "@code-health/report/links";
+import { targetId } from "@code-health/report/text";
 import type { Assessed } from "../risk/assess.ts";
 import { pairCoupled } from "../risk/measure.ts";
 
@@ -7,6 +9,13 @@ import { pairCoupled } from "../risk/measure.ts";
 export const FOOTPRINT_ROWS = 12;
 export const FOOTPRINT_MISSING_COLUMNS = 10;
 const LABEL = 20;
+
+/** Rows a table of the change report lists before it says how many it leaves out. */
+export const LISTED_ROWS = 15;
+/** The id of a row of the missing co-change partners table: the file that is missing and the touched file it usually changes with. */
+export const missingRowId = (towards: string, file: string) => targetId("missing", `${towards}\0${file}`);
+/** The id of a file's row in the table of hot files the change touches. */
+export const hotRowId = (file: string) => targetId("hot", file);
 
 const label = (file: string) => (file.length <= LABEL ? file : `...${file.slice(file.length - LABEL + 3)}`);
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -60,7 +69,22 @@ export function footprintBlocks(assessed: Assessed): Block[] {
   if (noPartners > 0) left.push(`${plural(noPartners, "changed file")} with no usual partner`);
   const undrawnMissing = missing.length - drawn.length;
   if (undrawnMissing > 0) left.push(`${plural(undrawnMissing, "missing partner")} not drawn as ${undrawnMissing === 1 ? "a column" : "columns"}, all of them listed under Missing co-change partners`);
+  // A changed file links to its first missing partner row, or else to its row among the hot files touched; a missing column links to its row.
+  const listedMissing = missing.slice(0, LISTED_ROWS);
+  const hot = assessed.factors.find((f) => f.name === "hotspots-touched");
+  const hotListed = new Set(hot?.status === "ok" ? hot.evidence.slice(0, LISTED_ROWS).flatMap((e) => (typeof e.file === "string" ? [e.file] : [])) : []);
+  const rowHref = (file: string): string | null => {
+    const first = listedMissing.find((m) => m.towards === file);
+    if (first !== undefined) return pageHref(missingRowId(first.towards, first.file));
+    return hotListed.has(file) ? pageHref(hotRowId(file)) : null;
+  };
+  const columnHrefs = [
+    ...rows.map(rowHref),
+    ...drawn.map((m) => (listedMissing.some((l) => l.file === m.file && l.towards === m.towards) ? pageHref(missingRowId(m.towards, m.file)) : null)),
+  ];
   const data: MatrixData = {
+    rowHrefs: rows.map(rowHref),
+    columnHrefs,
     title: `Change footprint: ${plural(rows.length, "changed file")} against ${plural(columns.length, "file")}`,
     valueLabel: "shared changes of the row file and the column file in the analysis window",
     rows: rows.map(label),

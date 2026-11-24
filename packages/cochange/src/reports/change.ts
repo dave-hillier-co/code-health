@@ -13,10 +13,11 @@ import type { Cell } from "@code-health/report/components/ranked-table";
 import type { EvidenceItem } from "@code-health/report/components/evidence-list";
 import { dropEmptySlots } from "@code-health/report/empty-block";
 import type { ExcludedCount, Slot } from "@code-health/report/protocol";
+import { pageHref, reportHref } from "@code-health/report/links";
 import { capRows } from "@code-health/report/table-cap";
 import type { ReportBuild, Section } from "@code-health/report/report-model";
 import { runGit } from "@code-health/history/git";
-import { footprintBlocks } from "./change-footprint.ts";
+import { footprintBlocks, hotRowId, LISTED_ROWS, missingRowId } from "./change-footprint.ts";
 import { loadHistory } from "../history-access.ts";
 import { assessBranch, type Assessed } from "../risk/assess.ts";
 import { INDENTATION_PROXY } from "../risk/composition.ts";
@@ -32,7 +33,7 @@ import { NO_CHANGE_EVIDENCE, readChangeEvidence, type ChangeEvidence, type Compl
 /** The most items needing attention that get a slot. The rest are counted on the page, and the tables list them. */
 const MAX_ITEMS = 8;
 /** Rows a table lists before it says how many it leaves out. */
-const ROWS = 15;
+const ROWS = LISTED_ROWS;
 const EVIDENCE_ITEMS = 6;
 
 export const ITEM_VERDICTS = ["needs-change", "accepted-with-reason", "false-positive"];
@@ -76,15 +77,25 @@ function describeEvidence(record: Record<string, unknown>): EvidenceItem {
 }
 
 /** The records shown, and how many the factor has beyond them: `total` is the count before the factor cut its own list. */
-function evidenceItems(records: Record<string, unknown>[], total: number = records.length): { items: EvidenceItem[]; omitted: number } {
-  const items = records.slice(0, EVIDENCE_ITEMS).map(describeEvidence);
+function evidenceItems(records: Record<string, unknown>[], total: number = records.length, hrefOf: (record: Record<string, unknown>) => string | undefined = () => undefined): { items: EvidenceItem[]; omitted: number } {
+  const items = records.slice(0, EVIDENCE_ITEMS).map((record) => {
+    const href = hrefOf(record);
+    return { ...describeEvidence(record), ...(href === undefined ? {} : { href }) };
+  });
   return { items, omitted: Math.max(0, total - items.length) };
 }
 
 function findingItem(finding: Finding): Item {
   const files = finding.evidence.flatMap((record) => text(record.file) ?? text(record.path) ?? []);
   const label = clip(files.length === 0 ? finding.summary : `${finding.summary}: ${files.slice(0, 3).join(", ")}${files.length > 3 ? ", ..." : ""}`, 220);
-  const { items, omitted } = evidenceItems(finding.evidence, finding.evidenceTotal);
+  // The evidence of a missing co-change finding is a row of the missing partners table, and a hotspot finding's is a row of the hot files table.
+  const hrefOf = (record: Record<string, unknown>): string | undefined => {
+    const file = text(record.file);
+    if (file === null) return undefined;
+    if (finding.id === "missing-co-change" && text(record.towards) !== null) return pageHref(missingRowId(text(record.towards)!, file));
+    return undefined;
+  };
+  const { items, omitted } = evidenceItems(finding.evidence, finding.evidenceTotal, hrefOf);
   return {
     slot: itemSlot(
       `finding-${finding.id}`,
@@ -135,7 +146,8 @@ function complexityItem(rows: ComplexityRow[], index: number): Item {
 
 function hotspotsItem(factor: Factor): Item {
   const files = factor.evidence.flatMap((record) => text(record.file) ?? []);
-  const { items, omitted } = evidenceItems(factor.evidence, factor.evidenceTotal);
+  const listed = new Set(factor.evidence.slice(0, ROWS).flatMap((record) => text(record.file) ?? []));
+  const { items, omitted } = evidenceItems(factor.evidence, factor.evidenceTotal, (record) => (listed.has(text(record.file) ?? "") ? pageHref(hotRowId(text(record.file)!)) : undefined));
   return {
     slot: itemSlot(
       "hotspots-touched",
@@ -207,6 +219,15 @@ function bandText(factor: Factor): string {
   return factor.status === "ok" ? (factor.band ?? "none") : factor.status;
 }
 
+/** The section of the full report that lists a factor's evidence. */
+const FACTOR_SECTIONS: Record<string, string> = {
+  "missing-co-change": "missing-co-change",
+  "complexity-delta": "complexity",
+  "structure-delta": "structure",
+  "hotspots-touched": "hotspots",
+  "abandoned-touched": "abandoned",
+};
+
 function factorBlocks(assessed: Assessed, compact: boolean): Block[] {
   if (compact) return [];
   const { factors } = assessed;
@@ -227,6 +248,8 @@ function factorBlocks(assessed: Assessed, compact: boolean): Block[] {
         { key: "guideline", label: "Guideline" },
         { key: "evidence", label: "Evidence items", align: "right" },
       ],
+      // A factor that has its own section links to it.
+      cellHrefs: factors.map((f): Record<string, string> => (FACTOR_SECTIONS[f.name] === undefined ? {} : { factor: pageHref(FACTOR_SECTIONS[f.name]!) })),
       rows: factors.map((f): Record<string, Cell> => ({ factor: f.name, band: bandText(f), value: valueText(f), guideline: guidelineText(f), evidence: f.evidenceTotal ?? f.evidence.length })),
     },
   ];
@@ -252,6 +275,7 @@ function abandonedBlocks(assessed: Assessed): Block[] {
       noun: "files",
       total: count,
       numbered: false,
+      seeAlso: [{ href: reportHref("knowledge"), text: "The knowledge report maps who holds each file's lines and lists the files by knowledge-risk pattern." }],
       emptyText: `No touched file is abandoned or above the repository's baseline abandonment probability of ${baseline}.`,
       columns: [
         { key: "file", label: "File" },
@@ -318,6 +342,7 @@ function missingBlocks(assessed: Assessed): Block[] {
       caption: "Files that usually change with a touched file and are not in the change",
       noun: "partners",
       total: rows.length,
+      rowIds: factor.evidence.map((e) => (text(e.file) !== null && text(e.towards) !== null ? missingRowId(text(e.towards)!, text(e.file)!) : null)),
       columns: [
         { key: "file", label: "Missing file" },
         { key: "towards", label: "Usually changes with" },
@@ -381,6 +406,7 @@ function structureBlocks(evidence: ChangeEvidence): Block[] {
       noun: "findings",
       total: evidence.structure.length,
       numbered: false,
+      seeAlso: [{ href: reportHref("structure"), text: "The structure report lists the import cycles and layer violations at the analysed commit." }],
       columns: [
         { key: "kind", label: "Kind" },
         { key: "id", label: "Finding" },
@@ -418,6 +444,8 @@ function hotspotBlocks(assessed: Assessed): Block[] {
     noun: "files",
     total: factor.evidenceTotal ?? factor.evidence.length,
     emptyText: "The change touches no hot file.",
+    rowIds: factor.evidence.map((e) => (text(e.file) === null ? null : hotRowId(text(e.file)!))),
+    seeAlso: [{ href: reportHref("hotspots"), text: "The hotspots report maps the code by revisions and lists the friction list these files are ranked against." }],
     columns: [
       { key: "file", label: "File" },
       { key: "revisions", label: "Revisions", align: "right" },

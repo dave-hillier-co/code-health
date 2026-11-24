@@ -103,6 +103,10 @@ svg .guideline line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray:
 svg circle.point { fill: var(--point); fill-opacity: .45; }
 svg rect.point, svg .point.named rect { fill: var(--bar-above); stroke: var(--bg); stroke-width: 1; }
 svg .point.named text { paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
+svg a:hover text { text-decoration: underline; }
+svg a > text, svg a > tspan { fill: var(--link); text-decoration: underline; }
+svg a:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+svg a .tile rect, svg a .tile.marked rect { stroke: var(--link); stroke-width: 2; }
 svg polyline { fill: none; stroke: var(--bar-above); stroke-width: 2; } svg circle { fill: var(--bar-above); }
 .notice { border-left: 4px solid var(--notice-rule); background: var(--notice-bg); padding: .5rem .75rem; margin: .75rem 0; }
 .judgement { border: 1px solid var(--rule); border-left: 4px solid var(--link); background: var(--panel); padding: .25rem 1rem .5rem; margin: 1rem 0; }
@@ -163,9 +167,9 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </table>
 <figure class="chart matrix">
 <figcaption>Module dependency matrix</figcaption>
-<svg role="img" aria-labelledby="module-dependency-matrix-2ed3ff-title module-dependency-matrix-2ed3ff-desc" width="727" height="542" viewBox="0 0 727 542" preserveAspectRatio="xMinYMin meet">
-<title id="module-dependency-matrix-2ed3ff-title">Module dependency matrix</title>
-<desc id="module-dependency-matrix-2ed3ff-desc">A grid of 16 rows by 16 columns holding file imports from the row module into the column module. 2 boxes along the diagonal mark groups of rows. Each cell prints its value; the table below lists every cell that has a value or a mark.</desc>
+<svg role="img" aria-labelledby="module-dependency-matrix-fcd4ce-title module-dependency-matrix-fcd4ce-desc" width="727" height="542" viewBox="0 0 727 542" preserveAspectRatio="xMinYMin meet">
+<title id="module-dependency-matrix-fcd4ce-title">Module dependency matrix</title>
+<desc id="module-dependency-matrix-fcd4ce-desc">A grid of 16 rows by 16 columns holding file imports from the row module into the column module. 2 boxes along the diagonal mark groups of rows. Each cell prints its value; the table below lists every cell that has a value or a mark.</desc>
 <text x="194" y="84" transform="rotate(-35 194 84)">…kages/p1/src/use.ts</text>
 <text x="222" y="84" transform="rotate(-35 222 84)">packages/p1/src/x.ts</text>
 <text x="250" y="84" transform="rotate(-35 250 84)">…ges/p4/src/ports.ts</text>
@@ -454,8 +458,8 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <g class="cell band-none"><rect x="544" y="510" width="26" height="26"/></g>
 <g class="cell band-none"><rect x="572" y="510" width="26" height="26"/></g>
 <g class="cell band-none"><rect x="600" y="510" width="26" height="26"/></g>
-<g class="group"><rect x="263" y="173" width="84" height="84"><title>cycle 1</title></rect></g>
-<g class="group"><rect x="487" y="397" width="56" height="56"><title>cycle 2</title></rect></g>
+<a href="#cycle-1"><g class="group"><rect x="263" y="173" width="84" height="84"><title>cycle 1</title></rect></g></a>
+<a href="#cycle-2"><g class="group"><rect x="487" y="397" width="56" height="56"><title>cycle 2</title></rect></g></a>
 </svg>
 <table>
 <caption>Module dependency matrix: the cells that have a value or a mark</caption>
@@ -476,10 +480,10 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><td>src/core/model.ts</td><td>src/ui/format.ts</td><td class="number">1</td><td>an import the configured layer rules forbid</td><td></td><td></td></tr>
 </tbody>
 </table>
-<p class="legend">Colour is file imports from the row module into the column module in one band, and each cell prints its value: band 1: 1. Grey blank cells have no value (243 cells of 256 cells). ! is a dependency against the order: below the diagonal, inside an import cycle (2 cells); L is an import the configured layer rules forbid (1 cell). Boxes along the diagonal mark 2 groups: cycle 1 (3 rows), cycle 2 (2 rows). A row is a module and the cells in it are the modules it depends on. Rows are ordered by layer, top first: a module comes after every module that depends on it, so in a layered design every cell is above the diagonal. The members of one cycle stay together in a box labelled as in the cycles table, ordered so that only the edges of its breaking set lie below the diagonal. Names are cut from the left to 20 characters; the cycles table gives them whole.</p>
+<p class="legend">Colour is file imports from the row module into the column module in one band, and each cell prints its value: band 1: 1. Grey blank cells have no value (243 cells of 256 cells). ! is a dependency against the order: below the diagonal, inside an import cycle (2 cells); L is an import the configured layer rules forbid (1 cell). Boxes along the diagonal mark 2 groups: <a href="#cycle-1">cycle 1</a> (3 rows), <a href="#cycle-2">cycle 2</a> (2 rows). A row is a module and the cells in it are the modules it depends on. Rows are ordered by layer, top first: a module comes after every module that depends on it, so in a layered design every cell is above the diagonal. The members of one cycle stay together in a box labelled as in the cycles table, ordered so that only the edges of its breaking set lie below the diagonal. Names are cut from the left to 20 characters; the cycles table gives them whole.</p>
 </figure>
 <p>The matrix draws all 16 modules of typescript, the language with the most modules at the default level.</p>
-<section class="judgement">
+<section class="judgement" id="judgement-summary-761b7a">
 <h3>Judgement: what to look at first</h3>
 <p>The cycles are small and the history is short, so little can be said with confidence.</p>
 </section>
@@ -491,8 +495,8 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <caption>Import cycles, largest first</caption>
 <thead><tr><th scope="col" class="number">#</th><th scope="col">Modules in the cycle</th><th scope="col" class="number">Size</th><th scope="col">Breaking set found by</th><th scope="col" class="number">Edges to break</th><th scope="col" class="number">Changes touching two members</th><th scope="col">Nested folders</th></tr></thead>
 <tbody>
-<tr><td class="number">1</td><td>src/c.ts, src/d.ts, src/e.ts</td><td class="number">3</td><td>exact</td><td class="number">1</td><td class="number">5</td><td>no</td></tr>
-<tr><td class="number">2</td><td>src/a.ts, src/b.ts</td><td class="number">2</td><td>exact</td><td class="number">1</td><td class="number">0</td><td>no</td></tr>
+<tr id="cycle-1"><td class="number">1</td><td><a href="#judgement-cycle-1-cade40">src/c.ts, src/d.ts, src/e.ts</a></td><td class="number">3</td><td>exact</td><td class="number">1</td><td class="number">5</td><td>no</td></tr>
+<tr id="cycle-2"><td class="number">2</td><td><a href="#judgement-cycle-2-ac39e9">src/a.ts, src/b.ts</a></td><td class="number">2</td><td>exact</td><td class="number">1</td><td class="number">0</td><td>no</td></tr>
 </tbody>
 </table>
 <table class="ranked">
@@ -502,7 +506,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">src/e.ts → src/c.ts</th><td class="number">0</td><td class="number">1</td><td>no</td><td>src/c.ts#gamma (1 site)</td></tr>
 </tbody>
 </table>
-<section class="judgement">
+<section class="judgement" id="judgement-cycle-1-cade40">
 <h3>Judgement: cycle 1 (src/c.ts, src/d.ts and 1 more)</h3>
 <p><span class="verdict">Verdict: break-the-listed-edge.</span> The edge carries one call, so it is cheap to move.</p>
 </section>
@@ -513,7 +517,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">src/a.ts → src/b.ts</th><td class="number">0</td><td class="number">1</td><td>no</td><td>src/b.ts#beta (1 site)</td></tr>
 </tbody>
 </table>
-<section class="judgement">
+<section class="judgement" id="judgement-cycle-2-ac39e9">
 <h3>Judgement: cycle 2 (src/a.ts, src/b.ts)</h3>
 <p><span class="verdict">Verdict: break-the-listed-edge.</span> The edge carries one call, so it is cheap to move.</p>
 </section>
@@ -578,7 +582,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </tbody>
 </table>
 <p class="legend">Guidelines order and label the rows and decide nothing. Revisions per file, to over from 2 (structure.minVolatilityRatio), ▲ marks a value above it; Instability gap in points 20 (structure.minInstabilityGap), ▲ marks a value above it.</p>
-<section class="judgement">
+<section class="judgement" id="judgement-against-1-bb74a9">
 <h3>Judgement: dependency 1 (packages/p2/src → packages/p1/src)</h3>
 <p><span class="verdict">Verdict: worth-fixing.</span> The edge carries one call, so it is cheap to move.</p>
 </section>
@@ -614,7 +618,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <li>The census finds mechanisms by name and shape, so a look-alike can be counted and a custom convention missed.</li>
 <li>The evidence grade is weak, so change stability and the co-change counts are tentative and the static structure should lead.</li>
 </ul>
-<section class="judgement">
+<section class="judgement" id="judgement-limits-8a46fd">
 <h3>Judgement: what limits these results</h3>
 <p>The cycles are small and the history is short, so little can be said with confidence.</p>
 </section>

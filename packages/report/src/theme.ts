@@ -123,6 +123,10 @@ svg .guideline line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray:
 svg circle.point { fill: var(--point); fill-opacity: .45; }
 svg rect.point, svg .point.named rect { fill: var(--bar-above); stroke: var(--bg); stroke-width: 1; }
 svg .point.named text { paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
+svg a:hover text { text-decoration: underline; }
+svg a > text, svg a > tspan { fill: var(--link); text-decoration: underline; }
+svg a:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+svg a .tile rect, svg a .tile.marked rect { stroke: var(--link); stroke-width: 2; }
 svg polyline { fill: none; stroke: var(--bar-above); stroke-width: 2; } svg circle { fill: var(--bar-above); }
 .notice { border-left: 4px solid var(--notice-rule); background: var(--notice-bg); padding: .5rem .75rem; margin: .75rem 0; }
 .judgement { border: 1px solid var(--rule); border-left: 4px solid var(--link); background: var(--panel); padding: .25rem 1rem .5rem; margin: 1rem 0; }

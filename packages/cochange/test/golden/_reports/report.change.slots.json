@@ -64,6 +64,11 @@
                 6
               ]
             ],
+            "columnHrefs": [
+              "#missing-invoice-test-ts-82c8e9",
+              "#missing-invoice-test-ts-82c8e9",
+              "#missing-tax-ts-6966ca"
+            ],
             "columns": [
               "...illing/invoice.ts",
               "...g/invoice.test.ts",
@@ -80,6 +85,9 @@
               }
             },
             "orderText": "Columns are the changed files, then the missing partners. Rows are ordered by missing partners, then by partners in the change, then by path. Missing columns follow the order of the Missing co-change partners section, and each is marked at the file it usually changes with.",
+            "rowHrefs": [
+              "#missing-invoice-test-ts-82c8e9"
+            ],
             "rows": [
               "...illing/invoice.ts"
             ],
@@ -107,10 +115,12 @@
             "emptyText": "The finding has no evidence item to list.",
             "items": [
               {
+                "href": "#missing-invoice-test-ts-82c8e9",
                 "id": "src/billing/invoice.test.ts",
                 "text": "towards src/billing/invoice.ts, confidence 85.7, support 6"
               },
               {
+                "href": "#missing-tax-ts-6966ca",
                 "id": "src/billing/tax.ts",
                 "text": "towards src/billing/invoice.ts, confidence 85.7, support 6"
               }
@@ -215,6 +225,34 @@
           },
           {
             "caption": "Risk factors with their values and bands",
+            "cellHrefs": [
+              {},
+              {},
+              {},
+              {},
+              {
+                "factor": "#hotspots"
+              },
+              {},
+              {},
+              {},
+              {
+                "factor": "#missing-co-change"
+              },
+              {},
+              {},
+              {},
+              {},
+              {
+                "factor": "#complexity"
+              },
+              {
+                "factor": "#structure"
+              },
+              {
+                "factor": "#abandoned"
+              }
+            ],
             "columns": [
               {
                 "key": "factor",
@@ -413,6 +451,10 @@
               }
             ],
             "noun": "partners",
+            "rowIds": [
+              "missing-invoice-test-ts-82c8e9",
+              "missing-tax-ts-6966ca"
+            ],
             "rows": [
               {
                 "confidence": 85.7,
@@ -537,6 +579,12 @@
                 "kind": "layer-violation"
               }
             ],
+            "seeAlso": [
+              {
+                "href": "report:structure",
+                "text": "The structure report lists the import cycles and layer violations at the analysed commit."
+              }
+            ],
             "total": 2,
             "type": "ranked-table"
           }
@@ -583,10 +631,19 @@
             ],
             "emptyText": "The change touches no hot file.",
             "noun": "files",
+            "rowIds": [
+              "hot-invoice-ts-aa2833"
+            ],
             "rows": [
               {
                 "file": "src/billing/invoice.ts",
                 "revisions": 7
+              }
+            ],
+            "seeAlso": [
+              {
+                "href": "report:hotspots",
+                "text": "The hotspots report maps the code by revisions and lists the friction list these files are ranked against."
               }
             ],
             "total": 1,

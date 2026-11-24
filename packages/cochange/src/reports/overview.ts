@@ -8,7 +8,9 @@ import type { ReportKind } from "@code-health/cli-kit/report-command";
 import type { Block } from "@code-health/report/block";
 import type { Cell, RankedTableData } from "@code-health/report/components/ranked-table";
 import { dropEmptySlots } from "@code-health/report/empty-block";
+import { pageHref, reportHref } from "@code-health/report/links";
 import { capRows } from "@code-health/report/table-cap";
+import { targetId } from "@code-health/report/text";
 import type { Candidate, ExcludedCount, Slot } from "@code-health/report/protocol";
 import type { ReportBuild } from "@code-health/report/report-model";
 import { excludedCounts, historyWindowText, isoDate } from "@code-health/history/report-header";
@@ -35,6 +37,9 @@ interface FixConvention {
   note: string | null;
   share: number;
 }
+
+/** The id of a file's row in the table of the highest hotspot scores, which the scatter's named points link to. */
+const hotspotRowId = (path: string) => targetId("hotspot", path);
 
 const percent = percentText;
 const number = (value: unknown): number | null => (typeof value === "number" && Number.isFinite(value) ? value : null);
@@ -196,6 +201,7 @@ function cyclesResult(stored: SiblingResult | undefined): Result {
         noun: "cycles",
         total: s.rows.length,
         emptyText: "The stored structure cycles result lists no import cycle.",
+        seeAlso: [{ href: reportHref("structure", { id: "cycles" }), text: "The structure report lists the import cycles with their breaking sets." }],
         columns: [
           { key: "id", label: "Cycle" },
           { key: "size", label: "Modules", align: "right" },
@@ -260,6 +266,7 @@ function localityResult(stored: SiblingResult | undefined): Result {
     noun: "units",
     total: moves.length,
     emptyText: "The stored locality analyse result lists no unit with a proposed move.",
+    seeAlso: [{ href: reportHref("locality", { id: "candidates" }), text: "The locality report lists the candidates with their move plans." }],
     columns: [
       { key: "path", label: "Unit" },
       { key: "recommendation", label: "Recommendation" },
@@ -300,6 +307,8 @@ function hotspotResult(rows: readonly HotspotRow[]): Result {
         noun: "files",
         total: rows.length,
         emptyText: "The hotspot ranking lists no file.",
+        rowIds: shown.map((row) => hotspotRowId(row.path)),
+        seeAlso: [{ href: reportHref("hotspots", { id: "friction" }), text: "The hotspots report draws the map of the code and lists the friction list." }],
         columns: [
           { key: "path", label: "File" },
           { key: "score", label: "Score", align: "right" },
@@ -346,6 +355,7 @@ function churnComplexityScatter(rows: readonly HotspotRow[], percentile: number,
   const unmeasured = production.length - measured.length;
   const xLine = valueAtPercentile(production.map((row) => row.frequency), percentile);
   const yLine = valueAtPercentile(measured.map((m) => m.complexity), percentile);
+  const listed = new Set(top(rows).map((row) => row.path));
   const measure = complexitySource === "complexity-report" ? "the `complexity files` complexity" : "the indentation complexity";
   const points = measured.map(({ row, complexity }) => ({
     label: row.path,
@@ -353,6 +363,8 @@ function churnComplexityScatter(rows: readonly HotspotRow[], percentile: number,
     x: row.frequency,
     y: complexity,
     highlight: xLine !== undefined && yLine !== undefined && row.frequency >= xLine && complexity >= yLine,
+    // A file among the highest hotspot scores links to its row in that table.
+    ...(listed.has(row.path) ? { href: pageHref(hotspotRowId(row.path)) } : {}),
   }));
   return {
     type: "scatter",

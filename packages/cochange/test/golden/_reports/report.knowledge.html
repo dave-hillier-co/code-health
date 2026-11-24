@@ -103,6 +103,10 @@ svg .guideline line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray:
 svg circle.point { fill: var(--point); fill-opacity: .45; }
 svg rect.point, svg .point.named rect { fill: var(--bar-above); stroke: var(--bg); stroke-width: 1; }
 svg .point.named text { paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
+svg a:hover text { text-decoration: underline; }
+svg a > text, svg a > tspan { fill: var(--link); text-decoration: underline; }
+svg a:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+svg a .tile rect, svg a .tile.marked rect { stroke: var(--link); stroke-width: 2; }
 svg polyline { fill: none; stroke: var(--bar-above); stroke-width: 2; } svg circle { fill: var(--bar-above); }
 .notice { border-left: 4px solid var(--notice-rule); background: var(--notice-bg); padding: .5rem .75rem; margin: .75rem 0; }
 .judgement { border: 1px solid var(--rule); border-left: 4px solid var(--link); background: var(--panel); padding: .25rem 1rem .5rem; margin: 1rem 0; }
@@ -149,42 +153,42 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <main id="main">
 <section id="summary" aria-labelledby="summary-heading">
 <h2 id="summary-heading">Where knowledge is concentrated</h2>
-<section class="judgement">
+<section class="judgement" id="judgement-summary-761b7a">
 <h3>Judgement: where knowledge is concentrated</h3>
 <p>Knowledge sits with a few people and the history is short.</p>
 </section>
 <figure class="chart treemap category-treemap">
 <figcaption>The code, nested by folder: size is lines, fill is knowledge-risk pattern</figcaption>
-<svg role="img" aria-labelledby="the-code-nested-by-folder-size-is-lines-fill-is-knowledge-risk-pattern-083fa0-title the-code-nested-by-folder-size-is-lines-fill-is-knowledge-risk-pattern-083fa0-desc" width="960" height="520" viewBox="0 0 960 520" preserveAspectRatio="xMinYMin meet">
-<title id="the-code-nested-by-folder-size-is-lines-fill-is-knowledge-risk-pattern-083fa0-title">The code, nested by folder: size is lines, fill is knowledge-risk pattern</title>
-<desc id="the-code-nested-by-folder-size-is-lines-fill-is-knowledge-risk-pattern-083fa0-desc">A treemap of 8 items nested by folder. Area is lines; each tile is filled by its first pattern. The table below lists the same items.</desc>
+<svg role="img" aria-labelledby="the-code-nested-by-folder-size-is-lines-fill-is-knowledge-risk-pattern-89d3f8-title the-code-nested-by-folder-size-is-lines-fill-is-knowledge-risk-pattern-89d3f8-desc" width="960" height="520" viewBox="0 0 960 520" preserveAspectRatio="xMinYMin meet">
+<title id="the-code-nested-by-folder-size-is-lines-fill-is-knowledge-risk-pattern-89d3f8-title">The code, nested by folder: size is lines, fill is knowledge-risk pattern</title>
+<desc id="the-code-nested-by-folder-size-is-lines-fill-is-knowledge-risk-pattern-89d3f8-desc">A treemap of 8 items nested by folder. Area is lines; each tile is filled by its first pattern. The table below lists the same items.</desc>
 <g class="folder"><rect x="0.0" y="0.0" width="960.0" height="520.0"/><text x="4.0" y="11.0">src</text></g>
 <g class="folder"><rect x="2.0" y="16.0" width="358.5" height="502.0"/><text x="6.0" y="27.0">core</text></g>
 <g class="folder"><rect x="360.5" y="16.0" width="239.0" height="502.0"/><text x="364.5" y="27.0">api</text></g>
 <g class="folder"><rect x="599.5" y="16.0" width="179.3" height="334.7"/><text x="603.5" y="27.0">gen</text></g>
 <g class="folder"><rect x="778.8" y="16.0" width="179.3" height="334.7"/><text x="782.8" y="27.0">ui</text></g>
 <g class="folder"><rect x="599.5" y="350.7" width="358.5" height="167.3"/><text x="603.5" y="361.7">util</text></g>
-<g class="tile cat-4"><title>src/core/engine.ts: 10 lines, First pattern Complex code by former contributors</title><rect x="4.0" y="32.0" width="177.3" height="322.7"/><text x="7.0" y="44.0">engine.ts</text><text x="7.0" y="57.0">CFC</text></g>
-<g class="tile cat-4"><title>src/core/lexer.ts: 10 lines, First pattern Complex code by former contributors</title><rect x="181.3" y="32.0" width="177.3" height="322.7"/><text x="184.3" y="44.0">lexer.ts</text><text x="184.3" y="57.0">CFC</text></g>
-<g class="tile cat-4"><title>src/core/parser.ts: 10 lines, First pattern Complex code by former contributors</title><rect x="4.0" y="354.7" width="354.5" height="161.3"/><text x="7.0" y="366.7">parser.ts</text><text x="7.0" y="379.7">CFC</text></g>
-<g class="tile cat-5"><title>src/api/auth.ts: 10 lines, First pattern Single-owner hotspot</title><rect x="362.5" y="32.0" width="235.0" height="242.0"/><text x="365.5" y="44.0">auth.ts</text><text x="365.5" y="57.0">SOH</text></g>
+<a href="#pattern-former-contributors-complex-engine-ts-e1acc1"><g class="tile cat-4"><title>src/core/engine.ts: 10 lines, First pattern Complex code by former contributors</title><rect x="4.0" y="32.0" width="177.3" height="322.7"/><text x="7.0" y="44.0">engine.ts</text><text x="7.0" y="57.0">CFC</text></g></a>
+<a href="#pattern-former-contributors-complex-lexer-ts-36ffe2"><g class="tile cat-4"><title>src/core/lexer.ts: 10 lines, First pattern Complex code by former contributors</title><rect x="181.3" y="32.0" width="177.3" height="322.7"/><text x="184.3" y="44.0">lexer.ts</text><text x="184.3" y="57.0">CFC</text></g></a>
+<a href="#pattern-former-contributors-complex-parser-ts-779296"><g class="tile cat-4"><title>src/core/parser.ts: 10 lines, First pattern Complex code by former contributors</title><rect x="4.0" y="354.7" width="354.5" height="161.3"/><text x="7.0" y="366.7">parser.ts</text><text x="7.0" y="379.7">CFC</text></g></a>
+<a href="#pattern-single-owner-hotspot-auth-ts-493728"><g class="tile cat-5"><title>src/api/auth.ts: 10 lines, First pattern Single-owner hotspot</title><rect x="362.5" y="32.0" width="235.0" height="242.0"/><text x="365.5" y="44.0">auth.ts</text><text x="365.5" y="57.0">SOH</text></g></a>
 <g class="tile band-none"><title>src/api/routes.ts: 10 lines, no First pattern</title><rect x="362.5" y="274.0" width="235.0" height="242.0"/><text x="365.5" y="286.0">routes.ts</text></g>
-<g class="tile cat-1"><title>src/gen/deps.ts: 10 lines, First pattern Inconclusive</title><rect x="601.5" y="32.0" width="175.3" height="316.7"/><text x="604.5" y="44.0">deps.ts</text><text x="604.5" y="57.0">INC</text></g>
-<g class="tile cat-3"><title>src/ui/view.ts: 10 lines, First pattern Single owner</title><rect x="780.8" y="32.0" width="175.3" height="316.7"/><text x="783.8" y="44.0">view.ts</text><text x="783.8" y="57.0">SO</text></g>
-<g class="tile cat-3"><title>src/util/log.ts: 10 lines, First pattern Single owner</title><rect x="601.5" y="366.7" width="354.5" height="149.3"/><text x="604.5" y="378.7">log.ts</text><text x="604.5" y="391.7">SO</text></g>
+<a href="#pattern-inconclusive-deps-ts-cc4ec5"><g class="tile cat-1"><title>src/gen/deps.ts: 10 lines, First pattern Inconclusive</title><rect x="601.5" y="32.0" width="175.3" height="316.7"/><text x="604.5" y="44.0">deps.ts</text><text x="604.5" y="57.0">INC</text></g></a>
+<a href="#pattern-single-owner-view-ts-3a573a"><g class="tile cat-3"><title>src/ui/view.ts: 10 lines, First pattern Single owner</title><rect x="780.8" y="32.0" width="175.3" height="316.7"/><text x="783.8" y="44.0">view.ts</text><text x="783.8" y="57.0">SO</text></g></a>
+<a href="#pattern-single-owner-log-ts-ca343b"><g class="tile cat-3"><title>src/util/log.ts: 10 lines, First pattern Single owner</title><rect x="601.5" y="366.7" width="354.5" height="149.3"/><text x="604.5" y="378.7">log.ts</text><text x="604.5" y="391.7">SO</text></g></a>
 </svg>
 <table>
 <caption>The code, nested by folder: size is lines, fill is knowledge-risk pattern: the items drawn, largest first</caption>
 <thead><tr><th scope="col">Path</th><th scope="col" class="number">Size (lines)</th><th scope="col">First pattern</th></tr></thead>
 <tbody>
-<tr><th scope="row">src/api/auth.ts</th><td class="number">10</td><td>Single-owner hotspot</td></tr>
+<tr><th scope="row"><a href="#pattern-single-owner-hotspot-auth-ts-493728">src/api/auth.ts</a></th><td class="number">10</td><td>Single-owner hotspot</td></tr>
 <tr><th scope="row">src/api/routes.ts</th><td class="number">10</td><td>none</td></tr>
-<tr><th scope="row">src/core/engine.ts</th><td class="number">10</td><td>Complex code by former contributors</td></tr>
-<tr><th scope="row">src/core/lexer.ts</th><td class="number">10</td><td>Complex code by former contributors</td></tr>
-<tr><th scope="row">src/core/parser.ts</th><td class="number">10</td><td>Complex code by former contributors</td></tr>
-<tr><th scope="row">src/gen/deps.ts</th><td class="number">10</td><td>Inconclusive</td></tr>
-<tr><th scope="row">src/ui/view.ts</th><td class="number">10</td><td>Single owner</td></tr>
-<tr><th scope="row">src/util/log.ts</th><td class="number">10</td><td>Single owner</td></tr>
+<tr><th scope="row"><a href="#pattern-former-contributors-complex-engine-ts-e1acc1">src/core/engine.ts</a></th><td class="number">10</td><td>Complex code by former contributors</td></tr>
+<tr><th scope="row"><a href="#pattern-former-contributors-complex-lexer-ts-36ffe2">src/core/lexer.ts</a></th><td class="number">10</td><td>Complex code by former contributors</td></tr>
+<tr><th scope="row"><a href="#pattern-former-contributors-complex-parser-ts-779296">src/core/parser.ts</a></th><td class="number">10</td><td>Complex code by former contributors</td></tr>
+<tr><th scope="row"><a href="#pattern-inconclusive-deps-ts-cc4ec5">src/gen/deps.ts</a></th><td class="number">10</td><td>Inconclusive</td></tr>
+<tr><th scope="row"><a href="#pattern-single-owner-view-ts-3a573a">src/ui/view.ts</a></th><td class="number">10</td><td>Single owner</td></tr>
+<tr><th scope="row"><a href="#pattern-single-owner-log-ts-ca343b">src/util/log.ts</a></th><td class="number">10</td><td>Single owner</td></tr>
 </tbody>
 </table>
 <p class="legend">Area is lines. Every tile is filled by its first pattern, and a tile large enough prints its name and the mark of its first pattern; grey tiles have none. The marks, with the tiles and lines of each:</p>
@@ -231,10 +235,10 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <caption>Top files whose first pattern is single-owner hotspot, hottest first</caption>
 <thead><tr><th scope="col" class="number">#</th><th scope="col">File</th><th scope="col">Hotspot</th><th scope="col" class="number">Complexity</th><th scope="col" class="number">Lines held by people</th><th scope="col" class="number">Active holders</th><th scope="col" class="number">Former holders</th><th scope="col" class="number">Top active holder (%)</th><th scope="col" class="number">Held by former (%)</th><th scope="col" class="number">Bus factor</th></tr></thead>
 <tbody>
-<tr><td class="number">1</td><td>src/api/auth.ts</td><td>yes</td><td class="number">0</td><td class="number">10</td><td class="number">1</td><td class="number">0</td><td class="number">100</td><td class="number">0</td><td class="number">1</td></tr>
+<tr id="pattern-single-owner-hotspot-auth-ts-493728"><td class="number">1</td><td>src/api/auth.ts</td><td>yes</td><td class="number">0</td><td class="number">10</td><td class="number">1</td><td class="number">0</td><td class="number">100</td><td class="number">0</td><td class="number">1</td></tr>
 </tbody>
 </table>
-<section class="judgement">
+<section class="judgement" id="judgement-pattern-single-owner-hotspot-bd294f">
 <h3>Judgement: single-owner hotspot</h3>
 <p><strong class="subject">Single-owner hotspot</strong>: <span class="verdict">Verdict: pair.</span> These files follow the pattern in the table above.</p>
 </section>
@@ -242,12 +246,12 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <caption>Top files whose first pattern is complex code by former contributors, hottest first</caption>
 <thead><tr><th scope="col" class="number">#</th><th scope="col">File</th><th scope="col">Hotspot</th><th scope="col" class="number">Complexity</th><th scope="col" class="number">Lines held by people</th><th scope="col" class="number">Active holders</th><th scope="col" class="number">Former holders</th><th scope="col" class="number">Top active holder (%)</th><th scope="col" class="number">Held by former (%)</th><th scope="col" class="number">Bus factor</th></tr></thead>
 <tbody>
-<tr><td class="number">1</td><td>src/core/engine.ts</td><td>no</td><td class="number">0</td><td class="number">10</td><td class="number">0</td><td class="number">1</td><td class="number">0</td><td class="number">100</td><td class="number">–</td></tr>
-<tr><td class="number">2</td><td>src/core/lexer.ts</td><td>no</td><td class="number">0</td><td class="number">10</td><td class="number">1</td><td class="number">1</td><td class="number">20</td><td class="number">80</td><td class="number">–</td></tr>
-<tr><td class="number">3</td><td>src/core/parser.ts</td><td>no</td><td class="number">0</td><td class="number">10</td><td class="number">1</td><td class="number">1</td><td class="number">10</td><td class="number">90</td><td class="number">–</td></tr>
+<tr id="pattern-former-contributors-complex-engine-ts-e1acc1"><td class="number">1</td><td>src/core/engine.ts</td><td>no</td><td class="number">0</td><td class="number">10</td><td class="number">0</td><td class="number">1</td><td class="number">0</td><td class="number">100</td><td class="number">–</td></tr>
+<tr id="pattern-former-contributors-complex-lexer-ts-36ffe2"><td class="number">2</td><td>src/core/lexer.ts</td><td>no</td><td class="number">0</td><td class="number">10</td><td class="number">1</td><td class="number">1</td><td class="number">20</td><td class="number">80</td><td class="number">–</td></tr>
+<tr id="pattern-former-contributors-complex-parser-ts-779296"><td class="number">3</td><td>src/core/parser.ts</td><td>no</td><td class="number">0</td><td class="number">10</td><td class="number">1</td><td class="number">1</td><td class="number">10</td><td class="number">90</td><td class="number">–</td></tr>
 </tbody>
 </table>
-<section class="judgement">
+<section class="judgement" id="judgement-pattern-former-contributors-complex-cabe15">
 <h3>Judgement: complex code by former contributors</h3>
 <p><strong class="subject">Complex code by former contributors</strong>: <span class="verdict">Verdict: pair.</span> These files follow the pattern in the table above.</p>
 </section>
@@ -255,11 +259,11 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <caption>Top files whose first pattern is single owner, hottest first</caption>
 <thead><tr><th scope="col" class="number">#</th><th scope="col">File</th><th scope="col">Hotspot</th><th scope="col" class="number">Complexity</th><th scope="col" class="number">Lines held by people</th><th scope="col" class="number">Active holders</th><th scope="col" class="number">Former holders</th><th scope="col" class="number">Top active holder (%)</th><th scope="col" class="number">Held by former (%)</th><th scope="col" class="number">Bus factor</th></tr></thead>
 <tbody>
-<tr><td class="number">1</td><td>src/ui/view.ts</td><td>no</td><td class="number">0</td><td class="number">10</td><td class="number">1</td><td class="number">0</td><td class="number">100</td><td class="number">0</td><td class="number">1</td></tr>
-<tr><td class="number">2</td><td>src/util/log.ts</td><td>no</td><td class="number">0</td><td class="number">10</td><td class="number">1</td><td class="number">0</td><td class="number">100</td><td class="number">0</td><td class="number">1</td></tr>
+<tr id="pattern-single-owner-view-ts-3a573a"><td class="number">1</td><td>src/ui/view.ts</td><td>no</td><td class="number">0</td><td class="number">10</td><td class="number">1</td><td class="number">0</td><td class="number">100</td><td class="number">0</td><td class="number">1</td></tr>
+<tr id="pattern-single-owner-log-ts-ca343b"><td class="number">2</td><td>src/util/log.ts</td><td>no</td><td class="number">0</td><td class="number">10</td><td class="number">1</td><td class="number">0</td><td class="number">100</td><td class="number">0</td><td class="number">1</td></tr>
 </tbody>
 </table>
-<section class="judgement">
+<section class="judgement" id="judgement-pattern-single-owner-fb18ec">
 <h3>Judgement: single owner</h3>
 <p><strong class="subject">Single owner</strong>: <span class="verdict">Verdict: pair.</span> These files follow the pattern in the table above.</p>
 </section>
@@ -267,10 +271,10 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <caption>Top files whose first pattern is inconclusive, hottest first</caption>
 <thead><tr><th scope="col" class="number">#</th><th scope="col">File</th><th scope="col">Hotspot</th><th scope="col" class="number">Complexity</th><th scope="col" class="number">Lines held by people</th><th scope="col" class="number">Active holders</th><th scope="col" class="number">Former holders</th><th scope="col" class="number">Top active holder (%)</th><th scope="col" class="number">Held by former (%)</th><th scope="col" class="number">Bus factor</th></tr></thead>
 <tbody>
-<tr><td class="number">1</td><td>src/gen/deps.ts</td><td>no</td><td class="number">0</td><td class="number">5</td><td class="number">0</td><td class="number">1</td><td class="number">0</td><td class="number">100</td><td class="number">–</td></tr>
+<tr id="pattern-inconclusive-deps-ts-cc4ec5"><td class="number">1</td><td>src/gen/deps.ts</td><td>no</td><td class="number">0</td><td class="number">5</td><td class="number">0</td><td class="number">1</td><td class="number">0</td><td class="number">100</td><td class="number">–</td></tr>
 </tbody>
 </table>
-<section class="judgement">
+<section class="judgement" id="judgement-pattern-inconclusive-d77c1e">
 <h3>Judgement: inconclusive</h3>
 <p><strong class="subject">Inconclusive</strong>: <span class="verdict">Verdict: map-identities.</span> These files follow the pattern in the table above.</p>
 </section>
@@ -365,7 +369,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <li>Complexity is the indentation proxy, because no <code>complexity files</code> result is stored for this commit. Test files and files that are not code have none, so the complex-code pattern does not apply to them (0 files with a blame have no complexity).</li>
 <li>The evidence grade is weak, so history-based results are tentative.</li>
 </ul>
-<section class="judgement">
+<section class="judgement" id="judgement-limits-8a46fd">
 <h3>Judgement: what limits these results</h3>
 <p>Knowledge sits with a few people and the history is short.</p>
 </section>

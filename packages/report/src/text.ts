@@ -66,3 +66,13 @@ export function codeSpan(text: string): string {
   const pad = line.startsWith("`") || line.endsWith("`") ? " " : "";
   return `${fence}${pad}${line}${pad}${fence}`;
 }
+
+/**
+ * The id of a row, section or other target that a link on the same page points at: `prefix`, a slug of the subject's last
+ * segment and a short hash of the whole subject. The same subject gives the same id, two subjects never give the same id,
+ * and a prefix per table keeps one subject in two tables apart.
+ */
+export function targetId(prefix: string, subject: string): string {
+  const name = subject.split("/").filter((part) => part !== "").at(-1) ?? subject;
+  return `${prefix}-${slug(name).slice(0, 40)}-${shortHash(subject)}`;
+}

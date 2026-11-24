@@ -10,6 +10,7 @@ import type { OptionSpec } from "./args.ts";
 import { usageError } from "./errors.ts";
 import type { Command, CommandContext, CommandOutput, SubcommandHelp } from "./run-cli.ts";
 import { cachedBuild } from "./report-build-cache.ts";
+import { readSiblings } from "./report-siblings.ts";
 import { serialise } from "./serialise.ts";
 
 /** One kind of report a plugin offers: the word typed after `report`, and the data and slots it builds. */
@@ -138,6 +139,7 @@ function readRequest(context: CommandContext): Request {
 }
 
 function produce(report: Report, request: Request, cwd: string): string {
+  const siblings = readSiblings(request.out === undefined ? undefined : resolve(cwd, request.out), report.kind, report.header.commit);
   const format = request.format ?? "md";
   if (request.notes === undefined) return renderReport(report, format, undefined, { compact: request.compact });
   let document: unknown;
@@ -146,7 +148,7 @@ function produce(report: Report, request: Request, cwd: string): string {
   } catch (error) {
     throw new ReportError(`cannot read the notes file ${request.notes}: ${error instanceof Error ? error.message : String(error)}`);
   }
-  return renderReport(report, format, validateNotes(report, document), { compact: request.compact });
+  return renderReport(report, format, validateNotes(report, document), { compact: request.compact, siblings });
 }
 
 /** The repository's name for the report header: the folder the working tree is in. */

@@ -310,6 +310,16 @@
                 null
               ]
             ],
+            "columnHrefs": [
+              "#sum-orders-ts-471259",
+              "#sum-orders-view-ts-2e926f",
+              "#sum-flags-ts-1590cf",
+              "#sum-flags-ts-6166f2",
+              null,
+              null,
+              "#sum-index-ts-de6d1a",
+              "#sum-ranking-ts-11eb7f"
+            ],
             "columns": [
               "src/api/orders.ts",
               "src/web/orders-view.ts",
@@ -323,21 +333,25 @@
             "groups": [
               {
                 "end": 1,
+                "href": "#cluster-1",
                 "label": "cluster 1",
                 "start": 0
               },
               {
                 "end": 3,
+                "href": "#cluster-2",
                 "label": "cluster 2",
                 "start": 2
               },
               {
                 "end": 5,
+                "href": "#cluster-3",
                 "label": "cluster 3",
                 "start": 4
               },
               {
                 "end": 7,
+                "href": "#cluster-4",
                 "label": "cluster 4",
                 "start": 6
               }
@@ -353,6 +367,16 @@
               }
             },
             "orderText": "Rows and columns are ordered by cluster (the numbers of the table of clusters), and within a cluster by sum of coupling over production pairs, then coupled files, then path. Draws 8 files and 4 of 4 clusters, at most 18 files; omits 0 files and 0 clusters (clusters are drawn in the order of the table of clusters, then the files in no cluster with the greatest sum).  `cochange clusters` lists every cluster. A cell is the degree of the pair, which is also its colour; shared changes are in the tables of pairs, and a pair that shares fewer than 5 changes (the support floor) has no cell value. Expected pairs are drawn and marked, not left out (1 of 1 expected pair falls within the drawn files). Cluster edges are pairs at or above the degree guideline of 30 percent, so a marked cell outside the boxes is a pair under the guideline.",
+            "rowHrefs": [
+              "#sum-orders-ts-471259",
+              "#sum-orders-view-ts-2e926f",
+              "#sum-flags-ts-1590cf",
+              "#sum-flags-ts-6166f2",
+              null,
+              null,
+              "#sum-index-ts-de6d1a",
+              "#sum-ranking-ts-11eb7f"
+            ],
             "rows": [
               "src/api/orders.ts",
               "src/web/orders-view.ts",
@@ -380,6 +404,20 @@
           },
           {
             "caption": "Most strongly coupled pairs of production files, with how each moved since the previous window. Sorted by degree, then shared changes, then path; pairs under the degree guideline come after the others.",
+            "cellHrefs": [
+              {
+                "file": "#sum-index-ts-de6d1a",
+                "with": "#sum-ranking-ts-11eb7f"
+              },
+              {
+                "file": "#sum-orders-ts-471259",
+                "with": "#sum-orders-view-ts-2e926f"
+              },
+              {
+                "file": "#sum-flags-ts-1590cf",
+                "with": "#sum-flags-ts-6166f2"
+              }
+            ],
             "columns": [
               {
                 "key": "file",
@@ -425,6 +463,11 @@
             ],
             "emptyText": "None of the 4 pairs that reach the support floor is a pair of production files; they are all in the table of expected pairs.",
             "noun": "pairs",
+            "rowIds": [
+              "pair-ranking-ts-c9105d",
+              "pair-orders-view-ts-dda63e",
+              "pair-flags-ts-c691bf"
+            ],
             "rows": [
               {
                 "confidence": 100,
@@ -629,6 +672,14 @@
             ],
             "emptyText": "No production pair reaches the support floor, so no file has a sum of coupling.",
             "noun": "files",
+            "rowIds": [
+              "sum-orders-ts-471259",
+              "sum-orders-view-ts-2e926f",
+              "sum-flags-ts-1590cf",
+              "sum-flags-ts-6166f2",
+              "sum-index-ts-de6d1a",
+              "sum-ranking-ts-11eb7f"
+            ],
             "rows": [
               {
                 "file": "src/api/orders.ts",
@@ -709,6 +760,12 @@
               }
             ],
             "noun": "clusters",
+            "rowIds": [
+              "cluster-1",
+              "cluster-2",
+              "cluster-3",
+              "cluster-4"
+            ],
             "rows": [
               {
                 "degree": 80,
