@@ -40,4 +40,27 @@ Reading the result:
 - `structure` sets the leading indicator before and after. Read `structure.gaming` every time: `flagged` true means weighted import distance fell while the number of single-file folders or the maximum depth rose, so the distance was buried in nesting and not removed. Report that as gaming and do not count the gain; move the file back or flatten it. A `before` of null means the baseline predates these figures, so no check was possible.
 - `spreadReproduced` false means history was rewritten since the baseline, so its spread no longer reproduces.
 
+## What one change does to import distance
+
+```
+node ${CLAUDE_PLUGIN_ROOT}/dist/locality.mjs measure change --json
+```
+
+It needs no baseline. It reads two revisions and prints how the total import distance differs between them. With no argument it measures the current branch against its merge base with the main branch, and on the main branch it measures the last commit against its first parent. `measure change BASE` and `measure change BASE..HEAD` name the range, as `cochange risk` reads one. Both revisions are read with the config of the checkout.
+
+The total (`totalUseDistance`) is the sum, over import edges from files reachable from an entry point, of use count times tree distance. It leaves out the co-change weighting that `analyse` adds to `metrics.totalWeightedDistance`, because that depends on the history window and not on the revision, so the two totals are equal only with `locality.useHistory` off.
+
+Reading the result:
+
+- `delta` is `after.totalUseDistance` minus `before.totalUseDistance`. A change that adds code adds edges, so `delta` is above zero for most changes and mostly follows how much was added. Do not report a positive `delta` alone as a problem.
+- `parts.added.meanDistancePerUse` is the figure for where the new code was placed, and `parts.added.ratioToCodebaseMean` sets it against `before.meanDistancePerUse`. Above 1, the uses this change added are further apart than the codebase's uses were. It is a ratio to read, not a pass or fail.
+- `parts` splits `delta` exactly: `added.distance` minus `removed.distance`, plus `moved.distance` (a file at one end was renamed), `reweighted.distance` (the use count of an existing import changed) and `reachability.distance` (the importing file became reachable from an entry point, or stopped being reachable; the files are in `reachability.gained` and `reachability.lost`).
+- `edges` lists the changed edges, largest absolute `change` first, each with its use count and distance before and after. `--edges <n|all>` sets how many (20 by default) and `edgesOmitted` counts the rest. Name the first few added edges with a high distance when asked what in the change is distant.
+- A renamed file keeps its edges when git detects the rename (`renamedFiles`). A file moved and rewritten in one change is read as edges removed and added: `delta` is the same and the split is not.
+- `structure.gaming` is the same check as in `measure compare`: `flagged` true means the distance fell while single-file folders or the maximum depth rose.
+
+This is a leading indicator of one change. It says what the change did to the import graph, and nothing about whether later changes cost less.
+
+## Limits
+
 Moves that carried no `Code-Health:` trailer are not recognised as acted on. Spread from history alone cannot be the outcome for moves made from `analyse --source history`, because the target minimised the same distances. Agent effort is.

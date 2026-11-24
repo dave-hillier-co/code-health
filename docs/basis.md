@@ -138,6 +138,7 @@ It asks which code lives far from the code that uses it. Distance mostly arrives
 - **Young code gets a grace period**, because it has had no time to be reused.
 - **Moves are deterministic and are only moves.** The mover plans by default, and a move commit changes no behaviour and, in C#, no names: making namespaces follow folders is a separate optional commit, because reflection, serialisation and dependency injection by name can all see a namespace.
 - **Moves do not cross package boundaries.** Whether the packages are the right ones is the packaging skill's question.
+- **One change is measured as a difference, split by cause.** The total import distance (use count times folder-tree distance) of a branch is set against that of its base. The difference alone mostly follows growth, since any change that adds code adds imports, so it is split into edges added, removed, moved and reweighted, and the mean distance of the uses a change added is set against the codebase's mean. Co-change weighting is left out of this total, so that it is a property of a revision and not of the history window.
 
 ### structure
 

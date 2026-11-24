@@ -1,0 +1,125 @@
+{
+  "command": "measure",
+  "config": "0000000000000000",
+  "inputs": {
+    "edges": 20,
+    "range": null
+  },
+  "repo": {
+    "dirty": false,
+    "head": "e796951155bd88fb75a7ceb691376967934adcc7"
+  },
+  "results": {
+    "after": {
+      "edges": 5,
+      "meanDistancePerUse": 0.666667,
+      "totalUseDistance": 4,
+      "uses": 6
+    },
+    "against": "main",
+    "base": "7742989dbb34a39bcf8ea6a83d8a626fe0d62844",
+    "before": {
+      "edges": 3,
+      "meanDistancePerUse": 2,
+      "totalUseDistance": 8,
+      "uses": 4
+    },
+    "delta": -4,
+    "edges": [
+      {
+        "after": {
+          "distance": 0,
+          "weight": 2
+        },
+        "before": {
+          "distance": 3,
+          "weight": 2
+        },
+        "change": -6,
+        "from": "src/billing/invoice.ts",
+        "kind": "moved",
+        "to": "src/billing/money.ts"
+      },
+      {
+        "after": {
+          "distance": 2,
+          "weight": 1
+        },
+        "before": null,
+        "change": 2,
+        "from": "src/orders/place.ts",
+        "kind": "added",
+        "to": "src/billing/money.ts"
+      },
+      {
+        "after": {
+          "distance": 0,
+          "weight": 1
+        },
+        "before": null,
+        "change": 0,
+        "from": "src/orders/place.ts",
+        "kind": "added",
+        "to": "src/orders/tax.ts"
+      }
+    ],
+    "edgesOmitted": 0,
+    "head": "e796951155bd88fb75a7ceb691376967934adcc7",
+    "parts": {
+      "added": {
+        "distance": 2,
+        "edges": 2,
+        "meanDistancePerUse": 1,
+        "ratioToCodebaseMean": 0.5,
+        "uses": 2
+      },
+      "moved": {
+        "distance": -6,
+        "edges": 1
+      },
+      "reachability": {
+        "distance": 0,
+        "edges": 0
+      },
+      "removed": {
+        "distance": 0,
+        "edges": 0,
+        "meanDistancePerUse": null,
+        "uses": 0
+      },
+      "reweighted": {
+        "distance": 0,
+        "edges": 0,
+        "uses": 0
+      }
+    },
+    "reachability": {
+      "gained": [],
+      "lost": []
+    },
+    "renamedFiles": 1,
+    "role": "leading indicator",
+    "status": "change",
+    "structure": {
+      "after": {
+        "maxDepth": 2,
+        "singleFileFolders": 1
+      },
+      "before": {
+        "maxDepth": 3,
+        "singleFileFolders": 4
+      },
+      "gaming": {
+        "flagged": false,
+        "reasons": []
+      }
+    }
+  },
+  "schemaVersion": 1,
+  "tool": "locality",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  }
+}

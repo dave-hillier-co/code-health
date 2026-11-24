@@ -18,7 +18,9 @@ import { changesBetween, changesTouching, summariseSpread, type SpreadSummary } 
 import { addDays, dayOf, matchingWindow, windowEndingAt, windowLength, windowSeconds, type DayWindow } from "../measure-window.ts";
 import { loadProject } from "../project.ts";
 import { actionsSince, countSuiteCommits } from "../suite-commits.ts";
-import { gamingCheck, type StructureMetrics } from "../structure-metrics.ts";
+import { gamingCheck, structureMetricsOf, type StructureMetrics } from "../structure-metrics.ts";
+import { changeDistance, revisionEdges } from "../change-distance.ts";
+import { renamesBetween, resolveChangeRange } from "../change-range.ts";
 import { testPremise } from "../premise.ts";
 import { claimOf, differenceOf, effortConclusion, type Arm } from "../verdict.ts";
 
@@ -28,11 +30,12 @@ const DEFAULT_NAME = "default";
 const DEFAULT_CANDIDATES = 200;
 const HEAT_FILES = 50;
 const TOOL_PLUGIN = "locality";
+const DEFAULT_EDGES = 20;
 
 export const command: Command = {
   summary:
-    "Record the baseline before a tidy-up (measure baseline), then compare against it afterwards (measure compare)",
-  usage: "baseline | compare",
+    "Record the baseline before a tidy-up (measure baseline), compare against it afterwards (measure compare), or print how a branch changes the total import distance (measure change)",
+  usage: "baseline | compare | change [BASE[..HEAD]]",
   hiddenOptions: ["until"],
   optionHelp: {
     name: "the name of the baseline to record or compare against (default: default)",
@@ -42,6 +45,7 @@ export const command: Command = {
     source: "baseline: which tasks are read, main (main sessions), subagent (subagent transcripts) or all (default all); compare uses the baseline's",
     effort: "baseline: which calls count toward effort, tools (Read, Grep, Glob, Edit, Write and NotebookEdit calls only) or all (those and the files named in Bash commands) (default all); compare uses the baseline's",
     force: "replace a baseline of the same name",
+    edges: "change: how many changed edges are listed, a number or all (default 20)",
   },
   options: {
     name: { type: "string" },
@@ -52,11 +56,16 @@ export const command: Command = {
     source: { type: "string" },
     effort: { type: "string" },
     force: { type: "boolean" },
+    edges: { type: "string" },
   },
   async run(context): Promise<CommandOutput> {
     const [subcommand] = context.positionals;
-    if (subcommand !== "baseline" && subcommand !== "compare" && subcommand !== "premise") {
-      throw usageError("measure takes one subcommand: baseline or compare");
+    if (subcommand !== "baseline" && subcommand !== "compare" && subcommand !== "premise" && subcommand !== "change") {
+      throw usageError("measure takes one subcommand: baseline, compare or change");
+    }
+    if (subcommand === "change") {
+      if (context.positionals.length > 2) throw usageError("usage: measure change [BASE[..HEAD]]");
+      return change(context, readSettings(context.config), context.positionals[1]);
     }
     if (context.positionals.length > 1) {
       throw usageError(`measure ${subcommand} takes no arguments after the subcommand, got "${context.positionals[1]}"`);
@@ -345,6 +354,62 @@ async function compare(context: CommandContext, settings: LocalitySettings): Pro
       spread: { role: "outcome, partly by construction", ...spreadDifference },
       effort: { role: "primary outcome", conclusion: effort, ...effortDifferences },
       claim: claimOf(effort, spreadDifference.conclusion),
+    },
+  };
+}
+
+/**
+ * The structure of one revision: its figures, and its import edges for the comparison. Read with the config of the
+ * checkout, so both revisions are measured alike, and without history, so an edge weighs its uses alone and the
+ * figures are those of the revision whatever the history window holds.
+ */
+async function structureAt(root: string, ref: string, settings: LocalitySettings) {
+  const project = await loadProject(root, ref, settings);
+  const model = buildModel(project, settings);
+  return { metrics: structureMetricsOf(project, model), edges: revisionEdges(model) };
+}
+
+const folderFigures = ({ singleFileFolders, maxDepth }: StructureMetrics) => ({ singleFileFolders, maxDepth });
+
+/**
+ * How one change (a branch against its base, or the last commit) alters the total import distance, split
+ * into edges added, removed, moved and reweighted. A leading indicator of the change, not an outcome.
+ */
+async function change(context: CommandContext, settings: LocalitySettings, requested: string | undefined): Promise<CommandOutput> {
+  const { root } = context.repo;
+  const listed = stringOption(context, "edges") ?? String(DEFAULT_EDGES);
+  if (listed !== "all" && !/^[1-9]\d*$/.test(listed)) throw usageError("--edges must be a positive integer or all");
+  const range = await resolveChangeRange(root, requested);
+  const before = await structureAt(root, range.base, settings);
+  const after = await structureAt(root, range.head, settings);
+  const renames = await renamesBetween(root, range.base, range.head);
+  const difference = changeDistance(before.edges, after.edges, renames);
+
+  // Importing files that are reachable from an entry point in one revision and not in the other, by their later paths.
+  const renamed = (path: string): string => renames.get(path) ?? path;
+  const importers = (edges: typeof before.edges, counted: boolean, path: (from: string) => string) => new Set(edges.filter((edge) => edge.counted === counted).map((edge) => path(edge.from)));
+  const reachableBefore = importers(before.edges, true, renamed);
+  const reachableAfter = importers(after.edges, true, (from) => from);
+  const gained = [...importers(before.edges, false, renamed)].filter((path) => reachableAfter.has(path)).sort(compareIds);
+  const lost = [...importers(after.edges, false, (from) => from)].filter((path) => reachableBefore.has(path)).sort(compareIds);
+  const edges = listed === "all" ? difference.edges : difference.edges.slice(0, Number(listed));
+  return {
+    inputs: { range: requested ?? null, edges: listed === "all" ? "all" : Number(listed) },
+    results: {
+      status: "change",
+      base: range.base,
+      head: range.head,
+      against: range.against,
+      role: "leading indicator",
+      before: difference.before,
+      after: difference.after,
+      delta: difference.delta,
+      parts: difference.parts,
+      renamedFiles: renames.size,
+      reachability: { gained, lost },
+      structure: { before: folderFigures(before.metrics), after: folderFigures(after.metrics), gaming: gamingCheck(before.metrics, after.metrics) },
+      edges,
+      edgesOmitted: difference.edges.length - edges.length,
     },
   };
 }

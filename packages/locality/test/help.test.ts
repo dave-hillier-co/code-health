@@ -18,7 +18,7 @@ test("analyse shows its path arguments and the values its options accept", async
 test("history and measure name their subcommands", async () => {
   expect(await help("history")).toContain("Usage: locality history refresh [options]");
   const measure = await help("measure");
-  expect(measure).toContain("Usage: locality measure baseline | compare [options]");
+  expect(measure).toContain("Usage: locality measure baseline | compare | change [BASE[..HEAD]] [options]");
   expect(measure).not.toContain("premise");
   expect(measure).not.toContain("--until");
   expect(measure).toMatch(/--since <since>\s+baseline and compare: start the after window/);

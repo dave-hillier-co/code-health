@@ -90,7 +90,7 @@ To run them on a corpus:
 3. Run `node plugins/<plugin>/dist/<plugin>.mjs <command> <subcommand> [options] --json` from inside the clone, for example `node /path/to/code-health/plugins/cochange/dist/cochange.mjs risk backtest --json`. Pipe the JSON to a file outside the clone. The first run of a large repository is slow, because it refreshes the history cache, and blame for abandonment.
 4. Read `evidence.grade` first. Read `risk backtest` by `separation`, `abandonment backtest` by `precision` and `recall` (null means a zero denominator, which is not a score), and `locality measure premise` by `verdict` with `tasks.measured`. State the sample size next to each figure.
 
-The outcome commands (`cochange outcome`, `complexity outcome`, `structure packages outcome`, `locality measure baseline` and `compare`) measure what a user acted on and stay user-facing.
+The outcome commands (`cochange outcome`, `complexity outcome`, `structure packages outcome`, `locality measure baseline` and `compare`) measure what a user acted on and stay user-facing. `locality measure change` is user-facing too: it measures one change, not an outcome.
 
 ## Shared blame cache
 

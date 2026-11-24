@@ -16,6 +16,7 @@ import { manifestFolders, placementRefusals, relocate } from "./placement.ts";
 import { recommend, type Decision, type RecommendInput } from "./recommend.ts";
 import { reasonFor } from "./reason.ts";
 import { flagParameters, isPassThrough, vagueSegment } from "./signals.ts";
+import { structureMetricsOf, type StructureMetrics } from "./structure-metrics.ts";
 
 export interface PathCount {
   path: string;
@@ -201,7 +202,7 @@ export interface AnalysisResult {
   placed: Candidate[];
   summary: AnalysisSummary;
   /** Leading indicators and the gaming check: distance removed rather than relocated, and code not buried. */
-  metrics: { totalWeightedDistance: number; singleFileFolders: number; maxDepth: number };
+  metrics: StructureMetrics;
 }
 
 function commonFolder(folders: readonly string[]): string {
@@ -706,20 +707,12 @@ export function analyseProject(project: Project, model: Model, settings: Localit
   const byRecommendation: Record<string, number> = {};
   for (const candidate of reported) byRecommendation[candidate.recommendation] = (byRecommendation[candidate.recommendation] ?? 0) + 1;
 
-  const folders = new Map<string, number>();
-  for (const file of project.production) folders.set(folderOf(file), (folders.get(folderOf(file)) ?? 0) + 1);
   return {
     candidates: reported,
     omitted,
     unproposed,
     placed,
     summary: { files: project.production.length, units: outcomes.length, placed: placed.length, omitted: omittedByReason, byRecommendation },
-    metrics: {
-      totalWeightedDistance: model.edges
-        .filter((edge) => model.reachable.has(edge.from))
-        .reduce((sum, edge) => sum + edge.weight * treeDistance(edge.from, edge.to), 0),
-      singleFileFolders: [...folders.values()].filter((count) => count === 1).length,
-      maxDepth: Math.max(0, ...[...folders.keys()].map(depthOf)),
-    },
+    metrics: structureMetricsOf(project, model),
   };
 }

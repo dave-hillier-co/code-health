@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "measure.schema.json",
-  "title": "locality measure baseline|compare|premise --json",
+  "title": "locality measure baseline|compare|change|premise --json",
   "allOf": [{ "$ref": "common.schema.json#/$defs/envelope" }],
   "type": "object",
   "$defs": {
@@ -215,6 +215,149 @@
       "required": ["status", "window", "source", "effort", "sessions", "minSamples", "history", "tasks", "distance", "figures", "shell", "verdict", "bySource", "meaning", "limits"],
       "additionalProperties": false
     },
+    "revisionDistance": {
+      "type": "object",
+      "description": "The import distance of one revision, over the import edges whose importing file is reachable from an entry point. An edge weighs its use count alone: the co-change weighting that `analyse` adds to `metrics.totalWeightedDistance` is left out, because it depends on the history window and not on the revision.",
+      "properties": {
+        "totalUseDistance": { "type": "number", "minimum": 0, "description": "Sum over the edges of use count times tree distance." },
+        "edges": { "$ref": "common.schema.json#/$defs/count" },
+        "uses": { "$ref": "common.schema.json#/$defs/count", "description": "Sum of the edges' use counts." },
+        "meanDistancePerUse": { "type": ["number", "null"], "description": "totalUseDistance divided by uses. Null with no uses." }
+      },
+      "required": ["totalUseDistance", "edges", "uses", "meanDistancePerUse"],
+      "additionalProperties": false
+    },
+    "edgeSide": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": { "weight": { "$ref": "common.schema.json#/$defs/count" }, "distance": { "$ref": "common.schema.json#/$defs/count" } },
+          "required": ["weight", "distance"],
+          "additionalProperties": false
+        },
+        { "type": "null" }
+      ]
+    },
+    "folderFigures": {
+      "type": "object",
+      "properties": { "singleFileFolders": { "$ref": "common.schema.json#/$defs/count" }, "maxDepth": { "$ref": "common.schema.json#/$defs/count" } },
+      "required": ["singleFileFolders", "maxDepth"],
+      "additionalProperties": false
+    },
+    "changeResults": {
+      "type": "object",
+      "description": "How one change (a branch against its base, or one commit against its first parent) alters the total import distance, split by cause. A leading indicator of the change, not an outcome.",
+      "properties": {
+        "status": { "const": "change" },
+        "base": { "$ref": "common.schema.json#/$defs/sha", "description": "The earlier revision: the merge base of `against` and `head`, or the first parent of `head`." },
+        "head": { "$ref": "common.schema.json#/$defs/sha" },
+        "against": { "type": "string", "description": "What the base was taken against: the ref named, the main branch, or the first parent of HEAD." },
+        "role": { "const": "leading indicator" },
+        "before": { "$ref": "#/$defs/revisionDistance" },
+        "after": { "$ref": "#/$defs/revisionDistance" },
+        "delta": { "type": "number", "description": "after.totalUseDistance minus before.totalUseDistance. It equals parts.added.distance minus parts.removed.distance plus the distances of moved, reweighted and reachability. Most changes that add code add edges, so it mostly follows growth: read parts.added.meanDistancePerUse for where the new code was placed." },
+        "parts": {
+          "type": "object",
+          "properties": {
+            "added": {
+              "type": "object",
+              "description": "Edges the later revision has and the earlier lacks.",
+              "properties": {
+                "edges": { "$ref": "common.schema.json#/$defs/count" },
+                "uses": { "$ref": "common.schema.json#/$defs/count" },
+                "distance": { "type": "number", "minimum": 0 },
+                "meanDistancePerUse": { "type": ["number", "null"], "description": "distance divided by uses. Null when no edge was added." },
+                "ratioToCodebaseMean": { "type": ["number", "null"], "description": "meanDistancePerUse divided by before.meanDistancePerUse. Above 1, the uses the change added are further apart than the codebase's uses were. Null when either mean is null or the codebase's is 0." }
+              },
+              "required": ["edges", "uses", "distance", "meanDistancePerUse", "ratioToCodebaseMean"],
+              "additionalProperties": false
+            },
+            "removed": {
+              "type": "object",
+              "description": "Edges the earlier revision has and the later lacks. `distance` is what they took away, as a positive number.",
+              "properties": {
+                "edges": { "$ref": "common.schema.json#/$defs/count" },
+                "uses": { "$ref": "common.schema.json#/$defs/count" },
+                "distance": { "type": "number", "minimum": 0 },
+                "meanDistancePerUse": { "type": ["number", "null"] }
+              },
+              "required": ["edges", "uses", "distance", "meanDistancePerUse"],
+              "additionalProperties": false
+            },
+            "moved": {
+              "type": "object",
+              "description": "Edges in both revisions whose distance changed because a file at one end was renamed: the earlier use count times the change in distance. Negative when files moved closer.",
+              "properties": { "edges": { "$ref": "common.schema.json#/$defs/count" }, "distance": { "type": "number" } },
+              "required": ["edges", "distance"],
+              "additionalProperties": false
+            },
+            "reweighted": {
+              "type": "object",
+              "description": "Edges in both revisions whose use count changed: the change in use count times the later distance.",
+              "properties": { "edges": { "$ref": "common.schema.json#/$defs/count" }, "uses": { "type": "integer", "description": "Net change in use count." }, "distance": { "type": "number" } },
+              "required": ["edges", "uses", "distance"],
+              "additionalProperties": false
+            },
+            "reachability": {
+              "type": "object",
+              "description": "Edges in both revisions that count in only one, because the importing file became reachable from an entry point or stopped being reachable.",
+              "properties": { "edges": { "$ref": "common.schema.json#/$defs/count" }, "distance": { "type": "number" } },
+              "required": ["edges", "distance"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["added", "removed", "moved", "reweighted", "reachability"],
+          "additionalProperties": false
+        },
+        "renamedFiles": { "$ref": "common.schema.json#/$defs/count", "description": "Files git reports as renamed between the two revisions. Their edges are matched across the rename." },
+        "reachability": {
+          "type": "object",
+          "description": "Importing files that were present in both revisions and reachable from an entry point in only one, by their later paths.",
+          "properties": {
+            "gained": { "type": "array", "items": { "type": "string" } },
+            "lost": { "type": "array", "items": { "type": "string" } }
+          },
+          "required": ["gained", "lost"],
+          "additionalProperties": false
+        },
+        "structure": {
+          "type": "object",
+          "description": "The gaming check's figures in each revision. A fall in import distance that came with more single-file folders or a deeper tree is distance buried, not removed.",
+          "properties": {
+            "before": { "$ref": "#/$defs/folderFigures" },
+            "after": { "$ref": "#/$defs/folderFigures" },
+            "gaming": {
+              "type": "object",
+              "properties": { "flagged": { "type": "boolean" }, "reasons": { "type": "array", "items": { "type": "string" } } },
+              "required": ["flagged", "reasons"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["before", "after", "gaming"],
+          "additionalProperties": false
+        },
+        "edges": {
+          "type": "array",
+          "description": "The edges whose contribution or use count changed, largest absolute change first, then by path. `--edges` sets how many are listed.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": { "type": "string", "description": "The importing file, by its later path unless the edge was removed." },
+              "to": { "type": "string" },
+              "kind": { "enum": ["added", "removed", "moved", "reweighted", "reachability"], "description": "`moved` when the distance changed, whether or not the use count did too." },
+              "before": { "$ref": "#/$defs/edgeSide" },
+              "after": { "$ref": "#/$defs/edgeSide" },
+              "change": { "type": "number", "description": "What the edge adds to the total. Negative when it takes distance away." }
+            },
+            "required": ["from", "to", "kind", "before", "after", "change"],
+            "additionalProperties": false
+          }
+        },
+        "edgesOmitted": { "$ref": "common.schema.json#/$defs/count", "description": "Changed edges not listed." }
+      },
+      "required": ["status", "base", "head", "against", "role", "before", "after", "delta", "parts", "renamedFiles", "reachability", "structure", "edges", "edgesOmitted"],
+      "additionalProperties": false
+    },
     "baselineResults": {
       "type": "object",
       "properties": {
@@ -408,7 +551,9 @@
           "additionalProperties": false
         },
         "since": { "type": ["string", "null"] },
-        "until": { "type": ["string", "null"] }
+        "until": { "type": ["string", "null"] },
+        "range": { "type": ["string", "null"], "description": "measure change: the BASE[..HEAD] argument, or null when none was given." },
+        "edges": { "anyOf": [{ "type": "integer", "minimum": 1 }, { "const": "all" }], "description": "measure change: how many changed edges were asked for." }
       },
       "additionalProperties": false
     },
@@ -426,7 +571,7 @@
       "additionalProperties": false
     },
     "results": {
-      "oneOf": [{ "$ref": "#/$defs/baselineResults" }, { "$ref": "#/$defs/nothingActedOn" }, { "$ref": "#/$defs/comparedResults" }, { "$ref": "#/$defs/premiseResults" }]
+      "oneOf": [{ "$ref": "#/$defs/baselineResults" }, { "$ref": "#/$defs/nothingActedOn" }, { "$ref": "#/$defs/comparedResults" }, { "$ref": "#/$defs/premiseResults" }, { "$ref": "#/$defs/changeResults" }]
     }
   },
   "unevaluatedProperties": false
