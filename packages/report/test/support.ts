@@ -59,6 +59,7 @@ export const sampleBlocks: Record<string, Block> = {
   sparkline: { type: "sparkline", title: "Changes per month", unit: "changes", points: [{ label: "2025-01", value: 4 }, { label: "2025-02", value: 9 }, { label: "2025-03", value: 6 }] },
   histogram: { type: "histogram", title: "Complexity of files", unit: "files", bins: [{ label: "0 to 9", count: 30 }, { label: "10 to 19", count: 8 }, { label: "20 or more", count: 2 }] },
   matrix: { type: "matrix", title: "Shared changes", valueLabel: "shared changes", rows: ["a.ts", "b.ts"], columns: ["a.ts", "b.ts", "c.ts"], cells: [[null, 5, 1], [5, null, 9]] },
+  "function-bars": { type: "function-bars", title: "Functions by cognitive complexity", unit: "cognitive complexity", guideline: 15, source: "Guideline from a judgement call.", bars: [{ label: "parse", value: 30, revisions: 12, fixes: 4 }, { label: "format", value: 10, revisions: 3, fixes: 0 }, { label: "plain", value: 5, revisions: null, fixes: null }], omitted: { count: 2, reason: "the least complex of the file" } },
   "guideline-bars": { type: "guideline-bars", title: "Against guidelines", unit: "cognitive", source: "Guideline from a judgement call.", bars: [{ label: "f", value: 30, guideline: 15 }, { label: "g", value: 10, guideline: 15 }] },
   "stability-chart": {
     type: "stability-chart",
@@ -84,7 +85,7 @@ export const sampleBuild: ReportBuild = {
   header: { evidenceGrade: "moderate", historyWindow: "8 months of history", excluded: [{ what: "generated files", count: 3 }] },
   sections: [
     { id: "overview", heading: "Overview", blocks: [sampleBlocks.paragraph!, sampleBlocks.judgement!, sampleBlocks["ranked-table"]!, sampleBlocks.notice!] },
-    { id: "charts", heading: "Charts", blocks: ["treemap", "sparkline", "histogram", "matrix", "guideline-bars", "trend-marker", "evidence-list", "facts"].map((k) => sampleBlocks[k]!) },
+    { id: "charts", heading: "Charts", blocks: ["treemap", "sparkline", "histogram", "matrix", "function-bars", "guideline-bars", "trend-marker", "evidence-list", "facts"].map((k) => sampleBlocks[k]!) },
   ],
   limits: ["The sample is small."],
   slots: [

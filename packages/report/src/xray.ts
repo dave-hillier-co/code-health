@@ -1,4 +1,5 @@
 import type { Block } from "./block.ts";
+import type { MatrixData } from "./components/matrix.ts";
 import type { Cell, RankedTableData } from "./components/ranked-table.ts";
 import type { Slot } from "./protocol.ts";
 import { capRows } from "./table-cap.ts";
@@ -41,6 +42,8 @@ export interface XrayData {
   rows?: number;
   /** The command whose output lists every function, named where the table is cut. */
   allCommand?: string;
+  /** Landed changes of the window shared by pairs of functions, for the functions with the most revisions. Absent when no fix result is available. */
+  shared?: { ids: string[]; cells: (number | null)[][] };
 }
 
 /** The functions an X-Ray table lists unless the data says otherwise: a guideline, not a limit on what is measured. */
@@ -137,4 +140,84 @@ export function xraySlots(data: XrayData): Slot[] {
     verdicts: FLAG_VERDICTS,
     maxChars: 400,
   }));
+}
+
+/** Functions the bar chart draws: a guideline for the length of the chart, not a limit on what is measured. */
+export const XRAY_BARS = 20;
+
+/** Functions in the co-change matrix, and the fewest revisions a function needs to be in it. */
+export const XRAY_MATRIX_FUNCTIONS = 8;
+export const XRAY_MATRIX_MIN_REVISIONS = 2;
+
+/**
+ * The functions with the most revisions, most first (ties by complexity), and the changes each pair shares. `changesOf` gives the
+ * landed changes that touched a function; the shared count of two functions is the size of the intersection. Null when fewer than
+ * two functions have enough revisions to compare.
+ */
+export function sharedChanges(functions: readonly XrayFunction[], changesOf: (id: string) => ReadonlySet<string> | undefined): XrayData["shared"] | undefined {
+  const chosen = functions
+    .filter((fn) => (fn.revisions ?? 0) >= XRAY_MATRIX_MIN_REVISIONS)
+    .sort((a, b) => (b.revisions ?? 0) - (a.revisions ?? 0) || byComplexity(a, b))
+    .slice(0, XRAY_MATRIX_FUNCTIONS);
+  if (chosen.length < 2) return undefined;
+  const overlap = (a: string, b: string) => {
+    const left = changesOf(a);
+    const right = changesOf(b);
+    return left === undefined || right === undefined ? 0 : [...left].filter((change) => right.has(change)).length;
+  };
+  return { ids: chosen.map((fn) => fn.id), cells: chosen.map((row) => chosen.map((column) => (row.id === column.id ? null : overlap(row.id, column.id)))) };
+}
+
+const MATRIX_LABEL_CHARS = 16;
+
+/**
+ * Labels that fit the matrix margins: the text every name starts with up to its last dot (the class name of its methods) is
+ * dropped, then a name still longer than `MATRIX_LABEL_CHARS` loses its start, since the end of a nested name tells functions
+ * apart. The names stay as they are when shortening would make two the same. The X-Ray table lists the full names.
+ */
+export function matrixLabels(names: readonly string[]): string[] {
+  const first = names[0] ?? "";
+  let prefix = first.slice(0, first.lastIndexOf(".") + 1);
+  while (prefix !== "" && !names.every((name) => name.startsWith(prefix))) prefix = prefix.slice(0, prefix.slice(0, -1).lastIndexOf(".") + 1);
+  const shortened = names.map((name) => {
+    const rest = name.slice(prefix.length);
+    return rest.length <= MATRIX_LABEL_CHARS ? rest : `…${rest.slice(rest.length - MATRIX_LABEL_CHARS + 1)}`;
+  });
+  return new Set(shortened).size === names.length ? shortened : [...names];
+}
+
+/**
+ * The core diagram of an X-Ray: the functions as bars of cognitive complexity with their revisions and fixes, then, when two or more
+ * functions have revisions, the matrix of changes shared by the most changed. The bars take the first `XRAY_BARS` functions in
+ * complexity order, and the page says how many it omits. Empty when the file has no cognitive guideline to draw.
+ */
+export function xrayFigures(data: XrayData): Block[] {
+  const sorted = [...data.functions].sort(byComplexity);
+  const drawn = sorted.slice(0, XRAY_BARS).filter((fn) => fn.cognitive !== null);
+  const figures: Block[] = [];
+  if (data.guidelines !== undefined && drawn.length > 0) {
+    figures.push({
+      type: "function-bars",
+      title: `Functions of ${data.file} by cognitive complexity`,
+      unit: "cognitive complexity",
+      guideline: data.guidelines.cognitive,
+      source: `The guideline is ${data.guidelines.note}. Revisions and fixes count landed changes in the history window.`,
+      bars: drawn.map((fn) => ({ label: displayName(fn.name), value: fn.cognitive!, revisions: fn.revisions, fixes: fn.fixes })),
+      omitted: { count: data.functions.length - drawn.length, reason: `the chart draws the ${XRAY_BARS} most complex, and the X-Ray table lists the ${Math.min(data.rows ?? XRAY_ROWS, data.functions.length)} most complex` },
+    });
+  }
+  if (data.shared !== undefined) {
+    const byId = new Map(data.functions.map((fn) => [fn.id, fn] as const));
+    const names = matrixLabels(data.shared.ids.map((id) => displayName(byId.get(id)?.name ?? id)));
+    figures.push({
+      type: "matrix",
+      title: `Changes shared by the most changed functions of ${data.file}`,
+      valueLabel: "shared changes",
+      rows: names,
+      columns: names,
+      cells: data.shared.cells,
+      orderText: `Rows and columns are the ${data.shared.ids.length} functions with the most revisions (at least ${XRAY_MATRIX_MIN_REVISIONS}), most first. A cell is the number of landed changes in the window that touched both functions; the diagonal is empty.`,
+    });
+  }
+  return figures;
 }
