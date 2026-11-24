@@ -47,7 +47,7 @@
                   "type": "object",
                   "properties": {
                     "type": {
-                      "enum": ["paragraph", "facts", "ranked-table", "treemap", "category-treemap", "sparkline", "histogram", "scatter", "matrix", "guideline-bars", "stability-chart", "trend-marker", "evidence-list", "notice", "judgement", "judged-items"]
+                      "enum": ["paragraph", "facts", "ranked-table", "treemap", "category-treemap", "sparkline", "histogram", "scatter", "matrix", "function-bars", "guideline-bars", "stability-chart", "trend-marker", "evidence-list", "notice", "judgement", "judged-items"]
                     }
                   },
                   "required": ["type"]

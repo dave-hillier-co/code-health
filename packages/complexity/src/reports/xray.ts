@@ -5,7 +5,7 @@ import { analyseHistory } from "@code-health/history/evidence";
 import { noCacheOption } from "@code-health/history/results-cache";
 import type { Block } from "@code-health/report/block";
 import type { ReportBuild } from "@code-health/report/report-model";
-import { XRAY_ROWS, xrayBlocks, xraySlots, type XrayData, type XrayFunction } from "@code-health/report/xray";
+import { XRAY_ROWS, sharedChanges, xrayBlocks, xrayFigures, xraySlots, type XrayData, type XrayFunction } from "@code-health/report/xray";
 import { command as analyse } from "../commands/analyse.ts";
 import { readSettings, guidelinesFor } from "../config.ts";
 import { currentTree, normalisePaths } from "../current-tree.ts";
@@ -65,11 +65,13 @@ export const xray: ReportKind = {
 
     const current = await currentTree(context);
     let fixes: ReadonlyMap<string, UnitFixes> | undefined;
+    let changes: ReadonlyMap<string, ReadonlySet<string>> | undefined;
     let header: ReturnType<typeof fixHeader> | undefined;
     let fixProblem: string | undefined;
     try {
       const measured = await measureFixesFor(forFile, settings, current);
       fixes = measured.stats.units;
+      changes = measured.stats.changes;
       header = fixHeader(measured.stats, measured.request, settings);
     } catch (error) {
       if (!(error instanceof CliError)) throw error;
@@ -88,6 +90,7 @@ export const xray: ReportKind = {
         note: "complexity.guidelines, the warn level",
       },
     };
+    if (fixes !== undefined) data.shared = sharedChanges(data.functions, (id) => changes?.get(id));
     const above = data.functions.filter((fn) => fn.labels.length > 0).length;
     const touched = data.functions.filter((fn) => (fn.revisions ?? 0) > 0).length;
 
@@ -123,7 +126,7 @@ export const xray: ReportKind = {
         excluded: excluded.filter((e) => e.count > 0),
       },
       sections: [
-        { id: "summary", heading: "Summary", blocks: [...summary, { type: "judgement", slot: "summary" }] },
+        { id: "summary", heading: "Summary", blocks: [...summary, ...xrayFigures(data), { type: "judgement", slot: "summary" }] },
         {
           id: "xray",
           heading: "X-Ray",
