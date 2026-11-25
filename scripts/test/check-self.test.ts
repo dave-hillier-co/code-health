@@ -73,8 +73,8 @@ describe("check:self", () => {
 
   it("fails on a source file with syntax errors", async () => {
     const report = await check(repoWith({ ...clean, "src/broken.ts": "export const = ;\nfunction (\n" }));
-    expect(report.failures).toContain("syntax errors in src/broken.ts (complexity analyse)");
-    expect(report.failures).toContain("syntax errors in src/broken.ts (locality analyse)");
+    expect(report.failures.some((failure) => failure.startsWith("syntax errors in src/broken.ts (complexity analyse), first at line 1 column "))).toBe(true);
+    expect(report.failures.some((failure) => failure.startsWith("syntax errors in src/broken.ts (locality analyse), first at line 1 column "))).toBe(true);
   }, 120_000);
 
   it("fails when an exclude glob hides source under packages or scripts", async () => {

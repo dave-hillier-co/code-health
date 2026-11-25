@@ -1,7 +1,7 @@
 import type { UnitShape } from "@code-health/lexical/unit";
 import type { IncludeResolution } from "./resolved-dependencies.ts";
 import { exportedUnitNames } from "./exported-units.ts";
-import { parseWith } from "./file-facts.ts";
+import { parseWith, syntaxErrorAt, type SyntaxErrorLocation } from "./file-facts.ts";
 import type { FileFacts, UnitKind, UnitMetrics } from "./facts.ts";
 import { cacheKeyOf, GrammarSet, type LoadOptions } from "./grammars.ts";
 import { ImportModel } from "./import-model.ts";
@@ -35,6 +35,8 @@ export interface ProjectAnalysis extends ResolvedDependencies {
   units: SourceUnit[];
   /** Files whose parse reported syntax errors, so their facts may be incomplete. */
   filesWithSyntaxErrors: string[];
+  /** The first syntax error of each of those files, in the same order. */
+  syntaxErrors: SyntaxErrorLocation[];
   /** Files where a macro stands in for a declaration or a body of code, which a parser that does not run the preprocessor never sees. Languages with no preprocessor have none. */
   filesWithMacroCode: string[];
   /** Generated files, which are read as empty: they have no units and no edges, and are not production code. */
@@ -141,11 +143,15 @@ export async function analyseTree(tree: SourceTree, options: AnalyseOptions = {}
 function assemble(facts: ReadonlyMap<string, FileFacts>, resolved: readonly ResolvedDependencies[]): Omit<ProjectAnalysis, "stats"> {
   const units: SourceUnit[] = [];
   const filesWithSyntaxErrors: string[] = [];
+  const syntaxErrors: SyntaxErrorLocation[] = [];
   const filesWithMacroCode: string[] = [];
   const generatedFiles: string[] = [];
   for (const [path, fileFacts] of facts) {
     if (fileFacts.generated === true) generatedFiles.push(path);
-    if (fileFacts.hasSyntaxErrors) filesWithSyntaxErrors.push(path);
+    if (fileFacts.hasSyntaxErrors) {
+      filesWithSyntaxErrors.push(path);
+      syntaxErrors.push(syntaxErrorAt(path, fileFacts));
+    }
     if (fileFacts.macroGenerated !== undefined) filesWithMacroCode.push(path);
     const exportedLocals = exportedUnitNames(fileFacts);
     for (const unit of fileFacts.units) {
@@ -191,6 +197,7 @@ function assemble(facts: ReadonlyMap<string, FileFacts>, resolved: readonly Reso
     ),
     unresolved: all("unresolved").sort((a, b) => compareUtf8(a.from, b.from) || a.line - b.line || compareUtf8(a.specifier ?? "", b.specifier ?? "")),
     filesWithSyntaxErrors,
+    syntaxErrors,
     filesWithMacroCode,
     generatedFiles,
     ...(resolved.some((group) => group.includeResolution !== undefined) ? { includeResolution: resolved.find((group) => group.includeResolution !== undefined)!.includeResolution! } : {}),

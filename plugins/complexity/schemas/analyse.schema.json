@@ -173,10 +173,20 @@
       "additionalProperties": false
     },
     "filesWithSyntaxErrors": {
-      "description": "Files whose parse reported syntax errors, so their units may be incomplete.",
+      "description": "Files whose parse reported syntax errors, so their units may be incomplete, each with where its first error is.",
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "object",
+        "description": "The first syntax error of one file.",
+        "properties": {
+          "path": { "type": "string" },
+          "line": { "type": "integer", "minimum": 1, "description": "1-based line of the first error." },
+          "column": { "type": "integer", "minimum": 1, "description": "1-based column of the first error." },
+          "kind": { "enum": ["unexpected", "missing"], "description": "unexpected: text the grammar could not fit; missing: a token the grammar expected and did not find." },
+          "text": { "type": "string", "description": "The unexpected text, up to its first line end and at most 40 characters, or the kind of the missing token." }
+        },
+        "required": ["path", "line", "column", "kind", "text"],
+        "additionalProperties": false
       }
     },
     "skippedFiles": {

@@ -37,6 +37,7 @@ and `--limit` (default 20) and `--fields` keep it small. Never ask for a whole r
    present a lexical value as exact. The `agreement` section carries the rate that released it.
    `parseCoverage` gives the share of parsed files with syntax errors, and a notice says when it is above the
    `syntaxErrorPercent` guideline: those files' functions may be incomplete, so say so before ranking from them.
+   `filesWithSyntaxErrors` lists each such file with the line, column and text of its first error.
 
 2. The default order is cognitive complexity, highest first, then nesting, then cyclomatic complexity, then length,
    then path, so a tie is broken by a metric the row shows (`ranking.sortedBy` and a `Notice: sorted by` line in a table

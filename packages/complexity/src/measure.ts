@@ -5,7 +5,7 @@ import { factsForBlob, MAX_TREE_DEPTH } from "@code-health/parse/file-facts";
 import { GrammarSet } from "@code-health/parse/grammars";
 import type { ParseCache } from "@code-health/parse/parse-cache";
 import { exportedUnitNames } from "@code-health/parse/exported-units";
-import type { FileFacts, UnitFact } from "@code-health/parse/facts";
+import type { FileFacts, SyntaxErrorFact, UnitFact } from "@code-health/parse/facts";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import type { UnitKind } from "@code-health/lexical/unit";
 import { guidelinesFor, type ComplexitySettings } from "./config.ts";
@@ -81,6 +81,8 @@ export interface FileRecord {
   /** Structural only: the file's functions and classes with their depth shape, and the module itself. */
   interfaces?: { units: InterfaceUnit[]; module: { nodes: number; exports: number } };
   hasSyntaxErrors: boolean;
+  /** Where the first syntax error is, when there are any. */
+  syntaxError?: SyntaxErrorFact;
   /** What could not be measured, and why. */
   skipped: string[];
   /** Exact-boundary agreement that released lexical per-function metrics, when they were used. */
@@ -151,7 +153,7 @@ export async function measureTree(tree: SourceTree, options: MeasureOptions): Pr
         bumpyRoad: bumpyRoadLimits(guidelinesFor(settings, path)),
       });
       const language = options.layer === "lexical" ? undefined : await grammars.forPath(path);
-      let structural: { units: UnitRecord[]; interfaces: NonNullable<FileRecord["interfaces"]>; syntaxErrors: boolean; tooDeep: boolean } | undefined;
+      let structural: { units: UnitRecord[]; interfaces: NonNullable<FileRecord["interfaces"]>; syntaxErrors: boolean; syntaxError?: SyntaxErrorFact; tooDeep: boolean } | undefined;
       if (language !== undefined) {
         const { facts, cached } = await factsForBlob(language, tree.files.get(path)!, text, options.cache);
         if (cached) stats.cached++;
@@ -160,6 +162,7 @@ export async function measureTree(tree: SourceTree, options: MeasureOptions): Pr
           units: structuralUnits(path, facts.units, settings),
           interfaces: interfaceUnits(path, facts),
           syntaxErrors: facts.hasSyntaxErrors,
+          ...(facts.syntaxError === undefined ? {} : { syntaxError: facts.syntaxError }),
           tooDeep: facts.tooDeep === true,
         };
       }
@@ -224,7 +227,7 @@ function fileRecord(
   path: string,
   text: string,
   lexical: FileAnalysis,
-  structural: { units: UnitRecord[]; interfaces: NonNullable<FileRecord["interfaces"]>; syntaxErrors: boolean; tooDeep: boolean } | undefined,
+  structural: { units: UnitRecord[]; interfaces: NonNullable<FileRecord["interfaces"]>; syntaxErrors: boolean; syntaxError?: SyntaxErrorFact; tooDeep: boolean } | undefined,
   options: MeasureOptions,
 ): FileRecord {
   const test = options.settings.isTest(path);
@@ -281,6 +284,7 @@ function fileRecord(
     units,
     ...(structural === undefined ? {} : { interfaces: structural.interfaces }),
     hasSyntaxErrors: structural?.syntaxErrors ?? false,
+    ...(structural?.syntaxError === undefined ? {} : { syntaxError: structural.syntaxError }),
     skipped,
     ...(agreement === undefined ? {} : { agreement }),
     ...(options.keepText ? { text } : {}),

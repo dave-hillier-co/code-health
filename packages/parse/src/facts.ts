@@ -175,6 +175,18 @@ export interface MacroFact {
   kind: "invocation" | "definition";
 }
 
+/** The first place in a file where the grammar could not read the text. */
+export interface SyntaxErrorFact {
+  /** 1-based. */
+  line: number;
+  /** 1-based. */
+  column: number;
+  /** `unexpected`: text the grammar could not fit. `missing`: a token the grammar expected and did not find. */
+  kind: "unexpected" | "missing";
+  /** The unexpected text, up to its first line end and at most 40 characters, or the kind of the missing token. */
+  text: string;
+}
+
 export interface FileFacts {
   /** A generated file, read as having no code: its facts are empty and the file is listed in `generatedFiles` of the analysis. */
   generated?: boolean;
@@ -191,6 +203,8 @@ export interface FileFacts {
   nodes: number;
   /** True when the grammar reported syntax errors, so facts may be incomplete. */
   hasSyntaxErrors: boolean;
+  /** Where the first syntax error is, when there are any. */
+  syntaxError?: SyntaxErrorFact;
   /** The syntax tree nests deeper than `MAX_TREE_DEPTH`, so the file was read as empty: it has no units, imports or references. */
   tooDeep?: true;
 }

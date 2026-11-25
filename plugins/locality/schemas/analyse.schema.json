@@ -10,6 +10,23 @@
   "$defs": {
     "recommendation": { "enum": ["inline", "move", "split", "blocked", "keep", "scrutinise", "review"] },
     "paths": { "type": "array", "items": { "type": "string" } },
+    "syntaxErrors": {
+      "type": "array",
+      "description": "Files whose parse reported syntax errors, so the graph may be incomplete there, each with where its first error is.",
+      "items": {
+      "type": "object",
+      "description": "The first syntax error of one file.",
+      "properties": {
+        "path": { "type": "string" },
+        "line": { "type": "integer", "minimum": 1, "description": "1-based line of the first error." },
+        "column": { "type": "integer", "minimum": 1, "description": "1-based column of the first error." },
+        "kind": { "enum": ["unexpected", "missing"], "description": "unexpected: text the grammar could not fit; missing: a token the grammar expected and did not find." },
+        "text": { "type": "string", "description": "The unexpected text, up to its first line end and at most 40 characters, or the kind of the missing token." }
+      },
+      "required": ["path", "line", "column", "kind", "text"],
+      "additionalProperties": false
+    }
+    },
     "pathCounts": {
       "type": "array",
       "items": {
@@ -132,7 +149,7 @@
         "unreachable": { "$ref": "#/$defs/paths", "description": "Production files the virtual root cannot reach: dead code, or an entry point missing from config." },
         "barrels": { "$ref": "#/$defs/paths" },
         "unresolved": { "type": "object", "additionalProperties": { "$ref": "common.schema.json#/$defs/count" }, "description": "Imports the resolver could not follow, by reason." },
-        "filesWithSyntaxErrors": { "$ref": "#/$defs/paths" },
+        "filesWithSyntaxErrors": { "$ref": "#/$defs/syntaxErrors" },
         "filesWithMacroCode": { "$ref": "#/$defs/paths", "description": "Files where a macro stands in for declarations or code, which the parser does not run the preprocessor to see. Present only when there are some." },
         "results": {
           "type": "array",

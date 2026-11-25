@@ -2,6 +2,7 @@ import type { LanguageAdapter } from "../../language-adapter.ts";
 import { rustBoundaries } from "./boundaries.ts";
 import { extractFileCensus } from "./census.ts";
 import { extractFacts, extractorVersion } from "./extract-facts.ts";
+import { rustRepairs } from "./grammar-repair.ts";
 import { rustMetricRules } from "./metric-rules.ts";
 import { isConfigPath, PathResolver } from "./resolve-path.ts";
 
@@ -18,7 +19,7 @@ export const adapter: LanguageAdapter = {
   tier: 2,
   support: "supported",
   lexerProfile: "rust",
-  grammars: [{ spec: { id: "rust", packageName: "tree-sitter-rust", file: "tree-sitter-rust.wasm" }, extensions: [".rs"] }],
+  grammars: [{ spec: { id: "rust", packageName: "tree-sitter-rust", file: "tree-sitter-rust.wasm", repairs: rustRepairs }, extensions: [".rs"] }],
   extractorVersion,
   extract: extractFacts,
   isTestPath: (path) => /(^|\/)tests\//.test(path) || /(^|\/)tests?\.rs$/.test(path) || /_tests?\.rs$/.test(path),

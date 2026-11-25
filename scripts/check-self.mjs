@@ -76,7 +76,7 @@ export async function checkSelf({ root, plugins = join(here, "..", "plugins") })
       failures.push(`${label} did not print JSON`);
       continue;
     }
-    for (const path of document.filesWithSyntaxErrors ?? []) failures.push(`syntax errors in ${path} (${label})`);
+    for (const error of document.filesWithSyntaxErrors ?? []) failures.push(`syntax errors in ${error.path} (${label}), first at line ${error.line} column ${error.column}: ${error.kind} ${JSON.stringify(error.text)}`);
     if (command === "cycles") {
       for (const cycle of document.results ?? []) failures.push(`import cycle of ${cycle.nodes.length}: ${cycle.nodes.join(", ")}`);
     }
