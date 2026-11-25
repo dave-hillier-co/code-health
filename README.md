@@ -18,14 +18,14 @@ Numeric values are guidelines: they order and annotate results and never hide or
 
 ## The plugins
 
-Each plugin is a CLI that prints facts and one or more skills that tell Claude when to run it and what to do with the answer. They install separately and none needs another, though each reads the others' stored results when they exist.
+Each plugin is a CLI that prints facts and one or more skills that tell Claude when to run it and what to do with the answer. They install separately and none needs another, though each reads the others' stored results when they exist. Each plugin's folder has a README that lists its commands: [cochange](plugins/cochange/README.md), [complexity](plugins/complexity/README.md), [locality](plugins/locality/README.md) and [structure](plugins/structure/README.md).
 
 | Plugin | Question | Skills |
 |---|---|---|
 | `cochange` | Where does change effort concentrate, and what changes together? Hotspots, temporal coupling, change spread, fix counts and a briefing before an edit. | `cochange`; `change-risk`, how a branch should be reviewed before it merges; `abandonment`, knowledge lost when people leave (off until the repository opts in); `identities`, a reviewed `.mailmap` |
 | `complexity` | Which functions are hard to understand, and where does the complexity come from? Cognitive and cyclomatic complexity, nesting, interface depth, and a check for CI that exits with 1 only on a regression. | `complexity` |
 | `locality` | Which code lives far from the code that uses it? Recommends moving, inlining or splitting, and makes moves as one move-only commit each. | `locality` |
-| `structure` | Which dependencies make change expensive? Import cycles with their smallest breaking sets, layer rules, dependencies from stable code onto volatile code, and the decoupling mechanisms already in use. | `structure`; `packaging`, whether the packages are the right ones |
+| `structure` | Which dependencies make change expensive? Import cycles with their smallest breaking sets, layer rules, dependencies from stable code onto volatile code, pairs that change together without an import between them, registration hubs, and the decoupling mechanisms already in use. | `structure`; `packaging`, whether the packages are the right ones |
 
 It suits medium to large codebases in one repository: applications, modular monoliths and monorepos. It is a poor fit for a repository per microservice, where each repository is small and the coupling that matters crosses services. History-based findings need history, so every result that uses it grades its evidence as strong, moderate or weak.
 
@@ -91,7 +91,7 @@ Default outputs contain no author identities. The knowledge analysis is off unti
 
 ## Repository layout
 
-- `plugins/` what users install: one self-contained folder per plugin, with its manifest, skills, schemas, evals and committed `dist/` bundle
+- `plugins/` what users install: one self-contained folder per plugin, with its manifest, README, skills, schemas, evals and committed `dist/` bundle
 - `packages/` TypeScript source: one package per plugin, and the shared packages (`cli-kit`, `history`, `lexical`, `parse`, `graph`, `report`, `transcripts`) bundled into each plugin's CLI
 - `shared/` single-source files: `red-flags.md` and `reports.md`, copied into every skill at build time, and the pinned eval settings
 - `fixtures/` helpers that build deterministic git repositories for tests, and the per-language conformance fixtures

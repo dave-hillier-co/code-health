@@ -34,6 +34,7 @@ The scaffold (`scripts/new-plugin.mjs`, templates in `scripts/templates/plugin/`
 | Path | Purpose |
 |---|---|
 | `plugins/<p>/.claude-plugin/plugin.json` | Manifest, version `0.1.0`. Author, license, repository and engines are copied from an existing plugin. |
+| `plugins/<p>/README.md` | What the plugin does, that it belongs to the suite, and how to install it. Add its skills and commands, and add the plugin to the table in each other plugin's README and in the root `README.md`. |
 | `.claude-plugin/marketplace.json` | A new entry with `name`, `source` and `description`, and no version. |
 | `plugins/<p>/schemas/common.schema.json` | The envelope shared by every command schema, with `tool` fixed to `<p>`. |
 | `plugins/<p>/schemas/<command>.schema.json` | Schema of the placeholder command. |

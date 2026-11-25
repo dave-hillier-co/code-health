@@ -79,6 +79,18 @@ test("a scaffolded plugin has a manifest, a marketplace entry, schemas and a pac
   expect(existsSync(join(root, "packages", "sample-tool", "src", "main.ts"))).toBe(true);
 });
 
+test("a scaffolded plugin has a README that describes it and names the suite it belongs to", () => {
+  const created = scaffoldPlugin({ root, name: "sample-tool", description: "Does a sample thing." });
+
+  expect(created).toContain("plugins/sample-tool/README.md");
+  const readme = readFileSync(join(root, "plugins", "sample-tool", "README.md"), "utf8");
+  const { repository } = readJson(join(root, "plugins", "cochange", ".claude-plugin", "plugin.json"));
+  expect(readme).toMatch(/^# sample-tool\n\nDoes a sample thing\.\n/);
+  expect(readme).toContain(`[code-health suite](${repository})`);
+  expect(readme).toContain("/plugin install sample-tool@code-health");
+  expect(readme).not.toMatch(/\{\{\w+\}\}/);
+});
+
 test("a scaffold refuses a bad name, a missing description and a name already taken", () => {
   expect(() => scaffoldPlugin({ root, name: "Bad", description: "x" })).toThrow("kebab-case");
   expect(() => scaffoldPlugin({ root, name: "fine", description: "" })).toThrow("description");

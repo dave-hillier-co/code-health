@@ -57,7 +57,7 @@ function addToMarketplace(root, plugin, description) {
 }
 
 /**
- * Scaffolds a plugin: its manifest and marketplace entry, a schemas folder, and a
+ * Scaffolds a plugin: its manifest, README and marketplace entry, a schemas folder, and a
  * package under `packages/<plugin>` with a CLI (`src/main.ts`, which the bundler
  * picks up), one placeholder command and a test. With `parses`, the placeholder
  * command parses a file, so the bundle loads grammars from `dist/grammars`.
@@ -98,6 +98,11 @@ export function scaffoldPlugin({ root = defaultRoot, name, description, parses =
       ...inheritedManifestFields(root),
       keywords: ["code-health"],
     }),
+  );
+  const repository = inheritedManifestFields(root).repository ?? "";
+  emit(
+    join(pluginDir, "README.md"),
+    fill(template("README.md.tmpl"), { plugin: name, description: description.trim(), repository, marketplaceSource: repository.replace(/^https:\/\/github\.com\//, "") }),
   );
   emit(join(pluginDir, "schemas", "common.schema.json"), json(commonSchema(root, name)));
   emit(
