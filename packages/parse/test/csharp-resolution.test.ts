@@ -80,4 +80,17 @@ describe("C# names across namespaces and projects", () => {
       }),
     ).toEqual(["A/Use.cs -> A/Payments.cs"]);
   });
+
+  it("reads a name in the innermost enclosing namespace that declares it, and a qualified name through an enclosing namespace", async () => {
+    expect(
+      await edges({
+        "A/A.csproj": project,
+        "A/Inner.cs": "namespace Acme.Billing { public class Money { } }",
+        "A/Outer.cs": "namespace Acme { public class Money { } }",
+        "A/Deep.cs": "namespace Acme.Billing.Reports { public class Deep { Money total; } }",
+        "A/Top.cs": "namespace Acme { public class Top { Billing.Money total; } }",
+        "A/Root.cs": "namespace Other { public class Root { Acme.Money total; } }",
+      }),
+    ).toEqual(["A/Deep.cs -> A/Inner.cs", "A/Root.cs -> A/Outer.cs", "A/Top.cs -> A/Inner.cs"]);
+  });
 });
