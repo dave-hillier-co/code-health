@@ -20,7 +20,7 @@ Run it from the repository root. It analyses `HEAD` and never edits code. Useful
 
 - `--limit <n|all>` and `--fields path,recommendation,rule,target,gain,fanIn` keep the output small. The default is 20 rows.
 - `--recommendation inline|move|split|blocked|keep|scrutinise|review` lists one kind.
-- Path arguments (`analyse src/shared`) limit the run to units under those paths.
+- Path arguments (`analyse src/shared`) limit the rows to units under those paths, relative to the repository root or absolute under it. A path that matches no file, including an absolute path outside the repository, exits 2. The `summary` still counts the whole repository.
 - `--source history` analyses co-change alone, for languages with no structural adapter: moves and reviews only, on moderate or strong evidence. `historyOnly.omitted` counts what was left out by reason, and a candidate lists in `supersedes` the opposite-direction candidates it replaced. `--source both` adds `hiddenCoupling`, units the import graph places well whose co-change partners are all elsewhere.
 - Units with no proposed move are not ranked. `summary.omitted` counts them by reason and `omitted` lists each with `reason`, `detail`, the `target` their neighbours pull them towards and its `gain`. The reasons are `folder-sized unit` (more files than `locality.maxMoveFiles`), `target is a root folder` (a unit of several files whose target is shallower than `locality.minTargetDepth`) and `no usable target: <rule>` (a language placement rule, or `target is a grouping folder`: for Go units a folder named in `locality.groupingFolders`, by default `internal`, `pkg` and `cmd`, is never a target; `locality.groupingLanguages` lists the languages the rule applies to) and `no single target: N folders tie` (N folders at the same depth, none containing another, are equally close, so no move is proposed; `detail` lists them). Each candidate has a `reason` sentence. A candidate has `unusableTarget` (`target`, `gain`, `reason`) when a folder with a larger gain exists but the language placement rules refuse it; `target` and `gain` are then for the best folder that can be used.
 - `explain <rule>` describes any rule named in a result, and `config explain` shows the effective settings.
@@ -63,6 +63,18 @@ Treat each recommendation as a default to confirm or override. Before acting:
 5. Units younger than `locality.graceDays` (90 by default) are weak evidence for `inline` and `move`: one callsite is only evidence once reuse has had time to happen. The analyser applies this as the `within-grace-period` rule using `age`. Its `creates-cycle` rule refuses a move that would make two folders import each other. Its `interface-unit`, `overrides-inherited-method` and `recursive-unit` rules turn an inline or move of an interface or abstract class, a method that overrides or implements an inherited one, or a function that calls itself into `review`, because none is a free-standing helper: read the unit and its implementers before acting.
 
 `scrutinise` units are not moved. Review them with `locality scrutinise` and `references/scrutinise.md`. `blocked` units need a blocker resolved first: see `references/blocked-moves.md`.
+
+A row with `recommendation: move` and a non-empty `blockers` list is a blocked unit. `analyse` counts it under `summary.byRecommendation.move` and also in `summary.blockedMoves`, and `report locality` lists it in the blocked table with its gain if the blockers were resolved, not among the moves. Treat it as blocked: read `references/blocked-moves.md`, resolve or accept each blocker, re-run `analyse`, and run `locality move` on it only once `blockers` is empty or you have decided to move it anyway with the blockers left behind, and say so in your report. `locality move` plans such a unit without refusing it, so a clean plan does not show the blockers are resolved.
+
+### A question about a folder
+
+For "is this folder worth keeping", "is `utils` earning its place", or any question about a folder and not a unit:
+
+1. Run `analyse <folder>` (a path under the repository root, relative or absolute). A path that matches no file is a usage error. The folder comes back as one unit with `unit.kind` `sibling-set`, among the units under it. The CLI gives no verdict on a folder, so the answer is yours, from the rows.
+2. Read the folder's own row. `fanIn` counts the files that use anything in it, and `gain` is the distance a move would save. A high `fanIn` with `gain` 0 means many files use the folder and no other folder has a lower net distance for it: moving it saves nothing. It does not say the folder is well designed.
+3. Run `scrutinise <folder>`. For the folder it prints `consumers` and `consumerFolders` (how many folders use it), and for each unit under it that the analyser sent to scrutinise, its own pack. Read `references/scrutinise.md` for `findings`, `hints` and `exports`, which are empty when the language gives nothing to read them from.
+4. Look at the other rows under the folder: `move`, `inline`, `split` and `review` units are the parts of it that may not belong, and `omitted` lists those with no proposed move.
+5. Answer from those counts: many consumer folders mean the folder is shared and stays, with its units scrutinised. Consumers in one or two folders mean its parts belong near them. Name the red flag you judge present (a vague name such as `utils` is `vague-name`), and say what the counts do not show.
 
 ## Apply one unit per commit
 

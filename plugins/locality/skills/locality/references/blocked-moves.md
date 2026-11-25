@@ -2,6 +2,8 @@
 
 Many moves are prevented by tight coupling: the unit depends on its neighbourhood as much as its consumers depend on it. `blocked` units show where breaking coupling would pay off, ranked by `unblockedGain`. List them with `analyse --recommendation blocked`.
 
+A unit with `recommendation: move` and a non-empty `blockers` list is also a blocked unit: `summary.blockedMoves` counts them, they are part of `summary.byRecommendation.move`, and the report lists them in its blocked table. `locality move` plans them without refusing, so check `blockers` before running it.
+
 Each entry in `blockers` has a `path`, a `kind` (`dependency`, or `stray` when it sits in the unit's own neighbourhood), the `weight` of references to it, how many other files use it (`otherConsumers`), and the `unblockedGain` if it were resolved.
 
 Choose one outcome per blocker by judgement:
