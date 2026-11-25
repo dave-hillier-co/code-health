@@ -102,12 +102,13 @@
     "oversizedChanges": 0
   },
   "inputs": {
+    "range": "main..missing",
     "topic": "missing-co-change",
     "worktree": false
   },
   "repo": {
     "dirty": false,
-    "head": "d9e663050c424ee3d4da436198a547a528153a88"
+    "head": "eead67bfce2033a2bd6d0602ea3e9c0d1c04fe2d"
   },
   "results": {
     "branch": {

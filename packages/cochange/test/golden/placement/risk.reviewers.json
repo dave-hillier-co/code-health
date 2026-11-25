@@ -115,6 +115,7 @@
       {
         "area": "src/ledger",
         "candidates": 2,
+        "coupledFiles": 0,
         "files": 1,
         "suggested": [
           {
@@ -135,7 +136,7 @@
     "basis": "blame",
     "kind": "reviewers",
     "names": true,
-    "note": "Active developers only, as people to ask: ranked by the share of the touched files they last wrote and by their changes to coupled files. The change's own authors are not listed.",
+    "note": "Active developers only, as people to ask: ranked by authorship, their average share of the lines of the area's touched files they last wrote (0 to 1), then by coupledChanges, their changes in the window to the area's coupledFiles (files outside the change at the missing-co-change guidelines towards a touched file). coupledChanges is 0 for everyone in an area whose coupledFiles is 0. The change's own authors are not listed.",
     "perArea": 3
   },
   "schemaVersion": 1,

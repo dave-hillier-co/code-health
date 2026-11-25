@@ -20,7 +20,8 @@ const novel = (evidenceTotal: number | undefined): Factor => ({
   reason: null,
 });
 
-const assessed = (factor: Factor) => ({ factors: [factor] }) as unknown as Assessed;
+const assessed = (factor: Factor) =>
+  ({ factors: [factor], history: { evidence: { usableHistoryMonths: 12 }, settings: { maxChangesetSize: 30 } } }) as unknown as Assessed;
 
 test("a finding carries how many evidence records its factor had before the list was cut", () => {
   const [finding] = findingsOf(assessed(novel(3168)), null);

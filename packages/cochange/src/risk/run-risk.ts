@@ -9,6 +9,7 @@ import { levelResult } from "./level-result.ts";
 import { describePlacement, placementFor } from "./placement-result.ts";
 import { describeChange } from "./result.ts";
 import { reviewersFor, REVIEWERS_PER_AREA } from "./reviewers.ts";
+import { readImpact } from "./scoring.ts";
 import { readStoredBacktest } from "./stored-backtest.ts";
 
 export function evidenceFiles(context: CommandContext): string[] {
@@ -36,7 +37,13 @@ export async function runRisk(context: CommandContext, history: LoadedHistory, r
 
   // Abandonment is knowledge about people: its factor is shown here and not kept, though the files and probabilities of its own report are.
   const impactOnly = { kind: "assessment", change: describeChange(assessed), impact: assessed.impact, factors: assessed.factors };
-  const kept = { ...impactOnly, factors: assessed.factors.filter((f) => f.name !== "abandoned-touched" || f.status !== "ok") };
+  const keptFactors = assessed.factors.filter((f) => f.name !== "abandoned-touched" || f.status !== "ok");
+  const keptImpact = readImpact(
+    assessed.impact,
+    keptFactors.map((f) => ({ name: f.name, family: f.family, band: f.band ?? "unavailable", disabled: f.status === "disabled", scored: f.scored })),
+    assessed.risk,
+  );
+  const kept = { ...impactOnly, impact: keptImpact, factors: keptFactors };
   const inputs = {
     range: range ?? null,
     worktree,
@@ -77,13 +84,14 @@ export async function runReviewers(context: CommandContext, history: LoadedHisto
       areas: areas.map((area) => ({
         area: area.area,
         files: area.files,
+        coupledFiles: area.coupledFiles,
         candidates: area.candidates.length,
         suggested: names ? area.candidates.slice(0, REVIEWERS_PER_AREA).map((c) => ({ name: c.name, email: c.email, authorship: c.authorship, coupledChanges: c.coupledChanges })) : null,
       })),
       note: names
-        ? "Active developers only, as people to ask: ranked by the share of the touched files they last wrote and by their changes to coupled files. The change's own authors are not listed."
-        : "Counts of active developers who could review each area. Pass --names to see them.",
+        ? "Active developers only, as people to ask: ranked by authorship, their average share of the lines of the area's touched files they last wrote (0 to 1), then by coupledChanges, their changes in the window to the area's coupledFiles (files outside the change at the missing-co-change guidelines towards a touched file). coupledChanges is 0 for everyone in an area whose coupledFiles is 0. The change's own authors are not listed."
+        : "Counts of active developers who could review each area, and of the files coupled with its touched files. Pass --names to see them.",
     },
-    columns: ["area", "files", "candidates"],
+    columns: ["area", "files", "coupledFiles", "candidates"],
   };
 }

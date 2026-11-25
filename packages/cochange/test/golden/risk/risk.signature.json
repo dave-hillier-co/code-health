@@ -107,6 +107,7 @@
     "baseline": {
       "direct": 5,
       "mergedChanges": 5,
+      "mergedChangesInWindow": 5,
       "merges": 0,
       "population": 5,
       "since": "2023-06-03T09:00:00.000Z"
@@ -467,8 +468,36 @@
         "population": 5
       },
       "events": [],
+      "families": [
+        {
+          "band": "low",
+          "factor": "spread",
+          "family": "size-and-diffusion",
+          "points": 0
+        },
+        {
+          "band": "low",
+          "factor": "hotspots-touched",
+          "family": "history",
+          "points": 0
+        },
+        {
+          "band": "low",
+          "factor": "missing-co-change",
+          "family": "completeness",
+          "points": 0
+        },
+        {
+          "band": "high",
+          "factor": "blast-radius",
+          "family": "structure-and-content",
+          "points": 2
+        }
+      ],
+      "notCounted": [],
       "score": 2,
       "scoreBand": "unavailable",
+      "summary": "Score 2: size-and-diffusion 0, history 0, completeness 0, structure-and-content 2 (blast-radius high). Too few merged changes (5) to place the score, so the band is unavailable.",
       "unavailable": [
         "defect-history",
         "size"

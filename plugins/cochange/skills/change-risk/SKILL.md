@@ -23,7 +23,7 @@ All commands run as `node ${CLAUDE_PLUGIN_ROOT}/dist/cochange.mjs risk <command>
 
 ## Workflow
 
-1. **Establish the change.** Which branch, against which base (by default the merge base with the main branch), and whether uncommitted edits belong to it (`--worktree`). If the user's branch is not checked out and not named, ask. Run `identities check` for the change's authors and resolve anything unmapped first with the identities skill: an author's second email, left unmapped, makes an owner look like a newcomer.
+1. **Establish the change.** `risk` assesses a change (a commit or a range), never a single file: given a file path it exits 2 and names the commands to use instead. When the question is whether a file is risky to edit, use the cochange skill: `cochange brief PATH` (what changes with it, recent activity, hotspot status) and `cochange hotspots` (where it ranks). Otherwise: which branch, against which base (by default the merge base with the main branch), and whether uncommitted edits belong to it (`--worktree`). If the user's branch is not checked out and not named, ask. Run `identities check` for the change's authors and resolve anything unmapped first with the identities skill: an author's second email, left unmapped, makes an owner look like a newcomer.
 2. **Gather the sibling results when the plugins are installed.** Run the complexity plugin's `diff` and the structure plugin's `check` for the same base and tip, save their JSON outside the repository, and pass each with `--evidence FILE` (repeat the flag for the second). Without them the CLI falls back to history and indentation, and says `structure-delta` is unavailable.
 3. **Run `risk`**, for example `risk main..feature/x --evidence /tmp/diff.json`. Without a range it takes the branch that is checked out against the main branch. Report the level, or the bands where there is none, in one sentence with the two or three factors that drove it. Do not paste the table. The factors, their bands and what each means are in [references/factors.md](references/factors.md).
 4. **Deal with completeness first.** For each `missing-co-change` file, open it and judge whether the change needs it. These files changed with the touched ones almost every other time, and this is the finding most likely to be a real defect. Say which you checked and what you concluded. A file deliberately left alone should be recorded as such.
@@ -38,16 +38,16 @@ When the author is the user, your stance is a pre-flight check: what to fix befo
 | Command | Use |
 |---|---|
 | `risk [BASE[..HEAD]] [--worktree] [--evidence FILE]...` | The impact band, placement when allowed, the level when earned, every factor with its value, band and evidence, and the findings with their responses |
-| `risk explain [FACTOR]` | The rules behind the level, or one factor's definition, guidelines and the files that drove it |
-| `risk reviewers [BASE[..HEAD]] [--names]` | Active developers per touched area, ranked by authorship and by changes to coupled files |
+| `risk explain [FACTOR [BASE[..HEAD]]]` | The rules behind the level, or one factor's definition and guidelines, without reading history. With a range, also the factor as computed on that change: its value, band and the files that drove it |
+| `risk reviewers [BASE[..HEAD]] [--names]` | Active developers per touched area, ranked by authorship (their average share, 0 to 1, of the lines of the area's touched files they last wrote) and by their changes to the area's `coupledFiles`. When an area has no coupled files, `coupledChanges` is 0 for everyone |
 | `report change [BASE[..HEAD]] [--evidence FILE]...` | A change summary page (html or markdown, and a compact form for a pull request comment) with your verdict on each item needing attention. Steps in [references/reports.md](references/reports.md) |
 
 `BASE..HEAD` may name any local refs. `--no-refresh` skips the cache refreshes. `cochange explain risk-<finding>` describes a finding's rule.
 
 ## Reading what comes back
 
-- **Impact** is a band against the repository's own merged changes, not an absolute size. A large change in a repository of large changes is ordinary. A band that is `unavailable` means too few merged changes to compare with.
-- **Events** raise the impact band once: a high `missing-co-change`, any `structure-delta`, any `sensitive-paths` match. They are findings in their own right.
+- **Impact** is a band against the repository's own merged changes, not an absolute size. A large change in a repository of large changes is ordinary. A band that is `unavailable` means too few merged changes to compare with. `impact.summary`, `impact.families` and `impact.notCounted` say which families made the score and which factors did not count, so a low band beside high findings can be explained: say both.
+- **Events** raise the impact band once: a high `missing-co-change`, any `structure-delta`, any `sensitive-paths` match. A manifest edit that only changes dependency versions is not a `sensitive-paths` match. They are findings in their own right.
 - **Placement** is `close`, `mixed`, `distant` or `unknown`, with a label per file. Say which labels drove it, in terms of files, never in terms of the person. [references/placement.md](references/placement.md) has the labels and the privacy rules in full.
 - **Level** is `routine`, `attention` or `elevated`. It appears only where stored evidence shows the levels separate past changes, and the CLI states that evidence beside it. Read it as advice.
 - A response that rests on placement (`owner-distance`, `no-owner`, `distant-placement`) exists only when placement was computed.

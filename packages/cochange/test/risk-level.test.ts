@@ -50,6 +50,7 @@ interface Finding {
   id: string;
   factor: string | null;
   step: string;
+  summary: string;
   response: string;
   redFlag: string | null;
   evidence: Record<string, unknown>[];
@@ -191,6 +192,14 @@ describe("findings and responses", () => {
     expect(finding.response).toMatch(/Confirm the new dependency is intended/);
     expect(finding.redFlag).toBe("Information leakage");
     expect(finding.evidence).toEqual([{ a: login, b: summary, distance: 2 }]);
+  });
+
+  test("a novel coupling says over which history and which change sizes the files did not change together", async () => {
+    writeFileSync(join(repo.path, "code-health.json"), '{"cochange":{"maxChangesetSize":12,"risk":{"novelDistance":2}}}\n');
+    const { results } = await risk("main..novel");
+    const finding = results.findings.find((f) => f.id === "novel-coupling")!;
+    expect(finding.summary).toMatch(/^1 pair of distant files that did not change together in the [\d.]+ months of history read, in changes of up to 12 files$/);
+    expect(finding.summary).not.toMatch(/never/);
   });
 
   test("findings are ordered by what to do first: complete, split, test, simplify, check, review", async () => {

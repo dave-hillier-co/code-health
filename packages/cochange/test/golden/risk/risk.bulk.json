@@ -107,6 +107,7 @@
     "baseline": {
       "direct": 14,
       "mergedChanges": 16,
+      "mergedChangesInWindow": 16,
       "merges": 2,
       "population": 16,
       "since": "2023-06-09T09:00:00.000Z"
@@ -575,8 +576,36 @@
         "population": 16
       },
       "events": [],
+      "families": [
+        {
+          "band": "high",
+          "factor": "size",
+          "family": "size-and-diffusion",
+          "points": 2
+        },
+        {
+          "band": "low",
+          "factor": "hotspots-touched",
+          "family": "history",
+          "points": 0
+        },
+        {
+          "band": "low",
+          "factor": "missing-co-change",
+          "family": "completeness",
+          "points": 0
+        },
+        {
+          "band": "low",
+          "factor": "blast-radius",
+          "family": "structure-and-content",
+          "points": 0
+        }
+      ],
+      "notCounted": [],
       "score": 2,
       "scoreBand": "moderate",
+      "summary": "Score 2: size-and-diffusion 2 (size high), history 0, completeness 0, structure-and-content 0. A score is moderate above 0 and high above 3 (the 75th and 90th percentiles of 16 merged changes' scores), so 2 is moderate.",
       "unavailable": []
     },
     "kind": "assessment",

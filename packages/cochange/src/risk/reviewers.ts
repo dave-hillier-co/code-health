@@ -8,6 +8,7 @@ import { readActiveDevelopers } from "../active-developers.ts";
 import type { Assessed } from "./assess.ts";
 import { componentOf } from "../components.ts";
 import { invokingUser } from "./identity.ts";
+import { pairCoupled } from "./measure.ts";
 
 /** The most reviewers suggested for one area. */
 export const REVIEWERS_PER_AREA = 3;
@@ -15,15 +16,17 @@ export const REVIEWERS_PER_AREA = 3;
 export interface Candidate {
   name: string;
   email: string;
-  /** Sum over the area's touched files of the share of lines the developer last wrote (blame), or of changes (history without blame). */
+  /** Average over the area's touched files of the share of lines the developer last wrote (blame), or of changes (history without blame): 0 to 1. */
   authorship: number;
-  /** The developer's changes in the window to the files that change with the touched ones. */
+  /** The developer's changes in the window to the area's coupled files, each coupled file counted once. */
   coupledChanges: number;
 }
 
 export interface Area {
   area: string;
   files: number;
+  /** Files outside the change at the missing-co-change guidelines (confidence and support) towards any of the area's touched files. */
+  coupledFiles: number;
   candidates: Candidate[];
 }
 
@@ -38,7 +41,7 @@ const round = (value: number): number => Math.round(value * 100) / 100;
  * as abandonment's successors, and names appear only when the caller asks for them.
  */
 export async function reviewersFor(context: CommandContext, assessed: Assessed, noRefresh: boolean): Promise<{ areas: Area[]; basis: "blame" | "history" | "mixed" }> {
-  const { change, history, state, risk } = assessed;
+  const { change, history, state } = assessed;
   const root = context.repo.root;
   const time = assessed.facts.time;
   const developers = await readActiveDevelopers(context, history, time);
@@ -83,6 +86,7 @@ export async function reviewersFor(context: CommandContext, assessed: Assessed, 
     byArea.set(area, [...(byArea.get(area) ?? []), file]);
   }
 
+  const touched = new Set(change.files.map((file) => file.fileId));
   let withBlame = 0;
   const areas: Area[] = [...byArea]
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
@@ -93,29 +97,34 @@ export async function reviewersFor(context: CommandContext, assessed: Assessed, 
         const row = scores.get(key) ?? { name, email, authorship: 0, coupledChanges: 0 };
         scores.set(key, { ...row, authorship: row.authorship + (patch.authorship ?? 0), coupledChanges: row.coupledChanges + (patch.coupledChanges ?? 0) });
       };
+      // Each file adds its shares divided by the number of files, so authorship is the developer's average share of the area's touched files.
+      const weight = 1 / files.length;
+      const coupled = new Set<string>();
       for (const file of files) {
         const blamed = shares.get(file.fileId);
         if (blamed) {
           withBlame++;
-          for (const owner of blamed.values()) credit(owner.email, owner.name, { authorship: owner.share });
+          for (const owner of blamed.values()) credit(owner.email, owner.name, { authorship: owner.share * weight });
         } else {
           // Without blame, a developer's share of the file's recent changes stands in for their share of its lines.
           const revisions = state.revisionsSince(file.fileId, windowSince);
-          for (const revision of revisions) for (const author of revision.authors) credit(author, names.get(author.toLowerCase()) ?? author, { authorship: 1 / revisions.length });
+          for (const revision of revisions) for (const author of revision.authors) credit(author, names.get(author.toLowerCase()) ?? author, { authorship: weight / revisions.length });
         }
+        const together = state.eligibleRevisionsInWindow(file.fileId);
         for (const [partner, support] of state.partners(file.fileId)) {
-          const together = state.eligibleRevisionsInWindow(file.fileId);
-          if (support < assessed.context.minSupport || 100 * support < risk.missingConfidence * together) continue;
-          for (const revision of state.revisionsSince(partner, windowSince)) {
-            for (const author of revision.authors) credit(author, names.get(author.toLowerCase()) ?? author, { coupledChanges: 1 });
-          }
+          if (pairCoupled(support, together, assessed.context) && !touched.has(partner)) coupled.add(partner);
+        }
+      }
+      for (const partner of coupled) {
+        for (const revision of state.revisionsSince(partner, windowSince)) {
+          for (const author of revision.authors) credit(author, names.get(author.toLowerCase()) ?? author, { coupledChanges: 1 });
         }
       }
       const candidates = [...scores.values()]
         .filter((c) => developers.has(c.email) && !authors.has(c.email.toLowerCase()))
         .map((c) => ({ ...c, authorship: round(c.authorship) }))
         .sort((a, b) => b.authorship - a.authorship || b.coupledChanges - a.coupledChanges || (a.email < b.email ? -1 : 1));
-      return { area, files: files.length, candidates };
+      return { area, files: files.length, coupledFiles: coupled.size, candidates };
     });
   const total = change.files.length;
   return { areas, basis: withBlame === 0 ? "history" : withBlame === total ? "blame" : "mixed" };

@@ -63,7 +63,7 @@
           "additionalProperties": { "type": "integer", "minimum": 1 }
         },
         "dropped": {
-          "description": "Present only when files were left out because of what they are: the number of distinct files left out as generated (a linguist-generated attribute, a minified file, a path with a segment named generated, a match of the config's generatedPatterns, or a generated-code header), as vendored (a linguist-vendored attribute or a vendor directory), and as non-code (no language adapter or lexical profile claims them, for a command that ranks only code), and as tests (a command that lists production code first, left out unless `--include-tests` is given). Kinds that left out nothing are not listed.",
+          "description": "Present only when files were left out because of what they are: the number of distinct files (not file changes, which `filtersApplied.dropped` counts) left out as generated (a linguist-generated attribute, a minified file, a path with a segment named generated, a match of the config's generatedPatterns, or a generated-code header), as vendored (a linguist-vendored attribute or a vendor directory), and as non-code (no language adapter or lexical profile claims them, for a command that ranks only code), and as tests (a command that lists production code first, left out unless `--include-tests` is given). Kinds that left out nothing are not listed.",
           "type": "object",
           "properties": {
             "generated": { "type": "integer", "minimum": 1 },
@@ -126,6 +126,7 @@
           "additionalProperties": false
         },
         "dropped": {
+          "description": "What the history filters removed. outsideWindow, shallowBoundaryCommits, importedCommits, blameIgnoredCommits, botCommits, suiteCommits and emptyAfterFiltering count commits. pureRenames, excludedByGlob, lockfiles, generated and vendored count file changes: one per file per commit, so a file changed in ten commits counts ten. The top-level `dropped` counts distinct files, so its `generated` and `vendored` are smaller when a file changed more than once.",
           "type": "object",
           "properties": {
             "outsideWindow": { "$ref": "#/$defs/count" },

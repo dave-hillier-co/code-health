@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { usageError } from "@code-health/cli-kit/errors";
 import { runGit } from "@code-health/history/git";
 import { compileGlobs } from "@code-health/history/glob";
@@ -54,6 +56,17 @@ async function exists(root: string, ref: string): Promise<boolean> {
   }
 }
 
+/** Whether a path names a file or folder in the working tree or at HEAD. */
+async function isFile(root: string, path: string): Promise<boolean> {
+  if (existsSync(join(root, path))) return true;
+  try {
+    await runGit(root, ["cat-file", "-e", `HEAD:${path}`]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** The branch changes are merged into: the configured one, the remote's default, then `main`, then `master`. */
 export async function findMainBranch(root: string, configured: string | null): Promise<string | null> {
   if (configured !== null) {
@@ -93,6 +106,12 @@ export async function resolveRange(root: string, request: RangeRequest): Promise
     against = await findMainBranch(root, request.mainBranch);
     if (against === null) throw usageError("there is no main branch to take the base from: name one with cochange risk BASE, or set cochange.risk.mainBranch");
   } else if (!(await exists(root, against))) {
+    if (parts === null && (await isFile(root, against))) {
+      throw usageError(
+        `"${against}" is a file, not a commit: risk assesses a change (a commit or a range, BASE[..HEAD]), not a file. ` +
+          `For a question about a file, run cochange brief ${against} (what changes with it, its recent activity and hotspot status), or cochange hotspots to see where it ranks`,
+      );
+    }
     // A bare word that is no commit may be a subcommand that does not exist, so say both.
     throw usageError(
       parts === null

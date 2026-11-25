@@ -84,6 +84,31 @@ export function impactScore(factors: readonly { name: string; family: string; ba
   return [...best.values()].reduce((sum, band) => sum + FAMILY_POINTS[band], 0);
 }
 
+/** One family's part of the impact score: the scored factor it counts at, its band, and the points it adds. */
+export interface FamilyContribution {
+  family: string;
+  /** The family's highest scored factor, or null when none of its scored factors could be banded. */
+  factor: string | null;
+  band: Band | null;
+  points: number;
+}
+
+/**
+ * What the impact score is made of: each family with a scored factor, in the order the factors are listed, and the
+ * points it adds. The points add up to the score.
+ */
+export function familyContributions(factors: readonly { name: string; family: string; band: FactorBand; disabled?: boolean }[]): FamilyContribution[] {
+  const best = new Map<string, { factor: string | null; band: Band | null }>();
+  for (const factor of factors) {
+    if (!SCORED_FACTORS.has(factor.name) || factor.disabled) continue;
+    const current = best.get(factor.family) ?? { factor: null, band: null };
+    if (factor.band !== "unavailable" && (current.band === null || BAND_RANK[factor.band] > BAND_RANK[current.band])) {
+      best.set(factor.family, { factor: factor.name, band: factor.band });
+    } else best.set(factor.family, current);
+  }
+  return [...best].map(([family, { factor, band }]) => ({ family, factor, band, points: band === null ? 0 : FAMILY_POINTS[band] }));
+}
+
 /** The score of each change of the baseline, banded against the baseline itself. */
 export function baselineScores(baseline: readonly (readonly Measurement[])[], settings: RiskSettings): number[] {
   const bander = makeBander(baseline, settings);
@@ -125,6 +150,40 @@ export function impactOf(
     unavailable: factors.filter((f) => SCORED_FACTORS.has(f.name) && !f.disabled && f.band === "unavailable").map((f) => f.name).sort(),
     baseline: { population: scores.length, moderate: cutoffs?.moderate ?? null, high: cutoffs?.high ?? null },
   };
+}
+
+/** The impact as the assessment prints it: the result, what the score is made of, and the factors it leaves out. */
+export interface ImpactReading extends ImpactResult {
+  families: FamilyContribution[];
+  /** Factors at moderate or high that neither count in the score nor are events, so they do not move the band. */
+  notCounted: { factor: string; band: Band }[];
+  /** The band read from the figures above, in one sentence per step. */
+  summary: string;
+}
+
+/** The impact result with the families that made the score, the factors that did not count, and a summary of how the band follows. */
+export function readImpact(
+  impact: ImpactResult,
+  factors: readonly { name: string; family: string; band: FactorBand; disabled?: boolean; scored: boolean }[],
+  settings: Pick<RiskSettings, "moderatePercentile" | "highPercentile">,
+): ImpactReading {
+  const families = familyContributions(factors);
+  const notCounted = factors
+    .filter((f) => !f.scored && !f.disabled && (f.band === "moderate" || f.band === "high") && !impact.events.includes(f.name))
+    .map((f) => ({ factor: f.name, band: f.band as Band }));
+  const parts = families.map((f) => `${f.family} ${f.points}${f.factor === null ? " (unavailable)" : f.points > 0 ? ` (${f.factor} ${f.band})` : ""}`);
+  const sentences = [`Score ${impact.score}: ${parts.length === 0 ? "no scored factor" : parts.join(", ")}.`];
+  const { moderate, high, population } = impact.baseline;
+  if (moderate === null || high === null) {
+    sentences.push(`Too few merged changes (${population}) to place the score, so the band is unavailable.`);
+  } else {
+    sentences.push(
+      `A score is moderate above ${moderate} and high above ${high} (the ${settings.moderatePercentile}th and ${settings.highPercentile}th percentiles of ${population} merged changes' scores), so ${impact.score} is ${impact.scoreBand}.`,
+    );
+    if (impact.events.length > 0) sentences.push(`Events raise it one step to ${impact.band}: ${impact.events.join(", ")}.`);
+  }
+  if (notCounted.length > 0) sentences.push(`Not counted in the score and not events: ${notCounted.map((f) => `${f.factor} (${f.band})`).join(", ")}.`);
+  return { ...impact, families, notCounted, summary: sentences.join(" ") };
 }
 
 export { BAND_RANK };
