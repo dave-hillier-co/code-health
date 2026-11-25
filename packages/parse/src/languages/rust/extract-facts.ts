@@ -4,12 +4,13 @@ import { codeRowsOf, measureFunction } from "../../unit-metrics.ts";
 import { nodeCount } from "../typescript/interface-shape.ts";
 import { functionShape, parameterNames, passThroughOf, typeShape } from "./interface-shape.ts";
 import { rustMetricRules, typeName } from "./metric-rules.ts";
+import { attributesOf, isTestItem, itemKinds, itemStartLine } from "./test-code.ts";
 
 /**
  * Bump when the extraction rules change in a way that alters facts for the same source, so cached facts from
  * older rules are not reused.
  */
-export const extractorVersion = 4;
+export const extractorVersion = 5;
 
 /**
  * How a Rust file is read, in terms the import model understands (see resolve-path.ts for the specifiers).
@@ -27,6 +28,8 @@ export const extractorVersion = 4;
  *   inline module still finds them.
  * - Units are functions and closures bound by `let`, methods under the name of the type of their `impl` or
  *   the trait that declares them, and the types and traits themselves, as classes.
+ * - An item that is test code (see test-code.ts) is test code with everything inside it: its units are tests, its
+ *   imports and uses are marked `test`, and its lines are listed in `testRanges`.
  */
 
 interface Context {
@@ -42,7 +45,7 @@ interface Context {
   localMods: ReadonlySet<string>;
   /** The node is a member of an `impl Trait for Type` block, so its functions implement the trait's methods. */
   implementsTrait?: boolean;
-  /** An enclosing module or impl block is `#[cfg(test)]`. */
+  /** An enclosing item is test code, such as a `#[cfg(test)]` module. */
   inTests?: boolean;
 }
 
@@ -56,24 +59,10 @@ function visibilityOf(node: Node): Visibility {
 
 const isComment = (node: Node): boolean => node.type === "line_comment" || node.type === "block_comment";
 
-/** Attribute names written on the item, from the attribute items just before it. */
-function attributesOf(node: Node): Node[] {
-  const out: Node[] = [];
-  for (let previous = node.previousNamedSibling; previous !== null && (previous.type === "attribute_item" || isComment(previous)); previous = previous.previousNamedSibling) {
-    if (previous.type === "attribute_item") out.push(previous);
-  }
-  return out;
-}
-
 function attributeNamed(node: Node, name: string): Node | undefined {
   return attributesOf(node)
     .map((item) => item.namedChildren.find((child) => child.type === "attribute"))
     .find((attribute) => attribute?.namedChildren[0]?.text === name);
-}
-
-/** The item carries `#[cfg(test)]`, `#[test]` or an async runtime's `::test` attribute, so it is test code wherever its file sits. */
-function isTestItem(node: Node): boolean {
-  return attributesOf(node).some((item) => /^#\[\s*(cfg\s*\(\s*test\s*\)|(\w+::)*test(\s*\(.*\))?)\s*\]$/s.test(item.text.trim()));
 }
 
 /** The function is a procedural macro, which the compiler calls by its `#[proc_macro]`, `#[proc_macro_attribute]` or `#[proc_macro_derive]` attribute. */
@@ -212,6 +201,7 @@ interface InlinePath {
   line: number;
   kind: "call" | "reference";
   unit: string | undefined;
+  test: boolean;
 }
 
 const compareLines = (a: { line: number }, b: { line: number }): number => a.line - b.line;
@@ -226,6 +216,7 @@ class Extractor {
   private readonly nameCounts = new Map<string, number>();
   private readonly inlineModules = new Set<string>();
   private readonly inlinePaths: InlinePath[] = [];
+  private readonly testRanges: { startLine: number; endLine: number }[] = [];
   private codeRows: boolean[] | undefined;
   private root: Node | undefined;
   private readonly explain: boolean;
@@ -261,6 +252,7 @@ class Extractor {
       references: this.references.filter((reference) => locals.has(reference.local)),
       nodes: nodeCount(root, (node) => isComment(node) || node.type === "use_declaration") - 1,
       hasSyntaxErrors: root.hasError,
+      ...(this.testRanges.length === 0 ? {} : { testRanges: this.testRanges }),
     };
   }
 
@@ -270,27 +262,31 @@ class Extractor {
    */
   private inlineCrates(root: Node, locals: ReadonlySet<string>): void {
     const modules = new Set(root.descendantsOfType("mod_item").map((item) => item.childForFieldName("name")?.text));
-    const known = new Set<string>();
+    const known = new Map<string, ImportFact>();
     for (const path of this.inlinePaths) {
       const [first] = path.segments as [string];
       if (locals.has(first) || modules.has(first) || primitives.has(first) || builtinCrates.has(first)) continue;
       let item = path.segments.findIndex((segment, index) => index > 0 && upper.test(segment));
       if (item < 0) item = path.segments.length - 1;
       const local = path.segments.slice(0, item + 1).join("::");
-      if (!known.has(local)) {
-        known.add(local);
-        this.imports.push({ specifier: path.segments.slice(0, item).join("::"), kind: "import", typeOnly: false, line: path.line, bindings: [{ imported: path.segments[item]!, local, typeOnly: false }] });
-      }
+      const imported = known.get(local);
+      if (imported === undefined) {
+        const fact: ImportFact = { specifier: path.segments.slice(0, item).join("::"), kind: "import", typeOnly: false, line: path.line, bindings: [{ imported: path.segments[item]!, local, typeOnly: false }] };
+        if (path.test) fact.test = true;
+        known.set(local, fact);
+        this.imports.push(fact);
+      } else if (!path.test) delete imported.test;
       const member = path.segments[item + 1];
       const fact: ReferenceFact = { local, kind: path.kind, line: path.line };
       if (member !== undefined) fact.member = member;
       if (path.unit !== undefined) fact.inUnit = path.unit;
+      if (path.test) fact.test = true;
       this.references.push(fact);
     }
   }
 
   private inlinePath(segments: string[], line: number, kind: "call" | "reference", context: Context): void {
-    if (segments.length >= 2 && /^[a-z_]/.test(segments[0]!)) this.inlinePaths.push({ segments, line, kind, unit: context.unit });
+    if (segments.length >= 2 && /^[a-z_]/.test(segments[0]!)) this.inlinePaths.push({ segments, line, kind, unit: context.unit, test: context.inTests === true });
   }
 
   /** The modules a scope declares, so a path that starts with one is relative to the scope. */
@@ -362,7 +358,12 @@ class Extractor {
     (context.mods.length === 0 ? this.exports : this.innerExports).push(fact);
   }
 
-  private visit(node: Node, context: Context): void {
+  private visit(node: Node, outer: Context): void {
+    let context = outer;
+    if (outer.inTests !== true && itemKinds.has(node.type) && isTestItem(node)) {
+      context = { ...outer, inTests: true };
+      this.testRanges.push({ startLine: itemStartLine(node), endLine: node.endPosition.row + 1 });
+    }
     switch (node.type) {
       case "use_declaration":
         this.useDeclaration(node, context);
@@ -400,7 +401,7 @@ class Extractor {
         const owner = typeName(node.childForFieldName("type")) ?? node.childForFieldName("type")?.text.replace(/\s+/g, " ") ?? "_";
         const body = node.childForFieldName("body");
         this.visitChildrenExcept(node, body, { ...context, owner: undefined });
-        if (body !== null) this.visitScope(body, { ...context, owner, implementsTrait: node.childForFieldName("trait") !== null, ...(isTestItem(node) ? { inTests: true } : {}) });
+        if (body !== null) this.visitScope(body, { ...context, owner, implementsTrait: node.childForFieldName("trait") !== null });
         return;
       }
       case "type_item":
@@ -500,13 +501,13 @@ class Extractor {
     const body = node.childForFieldName("body");
     if (body !== null) {
       this.export(node, name, undefined, "namespace", visibility, context);
-      this.visitScope(body, { ...context, mods: [...context.mods, name], exposed: context.exposed && visibility === "public", ...(isTestItem(node) ? { inTests: true } : {}) });
+      this.visitScope(body, { ...context, mods: [...context.mods, name], exposed: context.exposed && visibility === "public" });
       return;
     }
     const written = pathAttribute(node);
     const specifier = `mod ${[...context.mods, name].join("::")}${written === undefined ? "" : `@${written}`}`;
     const line = node.startPosition.row + 1;
-    this.imports.push({ specifier, kind: "import", typeOnly: false, line, bindings: [{ imported: "*", local: name, typeOnly: false }] });
+    this.imports.push({ specifier, kind: "import", typeOnly: false, line, bindings: [{ imported: "*", local: name, typeOnly: false }], ...(context.inTests === true ? { test: true as const } : {}) });
     this.export(node, name, name, "namespace", visibility, context);
   }
 
@@ -521,7 +522,7 @@ class Extractor {
       if (leaf.glob) {
         const specifier = segments.join("::");
         if (visibility === "public" && context.mods.length === 0) this.reexports.push({ specifier, typeOnly: false, line: leaf.line, imported: "*", exported: "*" });
-        else this.imports.push({ specifier, kind: "import", typeOnly: false, line: leaf.line, bindings: [] });
+        else this.imports.push({ specifier, kind: "import", typeOnly: false, line: leaf.line, bindings: [], ...(context.inTests === true ? { test: true as const } : {}) });
         continue;
       }
       let item = segments.findIndex((segment, index) => index > 0 && upper.test(segment));
@@ -532,7 +533,7 @@ class Extractor {
       const imported = segments[item]!;
       const local = leaf.alias ?? segments.at(-1)!;
       const bindings = local === "_" ? [] : [{ imported, local, typeOnly: false }];
-      this.imports.push({ specifier, kind: "import", typeOnly: false, line: leaf.line, bindings });
+      this.imports.push({ specifier, kind: "import", typeOnly: false, line: leaf.line, bindings, ...(context.inTests === true ? { test: true as const } : {}) });
       if (visibility !== "private" && bindings.length > 0 && context.owner === undefined && context.unit === undefined) {
         const fact: ExportFact = { exported: local, local, line: leaf.line };
         if (visibility === "restricted" || !context.exposed) fact.internal = true;
@@ -601,6 +602,7 @@ class Extractor {
     const fact: ReferenceFact = { local, kind, line: node.startPosition.row + 1 };
     if (member !== undefined) fact.member = member;
     if (context.unit !== undefined) fact.inUnit = context.unit;
+    if (context.inTests === true) fact.test = true;
     this.references.push(fact);
   }
 

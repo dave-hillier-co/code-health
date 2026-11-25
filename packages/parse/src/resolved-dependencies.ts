@@ -10,6 +10,8 @@ export interface ImportEdge {
    * no dependency of the header on the source, so a view of what depends on what (cycles, package dependencies) leaves it out.
    */
   pairing?: true;
+  /** Every statement behind the edge is test code inside a file that is not a test file by its name, such as a `use` in a Rust `#[cfg(test)]` module. Absent otherwise. */
+  test?: true;
 }
 
 export type ConsumerKind = "call" | "reference" | "test";
@@ -32,7 +34,7 @@ export interface Consumer {
 export interface FileEdge {
   from: string;
   to: string;
-  /** `test` when the consumer is a test file, otherwise `call` when any use is a direct call. */
+  /** `test` when the consumer is a test file or only its test code uses the other file, otherwise `call` when any use is a direct call. */
   kind: ConsumerKind;
   calls: number;
   references: number;

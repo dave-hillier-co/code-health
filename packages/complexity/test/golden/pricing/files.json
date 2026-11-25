@@ -56,6 +56,8 @@
       "role": "production",
       "score": 16,
       "source": "structural",
+      "testCodeLines": 0,
+      "testFunctions": 0,
       "unverified": false
     },
     {
@@ -98,6 +100,8 @@
       "role": "production",
       "score": 11,
       "source": "structural",
+      "testCodeLines": 0,
+      "testFunctions": 0,
       "unverified": false
     },
     {
@@ -140,6 +144,8 @@
       "role": "production",
       "score": 1,
       "source": "structural",
+      "testCodeLines": 0,
+      "testFunctions": 0,
       "unverified": false
     }
   ],

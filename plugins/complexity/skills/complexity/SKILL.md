@@ -55,7 +55,9 @@ and `--limit` (default 20) and `--fields` keep it small. Never ask for a whole r
    Test code is not in the rows. A file is a test by its language's naming conventions and the `testPatterns` of
    `code-health.json`, and `tests` in the JSON (and a notice in a table) says how many test functions were left out and
    lists the first ten. `--include-tests` puts them in the one list, each row with its `role`. `files`, `fixes` and
-   `depth` do the same. Say how many tests were left out when you report the top of the list.
+   `depth` do the same. Test code inside a production file (a Rust `#[cfg(test)]` module) is test code too: `files`
+   counts its lines in `testCodeLines` and its functions in `testFunctions`, apart from `codeLines` and `functions`.
+   Say how many tests were left out when you report the top of the list.
 
    `possibleNonProductionFolders` in the JSON (and a notice in a table) names the folders such as `examples/`,
    `samples/`, `playground/` and `benches/` whose files are ranked as production code, with their share of the

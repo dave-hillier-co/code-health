@@ -25,4 +25,4 @@ There is one row per mechanism, always in this order, including the ones with a 
 - **Type annotations are read where the language has them.** `callbacks` and constructor injection are not found in plain JavaScript or in Python written without type hints, so such a codebase can show zero for them while using them. Search the code before concluding.
 - **Other languages are not covered.** For a language with no adapter, search for the equivalents: DI container registration and constructor injection, handlers behind a mediator, events and delegates, interfaces and callbacks, signal and slot libraries. Say you searched by hand.
 
-The census does not count tests, excluded paths or files outside the grammars. A mechanism used only in tests is not a mechanism the code uses.
+The census does not count tests (test files, and test code inside a production file such as a Rust `#[cfg(test)]` module), excluded paths or files outside the grammars. A mechanism used only in tests is not a mechanism the code uses.

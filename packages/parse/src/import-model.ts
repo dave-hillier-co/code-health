@@ -73,9 +73,16 @@ export class ImportModel {
     this.unresolved.set(`${from}\0${line}\0${specifier}\0${reason}`, { from, line, specifier, reason });
   }
 
-  private addImportEdge(from: string, to: string, kind: ImportEdge["kind"], typeOnly: boolean): void {
+  /** Records an import edge. It is `test` while every statement behind it is test code. */
+  private addImportEdge(from: string, to: string, kind: ImportEdge["kind"], typeOnly: boolean, test = false): void {
     if (from === to && this.resolver.dropsSelfDependencies === true) return;
-    this.importEdges.set(`${from}\0${to}\0${kind}\0${typeOnly}`, { from, to, kind, typeOnly });
+    const key = `${from}\0${to}\0${kind}\0${typeOnly}`;
+    const existing = this.importEdges.get(key);
+    if (existing !== undefined) {
+      if (!test) delete existing.test;
+      return;
+    }
+    this.importEdges.set(key, { from, to, kind, typeOnly, ...(test ? { test: true as const } : {}) });
   }
 
   private addExternal(from: string, packageName: string, typeOnly: boolean): void {
@@ -147,8 +154,9 @@ export class ImportModel {
       if (target.kind === "external") this.addExternal(path, target.packageName, imported.typeOnly);
       if (target.kind === "not-found") this.addUnresolved(path, imported.line, imported.specifier, "not-found");
       if (target.kind !== "file") continue;
-      this.addImportEdge(path, target.path, imported.kind === "require" ? "require" : "import", imported.typeOnly);
-      if (imported.bindings.length === 0) this.touch(path, target.path);
+      const test = imported.test === true;
+      this.addImportEdge(path, target.path, imported.kind === "require" ? "require" : "import", imported.typeOnly, test);
+      if (imported.bindings.length === 0) this.touch(path, target.path, test);
       for (const binding of imported.bindings) {
         const uses = file.references.filter((reference) => reference.local === binding.local);
         // An import that is only re-exported is a pass-through, not a dependency of this file.
@@ -156,28 +164,28 @@ export class ImportModel {
         if (passThrough) {
           // A submodule imported only to be exposed (`from . import x` in `__init__.py`) is still imported: the package loads it.
           const exposed = binding.imported === "*" ? undefined : this.resolveExport(target.path, binding.imported, new Set());
-          if (exposed?.status === "namespace" && exposed.submodule === true) this.addImportEdge(path, exposed.file, "import", imported.typeOnly);
+          if (exposed?.status === "namespace" && exposed.submodule === true) this.addImportEdge(path, exposed.file, "import", imported.typeOnly, test);
           continue;
         }
         if (binding.imported === "*") {
-          this.useNamespace(path, target.path, uses, unitNames);
+          this.useNamespace(path, target.path, uses, unitNames, test);
           continue;
         }
         const result = this.resolveExport(target.path, binding.imported, new Set());
         switch (result.status) {
           case "defined":
-            this.touch(path, result.file);
+            this.touch(path, result.file, test);
             for (const use of uses) {
               this.consume(path, use, unitNames, result.file, result.exportName, result.symbol, false);
             }
             break;
           case "namespace":
             // A module imported by name from its package is a dependency on that module file, not only on the package.
-            if (result.submodule === true) this.addImportEdge(path, result.file, "import", imported.typeOnly);
-            this.useNamespace(path, result.file, uses, unitNames);
+            if (result.submodule === true) this.addImportEdge(path, result.file, "import", imported.typeOnly, test);
+            this.useNamespace(path, result.file, uses, unitNames, test);
             break;
           case "opaque":
-            this.touch(path, result.file);
+            this.touch(path, result.file, test);
             for (const use of uses) this.consume(path, use, unitNames, result.file, binding.imported, undefined, false);
             break;
           case "missing":
@@ -190,21 +198,25 @@ export class ImportModel {
     }
   }
 
-  /** Records that a file depends on another, even when nothing in it is referenced. */
-  private touch(from: string, to: string): FileEdge {
+  /**
+   * Records that a file depends on another, even when nothing in it is referenced. The edge is `test` when the file is
+   * a test, or while only its test code depends on the other.
+   */
+  private touch(from: string, to: string, test = false): FileEdge {
     // The edge of a file to itself is counted into nothing when the language does not want it.
     if (from === to && this.resolver.dropsSelfDependencies === true) return { from, to, kind: "reference", calls: 0, references: 0 };
     const key = `${from}\0${to}`;
+    const testUse = test || this.isTest(from);
     let edge = this.fileEdges.get(key);
     if (!edge) {
-      edge = { from, to, kind: this.isTest(from) ? "test" : "reference", calls: 0, references: 0 };
+      edge = { from, to, kind: testUse ? "test" : "reference", calls: 0, references: 0 };
       this.fileEdges.set(key, edge);
-    }
+    } else if (!testUse && edge.kind === "test") edge.kind = "reference";
     return edge;
   }
 
-  private useNamespace(from: string, namespace: string, uses: ReferenceFact[], unitNames: ReadonlySet<string>): void {
-    if (uses.length === 0) this.touch(from, namespace);
+  private useNamespace(from: string, namespace: string, uses: ReferenceFact[], unitNames: ReadonlySet<string>, test: boolean): void {
+    if (uses.length === 0) this.touch(from, namespace, test);
     for (const use of uses) {
       if (use.member === undefined) {
         this.consume(from, use, unitNames, namespace, "*", undefined, false);
@@ -237,16 +249,17 @@ export class ImportModel {
     if (from === to && this.resolver.dropsSelfDependencies === true) return;
     const direct = use.member === undefined || memberOfNamespace;
     const kind = direct ? use.kind : "reference";
-    const edge = this.touch(from, to);
+    const testUse = this.isTest(from) || use.test === true;
+    const edge = this.touch(from, to, testUse);
     if (kind === "call") edge.calls++;
     else edge.references++;
-    if (!this.isTest(from) && kind === "call") edge.kind = "call";
+    if (!testUse && kind === "call") edge.kind = "call";
     let fromUnit = use.inUnit;
     while (fromUnit !== undefined && !unitNames.has(fromUnit)) {
       const dot = fromUnit.lastIndexOf(".");
       fromUnit = dot < 0 ? undefined : fromUnit.slice(0, dot);
     }
-    const consumerKind = this.isTest(from) ? "test" : kind;
+    const consumerKind = testUse ? "test" : kind;
     const key = `${from}\0${fromUnit ?? ""}\0${to}\0${toSymbol ?? toExport}\0${consumerKind}`;
     const existing = this.consumers.get(key);
     if (existing) {

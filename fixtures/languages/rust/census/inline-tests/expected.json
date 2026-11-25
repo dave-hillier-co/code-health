@@ -1,0 +1,6 @@
+{
+  "files": 1,
+  "occurrences": [
+    "handlers handler-type src/lib.rs:7 | Ping implements CommandHandler"
+  ]
+}

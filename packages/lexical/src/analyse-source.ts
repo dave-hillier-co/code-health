@@ -24,12 +24,19 @@ export interface AnalyseOptions {
   mappings?: Record<string, string>;
   bumpDepth?: number;
   bumpyRoad?: BumpyRoadGuidelines;
+  /**
+   * Lines of test code inside the file, such as a Rust `#[cfg(test)]` module, 1-based and inclusive. The file-level
+   * metrics, `lineCount` aside, are measured over the other lines, and `testCodeLines` counts the code lines inside.
+   */
+  testRanges?: readonly { startLine: number; endLine: number }[];
 }
 
 export type FileMetrics = IndentationMetrics &
   LengthMetrics & {
     /** Present only when a lexer profile applies to the file. */
     keywordComplexity?: number;
+    /** Code lines inside the `testRanges` that were given. Present only when some were. */
+    testCodeLines?: number;
   };
 
 export interface MeasuredBlock extends FunctionBlock {
@@ -80,7 +87,11 @@ export function analyseSource(path: string, content: string, options: AnalyseOpt
   const selection = selectProfile(path, options.mappings);
   const profile = selection?.profile;
   const lines = stripSource(content, profile);
-  const file: FileMetrics = { ...indentationMetrics(lines), ...lengthMetrics(lines) };
+  const ranges = options.testRanges ?? [];
+  const inTests = (index: number): boolean => ranges.some((range) => range.startLine <= index + 1 && index + 1 <= range.endLine);
+  const own = ranges.length === 0 ? lines : lines.filter((_, index) => !inTests(index));
+  const file: FileMetrics = { ...indentationMetrics(own), ...lengthMetrics(own), lineCount: lines.length };
+  if (ranges.length > 0) file.testCodeLines = lengthMetrics(lines.filter((_, index) => inTests(index))).codeLines;
   const skipped: string[] = [];
   const blocks: MeasuredBlock[] = [];
 
@@ -90,7 +101,7 @@ export function analyseSource(path: string, content: string, options: AnalyseOpt
     skipped.push(`keywordComplexity: ${reason}`);
     skipped.push(`function blocks: ${reason}`);
   } else {
-    file.keywordComplexity = keywordComplexity(lines, profile);
+    file.keywordComplexity = keywordComplexity(own, profile);
     for (const block of findFunctionBlocks(lines, profile)) {
       const metrics = blockMetrics(lines, block, profile, {
         indentUnit: file.indentUnit,

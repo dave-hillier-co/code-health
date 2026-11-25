@@ -74,7 +74,11 @@ export interface FileRecord {
   profile: string | null;
   /** The profile came from config, so nothing measures its accuracy. */
   unverified: boolean;
+  /** Measured without the test code inside a production file, `lineCount` aside. */
   lines: LengthMetrics;
+  /** Code lines of test code inside a production file, such as a Rust `#[cfg(test)]` module. */
+  testCodeLines: number;
+  /** Measured without the test code inside a production file. */
   indentationComplexity: number;
   keywordComplexity?: number;
   units: UnitRecord[];
@@ -147,13 +151,9 @@ export async function measureTree(tree: SourceTree, options: MeasureOptions): Pr
         skippedFiles.excluded++;
         continue;
       }
-      const lexical = analyseSource(path, text, {
-        agreementBar: settings.agreementBar,
-        mappings: settings.languageProfiles,
-        bumpyRoad: bumpyRoadLimits(guidelinesFor(settings, path)),
-      });
       const language = options.layer === "lexical" ? undefined : await grammars.forPath(path);
       let structural: { units: UnitRecord[]; interfaces: NonNullable<FileRecord["interfaces"]>; syntaxErrors: boolean; syntaxError?: SyntaxErrorFact; tooDeep: boolean } | undefined;
+      let testRanges: FileFacts["testRanges"];
       if (language !== undefined) {
         const { facts, cached } = await factsForBlob(language, tree.files.get(path)!, text, options.cache);
         if (cached) stats.cached++;
@@ -165,7 +165,15 @@ export async function measureTree(tree: SourceTree, options: MeasureOptions): Pr
           ...(facts.syntaxError === undefined ? {} : { syntaxError: facts.syntaxError }),
           tooDeep: facts.tooDeep === true,
         };
+        // A test file is test code throughout, so only a production file has its test lines counted apart.
+        if (!settings.isTest(path)) testRanges = facts.testRanges;
       }
+      const lexical = analyseSource(path, text, {
+        agreementBar: settings.agreementBar,
+        mappings: settings.languageProfiles,
+        bumpyRoad: bumpyRoadLimits(guidelinesFor(settings, path)),
+        ...(testRanges === undefined ? {} : { testRanges }),
+      });
       files.push(fileRecord(path, text, lexical, structural, options));
     }
   }
@@ -279,6 +287,7 @@ function fileRecord(
     profile: lexical.profile,
     unverified: lexical.unverified,
     lines: { lineCount: lexical.file.lineCount, nonBlankLines: lexical.file.nonBlankLines, codeLines: lexical.file.codeLines },
+    testCodeLines: lexical.file.testCodeLines ?? 0,
     indentationComplexity: lexical.file.indentationComplexity,
     ...(lexical.file.keywordComplexity === undefined ? {} : { keywordComplexity: lexical.file.keywordComplexity }),
     units,

@@ -161,7 +161,7 @@ export function assemblePackageModel(
     const to = index.owner(imported.to);
     if (from === undefined || to === undefined || from === to) continue;
     const edge = edgeFor(from, to);
-    if (isTestPath(imported.from) || isTestPath(imported.to)) edge.testImports++;
+    if (imported.test === true || isTestPath(imported.from) || isTestPath(imported.to)) edge.testImports++;
     else edge.productionImports++;
   }
 

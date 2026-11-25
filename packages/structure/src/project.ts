@@ -81,7 +81,7 @@ export async function projectFromTree(tree: SourceTree, headSha: string, options
   const imports = new Map<string, ImportEdge[]>();
   const adjacency = new Map<string, string[]>(files.map((path) => [path, []]));
   for (const edge of analysis.importEdges) {
-    if (edge.pairing === true || !inProject.has(edge.from) || !inProject.has(edge.to)) continue;
+    if (edge.pairing === true || edge.test === true || !inProject.has(edge.from) || !inProject.has(edge.to)) continue;
     const key = edgeKey(edge.from, edge.to);
     imports.set(key, [...(imports.get(key) ?? []), edge]);
     adjacency.get(edge.from)!.push(edge.to);

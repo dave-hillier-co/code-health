@@ -95,7 +95,12 @@
             "$ref": "common.schema.json#/$defs/count"
           },
           "codeLines": {
-            "$ref": "common.schema.json#/$defs/count"
+            "$ref": "common.schema.json#/$defs/count",
+            "description": "Non-blank, non-comment lines, without the test code inside a production file (testCodeLines)."
+          },
+          "testCodeLines": {
+            "$ref": "common.schema.json#/$defs/count",
+            "description": "Code lines of test code inside a production file, such as a Rust #[cfg(test)] module. Left out of codeLines, complexity and keywordComplexity. 0 for a test file, whose lines are all in codeLines."
           },
           "keywordComplexity": {
             "oneOf": [
@@ -109,7 +114,11 @@
           },
           "functions": {
             "$ref": "common.schema.json#/$defs/count",
-            "description": "Functions measured, nested ones included."
+            "description": "Functions measured, nested ones included, without the test functions inside a production file (testFunctions)."
+          },
+          "testFunctions": {
+            "$ref": "common.schema.json#/$defs/count",
+            "description": "Functions of test code inside a production file, such as a Rust #[cfg(test)] module. Left out of functions, aggregates and aboveGuideline. 0 for a test file."
           },
           "aggregates": {
             "description": "Sum and maximum of each metric over the functions that are not inside another function. null when no function was measured.",
@@ -282,8 +291,10 @@
           "unverified",
           "lineCount",
           "codeLines",
+          "testCodeLines",
           "keywordComplexity",
           "functions",
+          "testFunctions",
           "aggregates",
           "aboveGuideline",
           "interfaceDepth",

@@ -2,6 +2,7 @@ import type { Node } from "web-tree-sitter";
 import type { FileCensus, ParameterFact } from "../../census-facts.ts";
 import { leavesOf, type Leaf } from "./extract-facts.ts";
 import { typeName } from "./metric-rules.ts";
+import { isTestItem, itemKinds } from "./test-code.ts";
 
 /**
  * The syntactic facts the structure census judges, for Rust.
@@ -16,6 +17,7 @@ import { typeName } from "./metric-rules.ts";
  *   macros and functions called by name. `Name::new(..)` and `Name { .. }` are the news.
  * - Decorators are attributes: `#[inject]` is `inject`, and `#[derive(Injectable)]` is `Injectable`.
  * - A registry is a field, static or variable named like one that holds a map.
+ * - Test code is left out: an item that test-code.ts calls test code, with its attributes and everything inside it.
  */
 
 const registryName = /(registry|registries|handlers|plugins|strategies|factories|providers|adapters)$/i;
@@ -113,6 +115,13 @@ function attributeNames(attribute: Node): string[] {
   return own === null ? [] : [own];
 }
 
+/** The item an attribute is written on: the next sibling that is neither an attribute nor a comment. */
+function itemOf(attribute: Node): Node | null {
+  let next = attribute.nextNamedSibling;
+  while (next !== null && (next.type === "attribute_item" || comment(next))) next = next.nextNamedSibling;
+  return next;
+}
+
 /** Extracts a file's census facts from its syntax tree. Lines are 1-based. */
 export function extractFileCensus(root: Node): FileCensus {
   const facts: FileCensus = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
@@ -120,6 +129,7 @@ export function extractFileCensus(root: Node): FileCensus {
 
   // `generics` are the callback-bounded type parameters of the enclosing `impl` or trait.
   const visit = (node: Node, owner: string | null, generics: ReadonlySet<string>): void => {
+    if (node.type === "attribute_item" ? isTestItem(itemOf(node) ?? node) : itemKinds.has(node.type) && isTestItem(node)) return;
     const line = node.startPosition.row + 1;
     let nextOwner = owner;
     let nextGenerics = generics;

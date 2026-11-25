@@ -84,6 +84,8 @@ export interface ImportFact {
   typeOnly: boolean;
   line: number;
   bindings: BindingFact[];
+  /** The statement is test code inside a file that is not a test file by its name: in a Rust `#[cfg(test)]` module. Absent otherwise. */
+  test?: true;
 }
 
 /** One name re-exported from another module. */
@@ -128,6 +130,8 @@ export interface ReferenceFact {
   line: number;
   /** Qualified name of the innermost enclosing unit. */
   inUnit?: string;
+  /** The use is test code inside a file that is not a test file by its name: in a Rust `#[cfg(test)]` module. Absent otherwise. */
+  test?: true;
 }
 
 /** A name a file declares, for the symbol-based dependency model. */
@@ -205,6 +209,11 @@ export interface FileFacts {
   hasSyntaxErrors: boolean;
   /** Where the first syntax error is, when there are any. */
   syntaxError?: SyntaxErrorFact;
+  /**
+   * The lines of test code inside a file that is not a test file by its name, such as a Rust `#[cfg(test)]` module,
+   * from each outermost test item's first attribute to its end, in order. Absent when there is none.
+   */
+  testRanges?: { startLine: number; endLine: number }[];
   /** The syntax tree nests deeper than `MAX_TREE_DEPTH`, so the file was read as empty: it has no units, imports or references. */
   tooDeep?: true;
 }

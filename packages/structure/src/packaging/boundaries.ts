@@ -32,7 +32,7 @@ export function deepImports(context: FindingContext, reuse: ReuseAnalysis): Find
     const entry = found.get(key) ?? { files: new Set<string>(), importers: new Set<string>(), tests: 0 };
     entry.files.add(edge.to);
     entry.importers.add(edge.from);
-    if (isTestPath(edge.from)) entry.tests++;
+    if (edge.test === true || isTestPath(edge.from)) entry.tests++;
     found.set(key, entry);
   }
   return [...found]
