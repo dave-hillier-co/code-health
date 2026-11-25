@@ -107,6 +107,75 @@ test("the same local part on different domains is medium, but not a generic one"
   expect(analyse([{ name: "A", email: "admin@corp.com" }, { name: "B", email: "admin@gmail.com" }]).links).toEqual([]);
 });
 
+test.each(["github", "code", "contact", "hello", "team", "release"])("the local part %s on two personal domains links no one", (local) => {
+  expect(analyse([{ name: "Ivo Brandt", email: `${local}@brandt.dev` }, { name: "Mia Sato", email: `${local}@sato.io` }]).links).toEqual([]);
+});
+
+test("a local part that is only a first name shared by two people with different surnames links no one", () => {
+  expect(analyse([{ name: "Tomas Reyes", email: "tomas@reyes.dev" }, { name: "Tomas Lindqvist", email: "tomas@lindqvist.se" }]).links).toEqual([]);
+  expect(analyse([{ name: "Tom Reyes", email: "tom@reyes.dev" }, { name: "Tomas Lindqvist", email: "tom@lindqvist.se" }]).links).toEqual([]);
+  // The same first name and surname is still a local part match, and with the name it is strong.
+  expect(analyse([{ name: "Tomas Reyes", email: "tomas@reyes.dev" }, { name: "Tomas Reyes", email: "tomas@acme.io" }]).links[0]).toMatchObject({ strength: "strong" });
+  // A local part that is no first word of either name still matches.
+  expect(signalsOf(analyse([{ name: "Tomas Reyes", email: "treyes@reyes.dev" }, { name: "Tomas Lindqvist", email: "treyes@acme.io" }]).links)).toContain("same-local-part");
+});
+
+describe("shared mailboxes", () => {
+  test("an address committed under two names that are not variants of one another is medium, with counter-evidence", () => {
+    const { links, proposals } = analyse([
+      { name: "Nora Vance", email: "ship@acme.io" },
+      { name: "Omar Ruiz", email: "Ship@acme.io" },
+    ]);
+    expect(links).toHaveLength(1);
+    expect(links[0]).toMatchObject({ strength: "medium", counterEvidence: true });
+    expect(links[0]!.signals.map((s) => [s.signal, s.strength])).toEqual([
+      ["exact-email", "medium"],
+      ["shared-mailbox", "counter"],
+    ]);
+    expect(links[0]!.signals[1]!.detail).toBe("ship@acme.io: committed under 2 names that are not variants of one another");
+    expect(proposals[0]).toMatchObject({ strength: "medium", counterEvidence: true });
+  });
+
+  test("a person's name beside their login, a changed surname and a reordered name are one person's address", () => {
+    for (const [p, q] of [
+      ["Lena Hart", "lhart"],
+      ["Lena Hart", "Lena Moss"],
+      ["Hart Lena", "Lena Hart"],
+      ["Jo Ann Park", "Joann Park"],
+    ]) {
+      expect(analyse([{ name: p!, email: "lena@hartmail.net" }, { name: q!, email: "lena@hartmail.net" }]).links[0]).toMatchObject({ strength: "strong", counterEvidence: false });
+    }
+  });
+
+  test("an address at an organisation's domain whose local part names a role or the project is shared", () => {
+    const role = analyse([{ name: "Pat Quinn", email: "team@acme.io" }, { name: "pquinn", email: "team@acme.io" }]);
+    expect(role.links[0]).toMatchObject({ strength: "medium", counterEvidence: true });
+    expect(role.links[0]!.signals.find((s) => s.signal === "shared-mailbox")!.detail).toBe("team@acme.io: the local part names a role, at an organisation's domain");
+
+    const specs: Spec[] = [{ name: "Pat Quinn", email: "widget-release@acme.io" }, { name: "pquinn", email: "widget-release@acme.io" }];
+    const raws = specs.map(raw);
+    const nodes = buildNodes(raws);
+    const project = findLinks(nodes, raws, noPairing, [], { projectNames: ["widget"] });
+    expect(project[0]!.signals.find((s) => s.signal === "shared-mailbox")!.detail).toBe("widget-release@acme.io: the local part names the project, at an organisation's domain");
+    // Without the project's name, `widget-release` is a person's address like any other.
+    expect(findLinks(nodes, raws, noPairing)[0]).toMatchObject({ strength: "strong" });
+    // At a mailbox provider the same local part is an individual's.
+    expect(analyse([{ name: "Pat Quinn", email: "team@gmail.com" }, { name: "pquinn", email: "team@gmail.com" }]).links[0]).toMatchObject({ strength: "strong" });
+  });
+
+  test("a shared address beside a strong signal keeps the link strong", () => {
+    const { links } = analyse([
+      { name: "Nora Vance", email: "ship@acme.io" },
+      { name: "Omar Ruiz", email: "ship@acme.io", mapped: ["Omar Ruiz", "oruiz@users.noreply.github.com"] },
+      { name: "O Ruiz", email: "ship@acme.io", mapped: ["oruiz", "12+oruiz@users.noreply.github.com"] },
+    ]);
+    const omar = links.find((l) => l.a.includes("oruiz") && l.b.includes("oruiz"))!;
+    expect(omar).toMatchObject({ strength: "strong", counterEvidence: false });
+    expect(omar.signals.map((s) => [s.signal, s.strength])).toContainEqual(["exact-email", "medium"]);
+    expect(links.find((l) => l.a.includes("Nora") || l.b.includes("Nora"))).toMatchObject({ strength: "medium", counterEvidence: true });
+  });
+});
+
 test("a handover in time on shared files supports a link but never makes one", () => {
   const specs: Spec[] = [
     { name: "Ann Lee", email: "ann@home.net", firstDay: 0, lastDay: 50, files: ["src/a.ts"] },
@@ -428,7 +497,7 @@ describe("shapes found in real histories", () => {
     expect(strengthOf([{ name: "Attila Hajdrik", email: "athajdri@microsoft.com" }, { name: "Attila Hajdrik", email: "attila@eyedea.hu" }])).toEqual([["medium", 2]]);
   });
 
-  test("a settled group is proposed as strong even when a medium link joins it to a lone identity", () => {
+  test("a settled group is proposed as strong even when a medium link joins it to a lone identity, and the medium links are a chain", () => {
     // The Gabriel Kliot shape: three addresses with one name and local part, and a noreply address that shares only the name.
     const proposals = analyse([
       { name: "Gabriel Kliot", email: "gkliot@microsoft.com" },
@@ -436,8 +505,24 @@ describe("shapes found in real histories", () => {
       { name: "Gabriel Kliot", email: "gkliot@google.com" },
       { name: "Gabriel Kliot", email: "gabikliot@users.noreply.github.com" },
     ]).proposals;
-    expect(proposals.map((p) => [p.strength, p.members.length])).toEqual([["strong", 3], ["medium", 4]]);
+    expect(proposals.map((p) => [p.strength, p.members.length])).toEqual([["strong", 3], ["chain", 4]]);
     expect(proposals[0]!.members.some((m) => m.includes("noreply"))).toBe(false);
+    // The chain holds only the medium links from the lone identity: the strong ones are in the strong cluster.
+    expect(proposals[1]!.links).toHaveLength(3);
+    expect(proposals[1]!.links.every((l) => l.strength === "medium" && (l.a.includes("noreply") || l.b.includes("noreply")))).toBe(true);
+  });
+
+  test("an identity is in one cluster at most: two settled groups joined by a medium link are two strong clusters and a chain", () => {
+    const { proposals } = analyse([
+      { name: "Rosa Imber", email: "rosa@imber.dev" },
+      { name: "R Imber", email: "Rosa@imber.dev" },
+      { name: "Rosa Imber", email: "rosa.imber@acme.io" },
+      { name: "rimber", email: "rosa.imber+ci@acme.io" },
+    ]);
+    expect(proposals.map((p) => [p.kind, p.strength])).toEqual([["cluster", "strong"], ["cluster", "strong"], ["chain", "chain"]]);
+    const clustered = proposals.filter((p) => p.kind === "cluster").flatMap((p) => p.members);
+    expect(new Set(clustered).size).toBe(clustered.length);
+    expect(proposals[2]!.links.every((l) => l.strength === "medium")).toBe(true);
   });
 
   test("a chain is not split into strong proposals when no group in it is settled by strong links", () => {

@@ -52,7 +52,7 @@ export const command: Command = {
       case "propose":
         return { inputs: inputs({ order: PROPOSE_ORDER }), results: proposeRows(analysis), columns: ["id", "kind", "strength", "counterEvidence", "suggestedCanonical", "members", "links"] };
       case "classify":
-        return { inputs: inputs(), results: classifyRows(analysis), columns: ["kind", "identity", "commits", "source", "pattern", "decided"] };
+        return { inputs: inputs(), results: classifyRows(analysis), columns: ["kind", "identity", "commits", "source", "signal", "pattern", "decided"] };
       case "check": {
         const detail = await measureMapping(context, analysis, { noRefresh: context.values["no-refresh"] === true });
         const { findings, failed } = checkMapping(analysis, detail);

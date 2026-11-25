@@ -73,9 +73,9 @@ export function suggestCanonical(members: readonly IdentityNode[]): IdentityNode
   )[0]!;
 }
 
-export const PROPOSE_ORDER = "members' commits, largest first, then strength (strong, medium, chain), then suggested name";
+export const PROPOSE_ORDER = "strength (strong, medium, chain), then members' commits, largest first, then suggested name";
 
-/** Clusters and chains, the most commits held by their members first, then the strongest, then by name, each with its links' signals. */
+/** Clusters and chains, the strongest first, then the most commits held by their members, then by name, each with its links' signals. */
 export function proposeRows(analysis: IdentityAnalysis) {
   const nodes = new Map(analysis.nodes.map((n) => [n.key, n]));
   const strengthOrder = { strong: 0, medium: 1, chain: 2 };
@@ -106,29 +106,29 @@ export function proposeRows(analysis: IdentityAnalysis) {
       })),
     };
   });
-  rows.sort((x, y) => y.commits - x.commits || strengthOrder[x.strength] - strengthOrder[y.strength] || compare(x.suggestedCanonical, y.suggestedCanonical));
+  rows.sort((x, y) => strengthOrder[x.strength] - strengthOrder[y.strength] || y.commits - x.commits || compare(x.suggestedCanonical, y.suggestedCanonical));
   return rows.map(({ commits: _held, ...row }, i) => ({ ...row, id: `P${i + 1}` }));
 }
 
 const MIN_SERVICE_COMMITS = 3;
 
-/** Proposed bot, service and agent classifications with the pattern that matched, and whether a decision records them. */
+/** Proposed bot, service and agent classifications with the pattern that matched, what it was matched against, and whether a decision records them. */
 export function classifyRows(analysis: IdentityAnalysis) {
   const { decisions, matcher } = analysis.history.identities;
   const decided = new Set(decisions.classifications.map((c) => emailOf(c.identity)));
-  const rows: { kind: "bot" | "service" | "agent"; identity: string; commits: number; source: string; pattern: string; decided: boolean }[] = [];
+  const rows: { kind: "bot" | "service" | "agent"; identity: string; commits: number; source: string; signal: string; pattern: string; decided: boolean }[] = [];
 
   for (const raw of analysis.raws) {
     const key = identityKey(raw);
     const found = matcher.classify(raw.name, raw.email);
     if (found) {
-      rows.push({ kind: found.kind, identity: key, commits: raw.commits, source: found.source, pattern: found.pattern, decided: decided.has(raw.email.toLowerCase()) });
+      rows.push({ kind: found.kind, identity: key, commits: raw.commits, source: found.source, signal: found.signal, pattern: found.pattern, decided: decided.has(raw.email.toLowerCase()) });
       continue;
     }
     if (decided.has(raw.email.toLowerCase())) continue; // decided to be a person
     const subjects = analysis.facts.subjects.get(key) ?? [];
     if (subjects.length >= MIN_SERVICE_COMMITS && onlyVersionBumpsOrMerges(subjects)) {
-      rows.push({ kind: "service", identity: key, commits: raw.commits, source: "heuristic", pattern: "only version bumps, releases or merges", decided: false });
+      rows.push({ kind: "service", identity: key, commits: raw.commits, source: "heuristic", signal: "subjects", pattern: "only version bumps, releases or merges", decided: false });
     }
   }
   for (const agent of analysis.facts.agents) {
@@ -137,6 +137,7 @@ export function classifyRows(analysis: IdentityAnalysis) {
       identity: agent.value,
       commits: agent.commits,
       source: "trailer",
+      signal: "trailer",
       pattern: agent.pattern,
       // Decided by a record, or by a rule that already classifies the trailer's address as an agent.
       decided: decided.has(emailOf(agent.value)) || matcher.classify(nameOf(agent.value), emailOf(agent.value))?.kind === "agent",

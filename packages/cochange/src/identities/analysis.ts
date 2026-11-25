@@ -70,13 +70,16 @@ export async function analyseIdentities(context: CommandContext, options: Analys
   const people = nodes.filter((n) => !nonPerson.has(n.key));
   const personKeys = new Set(people.map((n) => n.key));
   const personRaws = raws.filter((r) => personKeys.has(identityKey({ name: r.mappedName, email: r.mappedEmail })));
-  const links = findLinks(people, personRaws, facts.pairing, identities.decisions.rejectedMerges);
+  const links = findLinks(people, personRaws, facts.pairing, identities.decisions.rejectedMerges, { projectNames: [projectName(context.repo.root)] });
   const proposals = buildProposals(links);
   const unresolved = new Set(proposals.flatMap((p) => p.members));
   const strongProposed = new Set(proposals.filter((p) => p.strength === "strong").flatMap((p) => p.members));
 
   return { history, facts, raws, nodes, nodeOfRaw, nonPerson, links, proposals, unresolved, strongProposed, windowSince };
 }
+
+/** The repository's name as the folder its working tree is in, as the report header names it. */
+const projectName = (root: string): string => root.split(/[\\/]/).filter(Boolean).pop() ?? root;
 
 export const isoDay = (seconds: number): string => new Date(seconds * 1000).toISOString().slice(0, 10);
 

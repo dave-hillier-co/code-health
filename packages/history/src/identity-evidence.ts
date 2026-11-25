@@ -59,7 +59,8 @@ export type SignalName =
   | "same-local-part"
   | "handover"
   | "exclusive-pairing"
-  | "simultaneous-disjoint-areas";
+  | "simultaneous-disjoint-areas"
+  | "shared-mailbox";
 
 export type SignalStrength = "strong" | "medium" | "supporting" | "counter";
 
@@ -103,6 +104,63 @@ const GENERIC_LOCAL_PARTS = new Set([
   "none",
   "unknown",
   "nobody",
+]);
+
+/**
+ * Local parts that name a function of a mailbox and not a person. At an organisation's domain the address is
+ * one that several people can send from, so the same address is not evidence of one person.
+ */
+export const ROLE_LOCAL_PARTS: ReadonlySet<string> = new Set([
+  "team",
+  "release",
+  "releases",
+  "releng",
+  "maintainer",
+  "maintainers",
+  "security",
+  "ops",
+  "devops",
+  "infra",
+  "platform",
+  "engineering",
+  "eng",
+  "opensource",
+  "oss",
+  "community",
+  "staff",
+  "project",
+  "office",
+  "docs",
+  "packaging",
+]);
+
+/**
+ * Local parts that many people pick for their own address on their own domain (`github@`, `code@`, `contact@`).
+ * The whole address still says who it is, but the local part alone matches strangers, so `same-local-part` never
+ * fires on one of these, on a role, or on a generic local part.
+ */
+export const COMMON_LOCAL_PARTS: ReadonlySet<string> = new Set([
+  "github",
+  "gitlab",
+  "bitbucket",
+  "code",
+  "coding",
+  "contact",
+  "hello",
+  "hi",
+  "hey",
+  "email",
+  "inbox",
+  "work",
+  "home",
+  "personal",
+  "private",
+  "public",
+  "web",
+  "website",
+  "projects",
+  "commits",
+  "patches",
 ]);
 
 const DAY = 86_400;
@@ -236,6 +294,75 @@ function factsOf(node: IdentityNode): NodeFacts {
   };
 }
 
+/**
+ * Two names of at least two words are variants of one person's name when they are the same name by the rules of
+ * `same-name`, when they share a word (a first name kept through a change of surname, a family name written first),
+ * when their words run together are the same (`Jo Ann Park` and `Joann Park`), or when the first words and the
+ * last words are each one the start of the other (`Jo Bloggs` and `Joseph B`).
+ */
+export function namesAreVariants(p: string, q: string): boolean {
+  const x = nameTokens(p);
+  const y = nameTokens(q);
+  if (x.join(" ") === y.join(" ") || x.join("") === y.join("")) return true;
+  if (x.some((t) => t.length >= 2 && y.includes(t))) return true;
+  const prefixed = (s: string, t: string) => s.startsWith(t) || t.startsWith(s);
+  return prefixed(x[0]!, y[0]!) && prefixed(x[x.length - 1]!, y[y.length - 1]!);
+}
+
+/**
+ * Addresses that more than one person commits from, each with the reason, by normalised email. An address is
+ * shared when it is committed under two or more names of at least two words that are not variants of one another,
+ * or when it is at an organisation's domain and every part of its local part names the project or a role
+ * (`release@`, `team@`, `widget-release@` in a project called widget). A one-word name such as a login is left out
+ * of the comparison: people commit under their login and their name from one address.
+ */
+export function sharedMailboxes(nodes: readonly IdentityNode[], projectNames: readonly string[] = []): Map<string, string> {
+  const namesOf = new Map<string, Set<string>>();
+  for (const node of nodes) {
+    for (const { name, email } of [{ name: node.name, email: node.email }, ...node.aliases]) {
+      if (parseNoreply(email)) continue;
+      const key = normaliseEmail(email);
+      const names = namesOf.get(key) ?? new Set<string>();
+      if (nameTokens(name).length >= 2) names.add(name);
+      namesOf.set(key, names);
+    }
+  }
+  const projects = new Set(projectNames.map((p) => p.toLowerCase()));
+  const shared = new Map<string, string>();
+  for (const [email, names] of [...namesOf].sort(([p], [q]) => compare(p, q))) {
+    const groups: string[][] = [];
+    for (const name of [...names].sort(compare)) {
+      const into = groups.filter((g) => g.some((other) => namesAreVariants(name, other)));
+      const merged = [name, ...into.flat()];
+      for (const g of into) groups.splice(groups.indexOf(g), 1);
+      groups.push(merged);
+    }
+    if (groups.length >= 2) {
+      shared.set(email, `committed under ${groups.length} names that are not variants of one another`);
+      continue;
+    }
+    const parts = emailLocalPart(email).split(/[.\-_]/).filter((p) => p !== "");
+    if (organisationOf(email) !== null && parts.length > 0 && parts.every((p) => projects.has(p) || ROLE_LOCAL_PARTS.has(p))) {
+      shared.set(email, parts.some((p) => projects.has(p)) ? "the local part names the project, at an organisation's domain" : "the local part names a role, at an organisation's domain");
+    }
+  }
+  return shared;
+}
+
+/**
+ * True when a shared local part is only a first name: it is the first word of a name of one identity, both
+ * identities have names of at least two words, and the rest of their names share no word. `michael@` for
+ * Michael Jones and Michael Brandt is two people with one first name. Deciding this from the names keeps a list
+ * of first names out of the tool.
+ */
+function onlyAFirstName(local: string, x: NodeFacts, y: NodeFacts): boolean {
+  const tokensX = x.nameList.map(nameTokens);
+  const tokensY = y.nameList.map(nameTokens);
+  if (tokensX.length === 0 || tokensY.length === 0) return false;
+  if (![...tokensX, ...tokensY].some((t) => t[0] === local)) return false;
+  return tokensX.every((p) => tokensY.every((q) => !p.slice(1).some((t) => q.slice(1).includes(t))));
+}
+
 type Candidates = Map<string, Map<string, Signal>>;
 
 function pairKey(x: string, y: string): [string, string] {
@@ -279,12 +406,14 @@ export function findLinks(
   raws: readonly RawIdentity[],
   pairing: Pairing,
   rejections: readonly Rejection[] = [],
+  options: { projectNames?: readonly string[] } = {},
 ): Link[] {
   const facts = nodes.map(factsOf);
   const candidates: Candidates = new Map();
+  const shared = sharedMailboxes(nodes, options.projectNames);
 
   eachPair(index(facts, (f) => f.emails), (email, x, y) =>
-    addSignal(candidates, x, y, { signal: "exact-email", strength: "strong", detail: email }),
+    addSignal(candidates, x, y, { signal: "exact-email", strength: shared.has(email) ? "medium" : "strong", detail: email }),
   );
   // The same local part at one organisation's domain, where one host is a machine inside it
   // (`sbykov@pc12.corp.example.com` and `sbykov@example.com`): git writes that address when it has no configured one.
@@ -305,6 +434,7 @@ export function findLinks(
   );
   eachPair(index(facts, (f) => f.locals), (local, x, y) => {
     if (x.emails.some((e) => y.emails.includes(e))) return;
+    if (COMMON_LOCAL_PARTS.has(local) || ROLE_LOCAL_PARTS.has(local) || onlyAFirstName(local, x, y)) return;
     addSignal(candidates, x, y, { signal: "same-local-part", strength: "medium", detail: local });
   });
 
@@ -372,10 +502,17 @@ export function findLinks(
     const handover = handoverSignal(x, y);
     if (handover) list.push(handover);
     const strong = list.some((s) => s.strength === "strong") || corroborated(list);
-    const counter = strong ? undefined : counterSignal(x, y);
-    if (counter) list.push(counter);
+    const counters: Signal[] = [];
+    if (!strong) {
+      const disjoint = counterSignal(x, y);
+      if (disjoint) counters.push(disjoint);
+      for (const s of list) {
+        if (s.signal === "exact-email" && shared.has(s.detail)) counters.push({ signal: "shared-mailbox", strength: "counter", detail: `${s.detail}: ${shared.get(s.detail)}` });
+      }
+    }
+    list.push(...counters);
     list.sort((s, t) => compare(rank(s) + s.signal + s.detail, rank(t) + t.signal + t.detail));
-    links.push({ a, b, strength: strong ? "strong" : "medium", signals: list, counterEvidence: counter !== undefined });
+    links.push({ a, b, strength: strong ? "strong" : "medium", signals: list, counterEvidence: counters.length > 0 });
   }
   return links;
 }
@@ -425,7 +562,11 @@ function isoDay(seconds: number): string {
 
 export interface Proposal {
   kind: "cluster" | "chain";
-  /** `strong`: only strong links join them. `medium`: every pair is linked and at least one link is medium. `chain`: medium links in a line, shown for review and not to be merged as one. */
+  /**
+   * `strong`: strong links join them. `medium`: every pair is linked, by medium links only. `chain`: medium links
+   * in a line, or between strong clusters, shown for review and not to be merged as one. A chain holds only its
+   * medium links, and its members can be in a strong cluster too.
+   */
   strength: "strong" | "medium" | "chain";
   members: string[];
   links: Link[];
@@ -452,7 +593,8 @@ class Groups {
  * links never do: when every pair of a connected set is linked it is one
  * cluster, otherwise it is a chain for review. A set held together by medium links
  * between groups that strong links settled is proposed as those strong groups and
- * as the whole set, so the settled part is not held back by the rest.
+ * a chain of the medium links between them, so the settled part is not held back by
+ * the rest and no identity is in two clusters.
  */
 export function buildProposals(links: readonly Link[]): Proposal[] {
   const groups = new Groups();
@@ -477,24 +619,27 @@ export function buildProposals(links: readonly Link[]): Proposal[] {
     const linked = (x: string, y: string) =>
       inside.some((l) => (groups.find(l.a) === x && groups.find(l.b) === y) || (groups.find(l.a) === y && groups.find(l.b) === x));
     const roots = [...rootSet];
-    const complete = roots.every((x, i) => roots.slice(i + 1).every((y) => linked(x, y)));
-    const singleGroup = rootSet.size === 1;
-    if (!singleGroup) {
-      // Strong links settle a group whatever else the group is linked to by name alone, so each is proposed as strong too,
-      // and the wider medium proposal remains for the question the evidence does not settle.
-      for (const root of [...rootSet].sort(compare)) {
-        const members = nodes.filter((n) => groups.find(n) === root);
-        if (members.length < 2) continue;
-        const within = inside.filter((l) => members.includes(l.a) && members.includes(l.b));
-        proposals.push({ kind: "cluster", strength: "strong", members, links: within, counterEvidence: within.some((l) => l.counterEvidence) });
-      }
+    if (roots.length === 1) {
+      proposals.push({ kind: "cluster", strength: "strong", members: nodes, links: inside, counterEvidence: inside.some((l) => l.counterEvidence) });
+      continue;
     }
+    // Strong links settle a group whatever else the group is linked to by name alone, so each is proposed as a
+    // strong cluster, and the medium links between the groups are a chain: each identity is in one cluster only.
+    const settled = roots.filter((root) => nodes.filter((n) => groups.find(n) === root).length >= 2);
+    for (const root of settled.sort(compare)) {
+      const members = nodes.filter((n) => groups.find(n) === root);
+      const within = inside.filter((l) => members.includes(l.a) && members.includes(l.b));
+      proposals.push({ kind: "cluster", strength: "strong", members, links: within, counterEvidence: within.some((l) => l.counterEvidence) });
+    }
+    const between = inside.filter((l) => groups.find(l.a) !== groups.find(l.b));
+    const complete = settled.length === 0 && roots.every((x, i) => roots.slice(i + 1).every((y) => linked(x, y)));
+    const members = [...new Set(between.flatMap((l) => [l.a, l.b]))].sort(compare);
     proposals.push({
-      kind: singleGroup || complete ? "cluster" : "chain",
-      strength: singleGroup ? "strong" : complete ? "medium" : "chain",
-      members: nodes,
-      links: inside,
-      counterEvidence: inside.some((l) => l.counterEvidence),
+      kind: complete ? "cluster" : "chain",
+      strength: complete ? "medium" : "chain",
+      members,
+      links: between,
+      counterEvidence: between.some((l) => l.counterEvidence),
     });
   }
   const order = { strong: 0, medium: 1, chain: 2 };

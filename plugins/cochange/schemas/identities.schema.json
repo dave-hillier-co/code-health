@@ -63,6 +63,7 @@
         "signal": {
           "enum": [
             "exact-email",
+            "same-organisation-address",
             "same-signing-key",
             "noreply-same-user",
             "noreply-matches-identity",
@@ -71,7 +72,8 @@
             "same-local-part",
             "handover",
             "exclusive-pairing",
-            "simultaneous-disjoint-areas"
+            "simultaneous-disjoint-areas",
+            "shared-mailbox"
           ]
         },
         "strength": {
@@ -178,7 +180,7 @@
             "medium",
             "chain"
           ],
-          "description": "A chain is medium links in a line, shown for review and never merged as one."
+          "description": "Strong clusters are listed first. A chain is medium links in a line, or between strong clusters, shown for review and never merged as one: it holds only its medium links, and its members can also be in a strong cluster. No identity is in two clusters."
         },
         "counterEvidence": {
           "type": "boolean"
@@ -303,6 +305,17 @@
             "trailer"
           ]
         },
+        "signal": {
+          "enum": [
+            "decision",
+            "identity",
+            "name",
+            "local-part",
+            "subjects",
+            "trailer"
+          ],
+          "description": "What classified it: a decision, a pattern matched against `Name <email>`, the name alone, the email's local part, the commit subjects, or a `Co-Authored-By` trailer."
+        },
         "pattern": {
           "type": "string"
         },
@@ -316,6 +329,7 @@
         "identity",
         "commits",
         "source",
+        "signal",
         "pattern",
         "decided"
       ],

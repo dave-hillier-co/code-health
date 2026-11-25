@@ -7,7 +7,7 @@ import { runCochange } from "./support/run.ts";
 const ann: Identity = { name: "Ann Lee", email: "ann@corp.com" };
 const annHome: Identity = { name: "Ann Lee", email: "ann@home.net" };
 const dependabot: Identity = { name: "dependabot[bot]", email: "49699333+dependabot[bot]@users.noreply.github.com" };
-const sync: Identity = { name: "Sync Robot", email: "sync@corp.com" };
+const sync: Identity = { name: "Sync Daemon", email: "sync@corp.com" };
 
 let repo: GitFixture;
 beforeAll(() => {
@@ -34,7 +34,7 @@ test("a classification in the decisions file drops that identity's commits and i
   mkdirSync(join(repo.path, ".code-health"), { recursive: true });
   writeFileSync(
     join(repo.path, ".code-health", "identity-decisions.json"),
-    JSON.stringify({ schemaVersion: 1, classifications: [{ identity: "Sync Robot <sync@corp.com>", kind: "service" }] }),
+    JSON.stringify({ schemaVersion: 1, classifications: [{ identity: "Sync Daemon <sync@corp.com>", kind: "service" }] }),
   );
   const document = await hotspots();
   expect(document.filtersApplied.dropped.botCommits).toBe(2);

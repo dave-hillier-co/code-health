@@ -13,6 +13,23 @@ test("known bots are recognised by name suffix and by address", () => {
   expect(matcher.classify("Ann Lee", "ann@corp.com")).toBeNull();
 });
 
+test("bot or robot as a word of the name or the email's local part is a bot, and says which it was", () => {
+  const matcher = createNonPersonMatcher(none);
+  expect(matcher.classify("Acme Bot", "ci-helper@acme.io")).toMatchObject({ kind: "bot", source: "builtin", signal: "name" });
+  expect(matcher.classify("ReleaseBot", "rb@acme.io")).toMatchObject({ kind: "bot", signal: "name" });
+  expect(matcher.classify("Infra Sync", "robot-sync@acme.io")).toMatchObject({ kind: "bot", signal: "local-part" });
+  expect(matcher.classify("Sync", "sync_bot@acme.io")).toMatchObject({ kind: "bot", signal: "local-part" });
+  expect(matcher.classify("dependabot[bot]", "49699333+dependabot[bot]@users.noreply.github.com")).toMatchObject({ signal: "identity" });
+  for (const [name, email] of [
+    ["Ann Abbott", "ann@abbott.dev"],
+    ["Lee Talbot", "lee.talbot@acme.io"],
+    ["Robotics Team", "lab@robotics.example"],
+    ["Bo Botha", "bo@botha.dev"],
+  ]) {
+    expect(matcher.classify(name!, email!)).toBeNull();
+  }
+});
+
 test("generic service names are recognised, whole names only", () => {
   const matcher = createNonPersonMatcher(none);
   expect(matcher.classify("Jenkins", "jenkins@corp.com")).toMatchObject({ kind: "service", source: "builtin" });

@@ -83,14 +83,19 @@ test("list --unmapped keeps only identities a decision is still owed on, and the
   expect(document.results.every((r: { topAreas: string[] }) => r.topAreas.length <= 3)).toBe(true);
 });
 
-test("propose gives clusters and the signals behind every link, the most commits first", async () => {
+test("propose gives clusters and the signals behind every link, the strongest first, then the most commits", async () => {
   const { stdout } = await identities("propose", "--limit", "all");
   const document = json(stdout);
   type Row = { id: string; strength: string; members: { identity: string; commits: number }[]; links: { signals: { signal: string; strength: string }[] }[]; suggestedCanonical: string };
   const held = (p: Row): number => p.members.reduce((sum, m) => sum + m.commits, 0);
   const rows: Row[] = document.results;
   expect(rows.map((p) => p.id)).toEqual(rows.map((_, i) => `P${i + 1}`));
-  expect(rows.map(held)).toEqual(rows.map(held).sort((a, b) => b - a));
+  const order = { strong: 0, medium: 1, chain: 2 } as Record<string, number>;
+  expect(rows.map((p) => order[p.strength])).toEqual(rows.map((p) => order[p.strength]).sort());
+  for (const strength of Object.keys(order)) {
+    const heldHere = rows.filter((p) => p.strength === strength).map(held);
+    expect(heldHere).toEqual([...heldHere].sort((a, b) => b - a));
+  }
   expect(rows.map((p) => p.strength).sort()).toEqual(["medium", "medium", "strong", "strong", "strong"]);
   const byId = {
     P1: rows.find((p) => p.members.some((m) => m.identity === key(jo1)))!,
