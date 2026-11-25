@@ -62,6 +62,9 @@ and `--limit` (default 20) and `--fields` keep it small. Never ask for a whole r
    node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs files --json --limit 10
    ```
 
+   It lists the files with a measured function first, by indentation complexity, then the files with none
+   (`functions` 0: declarations, headers, data), which `explain` and `report xray` cannot break down.
+
 4. To see only what a branch changed, use `diff main..HEAD`, or `diff main` for the working tree.
 
 5. To find layers that add nothing, use `depth`:

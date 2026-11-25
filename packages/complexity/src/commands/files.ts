@@ -9,11 +9,18 @@ import { isCodePath } from "@code-health/parse/code-files";
 
 export const name = "files";
 
+type FileRow = { path: string; role: string; score: number; functions: number };
+
+function byMeasuredThenScore(a: FileRow, b: FileRow): number {
+  return Number(b.functions > 0) - Number(a.functions > 0) || b.score - a.score || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path));
+}
+
 /**
  * File-level aggregates of the code: files that a language adapter or a lexical profile claims. The files that are
  * not code are counted in `dropped.nonCode`. A run on a clean tree stores its result, and the whole-repository run
  * stores `complexity.files`, which the cochange plugin reads: each row's `complexity` is the file's indentation
- * complexity, the definition shared with cochange's own proxy.
+ * complexity, the definition shared with cochange's own proxy. The list ranks the files with a measured function first,
+ * by complexity, then the files with none (declarations, data), so its top row is a file `explain` and `report xray` can break down.
  */
 export const command: Command = {
   summary: "File-level aggregates; a full run writes the complexity.files report other plugins read",
@@ -24,10 +31,10 @@ export const command: Command = {
     const paths = normalisePaths(context.positionals);
     // The stored result holds every file, tests included with their role, because cochange reads a complexity for each file it ranks.
     const all = await cachedAnalysis(context, name, { layer: context.values.layer, paths: paths.length === 0 ? undefined : paths }, () => compute(context, layer, paths));
-    const rows = all.results as Array<{ path: string; role: string }>;
+    const rows = all.results as FileRow[];
     const listed = wantsTests(context) ? rows : rows.filter((row) => row.role === "production");
     if (listed.length < rows.length) for (const row of rows) if (row.role === "test") recordDropped("tests", row.path);
-    return { ...all, inputs: { ...all.inputs, includeTests: wantsTests(context) }, results: listed };
+    return { ...all, inputs: { ...all.inputs, includeTests: wantsTests(context) }, results: [...listed].sort(byMeasuredThenScore), presorted: true };
   },
 };
 
