@@ -11,7 +11,7 @@ import type { LocalitySettings } from "./config.ts";
 import { bestTarget, type BoundaryEdge } from "./footprint.ts";
 import { ageDays, isoDate, pairing, type History } from "./history-evidence.ts";
 import type { Edge, Model, RawUnit } from "./model.ts";
-import { countLines, goPackagesOf, unitText, type Project } from "./project.ts";
+import { countLines, goPackagesOf, rustModulesOf, unitText, type Project } from "./project.ts";
 import { manifestFolders, placementRefusals, relocate } from "./placement.ts";
 import { recommend, type Decision, type RecommendInput } from "./recommend.ts";
 import { reasonFor } from "./reason.ts";
@@ -500,6 +500,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
 
   const manifests = manifestFolders(project.tree);
   const go = goPackagesOf(project);
+  const rust = rustModulesOf(project);
   /** Why a folder is a grouping folder and not a home for these files: its name is in `locality.groupingFolders` and a file is of a language in `locality.groupingLanguages`. */
   function groupingRefusal(files: readonly string[], folder: string): { label: string; detail: string } | undefined {
     const name = folder === "" ? undefined : (folder.split("/").pop() as string);
@@ -515,7 +516,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
     const memo = new Map<string, { label: string; detail: string } | undefined>();
     return (folder) => {
       if (!memo.has(folder)) {
-        const [first] = placementRefusals(relocate(files, tests, base, folder), manifests, project.tree, go);
+        const [first] = placementRefusals(relocate(files, tests, base, folder), manifests, project.tree, go, rust);
         memo.set(folder, first === undefined ? groupingRefusal(files, folder) : { label: first.label, detail: first.detail });
       }
       return memo.get(folder);

@@ -1,6 +1,7 @@
 import { posix } from "node:path";
 import { stronglyConnectedComponents } from "@code-health/graph/scc";
 import { isBoundaryManifest } from "@code-health/parse/languages";
+import type { ModuleTree } from "@code-health/parse/languages/rust/crates";
 
 /** One file the move relocates. Imports are rewritten separately, so these are the only file operations. */
 export interface FileOperation {
@@ -20,6 +21,7 @@ export type RefusalCode =
   | "fixed-point-destination"
   | "import-cycle"
   | "invalid-destination"
+  | "module-tree"
   | "needs-reason"
   | "no-change"
   | "package-boundary"
@@ -351,12 +353,61 @@ function goRefusals(operations: readonly FileOperation[], go: GoPackages): Place
   return refusals;
 }
 
+/** Paths, relative to a crate's folder, where Cargo finds a target root by layout alone: a file there is a crate root, not a module. */
+const TARGET_ROOT_LAYOUT = /^(src\/(lib|main)\.rs|build\.rs|src\/bin\/[^/]+\.rs|src\/bin\/[^/]+\/main\.rs|(tests|examples|benches)\/[^/]+\.rs|(tests|examples|benches)\/[^/]+\/main\.rs)$/;
+
+/**
+ * The Rust module tree rule: a file is a module of the target whose root file's folder holds it, so a moved file
+ * stays under that folder and belongs to the same target after the move, and does not land where Cargo would read
+ * it as a target root of its own, nor beside a file that is the same module in the other layout (`name.rs` and
+ * `name/mod.rs`). A target root itself is found by Cargo from its path, so it does not move.
+ */
+function rustRefusals(operations: readonly FileOperation[], modules: ModuleTree): PlacementRefusal[] {
+  const refusals: PlacementRefusal[] = [];
+  const label = "leaves the module tree of its crate target";
+  const leaving = new Set(operations.map((operation) => operation.from));
+  for (const operation of operations) {
+    if (!operation.from.endsWith(".rs") || operation.from === operation.to) continue;
+    const place = modules.placeOf(operation.from);
+    if (place === undefined) continue;
+    if (place.path.length === 0) {
+      refusals.push({ code: "module-tree", detail: `${operation.from} is the root file of a crate target, which Cargo finds by its path, so it does not move`, label });
+      continue;
+    }
+    const crate = modules.crateOf(operation.to);
+    const relative = crate === undefined ? posix.basename(operation.to) : crate.dir === "." ? operation.to : operation.to.slice(crate.dir.length + 1);
+    if (crate === undefined ? /^(lib|main)\.rs$/.test(relative) : TARGET_ROOT_LAYOUT.test(relative)) {
+      refusals.push({ code: "module-tree", detail: `${operation.to} is a path Cargo reads as the root of a target of its own, so ${operation.from} would no longer be a module of ${place.root}`, label });
+      continue;
+    }
+    const name = posix.basename(operation.to, ".rs");
+    const twin = name === "mod" ? `${posix.dirname(operation.to)}.rs` : posix.join(posix.dirname(operation.to), name, "mod.rs");
+    if (modules.has(twin) && !leaving.has(twin)) {
+      refusals.push({ code: "collision", detail: `${operation.to} and ${twin} would both be the module ${name === "mod" ? posix.basename(posix.dirname(operation.to)) : name}`, label: "name collision" });
+      continue;
+    }
+    const folder = posix.dirname(place.root);
+    const after = modules.placeOf(operation.to)?.root;
+    if (after === place.root) continue;
+    const inside = folder === "." || operation.to.startsWith(`${folder}/`);
+    refusals.push({
+      code: "module-tree",
+      detail: inside
+        ? `${operation.to} is under the folder of ${after}, another target's root file, so ${operation.from} would leave the module tree of ${place.root}`
+        : `${operation.to} is outside ${folder === "." ? "the repository root" : folder}, the folder of ${place.root}, whose module tree holds ${operation.from}: a Rust file is a module only under the folder of its target's root file`,
+      label,
+    });
+  }
+  return refusals;
+}
+
 /**
  * What the language placement rules refuse about where operations land: a file leaving its package, a Go file
- * crossing an `internal/` directory (which the compiler restricts to code under its parent), and a file landing
- * on one that stays. The dry-run move planner and the analysis's choice of target both read this.
+ * crossing an `internal/` directory (which the compiler restricts to code under its parent), a Rust file leaving
+ * the module tree of its crate target, and a file landing on one that stays. The dry-run move planner and the
+ * analysis's choice of target both read this.
  */
-export function placementRefusals(operations: readonly FileOperation[], manifests: ReadonlySet<string>, tree: ReadonlySet<string>, go?: GoPackages): PlacementRefusal[] {
+export function placementRefusals(operations: readonly FileOperation[], manifests: ReadonlySet<string>, tree: ReadonlySet<string>, go?: GoPackages, rust?: ModuleTree): PlacementRefusal[] {
   const refusals: PlacementRefusal[] = [];
   const leaving = new Set(operations.map((operation) => operation.from));
   const landing = new Set<string>();
@@ -383,5 +434,6 @@ export function placementRefusals(operations: readonly FileOperation[], manifest
     landing.add(operation.to);
   }
   if (go !== undefined) refusals.push(...goRefusals(operations, go));
+  if (rust !== undefined) refusals.push(...rustRefusals(operations, rust));
   return refusals;
 }

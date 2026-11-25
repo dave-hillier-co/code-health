@@ -4,6 +4,7 @@ import { isManifestPath, ModuleTree, moduleDirectory, readCrates, type ModulePla
 import { leavesOf, pathSegments, type Leaf } from "@code-health/parse/languages/rust/extract-facts";
 import type { LoadedGrammar } from "@code-health/parse/grammars";
 import type { SourceTree } from "@code-health/parse/source-tree";
+import { parseToml, type TomlTable, type TomlValue } from "@code-health/parse/toml";
 import type { FileOperation } from "../move-plan.ts";
 import type { Rewrite } from "./mover-language.ts";
 
@@ -13,14 +14,19 @@ import type { Rewrite } from "./mover-language.ts";
  * follow, and each is done here:
  *
  * - The `mod name;` that declares the module is taken from the module that declared it and added to the one
- *   whose folder it now sits in, keeping its visibility and attributes. A rename in place renames the
+ *   whose folder it now sits in, keeping its visibility and attributes. The `cfg` attributes of the modules it
+ *   leaves (on their `mod` lines and as `#![cfg]` in their files) are written on the new `mod` line too, so a
+ *   module compiled only for tests is still compiled only for tests. A rename in place renames the
  *   declaration where it stands. A destination with no module file gets a warning, since nothing declares the module.
  * - Every `use` and every path in code that reaches a moved module is rewritten, whether it starts at
  *   `crate`, at `self` or `super`, at a module the file declares or at another crate of the tree. A path
  *   keeps its style where it can: `crate::` stays `crate::`, a path through `self` or `super` is recounted from
  *   where the file now is, and one that would need more than a `super` is written from `crate`.
  * - A rewritten path that passes a private module its file can no longer reach is reported, because only a
- *   visibility change fixes that, and the move does not change visibility.
+ *   visibility change fixes that, and the move does not change visibility. So is a moved file that uses a crate
+ *   its manifest lists only in `[dev-dependencies]` when no `#[cfg(test)]` covers its module after the move.
+ * - A file that would be in no module tree after the move, or in the tree of another target, and a path that
+ *   names a moved file and cannot be rewritten, are breaks: the result does not compile, so the move is refused.
  *
  * Paths in macro arguments are not rewritten (the grammar does not parse them), and neither are paths inside
  * inline modules other than those starting at `crate` or another crate.
@@ -68,6 +74,36 @@ function insideInlineModule(node: Node): boolean {
   return false;
 }
 
+const isCfg = (attribute: string): boolean => /^#!?\[\s*cfg\s*\(/.test(attribute);
+/** True when a `cfg` attribute compiles its item only for tests: it names `test`, and not under `not(...)`. */
+const isTestCfg = (attribute: string): boolean => isCfg(attribute) && /\btest\b/.test(attribute) && !/\bnot\s*\(\s*test\b/.test(attribute);
+/** An inner `#![cfg(...)]` written as the outer attribute of a `mod` line. */
+const asOuter = (attribute: string): string => attribute.replace(/^#!\[/, "#[");
+
+/** True when the node is inside an item that a `#[cfg(test)]` compiles only for tests. */
+function inTestCode(node: Node): boolean {
+  for (let item: Node | null = node; item !== null; item = item.parent) {
+    if (attributesBefore(item).some((attribute) => isTestCfg(attribute.text))) return true;
+  }
+  return false;
+}
+
+const tomlTable = (value: TomlValue | undefined): TomlTable => (typeof value === "object" && value !== null && !Array.isArray(value) ? (value as TomlTable) : {});
+
+/** The crates a manifest lists in `[dev-dependencies]` and in no other dependency table, by the name `use` paths write them. */
+function devOnlyCrates(manifest: string): Set<string> {
+  let toml: TomlTable;
+  try {
+    toml = parseToml(manifest);
+  } catch {
+    return new Set();
+  }
+  const tables = [toml, ...Object.values(tomlTable(toml.target)).map(tomlTable)];
+  const names = (section: string) => tables.flatMap((table) => Object.keys(tomlTable(table[section]))).map((name) => name.replaceAll("-", "_"));
+  const built = new Set([...names("dependencies"), ...names("build-dependencies")]);
+  return new Set(names("dev-dependencies").filter((name) => !built.has(name)));
+}
+
 function within(node: Node, type: string): boolean {
   for (let parent = node.parent; parent !== null; parent = parent.parent) if (parent.type === type) return true;
   return false;
@@ -76,6 +112,7 @@ function within(node: Node, type: string): boolean {
 export class RustMove {
   readonly rewrites: Rewrite[] = [];
   readonly warnings: string[] = [];
+  readonly breaks: string[] = [];
   private readonly texts = new Map<string, string>();
 
   private readonly sources = new Map<string, Source>();
@@ -88,11 +125,15 @@ export class RustMove {
   private readonly grammar: LoadedGrammar;
   private readonly tree: SourceTree;
   private readonly operations: readonly FileOperation[];
+  private readonly configs: ReadonlyMap<string, string>;
+  /** Whether the new `mod` line of each moved file is covered by a `#[cfg(test)]`, by its path after the move. */
+  private readonly gated = new Map<string, boolean>();
 
   constructor(tree: SourceTree, operations: readonly FileOperation[], grammar: LoadedGrammar, configs: ReadonlyMap<string, string>) {
     this.tree = tree;
     this.operations = operations;
     this.grammar = grammar;
+    this.configs = configs;
     this.destination = new Map(operations.map((operation) => [operation.from, operation.to]));
     for (const operation of operations) this.origin.set(operation.to, operation.from);
     const paths = [...tree.files.keys()];
@@ -126,7 +167,7 @@ export class RustMove {
     this.edits.set(path, [...(this.edits.get(path) ?? []), edit]);
   }
 
-  async run(): Promise<{ rewrites: Rewrite[]; texts: Map<string, string>; warnings: string[] }> {
+  async run(): Promise<{ rewrites: Rewrite[]; texts: Map<string, string>; warnings: string[]; breaks: string[] }> {
     const rust = [...this.tree.files.keys()].filter((path) => path.endsWith(".rs")).sort(compare);
     for (const [path, text] of await this.tree.readMany(rust)) this.sources.set(path, { path, text, tree: this.grammar.parse(text) });
     try {
@@ -135,12 +176,13 @@ export class RustMove {
       }
       for (const source of this.sources.values()) this.paths(source);
       for (const operation of this.operations) this.moduleDeclaration(operation);
+      for (const operation of this.operations) this.devDependencies(operation);
       this.apply();
     } finally {
       for (const source of this.sources.values()) source.tree.delete();
     }
     this.rewrites.sort((a, b) => compare(a.path, b.path) || a.line - b.line || compare(a.from, b.from));
-    return { rewrites: this.rewrites, texts: this.texts, warnings: this.warnings };
+    return { rewrites: this.rewrites, texts: this.texts, warnings: this.warnings, breaks: this.breaks };
   }
 
   // ---- paths ----
@@ -231,7 +273,10 @@ export class RustMove {
     let newChain = chain;
     if (movedTo !== undefined) {
       const target = this.after.placeOf(movedTo);
-      if (target === undefined) return undefined;
+      if (target === undefined) {
+        this.breaks.push(`${context.source.path}:${line} "${segments.join("::")}" names ${walked.file}, which is in no module tree after the move, so the path cannot be rewritten`);
+        return undefined;
+      }
       newRoot = target.root;
       newChain = [...target.path, ...chain.slice(walked.consumed)];
     }
@@ -297,11 +342,15 @@ export class RustMove {
   private moduleDeclaration(operation: FileOperation): void {
     const place = this.before.placeOf(operation.from);
     const newPlace = this.after.placeOf(operation.to);
-    if (place === undefined || newPlace === undefined || !operation.to.endsWith(".rs")) return;
+    if (place === undefined || !operation.to.endsWith(".rs")) return;
+    if (newPlace === undefined) {
+      this.breaks.push(`${operation.to} is in no module tree after the move: a Rust file is a module only under the folder of its target's root file (${place.root})`);
+      return;
+    }
     this.childrenLeftBehind(operation, place, newPlace);
     if (place.path.length === 0 || newPlace.path.length === 0) return;
     if (newPlace.root !== place.root) {
-      this.warnings.push(`${operation.to} moves into another crate or target, whose module tree it must be declared in`);
+      this.breaks.push(`${operation.to} moves into the module tree of ${newPlace.root}, another crate or target, and leaves the tree of ${place.root}`);
       return;
     }
     const oldName = place.path.at(-1)!;
@@ -334,8 +383,63 @@ export class RustMove {
       return;
     }
     const target = this.origin.get(newParent.file) ?? newParent.file;
-    const text = [...declaration.attributes.map((attribute) => attribute.text), `${declaration.visibility}mod ${newName};`].join("\n");
+    const own = declaration.attributes.map((attribute) => attribute.text);
+    const kept = new Set([...own, ...this.cfgsAbove(newPlace, this.after, true)]);
+    const carried = [...new Set(this.cfgsAbove(place, this.before, false).filter((attribute) => !kept.has(attribute)))];
+    this.gated.set(operation.to, [...own, ...carried, ...kept].some(isTestCfg));
+    const text = [...carried, ...own, `${declaration.visibility}mod ${newName};`].join("\n");
     this.insertDeclaration(target, newParent.file, text, `${declaration.visibility}mod ${newName}`);
+  }
+
+  /**
+   * The `cfg` attributes of the modules above a module, outermost first, as outer attributes: those on the `mod`
+   * line that declares each and the `#![cfg]` at the top of each module's file. The crate root's own are left
+   * out, since they cover both sides of a move within the crate. `after` reads the tree after the move.
+   */
+  private cfgsAbove(place: ModulePlace, tree: ModuleTree, after: boolean): string[] {
+    const out: string[] = [];
+    for (let length = 1; length < place.path.length; length++) {
+      const parent = tree.walk({ file: place.root, root: place.root }, place.path.slice(0, length - 1));
+      const module = tree.walk({ file: place.root, root: place.root }, place.path.slice(0, length));
+      if (parent.consumed !== length - 1 || module.consumed !== length) continue;
+      const source = (file: string) => (after ? (this.origin.get(file) ?? file) : file);
+      const declaration = this.declared(source(parent.file)).find((candidate) => candidate.name === place.path[length - 1]);
+      for (const attribute of declaration?.attributes ?? []) if (isCfg(attribute.text)) out.push(attribute.text);
+      for (const node of this.sources.get(source(module.file))?.tree.rootNode.namedChildren ?? []) {
+        if (node.type === "inner_attribute_item" && isCfg(node.text)) out.push(asOuter(node.text));
+      }
+    }
+    return out;
+  }
+
+  /** Warns when a moved file uses a crate that is a dev-dependency only, and no `#[cfg(test)]` covers it after the move. */
+  private devDependencies(operation: FileOperation): void {
+    const gated = this.gated.get(operation.to);
+    const source = this.sources.get(operation.from);
+    const crate = this.after.placeOf(operation.to)?.crate;
+    if (gated !== false || source === undefined || crate === undefined) return;
+    const manifest = this.configs.get(crate.manifest);
+    if (manifest === undefined) return;
+    const devOnly = devOnlyCrates(manifest);
+    if (devOnly.size === 0) return;
+    const root = source.tree.rootNode;
+    if (root.namedChildren.some((node) => node.type === "inner_attribute_item" && isTestCfg(node.text))) return;
+    const used = new Set<string>();
+    for (const declaration of root.descendantsOfType("use_declaration")) {
+      if (inTestCode(declaration)) continue;
+      const leaves: Leaf[] = [];
+      leavesOf(declaration.childForFieldName("argument"), [], leaves);
+      for (const leaf of leaves) if (devOnly.has(leaf.segments[0] ?? "")) used.add(leaf.segments[0]!);
+    }
+    for (const node of [...root.descendantsOfType("scoped_identifier"), ...root.descendantsOfType("scoped_type_identifier")]) {
+      if (within(node, "use_declaration") || inTestCode(node)) continue;
+      const segments: string[] = [];
+      if (pathSegments(node, segments) && devOnly.has(segments[0] ?? "")) used.add(segments[0]!);
+    }
+    if (used.size === 0) return;
+    this.warnings.push(
+      `${operation.to} uses ${[...used].sort(compare).join(", ")}, which ${crate.manifest} lists only in [dev-dependencies], and no #[cfg(test)] covers its module after the move, so the build without tests does not compile`,
+    );
   }
 
   /** The module files declared by a moved file that do not move with it, which it can no longer find. */

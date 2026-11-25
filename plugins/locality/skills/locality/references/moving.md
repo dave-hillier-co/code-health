@@ -14,13 +14,15 @@ In TypeScript and JavaScript the moves and the rewriting are done with ts-morph 
 
 Other languages have their own mover, which rewrites what that language names a file by (`using` and project items in C#, `#include` and CMake source lists in C++, imports in Python, package clauses and imports in Java and Kotlin, import paths in Go, `mod` and `use` in Rust). When the language's tool is installed (Roslyn, clangd, rope, gopls, jdtls, Kotlin LSP, rust-analyzer) it confirms the move, and otherwise the move is reported as not confirmed: check it with the build and the tests.
 
+In Rust the `mod` line moves with the file to the module whose folder it lands in. It keeps its own attributes, and it also gets the `cfg` attributes of the modules the file leaves (on their `mod` lines and as `#![cfg]` at the top of their files), so a module compiled only for tests stays compiled only for tests. When the moved file uses a crate that its `Cargo.toml` lists only in `[dev-dependencies]` and no `#[cfg(test)]` covers its module after the move, the plan has a warning. A path that names a moved file and cannot be rewritten, and a file that lands in no module tree or in the tree of another target, are refused as `does-not-compile`.
+
 Rewritten in TypeScript and JavaScript: static imports and exports, dynamic `import()` and `require()` with literal paths, `import x = require()`.
 
 Not rewritten, so check them with the type checker and the tests: `jest.mock` and `vi.mock` paths, string paths in config, build scripts and generated code, and documentation. Files outside the source that name a moved path are listed as `mentions`.
 
 ## Guards
 
-Refused outright, and not overridable: a unit a published package names as an entry point (`package-entry`), a file matching `locality.fixedPoints` or a destination inside one, a Go file moved into or out of an `internal/` directory (`fixed-point`: the compiler limits who may import it), a move that would take a file out of its nearest `package.json` folder (`package-boundary`), a destination that already holds a file (`collision`), a barrel (inline it instead), a move to where it already is, and a destination outside the repository.
+Refused outright, and not overridable: a unit a published package names as an entry point (`package-entry`), a file matching `locality.fixedPoints` or a destination inside one, a Go file moved into or out of an `internal/` directory (`fixed-point`: the compiler limits who may import it), a move that would take a file out of its nearest `package.json` folder (`package-boundary`), a Rust file moved out of the folder of its target's root file (for a library, the crate's `src`), into the module tree of another target, or onto a path Cargo reads as a target root of its own such as `src/bin/<name>.rs`, and a target root file itself (`module-tree`), a destination that already holds a file, or in Rust a file that would be the same module as one already there (`name.rs` beside `name/mod.rs`) (`collision`), a barrel (inline it instead), a move to where it already is, and a destination outside the repository.
 
 `needs-reason` is the one that an agent's judgement can lift: the analyser recommended something other than a move (`inline`, `review`, `keep`, `scrutinise`, `blocked`, `split`). Pass `--reason`, and the commit message records the override.
 

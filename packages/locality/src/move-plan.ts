@@ -1,5 +1,6 @@
 import { posix } from "node:path";
 import { compileGlobs } from "@code-health/history/glob";
+import type { ModuleTree } from "@code-health/parse/languages/rust/crates";
 import type { LocalitySettings } from "./config.ts";
 import type { Candidate } from "./candidates.ts";
 import { manifestFolders, placementRefusals, relocate, type FileOperation, type GoPackages, type Refusal, type RefusalCode } from "./placement.ts";
@@ -43,6 +44,7 @@ export function planMove(
   tree: ReadonlySet<string>,
   request: MoveRequest = {},
   go?: GoPackages,
+  rust?: ModuleTree,
 ): MovePlan {
   const refusals: Refusal[] = [];
   const refuse = (code: RefusalCode, detail: string) => refusals.push({ code, detail });
@@ -82,7 +84,7 @@ export function planMove(
   }
 
   const operations = relocate(candidate.unit.files, candidate.unit.tests, base, destination);
-  for (const refusal of placementRefusals(operations, manifestFolders(tree), tree, go)) refuse(refusal.code, refusal.detail);
+  for (const refusal of placementRefusals(operations, manifestFolders(tree), tree, go, rust)) refuse(refusal.code, refusal.detail);
 
   if (candidate.recommendation !== "move" && (request.reason === undefined || request.reason.trim() === "")) {
     refuse(

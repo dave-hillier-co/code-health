@@ -4,7 +4,7 @@ import { runGit } from "@code-health/history/git";
 import { treeFromRef } from "@code-health/parse/source-tree";
 import { readSettings } from "../config.ts";
 import { pathArguments } from "../path-arguments.ts";
-import { goPackagesOf } from "../project.ts";
+import { goPackagesOf, rustModulesOf } from "../project.ts";
 import { planMove } from "../move-plan.ts";
 import { analyseRevision } from "../unit-analysis.ts";
 
@@ -41,7 +41,7 @@ export const command: Command = {
     const parentTree = await treeFromRef(root, parent);
     const commitTree = await treeFromRef(root, ref);
     // Whether the analyser recommends the move is not what is being verified, so a reason always stands in for it.
-    const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to: to as string | undefined, reason: "verification" }, goPackagesOf(project));
+    const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to: to as string | undefined, reason: "verification" }, goPackagesOf(project), rustModulesOf(project));
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
     const { verifyMove } = await import("../move-verify.ts");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);

@@ -19,8 +19,9 @@ import type { Candidate, OmittedUnit } from "../candidates.ts";
 import { command as analyseCommand } from "../commands/analyse.ts";
 import { readSettings, type LocalitySettings } from "../config.ts";
 import { planMove, type Refusal } from "../move-plan.ts";
+import type { ModuleTree } from "@code-health/parse/languages/rust/crates";
 import type { GoPackages } from "../placement.ts";
-import { goPackagesOf, loadProject } from "../project.ts";
+import { goPackagesOf, loadProject, rustModulesOf } from "../project.ts";
 
 /** Rows of the candidate table, and how many of them get a move plan and a judgement. */
 const TOP = 15;
@@ -91,8 +92,8 @@ function refusalLine(refusals: Refusal[]): string {
 }
 
 /** A dry run of the move the analyser proposes, as `locality move` plans it without `--apply`. */
-async function dryRun(tree: SourceTree, candidate: Candidate, settings: LocalitySettings, files: Set<string>, go: GoPackages): Promise<PlanSummary> {
-  const plan = planMove(candidate, settings, files, {}, go);
+async function dryRun(tree: SourceTree, candidate: Candidate, settings: LocalitySettings, files: Set<string>, go: GoPackages, rust: ModuleTree): Promise<PlanSummary> {
+  const plan = planMove(candidate, settings, files, {}, go, rust);
   const base = { destination: plan.destination, filesMoved: plan.operations.length, refusal: plan.refusals.length === 0 ? null : refusalLine(plan.refusals) };
   if (plan.refusals.length > 0) return { ...base, rewrites: 0, filesRewritten: 0, filesEdited: 0, failure: null, warnings: [] };
   try {
@@ -507,9 +508,11 @@ export const localityReport: ReportKind = {
     // Moves are planned first, then reviews and splits; a scrutinise unit has nothing to move and is not planned.
     const planned = [...moves, ...reviews].slice(0, PLANNED);
     const shownCount = Math.min(moves.length, TOP) + Math.min(reviews.length, TOP_REVIEW) + Math.min(scrutinise.length, TOP_SCRUTINISE);
-    const go = goPackagesOf(await loadProject(context.repo.root, "HEAD", settings));
+    const project = await loadProject(context.repo.root, "HEAD", settings);
+    const go = goPackagesOf(project);
+    const rust = rustModulesOf(project);
     const plans: PlanSummary[] = [];
-    for (const candidate of planned) plans.push(await dryRun(tree, candidate, settings, files, go));
+    for (const candidate of planned) plans.push(await dryRun(tree, candidate, settings, files, go, rust));
 
     const byKind = extra.summary.byRecommendation;
     const blocked = [...all.filter((c) => c.recommendation === "blocked"), ...heldMoves];

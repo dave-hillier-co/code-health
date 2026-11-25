@@ -4,7 +4,7 @@ import { treeFromRef } from "@code-health/parse/source-tree";
 import { readSettings } from "../config.ts";
 import { pathArguments } from "../path-arguments.ts";
 import { applyMove, isClean, moveMessage, textMentions } from "../move-apply.ts";
-import { goPackagesOf } from "../project.ts";
+import { goPackagesOf, rustModulesOf } from "../project.ts";
 import { planMove, type Refusal } from "../move-plan.ts";
 import { isSourceFile } from "../movers/language.ts";
 import { analyseRevision } from "../unit-analysis.ts";
@@ -46,7 +46,7 @@ export const command: Command = {
     }
 
     const tree = await treeFromRef(context.repo.root, "HEAD");
-    const plan = planMove(candidate, settings, new Set(tree.files.keys()), { to: to as string | undefined, reason: reason as string | undefined }, goPackagesOf(project));
+    const plan = planMove(candidate, settings, new Set(tree.files.keys()), { to: to as string | undefined, reason: reason as string | undefined }, goPackagesOf(project), rustModulesOf(project));
     const refusals: Refusal[] = [...plan.refusals];
     if (apply && !(await isClean(context.repo.root))) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
