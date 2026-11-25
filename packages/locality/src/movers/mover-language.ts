@@ -35,6 +35,23 @@ export interface Skeleton {
   specifiers: { value: string; line: number }[];
 }
 
+/**
+ * What a mover reads of a tree that does not depend on the move, computed once for a tree. A report plans a move
+ * for each of many candidates against one tree, and reading and parsing the repository again for each plan was
+ * most of its time. A tree is not changed after it is read, and what `read` returns must only be read by a plan.
+ */
+export function oncePerTree<T>(read: (tree: SourceTree) => Promise<T>): (tree: SourceTree) => Promise<T> {
+  const known = new WeakMap<SourceTree, Promise<T>>();
+  return (tree) => {
+    let found = known.get(tree);
+    if (found === undefined) {
+      found = read(tree);
+      known.set(tree, found);
+    }
+    return found;
+  };
+}
+
 /** What a mover does for the files of one language. */
 export interface MoverBackend {
   /**

@@ -4,7 +4,7 @@ import { createRequire as __codeHealthCreateRequire } from "node:module"; import
 import {
   adapterForPath,
   supportedAdapters
-} from "./chunk-NPRTSUT5.mjs";
+} from "./chunk-YK5VO75Q.mjs";
 import {
   __export
 } from "./chunk-OQRLKAKZ.mjs";
@@ -25,49 +25,49 @@ __export(registered_languages_exports, {
 // packages/locality/src/movers/java.ts
 var language = {
   id: "java",
-  load: async () => (await import("./chunk-EMUTHKRY.mjs")).backend
+  load: async () => (await import("./chunk-J6344CX4.mjs")).backend
 };
 
 // packages/locality/src/movers/kotlin.ts
 var language2 = {
   id: "kotlin",
-  load: async () => (await import("./chunk-EMUTHKRY.mjs")).backend
+  load: async () => (await import("./chunk-J6344CX4.mjs")).backend
 };
 
 // packages/locality/src/movers/typescript.ts
 var language3 = {
   id: "typescript",
-  load: async () => (await import("./chunk-43GDZS5F.mjs")).backend
+  load: async () => (await import("./chunk-RMIVN5JK.mjs")).backend
 };
 
 // packages/locality/src/movers/csharp.ts
 var language4 = {
   id: "csharp",
-  load: async () => (await import("./chunk-CRJPWHA5.mjs")).backend
+  load: async () => (await import("./chunk-DRFWX435.mjs")).backend
 };
 
 // packages/locality/src/movers/cpp.ts
 var language5 = {
   id: "cpp",
-  load: async () => (await import("./chunk-5FBGWESC.mjs")).createBackend()
+  load: async () => (await import("./chunk-KQ5WCZQA.mjs")).createBackend()
 };
 
 // packages/locality/src/movers/python.ts
 var language6 = {
   id: "python",
-  load: async () => (await import("./chunk-4MZVN7NH.mjs")).load()
+  load: async () => (await import("./chunk-L6M2MA3P.mjs")).load()
 };
 
 // packages/locality/src/movers/go.ts
 var language7 = {
   id: "go",
-  load: async () => (await import("./chunk-RFUZSL7D.mjs")).createBackend()
+  load: async () => (await import("./chunk-T5DDMDRR.mjs")).createBackend()
 };
 
 // packages/locality/src/movers/rust.ts
 var language8 = {
   id: "rust",
-  load: async () => (await import("./chunk-WQQ3KIAH.mjs")).backend
+  load: async () => (await import("./chunk-2Y46JVFQ.mjs")).backend
 };
 
 // packages/locality/src/movers/language.ts

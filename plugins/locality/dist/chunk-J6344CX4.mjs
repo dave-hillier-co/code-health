@@ -4,13 +4,16 @@ import { createRequire as __codeHealthCreateRequire } from "node:module"; import
 import {
   analyseTree,
   parseWith
-} from "./chunk-VV4AMH5C.mjs";
+} from "./chunk-GBLPF5LG.mjs";
 import {
   GrammarSet
-} from "./chunk-WNRHKF6K.mjs";
+} from "./chunk-NQYRJ3FN.mjs";
+import {
+  oncePerTree
+} from "./chunk-VQGQVRFS.mjs";
 import {
   adapterById
-} from "./chunk-NPRTSUT5.mjs";
+} from "./chunk-YK5VO75Q.mjs";
 import "./chunk-OQRLKAKZ.mjs";
 
 // packages/locality/src/movers/jvm-confirm.ts
@@ -213,11 +216,16 @@ var packageOf = (name) => name.includes(".") ? name.slice(0, name.lastIndexOf(".
 function adaptersOf() {
   return ["java", "kotlin"].map((id) => adapterById(id)).filter((adapter) => adapter !== void 0);
 }
-async function performMove(tree, operations) {
+var projectOf = oncePerTree(async (tree) => {
   const adapters = adaptersOf();
   const paths = [...tree.files.keys()].filter(isJvm).sort();
   const texts = await tree.readMany(paths);
   const heads = new Map(paths.map((path) => [path, readHead(texts.get(path) ?? "")]));
+  return { paths, texts, heads, analysis: await analyseTree(tree, { adapters }) };
+});
+async function performMove(tree, operations) {
+  const adapters = adaptersOf();
+  const { paths, texts, heads, analysis } = await projectOf(tree);
   const warnings = [];
   const grammars = new GrammarSet({ adapters });
   const moves = /* @__PURE__ */ new Map();
@@ -257,7 +265,6 @@ async function performMove(tree, operations) {
     for (const old of relocated.keys()) if (name === old || name.startsWith(`${old}.`)) return old;
     return void 0;
   };
-  const analysis = await analyseTree(tree, { adapters });
   const needs = /* @__PURE__ */ new Map();
   for (const consumer of analysis.consumers) {
     const from = moves.get(consumer.from);

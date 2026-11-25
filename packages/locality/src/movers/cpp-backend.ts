@@ -11,7 +11,7 @@ import { locateInclude } from "@code-health/parse/languages/cpp/resolve";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import type { FileOperation } from "../move-plan.ts";
 import type { MoveResult, MoverBackend, Rewrite, Skeleton } from "./mover-language.ts";
-import { sourceFilesOf } from "./mover-language.ts";
+import { oncePerTree, sourceFilesOf } from "./mover-language.ts";
 
 const execFileAsync = promisify(execFile);
 const isSource = sourceFilesOf("cpp");
@@ -79,14 +79,29 @@ interface Edit {
  *
  * Includes spelled by a macro are not rewritten and are reported.
  */
+/** The sources of a tree, the includes each one writes and the include directories, read once for the tree (see `oncePerTree`). */
+const projectsOf = new WeakMap<LoadedGrammar, (tree: SourceTree) => Promise<{ paths: string[]; includePaths: ReturnType<typeof includePathsOf>; texts: Map<string, string>; includes: Map<string, Include[]> }>>();
+function projectOf(grammar: LoadedGrammar, tree: SourceTree) {
+  let read = projectsOf.get(grammar);
+  if (read === undefined) {
+    read = oncePerTree(async (source) => {
+      const paths = [...source.files.keys()];
+      const configs = await source.readMany(paths.filter(isConfig));
+      const texts = await source.readMany(paths.filter((path) => isSource(path) || isCmake(path)));
+      const includes = new Map<string, Include[]>();
+      for (const [path, text] of texts) if (isSource(path)) includes.set(path, includesOf(grammar, text));
+      return { paths, includePaths: includePathsOf(paths, configs), texts, includes };
+    });
+    projectsOf.set(grammar, read);
+  }
+  return read(tree);
+}
+
 async function plan(grammar: LoadedGrammar, tree: SourceTree, operations: readonly FileOperation[]): Promise<Omit<MoveResult, "confirmations">> {
   const moves = new Map(operations.map((operation) => [operation.from, operation.to]));
-  const paths = [...tree.files.keys()];
+  const { paths, includePaths, texts, includes } = await projectOf(grammar, tree);
   const before = new Set(paths);
   const after = new Set(paths.map((path) => moves.get(path) ?? path));
-  const configs = await tree.readMany(paths.filter(isConfig));
-  const includePaths = includePathsOf(paths, configs);
-  const texts = await tree.readMany(paths.filter((path) => isSource(path) || isCmake(path)));
 
   const rewrites: Rewrite[] = [];
   const warnings: string[] = [];
@@ -127,7 +142,7 @@ async function plan(grammar: LoadedGrammar, tree: SourceTree, operations: readon
     const newPath = moves.get(path) ?? path;
     const dirs = includePaths.dirsFor(path);
     const lines = text.split("\n");
-    for (const include of includesOf(grammar, text)) {
+    for (const include of includes.get(path) ?? []) {
       if (include.specifier === null) {
         if (newPath !== path) warnings.push(`${newPath}:${include.line} the include path ${include.token} is built by a macro and was not rewritten: check it still reaches its file`);
         continue;

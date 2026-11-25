@@ -9,7 +9,7 @@ import { dropEmptySlots } from "@code-health/report/empty-block";
 import { capRows } from "@code-health/report/table-cap";
 import { pageHref } from "@code-health/report/links";
 import { clip, targetId } from "@code-health/report/text";
-import { treeFromRef } from "@code-health/parse/source-tree";
+import { treeFromRef, type SourceTree } from "@code-health/parse/source-tree";
 import type { Block } from "@code-health/report/block";
 import type { MoveMapEdge, MoveMapMark } from "@code-health/report/components/move-map";
 import type { Cell } from "@code-health/report/components/ranked-table";
@@ -91,14 +91,14 @@ function refusalLine(refusals: Refusal[]): string {
 }
 
 /** A dry run of the move the analyser proposes, as `locality move` plans it without `--apply`. */
-async function dryRun(context: CommandContext, candidate: Candidate, settings: LocalitySettings, files: Set<string>, go: GoPackages): Promise<PlanSummary> {
+async function dryRun(tree: SourceTree, candidate: Candidate, settings: LocalitySettings, files: Set<string>, go: GoPackages): Promise<PlanSummary> {
   const plan = planMove(candidate, settings, files, {}, go);
   const base = { destination: plan.destination, filesMoved: plan.operations.length, refusal: plan.refusals.length === 0 ? null : refusalLine(plan.refusals) };
   if (plan.refusals.length > 0) return { ...base, rewrites: 0, filesRewritten: 0, filesEdited: 0, failure: null, warnings: [] };
   try {
     const { performMove } = await import("../move-engine.ts");
-    const tree = await treeFromRef(context.repo.root, "HEAD");
-    const moved = await performMove(tree, plan.operations);
+    // The report prints the planned rewrites and warnings only, so no language server is asked to confirm each plan.
+    const moved = await performMove(tree, plan.operations, { confirm: false });
     if ((moved.breaks ?? []).length > 0) {
       return { ...base, refusal: refusalLine((moved.breaks ?? []).map((detail) => ({ code: "does-not-compile", detail }))), rewrites: 0, filesRewritten: 0, filesEdited: 0, failure: null, warnings: [] };
     }
@@ -496,7 +496,9 @@ export const localityReport: ReportKind = {
     // A unit with blockers is held back, so it is listed in the blocked table and not as a move the planner can plan.
     const unblockedMoves = ofKind.filter((c) => c.recommendation === "move" && c.blockers.length === 0);
     const heldMoves = ofKind.filter((c) => c.recommendation === "move" && c.blockers.length > 0);
-    const files = new Set((await treeFromRef(context.repo.root, "HEAD")).files.keys());
+    // One tree for every dry run, so a mover reads and parses the repository once and not once for each plan.
+    const tree = await treeFromRef(context.repo.root, "HEAD");
+    const files = new Set(tree.files.keys());
     const { kept: moves, left: sharedFolder } = oneMovePerEmptyFolder(unblockedMoves, files);
     const reviews = ofKind.filter((c) => c.recommendation === "review" || c.recommendation === "split" || c.recommendation === "inline");
     const scrutinise = ofKind
@@ -507,7 +509,7 @@ export const localityReport: ReportKind = {
     const shownCount = Math.min(moves.length, TOP) + Math.min(reviews.length, TOP_REVIEW) + Math.min(scrutinise.length, TOP_SCRUTINISE);
     const go = goPackagesOf(await loadProject(context.repo.root, "HEAD", settings));
     const plans: PlanSummary[] = [];
-    for (const candidate of planned) plans.push(await dryRun(context, candidate, settings, files, go));
+    for (const candidate of planned) plans.push(await dryRun(tree, candidate, settings, files, go));
 
     const byKind = extra.summary.byRecommendation;
     const blocked = [...all.filter((c) => c.recommendation === "blocked"), ...heldMoves];

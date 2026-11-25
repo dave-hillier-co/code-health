@@ -12,7 +12,7 @@ import { isExported } from "@code-health/parse/languages/go/shape";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import type { FileOperation } from "../move-plan.ts";
 import type { MoveResult, MoverBackend, Rewrite, Skeleton } from "./mover-language.ts";
-import { sourceFilesOf } from "./mover-language.ts";
+import { oncePerTree, sourceFilesOf } from "./mover-language.ts";
 
 /**
  * The Go mover (docs/languages.md, Language notes). Moving a file within its directory changes nothing. Moving one to
@@ -230,6 +230,30 @@ function lineOf(file: Parsed, index: number): number {
   return lineStarts(file.text).filter((start) => start <= index).length;
 }
 
+/** Everything a move reads of the tree that does not depend on the move: each Go file parsed, and the package graph. */
+interface Project {
+  parsed: Map<string, Parsed>;
+  graph: PackageGraph;
+}
+
+/** The project of a tree, read once for the tree (see `oncePerTree`). */
+const projectsOf = new WeakMap<LoadedGrammar, (tree: SourceTree) => Promise<Project>>();
+function projectOf(grammar: LoadedGrammar, tree: SourceTree): Promise<Project> {
+  let read = projectsOf.get(grammar);
+  if (read === undefined) {
+    read = oncePerTree(async (source): Promise<Project> => {
+      const paths = [...source.files.keys()].sort();
+      const texts = await source.readMany(paths.filter((path) => isSource(path) || isGoModFile(path) || isGoWorkFile(path)));
+      const parsed = new Map<string, Parsed>();
+      for (const path of paths.filter(isSource)) parsed.set(path, parseFile(grammar, path, texts.get(path) ?? ""));
+      const configs = new Map([...texts].filter(([path]) => isGoModFile(path) || isGoWorkFile(path)));
+      return { parsed, graph: new PackageGraph(new Map([...parsed].map(([path, file]) => [path, file.facts])), configs) };
+    });
+    projectsOf.set(grammar, read);
+  }
+  return read(tree);
+}
+
 async function performMove(grammar: LoadedGrammar, tree: SourceTree, operations: readonly FileOperation[]): Promise<Omit<MoveResult, "confirmations">> {
   const warnings: string[] = [];
   /** What leaves the moved code not compiling: a refusal in the planner, not a warning. */
@@ -244,12 +268,7 @@ async function performMove(grammar: LoadedGrammar, tree: SourceTree, operations:
   }
   if (![...moves].some(([from, to]) => posix.dirname(from) !== posix.dirname(to))) return { rewrites: [], texts: new Map(), warnings, breaks };
 
-  const paths = [...tree.files.keys()].sort();
-  const texts = await tree.readMany(paths.filter((path) => isSource(path) || isGoModFile(path) || isGoWorkFile(path)));
-  const parsed = new Map<string, Parsed>();
-  for (const path of paths.filter(isSource)) parsed.set(path, parseFile(grammar, path, texts.get(path) ?? ""));
-  const configs = new Map([...texts].filter(([path]) => isGoModFile(path) || isGoWorkFile(path)));
-  const graph = new PackageGraph(new Map([...parsed].map(([path, file]) => [path, file.facts])), configs);
+  const { parsed, graph } = await projectOf(grammar, tree);
 
   const dirBefore = (path: string): string => posix.dirname(path);
   const dirAfter = (path: string): string => posix.dirname(moves.get(path) ?? path);
@@ -311,10 +330,11 @@ async function performMove(grammar: LoadedGrammar, tree: SourceTree, operations:
       if (found === undefined) continue;
       const spec = reference.head === null ? undefined : specOf.get(reference.head);
       if (spec !== undefined) used.add(spec);
-      const where = `${pathAfter(path)}:${lineOf(file, reference.whole.start)}`;
+      // The line is found only for a break, which is rare: finding it reads the whole file's text.
+      const where = (): string => `${pathAfter(path)}:${lineOf(file, reference.whole.start)}`;
       const targets = new Set(graph.declarers(found.key, found.name).map(keyAfter));
       if (targets.size !== 1) {
-        breaks.push(`${where} ${found.name} is declared in files that end up in different packages, so its references were not rewritten`);
+        breaks.push(`${where()} ${found.name} is declared in files that end up in different packages, so its references were not rewritten`);
         if (spec !== undefined) stillUsed.add(spec);
         continue;
       }
@@ -323,7 +343,7 @@ async function performMove(grammar: LoadedGrammar, tree: SourceTree, operations:
       let after: string;
       if (target === keyAfter(path)) after = found.name;
       else if (!isExported(found.name)) {
-        breaks.push(`${where} ${found.name} is not exported and would be reached from another package`);
+        breaks.push(`${where()} ${found.name} is not exported and would be reached from another package`);
         if (spec !== undefined) stillUsed.add(spec);
         continue;
       } else {
@@ -334,7 +354,7 @@ async function performMove(grammar: LoadedGrammar, tree: SourceTree, operations:
         } else {
           const importPath = directoryToImportPath(graph.modules, dirOfKey(target));
           if (importPath === undefined) {
-            breaks.push(`${where} ${dirOfKey(target)} is in no module, so it has no import path`);
+            breaks.push(`${where()} ${dirOfKey(target)} is in no module, so it has no import path`);
             continue;
           }
           const name = nameOfKey(target);

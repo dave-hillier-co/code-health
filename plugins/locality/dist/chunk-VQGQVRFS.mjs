@@ -3,14 +3,26 @@
 import { createRequire as __codeHealthCreateRequire } from "node:module"; import { fileURLToPath as __codeHealthFileURLToPath } from "node:url"; import { dirname as __codeHealthDirname } from "node:path"; var require = __codeHealthCreateRequire(import.meta.url); var __filename = __codeHealthFileURLToPath(import.meta.url); var __dirname = __codeHealthDirname(__filename);
 import {
   adapterById
-} from "./chunk-NPRTSUT5.mjs";
+} from "./chunk-YK5VO75Q.mjs";
 
 // packages/locality/src/movers/mover-language.ts
+function oncePerTree(read) {
+  const known = /* @__PURE__ */ new WeakMap();
+  return (tree) => {
+    let found = known.get(tree);
+    if (found === void 0) {
+      found = read(tree);
+      known.set(tree, found);
+    }
+    return found;
+  };
+}
 function sourceFilesOf(adapterId) {
   const extensions = adapterById(adapterId)?.mover.sourceExtensions ?? [];
   return (path) => extensions.some((extension) => path.endsWith(extension));
 }
 
 export {
+  oncePerTree,
   sourceFilesOf
 };

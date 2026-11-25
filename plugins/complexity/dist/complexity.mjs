@@ -3238,22 +3238,30 @@ function resolveBySymbols(input, options = {}) {
     if (symbols === void 0) continue;
     const scopes2 = [...enclosingNamespaces ? symbols.namespaces.flatMap(enclosing) : symbols.namespaces, ...symbols.uses, ""];
     const units = unitNames(facts);
-    for (const reference of symbols.references) {
-      let found;
+    const isTest = input.isTestPath(file);
+    const resolved = /* @__PURE__ */ new Map();
+    const resolve3 = (name12) => {
+      const known = resolved.get(name12);
+      if (known !== void 0) return known;
+      let found = null;
       for (const scope of scopes2) {
-        const candidates = table3.get(scope === "" ? reference.name : `${scope}.${reference.name}`)?.filter((entry) => entry.declaration.internal !== true || entry.file === file);
+        const candidates = table3.get(scope === "" ? name12 : `${scope}.${name12}`)?.filter((entry) => entry.declaration.internal !== true || entry.file === file);
         if (candidates !== void 0 && candidates.length > 0) {
           found = candidates;
           break;
         }
       }
-      if (found === void 0) continue;
+      resolved.set(name12, found);
+      return found;
+    };
+    for (const reference of symbols.references) {
+      const found = resolve3(reference.name);
+      if (found === null) continue;
       for (const target2 of found) {
         if (target2.file === file) continue;
         const edge = touch(file, target2.file);
         if (reference.kind === "call") edge.calls++;
         else edge.references++;
-        const isTest = input.isTestPath(file);
         if (!isTest && reference.kind === "call") edge.kind = "call";
         let fromUnit = reference.inUnit;
         while (fromUnit !== void 0 && !units.has(fromUnit)) {

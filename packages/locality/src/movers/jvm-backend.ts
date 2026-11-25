@@ -7,7 +7,7 @@ import type { SourceTree } from "@code-health/parse/source-tree";
 import type { FileOperation } from "../move-plan.ts";
 import { confirmWithLanguageServer } from "./jvm-confirm.ts";
 import { packageUnder, readHead, sourceRootOf, withImport, withPackage, type SourceHead } from "./jvm-source.ts";
-import type { MoveResult, MoverBackend, Rewrite, Skeleton } from "./mover-language.ts";
+import { oncePerTree, type MoveResult, type MoverBackend, type Rewrite, type Skeleton } from "./mover-language.ts";
 
 /**
  * Moves Java and Kotlin files. A package follows its folder, so moving a file to another folder changes its
@@ -39,11 +39,18 @@ function adaptersOf(): LanguageAdapter[] {
   return ["java", "kotlin"].map((id) => adapterById(id)).filter((adapter): adapter is LanguageAdapter => adapter !== undefined);
 }
 
-async function performMove(tree: SourceTree, operations: readonly FileOperation[]): Promise<Omit<MoveResult, "confirmations">> {
+/** The Java and Kotlin sources of a tree, their package clauses and imports, and who uses what, read once for the tree (see `oncePerTree`). */
+const projectOf = oncePerTree(async (tree) => {
   const adapters = adaptersOf();
   const paths = [...tree.files.keys()].filter(isJvm).sort();
   const texts = await tree.readMany(paths);
   const heads = new Map<string, SourceHead>(paths.map((path) => [path, readHead(texts.get(path) ?? "")]));
+  return { paths, texts, heads, analysis: await analyseTree(tree, { adapters }) };
+});
+
+async function performMove(tree: SourceTree, operations: readonly FileOperation[]): Promise<Omit<MoveResult, "confirmations">> {
+  const adapters = adaptersOf();
+  const { paths, texts, heads, analysis } = await projectOf(tree);
   const warnings: string[] = [];
 
   // Which files move, to which package, and which names go with them.
@@ -89,7 +96,6 @@ async function performMove(tree: SourceTree, operations: readonly FileOperation[
     return undefined;
   };
 
-  const analysis = await analyseTree(tree, { adapters });
   const needs = new Map<string, Set<string>>();
   for (const consumer of analysis.consumers) {
     const from = moves.get(consumer.from);
