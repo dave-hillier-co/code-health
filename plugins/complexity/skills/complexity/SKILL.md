@@ -104,8 +104,10 @@ Run `explain` on the function, with its id from the `analyse` row:
 node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs explain src/orders.ts#Cart.total --json
 ```
 
-It lists each increment with its line, the construct, the amount and the nesting that added to it. Read it as a
-budget: the lines with the largest amounts are where to work. A deeply nested `if` costs its depth. Each
+It lists each increment with its line, the construct, the amount and the nesting that added to it, largest amount
+first and then by line. It prints the first 20 (`truncated.total` says how many there are); `--limit all` prints every
+increment, which you need to add them up or to see every line. Read it as a budget: the lines with the largest amounts
+are where to work. A deeply nested `if` costs its depth. Each
 sequence of `&&` or `||` costs one. `else` costs one, so does recursion, and a labelled `break` or `continue`.
 `node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs explain cognitive` (or `cyclomatic`, `nesting`, `parameters`, `bumpy-road`) describes what a label means.
 

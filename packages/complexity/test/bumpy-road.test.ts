@@ -228,4 +228,20 @@ describe("the bumpy road through the CLI", () => {
       lax.dispose();
     }
   });
+
+  test("analyse, explain and diff give a function the same labels", async () => {
+    const repo = repoWith();
+    try {
+      const { rows } = await analyse(repo);
+      const labels = rows.find((row) => row.id === "src/tangled.ts#tangled")!.labels;
+      expect(labels).toContain("bumpy-road");
+      const explained = JSON.parse((await runComplexity(repo.path, ["explain", "src/tangled.ts#tangled", "--json"])).stdout);
+      expect(explained.unit.labels).toEqual(labels);
+      writeFileSync(join(repo.path, "src/tangled.ts"), files["tangled.ts"]!.replace("total += x;", "total += x * 2;"));
+      const diffed = JSON.parse((await runComplexity(repo.path, ["diff", "HEAD", "--json", "--limit", "all"])).stdout);
+      expect(diffed.results.find((row: { id: string }) => row.id === "src/tangled.ts#tangled").labels).toEqual(labels);
+    } finally {
+      repo.dispose();
+    }
+  });
 });

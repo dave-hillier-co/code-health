@@ -9,7 +9,8 @@ import { GrammarSet } from "@code-health/parse/grammars";
 import { readSettings, guidelinesFor } from "../config.ts";
 import { currentTree, type CurrentTree } from "../current-tree.ts";
 import { explainRule } from "../language.ts";
-import { labelsFor, structuralValues } from "../metrics.ts";
+import { isBumpyRoad } from "@code-health/lexical/metrics";
+import { bumpyRoadLimits, labelsFor, structuralValues } from "../metrics.ts";
 import { ruleDescriptions } from "../rules.ts";
 
 export const name = "explain";
@@ -17,8 +18,8 @@ export const name = "explain";
 const metricOrder = { cognitive: 0, cyclomatic: 1 } as const;
 
 /**
- * `explain path#Unit` breaks a function's cognitive and cyclomatic complexity down line by line, so the
- * agent can target the exact construct. `explain <rule>` describes a label or a check finding.
+ * `explain path#Unit` breaks a function's cognitive and cyclomatic complexity down line by line, largest amount first,
+ * so the agent can target the constructs that cost the most. `explain <rule>` describes a label or a check finding.
  */
 export const command: Command = {
   summary: "Line-by-line breakdown of where a function's complexity comes from, or describe a rule",
@@ -76,6 +77,7 @@ async function breakdown(context: CommandContext, current: CurrentTree, text: st
     .map((increment, index) => ({ increment, index }))
     .sort(
       (a, b) =>
+        b.increment.amount - a.increment.amount ||
         a.increment.line - b.increment.line ||
         metricOrder[a.increment.metric] - metricOrder[b.increment.metric] ||
         a.index - b.index,
@@ -90,6 +92,7 @@ async function breakdown(context: CommandContext, current: CurrentTree, text: st
     }));
 
   const values = structuralValues(unit.metrics, settings.cyclomaticSwitch);
+  const guidelines = guidelinesFor(settings, path);
   return {
     inputs: { tree: current.kind, unit: `${path}#${wanted}` },
     extra: {
@@ -99,11 +102,12 @@ async function breakdown(context: CommandContext, current: CurrentTree, text: st
         startLine: unit.startLine,
         endLine: unit.endLine,
         metrics: values,
-        labels: labelsFor(values, guidelinesFor(settings, path)),
+        labels: labelsFor(values, guidelines, isBumpyRoad(unit.metrics, bumpyRoadLimits(guidelines))),
         cyclomaticSwitch: settings.cyclomaticSwitch,
       },
     },
     results: rows,
+    presorted: true,
     columns: ["line", "metric", "construct", "amount", "nesting", "code"],
   };
 }
