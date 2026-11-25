@@ -1,6 +1,6 @@
 ---
 name: cochange
-description: Use before changing a file ("what usually changes with this file?", "what else will I have to touch?", "is this a risky file to edit?"), when asked where change effort concentrates ("which code is hardest to change?", "where should we refactor first?", "hotspots", "churn", "code that changes every week"), when asked which files change together or why a change touches so many places ("hidden dependencies", "temporal coupling", "files in different folders that always change together"), and when asked whether a refactoring made later changes cheaper ("did moving these files help?", "change spread before and after"). Mines git history. Not for reviewing a branch's risk, who knows the code, or merging author identities, and it never edits code.
+description: Use before changing a file ("what usually changes with this file?", "what else will I have to touch?", "is this a risky file to edit?"), when asked where change effort concentrates ("which code is hardest to change?", "where should we refactor first?", "hotspots", "churn", "code that changes every week"), when asked which files change together or why a change touches so many places ("hidden dependencies", "temporal coupling", "files in different folders that always change together"), and when asked whether a refactoring made later changes cheaper ("did moving these files help?", "change spread before and after"), and when asked whether change is more or less spread out than a year ago. Mines git history. Not for reviewing a branch's risk, who knows the code, or merging author identities, and it never edits code.
 allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/dist/cochange.mjs *)
 ---
 
@@ -42,6 +42,7 @@ These are prompts for investigation, not verdicts. The tool measures code, not p
 | Where effort goes, what to refactor first | Hotspot review |
 | What changes together, hidden dependencies | Coupling review |
 | Did a change make things cheaper | Measuring an outcome |
+| Is change more or less spread out than a year ago | Comparing two periods |
 
 ## Before a change
 
@@ -102,6 +103,18 @@ Use this when someone acted on findings and asks whether it helped. Change sprea
 To ask how often agents finish a coupled change, run `outcome completeness --since DATE --until DATE`. It reads the session transcripts on this machine (paths and counts only) and reports how often an edit to a file with unedited coupled partners was followed by an edit to one of them later in the same session, with `opportunities`, `followed` and `rate`. The rate depends on the work, the period and the people, so report it as a baseline to compare another window against, with its sample size, and say when `rate` is null because there were no opportunities.
 
 Commits made through the suite's skills carry a `Code-Health:` trailer. `spread` leaves those out and reports how many in `excludedByTrailer`.
+
+## Comparing two periods
+
+Use this for "is change more or less spread out than a year ago", where no refactoring marks the date. Run one `spread` per period, over two windows of equal length that meet at a month boundary.
+
+1. Pick the end of the later window as the first day of the current month, so the month in progress is left out. For a year ago, the windows are the 12 months before that date and the 12 months before those. `--since` is inclusive and `--until` exclusive. With the analysed commit in November 2026:
+   - `spread --since 2025-11-01 --until 2026-11-01 --bucket month`
+   - `spread --since 2024-11-01 --until 2025-11-01 --bucket month`
+2. Check that each result has 12 buckets, and that the first and last have counts like their neighbours. A window that starts or ends inside a month has a partial bucket at that edge: the bucket is labelled for the whole month, its `start` is before the window, and it holds only the changes inside the window, so its `logicalChanges` is low and its `mean` rests on few changes. The default window (12 months back from the analysed commit's date) ends mid-month, so its first and last buckets are partial. Set the dates to month starts, or leave those two buckets out of any statement about trend.
+3. Compare the `overall` rows, which are computed over each whole window and are not an average of the buckets: `mean`, `median` and `p90`. State `measured` for each window and the `oversizedShare`, since changes over the changeset limit are left out of the statistics and a change in that share is part of the answer.
+4. Use the buckets to see whether the difference is steady or comes from a few months. `measured` per bucket says how much weight a month carries.
+5. Say that a difference between two periods is a description, not a cause: the mix of work, the number of contributors and a change in how commits are split all move spread. If the two overall figures are close and the buckets overlap, say that no difference is visible.
 
 ## Recording decisions
 
