@@ -70,6 +70,7 @@
       "distance": 3,
       "fanIn": 2,
       "fanInPercentile": 97,
+      "fanInUnresolved": 0,
       "gain": 6,
       "guidelines": {
         "fanIn": {
@@ -192,6 +193,7 @@
       "distance": 2,
       "fanIn": 2,
       "fanInPercentile": 97,
+      "fanInUnresolved": 0,
       "gain": 4,
       "guidelines": {
         "fanIn": {
@@ -283,6 +285,7 @@
       "distance": 3,
       "fanIn": 1,
       "fanInPercentile": 73,
+      "fanInUnresolved": 0,
       "gain": 3,
       "guidelines": {
         "fanIn": {
@@ -371,6 +374,7 @@
       "distance": 3,
       "fanIn": 1,
       "fanInPercentile": 73,
+      "fanInUnresolved": 0,
       "gain": 3,
       "guidelines": {
         "fanIn": {
@@ -468,6 +472,7 @@
       "distance": 1,
       "fanIn": 2,
       "fanInPercentile": 97,
+      "fanInUnresolved": 0,
       "gain": 2,
       "guidelines": {
         "fanIn": {
@@ -552,5 +557,6 @@
   "unreachable": [
     "src/legacy/dead.ts"
   ],
-  "unresolved": {}
+  "unresolved": {},
+  "unresolvedSample": {}
 }

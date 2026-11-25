@@ -39,7 +39,7 @@ Factors that measure nearly the same thing form a **family**, and a family count
 
 - **History alone** gives everything except the structural factors. It works in any language.
 - **`--evidence`** takes `complexity diff --json` and `structure check --json` for this branch's base and tip. Evidence made for another base is refused.
-- **The parse adapters** add exported symbols whose signature changed or that were removed to `blast-radius`, with how many files used each at the base. This needs no other plugin, and is left out for files no adapter reads.
+- **The parse adapters** add exported symbols whose signature changed or that were removed to `blast-radius`, with how many files used each at the base (`fanIn`). This needs no other plugin, and is left out for files no adapter reads. `fanInUnresolved` counts the files that import a name equal to the symbol's which was not followed to a definition. Each may be a user that `fanIn` does not count, so a `fanIn` of 0 beside a `fanInUnresolved` above 0 is unresolved, not unused.
 - **Locality's report** adds fan-in to `blast-radius` when it is whole and stamped with the change's tip.
 - **The blame cache** supplies placement.
 

@@ -67,5 +67,6 @@
     "total": 0
   },
   "unreachable": [],
-  "unresolved": {}
+  "unresolved": {},
+  "unresolvedSample": {}
 }

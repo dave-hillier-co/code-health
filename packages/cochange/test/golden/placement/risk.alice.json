@@ -374,7 +374,8 @@
         "value": {
           "files": 0,
           "signatureChanges": 0,
-          "symbolFanIn": 0
+          "symbolFanIn": 0,
+          "symbolFanInUnresolved": 0
         }
       },
       {

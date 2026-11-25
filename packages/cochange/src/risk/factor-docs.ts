@@ -130,7 +130,7 @@ export const FACTOR_DOCS: readonly FactorDoc[] = [
     layer: "history",
     banding: "percentile",
     signal: "Files with high co-change confidence towards the touched files",
-    definition: "Without a locality report, the number of files with confidence and support at or above the missing-co-change guidelines towards any touched file. With locality's report for this commit, the fan-in of the touched files. When a parse adapter reads any touched file, also the exported symbols of the touched files whose signature changed (kind or interface size) or that were removed, each with the number of files that used it at the base, placed against every exported symbol's fan-in. The band is the highest of these.",
+    definition: "Without a locality report, the number of files with confidence and support at or above the missing-co-change guidelines towards any touched file. With locality's report for this commit, the fan-in of the touched files. When a parse adapter reads any touched file, also the exported symbols of the touched files whose signature changed (kind or interface size) or that were removed, each with the number of files that used it at the base (fanIn), placed against every exported symbol's fan-in. fanInUnresolved counts the files that import a name equal to the symbol's which was not followed to a definition: each may be a consumer that fanIn does not count, so a fanIn of 0 beside a fanInUnresolved above 0 is unresolved, not unused. The band is the highest of these.",
     why: "A flaw in widely used code is inherited by every consumer.",
   },
   {

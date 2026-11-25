@@ -363,6 +363,7 @@
           {
             "change": "signature",
             "fanIn": 4,
+            "fanInUnresolved": 0,
             "file": "src/lib/api.ts",
             "from": "parse",
             "symbol": "f0"
@@ -386,7 +387,8 @@
         "value": {
           "files": 0,
           "signatureChanges": 1,
-          "symbolFanIn": 4
+          "symbolFanIn": 4,
+          "symbolFanInUnresolved": 0
         }
       },
       {

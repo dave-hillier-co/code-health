@@ -58,6 +58,7 @@
       "distance": 2,
       "fanIn": 1,
       "fanInPercentile": 100,
+      "fanInUnresolved": 0,
       "gain": 4,
       "guidelines": {
         "fanIn": {
@@ -135,6 +136,7 @@
       "distance": 2,
       "fanIn": 1,
       "fanInPercentile": 100,
+      "fanInUnresolved": 0,
       "gain": 4,
       "guidelines": {
         "fanIn": {
@@ -219,5 +221,15 @@
   "unreachable": [],
   "unresolved": {
     "not-found": 1
+  },
+  "unresolvedSample": {
+    "not-found": [
+      {
+        "from": "src/app/main.ts",
+        "imports": 1,
+        "line": 3,
+        "specifier": "../generated/client.ts"
+      }
+    ]
   }
 }

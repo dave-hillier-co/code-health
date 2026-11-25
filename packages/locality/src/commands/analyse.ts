@@ -14,6 +14,7 @@ import { pathArguments, requireMatches } from "../path-arguments.ts";
 import { loadProject } from "../project.ts";
 import { writeReport } from "../reports.ts";
 import { ruleDescriptions } from "../rules.ts";
+import { sampleUnresolved, unresolvedFanInReader } from "../unresolved-imports.ts";
 
 export const name = "analyse";
 
@@ -52,14 +53,33 @@ export const command: Command = {
     requireMatches(prefixes, [...project.production, ...analysis.candidates.flatMap((candidate) => [...candidate.unit.files, ...candidate.unit.tests])]);
 
     const partial = prefixes.length > 0 || wanted !== undefined || source !== "structural";
-    const rows = analysis.candidates.filter(
-      (candidate) =>
-        (wanted === undefined || candidate.recommendation === wanted) &&
-        (prefixes.length === 0 || prefixes.some((prefix) => candidate.path === prefix || candidate.path.startsWith(`${prefix}/`))),
-    );
+    // A consumer whose import could not be followed to a definition is in no unit's fan-in, so it is counted beside it.
+    const production = new Set(project.production);
+    const unresolvedFanIn = unresolvedFanInReader(project.analysis.unresolved, (path) => production.has(path));
+    const rows = analysis.candidates
+      .filter(
+        (candidate) =>
+          (wanted === undefined || candidate.recommendation === wanted) &&
+          (prefixes.length === 0 || prefixes.some((prefix) => candidate.path === prefix || candidate.path.startsWith(`${prefix}/`))),
+      )
+      .map((candidate) => ({ ...candidate, fanInUnresolved: unresolvedFanIn(candidate.unit.files) }));
 
     const unresolved: Record<string, number> = {};
     for (const entry of project.analysis.unresolved) unresolved[entry.reason] = (unresolved[entry.reason] ?? 0) + 1;
+    const unresolvedTotal = project.analysis.unresolved.length;
+    const withUnresolvedFanIn = rows.filter((row) => row.fanInUnresolved > 0).length;
+    const notices = [
+      ...(analysis.omitted.length === 0
+        ? []
+        : [
+            `Omitted, with no proposed move: ${Object.entries(analysis.summary.omitted).map(([reason, count]) => `${reason} ${count}`).join(", ")} (listed in omitted; guidelines locality.maxMoveFiles ${settings.maxMoveFiles}, locality.minTargetDepth ${settings.minTargetDepth})`,
+          ]),
+      ...(unresolvedTotal === 0
+        ? []
+        : [
+            `Imports not followed to a file or a definition: ${Object.entries(unresolved).sort(([a], [b]) => compareIds(a, b)).map(([reason, count]) => `${reason} ${count}`).join(", ")} (the most frequent are listed in unresolvedSample). fanIn does not count them: ${withUnresolvedFanIn} of the ${rows.length} units listed have fanInUnresolved above 0.`,
+          ]),
+    ];
 
     const output: CommandOutput = {
       inputs: {
@@ -76,6 +96,7 @@ export const command: Command = {
         unreachable: model.unreachable,
         barrels: project.analysis.barrels,
         unresolved,
+        unresolvedSample: sampleUnresolved(project.analysis.unresolved),
         history: history === undefined ? null : { window: history.window, ...history.evidence },
         filesWithSyntaxErrors: project.analysis.syntaxErrors,
         // Only languages with a preprocessor have any, so the key is absent for the rest.
@@ -84,13 +105,7 @@ export const command: Command = {
       },
       results: rows,
       columns: ["path", "score", "recommendation", "rule", "location", "target", "gain", "fanIn"],
-      ...(analysis.omitted.length === 0
-        ? {}
-        : {
-            notices: [
-              `Omitted, with no proposed move: ${Object.entries(analysis.summary.omitted).map(([reason, count]) => `${reason} ${count}`).join(", ")} (listed in omitted; guidelines locality.maxMoveFiles ${settings.maxMoveFiles}, locality.minTargetDepth ${settings.minTargetDepth})`,
-            ],
-          }),
+      ...(notices.length === 0 ? {} : { notices }),
     };
     if (!partial) await writeReport(context, name, output);
     else skipReport(context, "the run was limited by path arguments, --recommendation or --source");

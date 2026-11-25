@@ -148,7 +148,28 @@
         },
         "unreachable": { "$ref": "#/$defs/paths", "description": "Production files the virtual root cannot reach: dead code, or an entry point missing from config." },
         "barrels": { "$ref": "#/$defs/paths" },
-        "unresolved": { "type": "object", "additionalProperties": { "$ref": "common.schema.json#/$defs/count" }, "description": "Imports the resolver could not follow, by reason." },
+        "unresolved": { "type": "object", "additionalProperties": { "$ref": "common.schema.json#/$defs/count" }, "description": "Imports the resolver could not follow, by reason: not-found (the module named has no file), export-not-found (the module has no such name), dynamic-import." },
+        "unresolvedSample": {
+          "type": "object",
+          "description": "For each reason in unresolved, the distinct imports that recur most: at most 10, most statements first, then by specifier and name.",
+          "additionalProperties": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "type": "object",
+              "properties": {
+                "specifier": { "type": ["string", "null"], "description": "The module the statement names, as the resolver read it. Null for an expression." },
+                "name": { "type": "string", "description": "export-not-found only: the name the module does not export." },
+                "to": { "type": "string", "description": "export-not-found only: the file the specifier names." },
+                "imports": { "$ref": "common.schema.json#/$defs/count", "description": "Statements with this specifier and name." },
+                "from": { "type": "string", "description": "The file of the first of them, by path then line." },
+                "line": { "type": "integer", "minimum": 1 }
+              },
+              "required": ["specifier", "imports", "from", "line"],
+              "additionalProperties": false
+            }
+          }
+        },
         "filesWithSyntaxErrors": { "$ref": "#/$defs/syntaxErrors" },
         "filesWithMacroCode": { "$ref": "#/$defs/paths", "description": "Files where a macro stands in for declarations or code, which the parser does not run the preprocessor to see. Present only when there are some." },
         "results": {
@@ -218,7 +239,8 @@
                 "required": ["owned", "external"],
                 "additionalProperties": false
               },
-              "fanIn": { "$ref": "common.schema.json#/$defs/count", "description": "Distinct production consumer files." },
+              "fanIn": { "$ref": "common.schema.json#/$defs/count", "description": "Distinct production consumer files whose use was followed to the unit. Consumers counted in fanInUnresolved are not among them." },
+              "fanInUnresolved": { "$ref": "common.schema.json#/$defs/count", "description": "Other production files with an import that names a file of the unit and a name the file's exports do not have (export-not-found in unresolved). Each is a consumer that fanIn does not count: a fanIn of 0 beside a fanInUnresolved above 0 is unresolved, not unused." },
               "size": {
                 "type": "object",
                 "properties": {
@@ -329,7 +351,7 @@
             },
             "required": [
               "path", "score", "scoreUnit", "ranking", "fanInPercentile", "guidelines", "recommendation", "rule", "reason", "source", "unit", "location", "target", "distance", "gain", "unblockedGain",
-              "netDistance", "directCalls", "otherRefs", "testRefs", "fanIn", "size", "ownDeps", "visibility", "age", "lastChanged",
+              "netDistance", "directCalls", "otherRefs", "testRefs", "fanIn", "fanInUnresolved", "size", "ownDeps", "visibility", "age", "lastChanged",
               "churn", "coChange", "signals", "strays", "blockers"
             ],
             "additionalProperties": false

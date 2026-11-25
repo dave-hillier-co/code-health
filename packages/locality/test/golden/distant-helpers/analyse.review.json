@@ -60,6 +60,7 @@
       "distance": 1,
       "fanIn": 1,
       "fanInPercentile": 73,
+      "fanInUnresolved": 0,
       "gain": 2,
       "guidelines": {
         "fanIn": {
@@ -156,5 +157,6 @@
   "unreachable": [
     "src/legacy/dead.ts"
   ],
-  "unresolved": {}
+  "unresolved": {},
+  "unresolvedSample": {}
 }

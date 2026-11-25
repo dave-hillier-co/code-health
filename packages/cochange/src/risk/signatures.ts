@@ -21,6 +21,12 @@ export interface SignatureChange {
   change: "signature" | "removed";
   /** Distinct files that used the symbol at the base. */
   fanIn: number;
+  /**
+   * Distinct files that import a name equal to the symbol's which was not followed to a definition: the module named
+   * does not list the name, or a macro of that module may define it. Each may be a consumer `fanIn` does not count,
+   * so a `fanIn` of 0 beside one of these is unresolved, not unused.
+   */
+  fanInUnresolved: number;
 }
 
 export interface SignatureResult {
@@ -100,8 +106,18 @@ export async function changedSignatures(root: string, change: BranchChange): Pro
       set.add(consumer.from);
       users.set(key, set);
     }
+    // By name alone: where an import was not followed, the file that defines the name is what is unknown.
+    const unfollowed = new Map<string, Set<{ from: string; to: string | undefined }>>();
+    const unfollow = (name: string, from: string, to: string | undefined): void => {
+      const set = unfollowed.get(name) ?? new Set();
+      set.add({ from, to });
+      unfollowed.set(name, set);
+    };
+    for (const entry of analysis.unresolved) if (entry.name !== undefined) unfollow(entry.name, entry.from, entry.to);
+    for (const consumer of analysis.consumers) if (consumer.kind !== "test" && consumer.toSymbol === undefined && consumer.toExport !== "*") unfollow(consumer.toExport, consumer.from, consumer.to);
+    const unresolvedUsers = (file: string, symbol: string): number => new Set([...(unfollowed.get(symbol) ?? [])].filter((use) => use.to !== file && use.from !== file).map((use) => use.from)).size;
     const population = analysis.units.filter((unit) => unit.exported && unit.parent === undefined).map((unit) => users.get(`${unit.path}\0${unit.qualifiedName}`)?.size ?? 0);
-    const changes = moved.map((m) => ({ ...m, fanIn: users.get(`${m.file}\0${m.symbol}`)?.size ?? 0 }));
+    const changes = moved.map((m) => ({ ...m, fanIn: users.get(`${m.file}\0${m.symbol}`)?.size ?? 0, fanInUnresolved: unresolvedUsers(m.file, m.symbol) }));
     return { files, changes, population };
   } catch {
     return null;
@@ -115,6 +131,7 @@ export async function changedSignatures(root: string, change: BranchChange): Pro
  */
 export function withSignatures(factor: Factor, result: SignatureResult, risk: RiskSettings): Factor {
   const fanIn = result.changes.reduce((most, row) => Math.max(most, row.fanIn), 0);
+  const fanInUnresolved = result.changes.reduce((most, row) => Math.max(most, row.fanInUnresolved), 0);
   const cutoffs = result.changes.length === 0 || result.population.length < risk.minBaseline ? null : cutoffsOf(result.population, risk.moderatePercentile, risk.highPercentile);
   const placed: Band | null = cutoffs === null ? null : bandAgainst(fanIn, cutoffs);
   const band: Band | null = placed === null ? (factor.band as Band | null) : factor.band === null ? placed : higherBand(factor.band as Band, placed);
@@ -125,10 +142,10 @@ export function withSignatures(factor: Factor, result: SignatureResult, risk: Ri
     band,
     reason: band === null ? factor.reason : null,
     source: joinSources(factor.source, "parse"),
-    value: { ...factor.value, signatureChanges: result.changes.length, symbolFanIn: fanIn },
+    value: { ...factor.value, signatureChanges: result.changes.length, symbolFanIn: fanIn, symbolFanInUnresolved: fanInUnresolved },
     guidelines: { ...factor.guidelines, ...(cutoffs === null ? {} : { symbolFanIn: { moderate: cutoffs.moderate, high: cutoffs.high } }) },
     evidenceTotal: (factor.evidenceTotal ?? factor.evidence.length) + rows.length,
-    evidence: [...factor.evidence, ...rows.slice(0, 5).map((row) => ({ file: row.file, symbol: row.symbol, change: row.change, fanIn: row.fanIn, from: "parse" }))],
+    evidence: [...factor.evidence, ...rows.slice(0, 5).map((row) => ({ file: row.file, symbol: row.symbol, change: row.change, fanIn: row.fanIn, fanInUnresolved: row.fanInUnresolved, from: "parse" }))],
   };
 }
 
