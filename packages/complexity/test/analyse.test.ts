@@ -36,6 +36,13 @@ async function analyse(...args: string[]) {
 }
 
 describe("analyse", () => {
+  test("--fields takes the id a row carries, which explain takes", async () => {
+    const rows = JSON.parse((await analyse("--fields", "id,cyclomatic")).stdout).results as { id: string; cyclomatic: number }[];
+    expect(rows.length).toBeGreaterThan(0);
+    expect(Object.keys(rows[0]!).sort()).toEqual(["cyclomatic", "id"]);
+    expect(rows[0]!.id).toMatch(/#/);
+  });
+
   test("ranks functions with the hand-counted metrics and matches its golden", async () => {
     const { stdout } = await analyse();
     expectGolden("pricing", "analyse", stdout);

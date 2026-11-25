@@ -49,6 +49,18 @@ test("unknown fields are a usage error that lists the valid ones", () => {
     expect((error as CliError).exitCode).toBe(ExitCode.Usage);
     expect((error as CliError).message).toMatch(/nope.*path, score, churn/s);
   }
+  try {
+    shapeResults(rows, { limit: 5, fields: ["nope"], columns: ["path"] });
+    expect.unreachable();
+  } catch (error) {
+    // The columns first, then the other fields of the rows.
+    expect((error as CliError).message).toMatch(/valid fields: path, score, churn$/);
+  }
+});
+
+test("a field every row carries is valid though it is not a table column", () => {
+  const { results } = shapeResults(rows, { limit: 1, fields: ["path", "churn"], columns: ["path", "score"] });
+  expect(results).toEqual([{ path: "c.ts", churn: 1 }]);
 });
 
 test("results that are not a list pass through untouched", () => {
