@@ -26,7 +26,7 @@ export const structureConfig: PluginConfigSpec = {
     minVolatilityRatio: 2,
     /** Guideline (a judgement call): a dependency is above the guideline for structural stability when the depended-on side's instability exceeds the dependant's by at least this many percentage points. It orders and annotates rows and hides none. */
     minInstabilityGap: 20,
-    /** Evidence floor (a judgement call): the report lists a dependency against stability only when the depended-on folder has at least this many files, because a one-file folder's revisions per file and instability are the figures of one file. `stability` still lists every dependency, and the report counts the ones it leaves out. */
+    /** Evidence floor (a judgement call): the report lists a dependency against stability only when the depended-on folder has at least this many files, because a one-file folder's revisions per file and instability are the figures of one file. `stability` lists those after all the others and counts them, and the report counts the ones it leaves out. */
     minTargetFiles: 2,
     /**
      * The mechanism census. Every list adds to what is built in. Names are matched exactly:

@@ -1,4 +1,5 @@
 {
+  "belowTargetFloor": 0,
   "command": "stability",
   "config": "0000000000000000",
   "evidence": {
@@ -105,6 +106,7 @@
     "by": "component",
     "minInstabilityGap": 20,
     "minRevisions": 3,
+    "minTargetFiles": 2,
     "minVolatilityRatio": 2
   },
   "repo": {

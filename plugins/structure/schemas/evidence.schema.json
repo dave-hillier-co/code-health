@@ -191,7 +191,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "pattern": "^edge:(file|folder|package|component):.+->.+"
+          "pattern": "^edge:(file|folder|package|component|default):.+->.+"
         },
         "kind": {
           "enum": [

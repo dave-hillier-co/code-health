@@ -1,4 +1,5 @@
 {
+  "belowTargetFloor": 1,
   "command": "stability",
   "config": "0000000000000000",
   "evidence": {
@@ -105,6 +106,7 @@
     "by": "folder",
     "minInstabilityGap": 20,
     "minRevisions": 3,
+    "minTargetFiles": 2,
     "minVolatilityRatio": 2
   },
   "repo": {
@@ -201,50 +203,6 @@
       "volatilityRatio": 3
     },
     {
-      "aboveGuideline": true,
-      "basis": "structure",
-      "changeAboveGuideline": null,
-      "disagree": false,
-      "fileEdges": 1,
-      "from": "src/lib",
-      "id": "unstable:folder:src/lib->src/glue",
-      "level": "folder",
-      "stability": {
-        "from": {
-          "change": {
-            "active": false,
-            "churn": 4,
-            "files": 1,
-            "revisions": 1,
-            "revisionsPerFile": 1
-          },
-          "structural": {
-            "ca": 3,
-            "ce": 1,
-            "instability": 0.25
-          }
-        },
-        "to": {
-          "change": {
-            "active": false,
-            "churn": 5,
-            "files": 1,
-            "revisions": 1,
-            "revisionsPerFile": 1
-          },
-          "structural": {
-            "ca": 1,
-            "ce": 2,
-            "instability": 0.667
-          }
-        }
-      },
-      "structuralAboveGuideline": true,
-      "to": "src/glue",
-      "towardsLessStable": true,
-      "volatilityRatio": 1
-    },
-    {
       "aboveGuideline": false,
       "basis": "change",
       "changeAboveGuideline": false,
@@ -287,6 +245,50 @@
       "to": "src/volatile",
       "towardsLessStable": true,
       "volatilityRatio": 1.5
+    },
+    {
+      "aboveGuideline": true,
+      "basis": "structure",
+      "changeAboveGuideline": null,
+      "disagree": false,
+      "fileEdges": 1,
+      "from": "src/lib",
+      "id": "unstable:folder:src/lib->src/glue",
+      "level": "folder",
+      "stability": {
+        "from": {
+          "change": {
+            "active": false,
+            "churn": 4,
+            "files": 1,
+            "revisions": 1,
+            "revisionsPerFile": 1
+          },
+          "structural": {
+            "ca": 3,
+            "ce": 1,
+            "instability": 0.25
+          }
+        },
+        "to": {
+          "change": {
+            "active": false,
+            "churn": 5,
+            "files": 1,
+            "revisions": 1,
+            "revisionsPerFile": 1
+          },
+          "structural": {
+            "ca": 1,
+            "ce": 2,
+            "instability": 0.667
+          }
+        }
+      },
+      "structuralAboveGuideline": true,
+      "to": "src/glue",
+      "towardsLessStable": true,
+      "volatilityRatio": 1
     }
   ],
   "schemaVersion": 1,

@@ -67,6 +67,17 @@ export function rankDependencies(model: Model, settings: Pick<StructureSettings,
   );
 }
 
+/**
+ * Splits ranked dependencies at the evidence floor `structure.minTargetFiles`: those onto a folder with at least
+ * that many files, and the rest, each in its rank order. A one-file folder's figures are the figures of one file.
+ */
+export function splitAtTargetFloor(rows: readonly UnstableDependency[], settings: Pick<StructureSettings, "minTargetFiles">): { listed: UnstableDependency[]; belowFloor: UnstableDependency[] } {
+  const listed: UnstableDependency[] = [];
+  const belowFloor: UnstableDependency[] = [];
+  for (const row of rows) (row.stability.to.change.files >= settings.minTargetFiles ? listed : belowFloor).push(row);
+  return { listed, belowFloor };
+}
+
 /** The ranked dependencies whose margin reaches the guideline, for callers that raise findings from them. */
 export function findUnstableDependencies(model: Model, settings: Pick<StructureSettings, "minVolatilityRatio" | "minInstabilityGap">): UnstableDependency[] {
   return rankDependencies(model, settings).filter((row) => row.aboveGuideline);

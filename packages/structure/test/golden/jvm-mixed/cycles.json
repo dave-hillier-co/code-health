@@ -137,7 +137,7 @@
         }
       ],
       "coChangeAcross": 1,
-      "id": "cycle:default:src/main/java/acme/Order.java",
+      "id": "cycle:file:src/main/java/acme/Order.java",
       "level": "default",
       "method": "exact",
       "nested": false,

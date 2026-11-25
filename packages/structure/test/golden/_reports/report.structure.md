@@ -19,7 +19,7 @@
 | Layer violations | 1 |
 | Dependencies pointing towards less stable folders | 1, of which 1 reach a guideline |
 | Registration hubs | 0 |
-| Packages | 5 |
+| Packages | 5 found from manifests: 5 hold production code in a supported language, and 3 of them are placed on the chart |
 
 **Module dependency matrix** (file imports from the row module into the column module; band 1: 1)
 
@@ -141,7 +141,8 @@ Verdict: worth-fixing. The edge carries one call, so it is cheap to move.
 ## Limits
 
 - Guidelines order and label results. They are heuristics for investigation and decide nothing.
-- Each list shows its top rows and says how many it leaves out: 5 cycles, 8 dependencies against stability, 15 layer violations, 10 hubs and 15 packages in the stability table (the chart draws every package that exports types). The commands print the rest.
+- Each list shows up to 5 cycles, 8 dependencies against stability, 15 layer violations, 10 hubs and 15 packages in the stability table, and says how many it leaves out. The chart draws every package it places. The commands print the rest.
+- Packages are counted from the manifests found. `structure cycles --level package` has a module for each package that holds production code in a supported language, and the chart places only those that also export enough types and have a dependency in or out.
 - Cycles are found at the default level for each language, so a file cycle in Go or C# that stays inside one package or folder is not shown. `structure cycles --level` shows the other levels.
 - Abstractness is measured for packages from the exported interfaces, abstract classes, classes and enums. A package that exports fewer than 3 types (structure.packages.minExportedTypes) has too few for the abstract-to-concrete ratio to mean anything, so it is unplaced: left out of the chart, its table and its zone counts, and counted. Folders have no abstractness, so the chart is of packages and the dependencies against stability are between folders.
 - The zones of the chart are geometric. `structure packages coupling` raises a finding only when a package in a zone also has dependents and changes often.

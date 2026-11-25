@@ -19,4 +19,8 @@ A hidden pair has no import, so `breakingSet` is empty and `imports.fileEdges` i
 
 A registration hub is `hub:<file>` and its pack has a different shape, with `kind` `registration-hub`: the `features` that feed it (each with its co-change figures, how the hub names it, the `breakingSet` of symbols the hub uses from it and their `misplacement`), the four `signals` that fired, the `stability` of the module it sits in, `unblocks` and `nearbyMechanisms` around the hub and its features. It recommends nothing.
 
-The pack is `results[0]` of the output. The top-level `evidence.grade` and the window say how much history stands behind `stability` and `coChange`. Support below the minimum is shown as such and is not a finding.
+An edge or a finding of one dependency gives one pack, `results[0]`. A cycle id (`cycle:<level>:<node>`) gives one pack per edge of the cycle's breaking set, in `results`, in the order of the breaking set: read each before choosing the edge to break.
+
+Ids name the level of their nodes: `file`, `folder`, `package` or `component`. A cycle that `cycles` finds at its default level among files has a `file` id, and so do its packs, so the same edge has the same id however it was reached. Only a Go package or a C# project found at the default level keeps `default` in its id. An id written earlier with `default` for a cycle of files is still read.
+
+The top-level `evidence.grade` and the window say how much history stands behind `stability` and `coChange`. Support below the minimum is shown as such and is not a finding.

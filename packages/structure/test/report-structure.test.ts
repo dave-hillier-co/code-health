@@ -246,6 +246,22 @@ test("packages with too few exported types are unplaced: left out of the chart a
   expect(stdout).not.toContain("A weak");
 });
 
+test("the summary's package count names what it counts, and adds up with the chart", async () => {
+  const document = await slots();
+  const facts = document.data.sections[0].blocks[0].facts as { label: string; value: string }[];
+  expect(facts.find((f) => f.label === "Packages")!.value).toBe("5 found from manifests: 5 hold production code in a supported language, and 3 of them are placed on the chart");
+  expect(document.data.limits.join(" ")).toContain("`structure cycles --level package` has a module for each package that holds production code in a supported language");
+});
+
+test("the limits leave out the layer cap when no layers are configured, and say how many each list shows at most", async () => {
+  const output = await runStructure(cpp.path, ["report", "structure", "--slots"]);
+  const limits = JSON.parse(output.stdout).data.limits.join(" ");
+  expect(limits).not.toContain("layer violations");
+  expect(limits).toContain("Each list shows up to 5 cycles, 8 dependencies against stability, 10 hubs and 15 packages in the stability table, and says how many it leaves out.");
+  const layered = (await slots()).data.limits.join(" ");
+  expect(layered).toContain("Each list shows up to 5 cycles, 8 dependencies against stability, 15 layer violations, 10 hubs and 15 packages in the stability table, and says how many it leaves out.");
+});
+
 test("the evidence floor lists a dependency only when the depended-on folder has enough files, and counts the rest", async () => {
   const stability = JSON.parse((await runStructure(repo.path, ["stability", "--json"])).stdout).results as Parameters<typeof withEvidenceFloor>[0];
   expect(stability.length).toBeGreaterThan(0);

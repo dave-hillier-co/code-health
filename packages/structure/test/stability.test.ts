@@ -1,6 +1,7 @@
 import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { withoutMeta } from "@code-health/fixtures/cli-testing";
+import { runInProcess, withoutMeta } from "@code-health/fixtures/cli-testing";
+import { cli } from "../src/cli.ts";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
@@ -33,6 +34,8 @@ interface Row {
   stability: { from: Side; to: Side };
 }
 interface Document {
+  inputs: { minTargetFiles: number };
+  belowTargetFloor: number;
   results: Row[];
   units: ({ id: string } & Side)[];
   unitsTotal: number;
@@ -73,18 +76,30 @@ test("a dependency onto something only a little more volatile is listed below th
   const index = document.results.findIndex((r) => r.from === "src/app" && r.to === "src/volatile");
   expect(index).toBeGreaterThan(-1);
   expect(document.results[index]).toMatchObject({ aboveGuideline: false, towardsLessStable: true });
-  const lastAbove = document.results.map((r) => r.aboveGuideline).lastIndexOf(true);
+  const lastAbove = document.results.map((r) => r.aboveGuideline && r.stability.to.change.files >= 2).lastIndexOf(true);
   expect(index).toBeGreaterThan(lastAbove);
 });
 
 test("rows past the guideline come first, then those decided by change, the larger volatility gap first", async () => {
   const { document } = await stability();
+  const atFloor = document.results.filter((r) => r.stability.to.change.files >= 2);
+  expect(atFloor.map((r) => r.id)).toEqual(["unstable:folder:src/stable->src/volatile", "unstable:folder:src/glue->src/volatile", "unstable:folder:src/app->src/volatile"]);
+});
+
+test("a dependency onto a folder of fewer than structure.minTargetFiles files is listed after the others and counted, as the report leaves it out", async () => {
+  const { document } = await stability();
   expect(document.results.map((r) => r.id)).toEqual([
     "unstable:folder:src/stable->src/volatile",
     "unstable:folder:src/glue->src/volatile",
-    "unstable:folder:src/lib->src/glue",
     "unstable:folder:src/app->src/volatile",
+    "unstable:folder:src/lib->src/glue",
   ]);
+  expect(document.inputs.minTargetFiles).toBe(2);
+  expect(document.belowTargetFloor).toBe(1);
+  const text = await runInProcess(cli, repo.path, ["stability", "--no-refresh"], true);
+  expect(text.stdout).toContain(
+    "Notice: 1 dependency onto a folder of fewer than 2 files is listed after the others, because the figures of a one-file folder are the figures of one file (evidence floor structure.minTargetFiles, a judgement call). The structure report leaves it out.",
+  );
 });
 
 test("every module is listed with its stability, the most volatile first", async () => {

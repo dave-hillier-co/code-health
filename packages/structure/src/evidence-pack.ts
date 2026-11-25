@@ -2,7 +2,7 @@ import { compareIds } from "@code-health/graph/graph";
 import type { Census } from "./census/census.ts";
 import { nearbyMechanisms, type NearbyMechanism } from "./census/nearby.ts";
 import type { Unblock } from "./locality-report.ts";
-import { findCycles, unblocksOf } from "./cycles.ts";
+import { findCycles, idLevel, unblocksOf } from "./cycles.ts";
 import { couplingId, judgePair, orientPair, type QuadrantJudgement } from "./coupling.ts";
 import { layerViolationId } from "./layers.ts";
 import { layerRuleOf, type LayerRuleBreach } from "./layer-rule.ts";
@@ -143,6 +143,8 @@ export function evidencePack(
   census: Census,
 ): EvidencePack {
   const level = model.graph.level;
+  // The level the ids name, which says `file` for files found at the default level.
+  const label = idLevel(model.graph, [from, to]);
   const detail = describeEdge(model.project, model.graph, from, to);
   const judged = judgeEdge(model, from, to, settings);
   const { stability, id: _id, level: _l, from: _f, to: _t, fileEdges: _e, ...verdict } = judged;
@@ -162,18 +164,18 @@ export function evidencePack(
   }
   if (verdict.aboveGuideline) {
     kinds.push("unstable-dependency");
-    findings.push(unstableId(level, from, to));
+    findings.push(unstableId(label, from, to));
   }
 
   const quadrant = judgePair(model.project, model.graph, model.activity, from, to, settings);
   if (quadrant.name === "incidental" || quadrant.name === "hidden") {
     kinds.push(quadrant.name === "incidental" ? "incidental-coupling" : "hidden-coupling");
     const [a, b] = orientPair(model.project, model.graph, from, to);
-    findings.push(couplingId(level, a, b));
+    findings.push(couplingId(label, a, b));
   }
 
   return {
-    id: `edge:${level}:${from}->${to}`,
+    id: `edge:${label}:${from}->${to}`,
     kind: kinds[0] ?? null,
     kinds,
     findings,

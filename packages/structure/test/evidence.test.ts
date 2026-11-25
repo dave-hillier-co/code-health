@@ -104,6 +104,21 @@ describe("a finding", () => {
     expect(document.results.map((p) => p.id)).toEqual(["edge:file:src/e.ts->src/c.ts"]);
   });
 
+  test("a cycle of files found at the default level has a file id, and its packs and the edge's own pack agree on it", async () => {
+    const listed = JSON.parse((await runStructure(cycles.path, ["cycles", "--json"])).stdout).results as { id: string }[];
+    expect(listed.map((r) => r.id)).toEqual(["cycle:file:src/c.ts", "cycle:file:src/a.ts"]);
+    const fromCycle = (await evidence(cycles, listed[0]!.id)).document.results[0]!;
+    const fromEdge = (await evidence(cycles, "src/e.ts->src/c.ts")).document.results[0]!;
+    expect(fromCycle.id).toBe("edge:file:src/e.ts->src/c.ts");
+    expect(fromCycle.id).toBe(fromEdge.id);
+    expect(fromCycle.findings).toEqual(fromEdge.findings);
+  });
+
+  test("a cycle id stored with the default label is still read", async () => {
+    const { document } = await evidence(cycles, "cycle:default:src/c.ts");
+    expect(document.results.map((p) => p.id)).toEqual(["edge:file:src/e.ts->src/c.ts"]);
+  });
+
   test("an unstable dependency id gives the edge at its level, with the verdict", async () => {
     const { document } = await evidence(stability, "unstable:folder:src/stable->src/volatile");
     const [pack] = document.results;
@@ -276,12 +291,12 @@ describe("a locality report", () => {
 
   test("it lifts the cycle it unblocks above larger cycles", async () => {
     const before = JSON.parse((await runStructure(cycles.path, ["cycles", "--json"])).stdout).results as { id: string; breakingSet: { from: string; to: string }[] }[];
-    expect(before.map((r) => r.id)).toEqual(["cycle:default:src/c.ts", "cycle:default:src/a.ts"]);
+    expect(before.map((r) => r.id)).toEqual(["cycle:file:src/c.ts", "cycle:file:src/a.ts"]);
     writeLocalityReport(cycles, head(), false, before[1]!.breakingSet[0]!);
     const after = JSON.parse((await runStructure(cycles.path, ["cycles", "--json"])).stdout).results as { id: string; unblockedGain: number | null }[];
     expect(after.map((r) => [r.id, r.unblockedGain])).toEqual([
-      ["cycle:default:src/a.ts", 7],
-      ["cycle:default:src/c.ts", 0],
+      ["cycle:file:src/a.ts", 7],
+      ["cycle:file:src/c.ts", 0],
     ]);
   });
 
