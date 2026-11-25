@@ -53,6 +53,7 @@
   "results": [],
   "schemaVersion": 1,
   "summary": {
+    "blockedMoves": 0,
     "byRecommendation": {},
     "files": 8,
     "omitted": {},

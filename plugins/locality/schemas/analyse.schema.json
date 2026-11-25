@@ -66,9 +66,10 @@
             "units": { "$ref": "common.schema.json#/$defs/count", "description": "Units found, including the placed ones." },
             "placed": { "$ref": "common.schema.json#/$defs/count", "description": "Units left out of the results because they already sit beside their consumers (rule near-consumers)." },
             "omitted": { "type": "object", "additionalProperties": { "$ref": "common.schema.json#/$defs/count" }, "description": "Units left out of the results because no move of them is proposed, by reason: no usable target: <rule> (the best target is refused by a language placement rule such as a Go internal/ boundary or a package boundary, or by `target is a grouping folder`: a folder named in locality.groupingFolders for a language in locality.groupingLanguages), no single target: N folders tie (N folders at the same depth, none containing another, are equally close, so no move is proposed), folder-sized unit (more files than locality.maxMoveFiles) and target is a root folder (a unit of several files moving up to a folder shallower than locality.minTargetDepth). Each is listed in `omitted`." },
-            "byRecommendation": { "type": "object", "additionalProperties": { "$ref": "common.schema.json#/$defs/count" } }
+            "byRecommendation": { "type": "object", "additionalProperties": { "$ref": "common.schema.json#/$defs/count" } },
+            "blockedMoves": { "$ref": "common.schema.json#/$defs/count", "description": "Units counted under byRecommendation.move that have a non-empty blockers list. The report lists them in its blocked table, not as moves, and they are not ready to move until the blockers are addressed." }
           },
-          "required": ["files", "units", "placed", "omitted", "byRecommendation"],
+          "required": ["files", "units", "placed", "omitted", "byRecommendation", "blockedMoves"],
           "additionalProperties": false
         },
         "metrics": {

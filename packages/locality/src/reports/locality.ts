@@ -45,7 +45,7 @@ const WARNING_CHARS = 160;
 const OMITTED_DETAIL_CHARS = 200;
 
 interface AnalyseExtra {
-  summary: { files: number; units: number; placed: number; omitted: Record<string, number>; byRecommendation: Record<string, number> };
+  summary: { files: number; units: number; placed: number; omitted: Record<string, number>; byRecommendation: Record<string, number>; blockedMoves: number };
   omitted: OmittedUnit[];
   unresolved: Record<string, number>;
   history: { grade: string; usableHistoryMonths: number; window: { months: number; since: number; until: number } } | null;

@@ -10,6 +10,7 @@ import { readSettings, type LocalitySettings } from "../config.ts";
 import { buildModel, type Model } from "../model.ts";
 import { readHistory, type History } from "../history-evidence.ts";
 import { analyseByHistory, historyRuleDescriptions, type HistoryCandidate, type HistoryOnlyResult } from "../history-only.ts";
+import { pathArguments, requireMatches } from "../path-arguments.ts";
 import { loadProject } from "../project.ts";
 import { writeReport } from "../reports.ts";
 import { ruleDescriptions } from "../rules.ts";
@@ -40,7 +41,7 @@ export const command: Command = {
     if (typeof source !== "string" || !sources.includes(source)) {
       throw usageError(`--source must be one of ${sources.join(", ")}`);
     }
-    const prefixes = context.positionals.map((path) => path.replace(/\/+$/, ""));
+    const prefixes = pathArguments(context.repo.root, context.positionals);
 
     const history = settings.useHistory ? await readHistory(context, settings) : undefined;
     if (source === "history") return historyOnly(context.repo.root, history, settings, prefixes, wanted);
@@ -48,6 +49,7 @@ export const command: Command = {
     const project = await loadProject(context.repo.root, "HEAD", settings);
     const model = buildModel(project, settings, history);
     const analysis = analyseProject(project, model, settings, history);
+    requireMatches(prefixes, [...project.production, ...analysis.candidates.flatMap((candidate) => [...candidate.unit.files, ...candidate.unit.tests])]);
 
     const partial = prefixes.length > 0 || wanted !== undefined || source !== "structural";
     const rows = analysis.candidates.filter(
@@ -114,6 +116,7 @@ async function historyResult(root: string, history: History | undefined, setting
 
 async function historyOnly(root: string, history: History | undefined, settings: LocalitySettings, prefixes: string[], wanted: unknown): Promise<CommandOutput> {
   const result = await historyResult(root, history, settings);
+  requireMatches(prefixes, await listTree(root, "HEAD"));
   const rows = result.candidates.filter(
     (candidate) =>
       (wanted === undefined || candidate.recommendation === wanted) &&

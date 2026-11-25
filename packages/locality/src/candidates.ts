@@ -163,6 +163,8 @@ export interface AnalysisSummary {
   /** Units left out of the candidates because no move of them is proposed, by reason. Each is listed in `AnalysisResult.omitted`. */
   omitted: Record<string, number>;
   byRecommendation: Record<string, number>;
+  /** Units counted under `byRecommendation.move` that have blockers: the report lists them as blocked, and `analyse` shows them with recommendation move. */
+  blockedMoves: number;
 }
 
 /** A unit that is not ranked because no move of it can be proposed, with the reason and the figures behind it. */
@@ -787,7 +789,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
     omitted,
     unproposed,
     placed,
-    summary: { files: project.production.length, units: outcomes.length, placed: placed.length, omitted: omittedByReason, byRecommendation },
+    summary: { files: project.production.length, units: outcomes.length, placed: placed.length, omitted: omittedByReason, byRecommendation, blockedMoves: reported.filter((candidate) => candidate.recommendation === "move" && candidate.blockers.length > 0).length },
     metrics: structureMetricsOf(project, model),
   };
 }

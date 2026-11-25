@@ -303,6 +303,7 @@
   ],
   "schemaVersion": 1,
   "summary": {
+    "blockedMoves": 0,
     "byRecommendation": {
       "blocked": 3,
       "inline": 3,

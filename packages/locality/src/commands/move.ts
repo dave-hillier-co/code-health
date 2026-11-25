@@ -2,6 +2,7 @@ import { usageError } from "@code-health/cli-kit/errors";
 import type { Command, CommandOutput } from "@code-health/cli-kit/run-cli";
 import { treeFromRef } from "@code-health/parse/source-tree";
 import { readSettings } from "../config.ts";
+import { pathArguments } from "../path-arguments.ts";
 import { applyMove, isClean, moveMessage, textMentions } from "../move-apply.ts";
 import { goPackagesOf } from "../project.ts";
 import { planMove, type Refusal } from "../move-plan.ts";
@@ -28,7 +29,7 @@ export const command: Command = {
   async run(context): Promise<CommandOutput> {
     const settings = readSettings(context.config);
     if (context.positionals.length !== 1) throw usageError("usage: move <unit path> [--to <folder>] [--reason <text>] [--apply [--no-commit]]");
-    const unitPath = (context.positionals[0] as string).replace(/\/+$/, "");
+    const unitPath = pathArguments(context.repo.root, [context.positionals[0] as string])[0] as string;
     const to = context.values.to;
     const reason = context.values.reason;
     for (const [option, value] of [["to", to], ["reason", reason]] as const) {

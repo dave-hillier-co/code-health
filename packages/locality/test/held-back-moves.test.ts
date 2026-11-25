@@ -48,3 +48,13 @@ test("a unit of kind move that has blockers is in the blocked table with its unb
   expect(blockedTable).toMatch(/\| src\/far\/p\/q\/tool\.ts \| move \| \d+ \| \d+ \| src\/far\/p\/q\/inner\/core\.ts \|/);
   expect(blockedTable).toContain("Gain if the blockers were resolved (net distance removed)");
 });
+
+test("the analyse summary counts the moves that have blockers, which the report lists as blocked", async () => {
+  const { summary, results } = JSON.parse((await runLocality(repo.path, ["analyse", "--json", "--limit", "all"])).stdout) as {
+    summary: { byRecommendation: Record<string, number>; blockedMoves: number };
+    results: { recommendation: string; blockers: unknown[] }[];
+  };
+  expect(summary.blockedMoves).toBe(results.filter((row) => row.recommendation === "move" && row.blockers.length > 0).length);
+  expect(summary.blockedMoves).toBeGreaterThan(0);
+  expect(summary.blockedMoves).toBeLessThanOrEqual(summary.byRecommendation.move ?? 0);
+});

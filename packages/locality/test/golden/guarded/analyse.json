@@ -201,6 +201,7 @@
   ],
   "schemaVersion": 1,
   "summary": {
+    "blockedMoves": 0,
     "byRecommendation": {
       "review": 2
     },

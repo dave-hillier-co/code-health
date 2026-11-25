@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
@@ -240,4 +241,27 @@ test.each(Object.keys(ruleDescriptions))("explain %s prints the rule's summary a
   const run = await runLocality(repo.path, ["explain", rule]);
   expect(run.code).toBe(ExitCode.Success);
   expect(run.stdout).toBe(`${rule}: ${ruleDescriptions[rule]!.summary}\n\n${ruleDescriptions[rule]!.explanation}\n`);
+});
+
+test("an absolute path inside the repository selects the same rows as the relative path, through a symbolic link too", async () => {
+  const relative = await analyse("src/shared/utils");
+  expect(relative.rows.length).toBeGreaterThan(0);
+  for (const base of [repo.path, realpathSync(repo.path)]) {
+    const absolute = await analyse(join(base, "src/shared/utils"));
+    expect(absolute.rows.map((r) => r.path)).toEqual(relative.rows.map((r) => r.path));
+    expect(absolute.stdout).not.toContain(base);
+  }
+});
+
+test.each([["analyse"], ["scrutinise"]])("%s exits with a usage error for a path that matches no file, absolute or not", async (command) => {
+  for (const path of ["src/nothing-here", join(tmpdir(), "elsewhere-entirely/src")]) {
+    const run = await runLocality(repo.path, [command, path]);
+    expect(run.code).toBe(ExitCode.Usage);
+    expect(run.stderr).toContain("matches no file");
+  }
+});
+
+test("a path argument to a history-only run that matches no file is a usage error", async () => {
+  const run = await runLocality(repo.path, ["analyse", "--source", "history", "src/nothing-here"]);
+  expect(run.code).toBe(ExitCode.Usage);
 });
