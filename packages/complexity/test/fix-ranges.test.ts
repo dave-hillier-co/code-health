@@ -91,6 +91,7 @@ test("reads the new line ranges of each file of each commit, and whether the fil
   const parsed = parseDiffs(diff);
   expect(parsed.get(sha)!.get("src/a.ts")).toEqual({
     added: false,
+    oldBlob: "111",
     ranges: [
       { start: 3, count: 1 },
       { start: 10, count: 0 },

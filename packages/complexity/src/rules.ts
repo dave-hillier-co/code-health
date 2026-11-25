@@ -109,7 +109,7 @@ export const ruleDescriptions: Record<string, Rule> = {
       "a revert is not a fix. Each row lists the changes that matched, with the pattern, newest first, up to --evidence.",
       "A fix made on a branch before it merged was caught in review and is not a regression: reviewFixes counts those commits that changed the function, with reviewEvidence, and they are never in fixCommits.",
       "fixCommits is the landed changes that were fixes, unitRevisions is every landed change that touched the function, and fixShare is the first over the second.",
-      "Rows are sorted by fixCommits, then functions with at least fixes.minRevisions revisions before those labelled low evidence, then fixShare. A function in a commit that created its file counts as one revision and never as a fix.",
+      "Rows are sorted by fixCommits, then functions with at least fixes.minRevisions revisions before those labelled low evidence, then fixShare. A function in a commit that created its file, or a function a fix created, counts as one revision and never as a fix.",
       "A fix that changed only lines outside every function counts against the file, not a function, and is listed per file in the output.",
       "Read the header first. fixConvention says whether the landed changes' titles use a recognisable fix form (Conventional Commits types, a leading Fix or Fixes, issue references), with the form counts and the share of fixes beside it: when it says they",
       "probably do not, the counts are of the commits the patterns happened to match. The header also says how many commits were analysed and how many",

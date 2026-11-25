@@ -237,3 +237,31 @@ test("counts a landed change by its own title, and lists the fixes made on a bra
   expect(analysed.find((row) => row.unit === "reviewed")).toMatchObject({ fixCommits: 0, unitRevisions: 2, reviewFixes: 1 });
   expect(document.fixConvention).toMatchObject({ landedChanges: 4, fixes: 2, followsConvention: true });
 });
+
+test("a fix that adds a function does not count as a fix of the function it added, and still fixes a one-line function it rewrote", async () => {
+  const at = (day: number) => `2024-02-${String(day).padStart(2, "0")}T12:00:00+00:00`;
+  const parse = "export function parse(text: string): number {\n  return Number(text);\n}\n";
+  const rate = "export function rate(): number { return 5; }\n";
+  const repo = GitFixture.build([
+    { type: "commit", message: "Add parsing", date: at(1), changes: [{ op: "add", path: "src/parse.ts", content: `${parse}\n${rate}` }] },
+    {
+      type: "commit",
+      message: "Fix parsing of blank input",
+      date: at(2),
+      changes: [
+        {
+          op: "modify",
+          path: "src/parse.ts",
+          content: `export function parse(text: string): number {\n  return isBlank(text) ? 0 : Number(text);\n}\n\nexport function isBlank(text: string): boolean {\n  return text.trim() === "";\n}\n\nexport function rate(): number { return 6; }\n`,
+        },
+      ],
+    },
+  ]);
+  repos.push(repo);
+  const { rows } = await fixes(repo);
+  expect(rows.find((row) => row.unit === "parse")).toMatchObject({ fixCommits: 1, unitRevisions: 2 });
+  expect(rows.find((row) => row.unit === "rate")).toMatchObject({ fixCommits: 1, unitRevisions: 2 });
+  expect(rows.find((row) => row.unit === "isBlank")).toBeUndefined();
+  const analysed = JSON.parse((await runComplexity(repo.path, ["analyse", "--json", "--with-fixes", "--limit", "all"])).stdout).results as { unit: string; fixCommits: number; unitRevisions: number }[];
+  expect(analysed.find((row) => row.unit === "isBlank")).toMatchObject({ fixCommits: 0, unitRevisions: 1 });
+});

@@ -439,7 +439,7 @@
         },
         "unitRevisions": {
           "$ref": "#/$defs/count",
-          "description": "Landed changes in the analysed window that changed a line of the function, fixes included. A change that created the file counts once for each of its functions. The denominator of fixShare."
+          "description": "Landed changes in the analysed window that changed a line of the function, fixes included. A change that created the file counts once for each of its functions, and a fix that created a function counts once for it and not as a fix. The denominator of fixShare."
         },
         "fixShare": {
           "type": [

@@ -10,14 +10,18 @@ export interface ChangedRange {
 export interface FileDiff {
   /** The commit created the file, so every line is new and there is no earlier revision to have fixed. */
   added: boolean;
+  /** The blob of the file before the commit, from the diff's `index` line, when it names one. */
+  oldBlob?: string;
   ranges: ChangedRange[];
 }
 
 const COMMIT_LINE = /^[0-9a-f]{40}$/;
+const INDEX = /^index ([0-9a-f]+)\.\.[0-9a-f]+/;
+const NO_BLOB = /^0+$/;
 const HUNK = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/;
 
 /**
- * Parses the output of `git diff-tree --stdin -p -U0 -M`: for each commit a line with its id, then a diff against
+ * Parses the output of `git diff-tree --stdin -p -U0 -M --full-index`: for each commit a line with its id, then a diff against
  * its first parent. A path git quotes (a name with a quote, backslash or control character) is left out, so its changes
  * count for nothing, and a deleted file has no new revision to map.
  */
@@ -26,6 +30,7 @@ export function parseDiffs(output: string): Map<string, Map<string, FileDiff>> {
   let files: Map<string, FileDiff> | undefined;
   let file: FileDiff | undefined;
   let added = false;
+  let oldBlob: string | undefined;
   for (const line of output.split("\n")) {
     if (COMMIT_LINE.test(line)) {
       files = new Map();
@@ -34,13 +39,17 @@ export function parseDiffs(output: string): Map<string, Map<string, FileDiff>> {
     } else if (line.startsWith("diff --git ")) {
       file = undefined;
       added = false;
+      oldBlob = undefined;
     } else if (line.startsWith("new file mode")) {
       added = true;
+    } else if (INDEX.test(line)) {
+      const old = INDEX.exec(line)![1]!;
+      if (!NO_BLOB.test(old)) oldBlob = old;
     } else if (line.startsWith("+++ ")) {
       const target = line.slice(4).replace(/\t$/, "");
       file = undefined;
       if (files !== undefined && target.startsWith("b/")) {
-        file = { added, ranges: [] };
+        file = { added, ...(oldBlob === undefined ? {} : { oldBlob }), ranges: [] };
         files.set(target.slice(2), file);
       }
     } else if (file !== undefined) {

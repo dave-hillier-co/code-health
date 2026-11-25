@@ -25,7 +25,9 @@ computation.
    a fix pattern matched but an exclude pattern removed because it has a non-fix Conventional Commits type, or the fix was about typos, spelling, lint or formatting:
    it is counted in `fixesExcluded`. A fix made on a branch before it merged was caught in review, so it is not a regression:
    it is a fix during review (`reviewFixes`) and never a fix. A commit that created the file counts as one revision of each of its functions
-   and never as a fix.
+   and never as a fix. A fix that created a function counts as one revision of it and never as a fix of it: a function is
+   created by a commit when the revision before the commit has no function the matcher of step 4 pairs with it, so a function
+   renamed by the fix is still fixed by it.
 
 | Field | Meaning |
 |---|---|
