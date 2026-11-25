@@ -4,13 +4,13 @@ import { createRequire as __codeHealthCreateRequire } from "node:module"; import
 import {
   GrammarSet,
   cacheKeyOf
-} from "./chunk-NQYRJ3FN.mjs";
+} from "./chunk-TXZHYMY6.mjs";
 import {
   isConfigPath,
   isTestPath,
   resolveBySymbols,
   supportedAdapters
-} from "./chunk-YK5VO75Q.mjs";
+} from "./chunk-LS633N4T.mjs";
 
 // packages/parse/src/file-facts.ts
 var MAX_TREE_DEPTH = 1e3;
@@ -32,10 +32,33 @@ function nestsDeeperThan(root, limit) {
     cursor.delete();
   }
 }
+function firstSyntaxError(root) {
+  if (!root.hasError) return void 0;
+  let node = root;
+  for (; ; ) {
+    if (node.isMissing || node.type === "ERROR") break;
+    const child = node.children.find((candidate) => candidate.hasError || candidate.isMissing);
+    if (child === void 0) break;
+    node = child;
+  }
+  const at = { line: node.startPosition.row + 1, column: node.startPosition.column + 1 };
+  if (node.type === "ERROR") return { ...at, kind: "unexpected", text: node.text.split(/\r?\n/, 1)[0].slice(0, 40) };
+  return { ...at, kind: "missing", text: node.type };
+}
+function syntaxErrorAt(path, facts) {
+  return { path, ...facts.syntaxError ?? { line: 1, column: 1, kind: "unexpected", text: "" } };
+}
 function parseWith(adapter, grammar, source, options = {}) {
   const tree = grammar.parse(source);
   try {
-    if (!nestsDeeperThan(tree.rootNode, MAX_TREE_DEPTH)) return adapter.extract(tree.rootNode, options);
+    if (!nestsDeeperThan(tree.rootNode, MAX_TREE_DEPTH)) {
+      const facts = adapter.extract(tree.rootNode, options);
+      if (facts.hasSyntaxErrors && facts.syntaxError === void 0) {
+        const first = firstSyntaxError(tree.rootNode);
+        if (first !== void 0) facts.syntaxError = first;
+      }
+      return facts;
+    }
   } finally {
     tree.delete();
   }
@@ -106,9 +129,16 @@ var ImportModel = class {
   addUnresolved(from, line, specifier, reason) {
     this.unresolved.set(`${from}\0${line}\0${specifier}\0${reason}`, { from, line, specifier, reason });
   }
-  addImportEdge(from, to, kind, typeOnly) {
+  /** Records an import edge. It is `test` while every statement behind it is test code. */
+  addImportEdge(from, to, kind, typeOnly, test = false) {
     if (from === to && this.resolver.dropsSelfDependencies === true) return;
-    this.importEdges.set(`${from}\0${to}\0${kind}\0${typeOnly}`, { from, to, kind, typeOnly });
+    const key = `${from}\0${to}\0${kind}\0${typeOnly}`;
+    const existing = this.importEdges.get(key);
+    if (existing !== void 0) {
+      if (!test) delete existing.test;
+      return;
+    }
+    this.importEdges.set(key, { from, to, kind, typeOnly, ...test ? { test: true } : {} });
   }
   addExternal(from, packageName, typeOnly) {
     this.externals.set(`${from}\0${packageName}\0${typeOnly}`, { from, packageName, typeOnly });
@@ -176,34 +206,35 @@ var ImportModel = class {
       if (target.kind === "external") this.addExternal(path, target.packageName, imported.typeOnly);
       if (target.kind === "not-found") this.addUnresolved(path, imported.line, imported.specifier, "not-found");
       if (target.kind !== "file") continue;
-      this.addImportEdge(path, target.path, imported.kind === "require" ? "require" : "import", imported.typeOnly);
-      if (imported.bindings.length === 0) this.touch(path, target.path);
+      const test = imported.test === true;
+      this.addImportEdge(path, target.path, imported.kind === "require" ? "require" : "import", imported.typeOnly, test);
+      if (imported.bindings.length === 0) this.touch(path, target.path, test);
       for (const binding of imported.bindings) {
         const uses = file.references.filter((reference) => reference.local === binding.local);
         const passThrough = uses.length === 0 && exportedLocals.has(binding.local);
         if (passThrough) {
           const exposed = binding.imported === "*" ? void 0 : this.resolveExport(target.path, binding.imported, /* @__PURE__ */ new Set());
-          if (exposed?.status === "namespace" && exposed.submodule === true) this.addImportEdge(path, exposed.file, "import", imported.typeOnly);
+          if (exposed?.status === "namespace" && exposed.submodule === true) this.addImportEdge(path, exposed.file, "import", imported.typeOnly, test);
           continue;
         }
         if (binding.imported === "*") {
-          this.useNamespace(path, target.path, uses, unitNames);
+          this.useNamespace(path, target.path, uses, unitNames, test);
           continue;
         }
         const result = this.resolveExport(target.path, binding.imported, /* @__PURE__ */ new Set());
         switch (result.status) {
           case "defined":
-            this.touch(path, result.file);
+            this.touch(path, result.file, test);
             for (const use of uses) {
               this.consume(path, use, unitNames, result.file, result.exportName, result.symbol, false);
             }
             break;
           case "namespace":
-            if (result.submodule === true) this.addImportEdge(path, result.file, "import", imported.typeOnly);
-            this.useNamespace(path, result.file, uses, unitNames);
+            if (result.submodule === true) this.addImportEdge(path, result.file, "import", imported.typeOnly, test);
+            this.useNamespace(path, result.file, uses, unitNames, test);
             break;
           case "opaque":
-            this.touch(path, result.file);
+            this.touch(path, result.file, test);
             for (const use of uses) this.consume(path, use, unitNames, result.file, binding.imported, void 0, false);
             break;
           case "missing":
@@ -215,19 +246,23 @@ var ImportModel = class {
       }
     }
   }
-  /** Records that a file depends on another, even when nothing in it is referenced. */
-  touch(from, to) {
+  /**
+   * Records that a file depends on another, even when nothing in it is referenced. The edge is `test` when the file is
+   * a test, or while only its test code depends on the other.
+   */
+  touch(from, to, test = false) {
     if (from === to && this.resolver.dropsSelfDependencies === true) return { from, to, kind: "reference", calls: 0, references: 0 };
     const key = `${from}\0${to}`;
+    const testUse = test || this.isTest(from);
     let edge = this.fileEdges.get(key);
     if (!edge) {
-      edge = { from, to, kind: this.isTest(from) ? "test" : "reference", calls: 0, references: 0 };
+      edge = { from, to, kind: testUse ? "test" : "reference", calls: 0, references: 0 };
       this.fileEdges.set(key, edge);
-    }
+    } else if (!testUse && edge.kind === "test") edge.kind = "reference";
     return edge;
   }
-  useNamespace(from, namespace, uses, unitNames) {
-    if (uses.length === 0) this.touch(from, namespace);
+  useNamespace(from, namespace, uses, unitNames, test) {
+    if (uses.length === 0) this.touch(from, namespace, test);
     for (const use of uses) {
       if (use.member === void 0) {
         this.consume(from, use, unitNames, namespace, "*", void 0, false);
@@ -251,16 +286,17 @@ var ImportModel = class {
     if (from === to && this.resolver.dropsSelfDependencies === true) return;
     const direct = use.member === void 0 || memberOfNamespace;
     const kind = direct ? use.kind : "reference";
-    const edge = this.touch(from, to);
+    const testUse = this.isTest(from) || use.test === true;
+    const edge = this.touch(from, to, testUse);
     if (kind === "call") edge.calls++;
     else edge.references++;
-    if (!this.isTest(from) && kind === "call") edge.kind = "call";
+    if (!testUse && kind === "call") edge.kind = "call";
     let fromUnit = use.inUnit;
     while (fromUnit !== void 0 && !unitNames.has(fromUnit)) {
       const dot = fromUnit.lastIndexOf(".");
       fromUnit = dot < 0 ? void 0 : fromUnit.slice(0, dot);
     }
-    const consumerKind = this.isTest(from) ? "test" : kind;
+    const consumerKind = testUse ? "test" : kind;
     const key = `${from}\0${fromUnit ?? ""}\0${to}\0${toSymbol ?? toExport}\0${consumerKind}`;
     const existing = this.consumers.get(key);
     if (existing) {
@@ -396,11 +432,15 @@ async function analyseTree(tree, options = {}) {
 function assemble(facts, resolved) {
   const units = [];
   const filesWithSyntaxErrors = [];
+  const syntaxErrors = [];
   const filesWithMacroCode = [];
   const generatedFiles = [];
   for (const [path, fileFacts] of facts) {
     if (fileFacts.generated === true) generatedFiles.push(path);
-    if (fileFacts.hasSyntaxErrors) filesWithSyntaxErrors.push(path);
+    if (fileFacts.hasSyntaxErrors) {
+      filesWithSyntaxErrors.push(path);
+      syntaxErrors.push(syntaxErrorAt(path, fileFacts));
+    }
     if (fileFacts.macroGenerated !== void 0) filesWithMacroCode.push(path);
     const exportedLocals = exportedUnitNames(fileFacts);
     for (const unit of fileFacts.units) {
@@ -437,6 +477,7 @@ function assemble(facts, resolved) {
     ),
     unresolved: all("unresolved").sort((a, b) => compareUtf8(a.from, b.from) || a.line - b.line || compareUtf8(a.specifier ?? "", b.specifier ?? "")),
     filesWithSyntaxErrors,
+    syntaxErrors,
     filesWithMacroCode,
     generatedFiles,
     ...resolved.some((group) => group.includeResolution !== void 0) ? { includeResolution: resolved.find((group) => group.includeResolution !== void 0).includeResolution } : {}

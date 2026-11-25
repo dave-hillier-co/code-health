@@ -171,6 +171,16 @@ function droppedCounts() {
 // packages/history/src/file-class.ts
 import { spawn as spawn2 } from "node:child_process";
 
+// packages/cli-kit/src/generated-patterns.ts
+var BUILTIN_GENERATED_GLOBS = ["*.min.js", "*.min.css", "generated"];
+var configured = [];
+function useGeneratedPatterns(patterns) {
+  configured = [...patterns];
+}
+function generatedPatterns() {
+  return configured;
+}
+
 // packages/history/src/git.ts
 import { spawn } from "node:child_process";
 var GitError = class extends Error {
@@ -315,6 +325,18 @@ function isInVendorDirectory(path) {
   parts.pop();
   return parts.some((part) => VENDOR_DIRECTORIES.includes(part));
 }
+function generatedPathClassifier(patterns = generatedPatterns()) {
+  const builtin = compileGlobs(BUILTIN_GENERATED_GLOBS);
+  const entries = patterns.map((pattern) => pattern.trim()).filter((pattern) => pattern !== "" && !pattern.startsWith("#")).map(
+    (pattern) => pattern.startsWith("!") ? { generated: false, matches: compileGlobs([pattern.slice(1)]) } : { generated: true, matches: compileGlobs([pattern]) }
+  );
+  return (path) => {
+    for (let index = entries.length - 1; index >= 0; index--) {
+      if (entries[index].matches(path)) return entries[index].generated;
+    }
+    return builtin(path) ? true : void 0;
+  };
+}
 var verdicts = /* @__PURE__ */ new Map();
 async function readBlobHeads(repoPath, blobs) {
   const heads = /* @__PURE__ */ new Map();
@@ -445,11 +467,14 @@ async function classifyFiles(repoPath, ref, entries, treeFiles, options = {}) {
   const vendored = new Set(attributes.vendored);
   for (const path of paths) if (isInVendorDirectory(path) && !attributes.notVendored.has(path)) vendored.add(path);
   const generated = new Set(attributes.generated);
+  const byPath = generatedPathClassifier();
   const candidate = options.headerCandidate ?? maybeText;
   const toRead = [];
   for (const { path, blob } of entries) {
     if (generated.has(path) || vendored.has(path) || attributes.notGenerated.has(path)) continue;
-    if (typeof blob === "string" && candidate(path)) toRead.push({ path, blob });
+    const verdict = byPath(path);
+    if (verdict === true) generated.add(path);
+    else if (verdict === void 0 && typeof blob === "string" && candidate(path)) toRead.push({ path, blob });
   }
   for (const path of await generatedByHeader(repoPath, toRead, options.read)) generated.add(path);
   return { generated, vendored };
@@ -594,6 +619,7 @@ export {
   recordDropped,
   resetDropped,
   droppedCounts,
+  useGeneratedPatterns,
   GitError,
   runGit,
   gitVersion,

@@ -1459,11 +1459,11 @@ function lastName(node) {
 }
 function annotation(node) {
   const names = /* @__PURE__ */ new Set();
-  const visit2 = (current) => {
+  const visit3 = (current) => {
     if (current.type === "type_identifier") names.add(current.text);
-    for (const child of current.namedChildren) visit2(child);
+    for (const child of current.namedChildren) visit3(child);
   };
-  if (node !== null) visit2(node);
+  if (node !== null) visit3(node);
   return { callback: false, names: [...names].sort() };
 }
 function parametersOf(list2) {
@@ -1499,7 +1499,7 @@ function importOf(node) {
 }
 function extractFileCensus(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
-  const visit2 = (node, className) => {
+  const visit3 = (node, className) => {
     const line = node.startPosition.row + 1;
     let nextClass = className;
     switch (node.type) {
@@ -1572,9 +1572,9 @@ function extractFileCensus(root) {
       }
       default:
     }
-    for (const child of node.children) visit2(child, nextClass);
+    for (const child of node.children) visit3(child, nextClass);
   };
-  visit2(root, null);
+  visit3(root, null);
   return facts;
 }
 
@@ -1745,12 +1745,12 @@ var bindingParents = /* @__PURE__ */ new Set([
 function modifierWords(node) {
   const modifiers = node.namedChildren.find((child) => child.type === "modifiers");
   const words = /* @__PURE__ */ new Set();
-  const visit2 = (current) => {
+  const visit3 = (current) => {
     if (current.type === "annotation") return;
     if (current.childCount === 0 && !current.isNamed) words.add(current.type);
-    for (const child of current.children) visit2(child);
+    for (const child of current.children) visit3(child);
   };
-  if (modifiers !== void 0) visit2(modifiers);
+  if (modifiers !== void 0) visit3(modifiers);
   return words;
 }
 function startRow2(node) {
@@ -2056,12 +2056,12 @@ function lastName2(node) {
 function annotation2(node) {
   const names = /* @__PURE__ */ new Set();
   let callback = false;
-  const visit2 = (current) => {
+  const visit3 = (current) => {
     if (current.type === "user_type") for (const name of identifiersOf(current).slice(-1)) names.add(name);
     if (current.type === "function_type") callback = true;
-    for (const child of current.namedChildren) visit2(child);
+    for (const child of current.namedChildren) visit3(child);
   };
-  if (node !== null) visit2(node);
+  if (node !== null) visit3(node);
   return { callback, names: [...names].sort() };
 }
 function typeOf(parameter) {
@@ -2089,7 +2089,7 @@ function heritageOf2(node) {
 }
 function extractFileCensus2(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
-  const visit2 = (node, className) => {
+  const visit3 = (node, className) => {
     const line = node.startPosition.row + 1;
     let nextClass = className;
     switch (node.type) {
@@ -2156,9 +2156,9 @@ function extractFileCensus2(root) {
       }
       default:
     }
-    for (const child of node.children) visit2(child, nextClass);
+    for (const child of node.children) visit3(child, nextClass);
   };
-  visit2(root, null);
+  visit3(root, null);
   return facts;
 }
 
@@ -2305,13 +2305,13 @@ function lastName3(node) {
 function annotation3(node) {
   const names = /* @__PURE__ */ new Set();
   let callback = false;
-  const visit2 = (current, insideObject) => {
+  const visit3 = (current, insideObject) => {
     if (current.type === "type_identifier") names.add(current.text);
     if (current.type === "function_type" && !insideObject) callback = true;
     const nested = insideObject || current.type === "object_type";
-    for (const child of current.namedChildren) visit2(child, nested);
+    for (const child of current.namedChildren) visit3(child, nested);
   };
-  if (node) visit2(node, false);
+  if (node) visit3(node, false);
   return { callback, names: [...names].sort() };
 }
 function parametersOf3(list2) {
@@ -2351,7 +2351,7 @@ function heritageOf3(node) {
 }
 function extractFileCensus3(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
-  const visit2 = (node, className) => {
+  const visit3 = (node, className) => {
     const line = node.startPosition.row + 1;
     let nextClass = className;
     switch (node.type) {
@@ -2450,9 +2450,9 @@ function extractFileCensus3(root) {
         break;
       }
     }
-    for (const child of node.children) visit2(child, nextClass);
+    for (const child of node.children) visit3(child, nextClass);
   };
-  visit2(root, null);
+  visit3(root, null);
   return facts;
 }
 
@@ -3192,7 +3192,7 @@ var statementWords = /* @__PURE__ */ new Set(["abstract", "as", "satisfies"]);
 var afterStatementWord = /^\s*(\+\+|--|[-+*/%&|^]?=|\*\*=|\.|\(|\[|,|;|\)|$)/;
 function typescriptRepairs(root, source) {
   const offsets = /* @__PURE__ */ new Set();
-  const visit2 = (node) => {
+  const visit3 = (node) => {
     if (!node.hasError) return;
     if (node.type === "ERROR") {
       const start = node.startIndex;
@@ -3204,9 +3204,9 @@ function typescriptRepairs(root, source) {
         else if (statementWords.has(word) && afterStatementWord.test(rest)) offsets.add(start);
       }
     }
-    for (const child of node.children) visit2(child);
+    for (const child of node.children) visit3(child);
   };
-  visit2(root);
+  visit3(root);
   return [...offsets].sort((a, b) => a - b).map((offset) => ({ offset, character: "_" }));
 }
 
@@ -4385,7 +4385,7 @@ function extractFileCensus4(root) {
     if (declared.type === "event_declaration") events.add(declared.childForFieldName("name")?.text ?? "");
     else for (const declarator of declared.descendantsOfType("variable_declarator")) events.add(declarator.childForFieldName("name")?.text ?? "");
   }
-  const visit2 = (node, className) => {
+  const visit3 = (node, className) => {
     const line = node.startPosition.row + 1;
     let nextClass = className;
     switch (node.type) {
@@ -4451,9 +4451,9 @@ function extractFileCensus4(root) {
       }
       default:
     }
-    for (const child of node.namedChildren) visit2(child, nextClass);
+    for (const child of node.namedChildren) visit3(child, nextClass);
   };
-  visit2(root, null);
+  visit3(root, null);
   return facts;
 }
 function isDictionary(node, type) {
@@ -4969,15 +4969,15 @@ function lastName4(node) {
 function typeFact(type, functionPointer) {
   const names = /* @__PURE__ */ new Set();
   let callback = functionPointer;
-  const visit2 = (current) => {
+  const visit3 = (current) => {
     if (current.type === "type_identifier") {
       names.add(current.text);
       if (current.text === "function" && current.parent?.type === "template_type") callback = true;
     }
     if (current.type === "abstract_function_declarator" || current.type === "function_declarator") callback = true;
-    for (const child of current.namedChildren) visit2(child);
+    for (const child of current.namedChildren) visit3(child);
   };
-  if (type !== null) visit2(type);
+  if (type !== null) visit3(type);
   return { callback, names: [...names].sort() };
 }
 function parameterFacts(list2) {
@@ -5019,7 +5019,7 @@ function isFunctionTypeAlias(type) {
 }
 function extractFileCensus5(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
-  const visit2 = (node, className, atFileLevel) => {
+  const visit3 = (node, className, atFileLevel) => {
     const line = node.startPosition.row + 1;
     let nextClass = className;
     let nextFileLevel = atFileLevel;
@@ -5140,7 +5140,7 @@ function extractFileCensus5(root) {
       default:
         nextFileLevel = false;
     }
-    for (const child of node.children) visit2(child, nextClass, nextFileLevel);
+    for (const child of node.children) visit3(child, nextClass, nextFileLevel);
   };
   const collectMap = (node, line) => {
     const type = field3(node, "type");
@@ -5153,7 +5153,7 @@ function extractFileCensus5(root) {
       if (current !== null && registryName5.test(current.text)) facts.keyedMaps.push({ line, name: current.text });
     }
   };
-  visit2(root, null, true);
+  visit3(root, null, true);
   return facts;
 }
 
@@ -7246,14 +7246,14 @@ function receiverName2(node) {
 function annotation4(node) {
   const names = /* @__PURE__ */ new Set();
   let callback = false;
-  const visit2 = (current) => {
+  const visit3 = (current) => {
     if (current.type === "identifier") {
       names.add(current.text);
       if (current.text === "Callable") callback = true;
     }
-    for (const child of current.namedChildren) visit2(child);
+    for (const child of current.namedChildren) visit3(child);
   };
-  if (node !== null) visit2(node);
+  if (node !== null) visit3(node);
   return { callback, names: [...names].sort() };
 }
 function parametersOf5(fn) {
@@ -7295,7 +7295,7 @@ function isFunctionType(value) {
 }
 function extractFileCensus6(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
-  const visit2 = (node, owner) => {
+  const visit3 = (node, owner) => {
     const line = node.startPosition.row + 1;
     let nextOwner = owner;
     switch (node.type) {
@@ -7373,9 +7373,9 @@ function extractFileCensus6(root) {
       }
       default:
     }
-    for (const child of node.children) visit2(child, nextOwner);
+    for (const child of node.children) visit3(child, nextOwner);
   };
-  visit2(root, null);
+  visit3(root, null);
   return facts;
 }
 
@@ -7840,13 +7840,13 @@ function lastName6(node) {
 function annotation5(node) {
   const names = /* @__PURE__ */ new Set();
   let callback = false;
-  const visit2 = (current, inside) => {
+  const visit3 = (current, inside) => {
     if (current.type === "type_identifier") names.add(current.text);
     if (current.type === "function_type" && !inside) callback = true;
     const nested = inside || current.type === "struct_type" || current.type === "interface_type";
-    for (const child of current.namedChildren) visit2(child, nested);
+    for (const child of current.namedChildren) visit3(child, nested);
   };
-  if (node !== null) visit2(node, false);
+  if (node !== null) visit3(node, false);
   return { callback, names: [...names].sort() };
 }
 function parametersOf6(list2) {
@@ -7896,7 +7896,7 @@ function extractFileCensus7(root) {
     const name = child.childForFieldName("name")?.text ?? "";
     if (name.startsWith("New")) constructors.set(name, parametersOf6(child.childForFieldName("parameters")).flatMap((parameter) => parameter.type.names));
   }
-  const visit2 = (node) => {
+  const visit3 = (node) => {
     const line = node.startPosition.row + 1;
     switch (node.type) {
       case "import_spec": {
@@ -7969,9 +7969,9 @@ function extractFileCensus7(root) {
       }
       default:
     }
-    for (const child of node.namedChildren) visit2(child);
+    for (const child of node.namedChildren) visit3(child);
   };
-  visit2(root);
+  visit3(root);
   return facts;
 }
 
@@ -8591,24 +8591,24 @@ var Extractor7 = class {
     const type = node.childForFieldName("type");
     if (type !== null) this.walk(type, context, node, "type");
     const keysAreValues = type !== null && ["map_type", "slice_type", "array_type", "implicit_length_array_type"].includes(type.type);
-    const visit2 = (literal) => {
+    const visit3 = (literal) => {
       for (const element2 of literal.namedChildren) {
         if (element2.type === "keyed_element") {
           const key = element2.childForFieldName("key");
           const value = element2.childForFieldName("value");
           const bareKey = key?.namedChildren.length === 1 && key.namedChildren[0]?.type === "identifier";
-          if (key !== null && (keysAreValues || !bareKey)) this.walkElement(key, context, visit2);
-          if (value !== null) this.walkElement(value, context, visit2);
-        } else this.walkElement(element2, context, visit2);
+          if (key !== null && (keysAreValues || !bareKey)) this.walkElement(key, context, visit3);
+          if (value !== null) this.walkElement(value, context, visit3);
+        } else this.walkElement(element2, context, visit3);
       }
     };
     const body = node.childForFieldName("body");
-    if (body !== null) visit2(body);
+    if (body !== null) visit3(body);
   }
-  walkElement(element2, context, visit2) {
+  walkElement(element2, context, visit3) {
     const inner2 = element2.type === "literal_element" ? element2.namedChildren : [element2];
     for (const child of inner2) {
-      if (child.type === "literal_value") visit2(child);
+      if (child.type === "literal_value") visit3(child);
       else this.walk(child, context, element2, null);
     }
   }
@@ -9168,13 +9168,24 @@ var rustMetricRules = {
   parameterCounts: parameterCounts7
 };
 
-// packages/parse/src/languages/rust/extract-facts.ts
-var extractorVersion4 = 3;
-function visibilityOf(node) {
-  const modifier = node.namedChildren.find((child) => child.type === "visibility_modifier");
-  if (modifier === void 0) return "private";
-  return modifier.namedChildren.length === 0 ? "public" : "restricted";
-}
+// packages/parse/src/languages/rust/test-code.ts
+var itemKinds = /* @__PURE__ */ new Set([
+  "function_item",
+  "function_signature_item",
+  "mod_item",
+  "impl_item",
+  "struct_item",
+  "union_item",
+  "enum_item",
+  "trait_item",
+  "type_item",
+  "const_item",
+  "static_item",
+  "use_declaration",
+  "macro_definition",
+  "macro_invocation",
+  "extern_crate_declaration"
+]);
 var isComment3 = (node) => node.type === "line_comment" || node.type === "block_comment";
 function attributesOf(node) {
   const out = [];
@@ -9183,11 +9194,67 @@ function attributesOf(node) {
   }
   return out;
 }
+function isTestItem(node) {
+  return attributesOf(node).some((item) => {
+    const attribute2 = item.namedChildren.find((child) => child.type === "attribute");
+    const name = attribute2?.namedChildren[0]?.text.replace(/\s+/g, "");
+    if (attribute2 === void 0 || name === void 0) return false;
+    if (/^(\w+::)*test$/.test(name)) return true;
+    if (name !== "cfg") return false;
+    const args = attribute2.childForFieldName("arguments")?.text;
+    return args !== void 0 && cfgRequiresTest(args);
+  });
+}
+function itemStartLine(node) {
+  const attributes = attributesOf(node);
+  return (attributes.at(-1) ?? node).startPosition.row + 1;
+}
+function cfgRequiresTest(argumentText) {
+  const tokens2 = argumentText.match(/"(?:\\.|[^"\\])*"|[A-Za-z_][A-Za-z0-9_]*|[(),=]/g) ?? [];
+  let at = 0;
+  const parse = () => {
+    const name = tokens2[at++];
+    if (name === void 0 || !/^[A-Za-z_]/.test(name)) return void 0;
+    if (tokens2[at] === "=") {
+      at += 2;
+      return { name, args: void 0, value: true };
+    }
+    if (tokens2[at] !== "(") return { name, args: void 0, value: false };
+    at++;
+    const args = [];
+    while (at < tokens2.length && tokens2[at] !== ")") {
+      const arg = parse();
+      if (arg === void 0) return void 0;
+      args.push(arg);
+      if (tokens2[at] === ",") at++;
+    }
+    at++;
+    return { name, args, value: false };
+  };
+  if (tokens2[at++] !== "(") return false;
+  const predicate = parse();
+  return predicate !== void 0 && requiresTest(predicate);
+}
+function requiresTest(predicate) {
+  if (predicate.args === void 0) return predicate.name === "test" && !predicate.value;
+  if (predicate.name === "all") return predicate.args.some(requiresTest);
+  if (predicate.name === "any") return predicate.args.length > 0 && predicate.args.every(requiresTest);
+  return false;
+}
+
+// packages/parse/src/languages/rust/extract-facts.ts
+var extractorVersion4 = 5;
+function visibilityOf(node) {
+  const modifier = node.namedChildren.find((child) => child.type === "visibility_modifier");
+  if (modifier === void 0) return "private";
+  return modifier.namedChildren.length === 0 ? "public" : "restricted";
+}
+var isComment4 = (node) => node.type === "line_comment" || node.type === "block_comment";
 function attributeNamed(node, name) {
   return attributesOf(node).map((item) => item.namedChildren.find((child) => child.type === "attribute")).find((attribute2) => attribute2?.namedChildren[0]?.text === name);
 }
-function isTestItem(node) {
-  return attributesOf(node).some((item) => /^#\[\s*(cfg\s*\(\s*test\s*\)|(\w+::)*test(\s*\(.*\))?)\s*\]$/s.test(item.text.trim()));
+function isProcMacro(node) {
+  return attributesOf(node).some((item) => /^#\[\s*proc_macro(_attribute|_derive)?\b/.test(item.text.trim()));
 }
 function pathAttribute(node) {
   const value = attributeNamed(node, "path")?.childForFieldName("value");
@@ -9304,6 +9371,7 @@ var Extractor8 = class {
   nameCounts = /* @__PURE__ */ new Map();
   inlineModules = /* @__PURE__ */ new Set();
   inlinePaths = [];
+  testRanges = [];
   codeRows;
   root;
   explain;
@@ -9335,8 +9403,9 @@ var Extractor8 = class {
       reexports: this.reexports,
       exports: this.exports,
       references: this.references.filter((reference) => locals.has(reference.local)),
-      nodes: nodeCount(root, (node) => isComment3(node) || node.type === "use_declaration") - 1,
-      hasSyntaxErrors: root.hasError
+      nodes: nodeCount(root, (node) => isComment4(node) || node.type === "use_declaration") - 1,
+      hasSyntaxErrors: root.hasError,
+      ...this.testRanges.length === 0 ? {} : { testRanges: this.testRanges }
     };
   }
   /**
@@ -9345,26 +9414,30 @@ var Extractor8 = class {
    */
   inlineCrates(root, locals) {
     const modules = new Set(root.descendantsOfType("mod_item").map((item) => item.childForFieldName("name")?.text));
-    const known = /* @__PURE__ */ new Set();
+    const known = /* @__PURE__ */ new Map();
     for (const path of this.inlinePaths) {
       const [first] = path.segments;
       if (locals.has(first) || modules.has(first) || primitives.has(first) || builtinCrates.has(first)) continue;
       let item = path.segments.findIndex((segment, index) => index > 0 && upper.test(segment));
       if (item < 0) item = path.segments.length - 1;
       const local = path.segments.slice(0, item + 1).join("::");
-      if (!known.has(local)) {
-        known.add(local);
-        this.imports.push({ specifier: path.segments.slice(0, item).join("::"), kind: "import", typeOnly: false, line: path.line, bindings: [{ imported: path.segments[item], local, typeOnly: false }] });
-      }
+      const imported = known.get(local);
+      if (imported === void 0) {
+        const fact2 = { specifier: path.segments.slice(0, item).join("::"), kind: "import", typeOnly: false, line: path.line, bindings: [{ imported: path.segments[item], local, typeOnly: false }] };
+        if (path.test) fact2.test = true;
+        known.set(local, fact2);
+        this.imports.push(fact2);
+      } else if (!path.test) delete imported.test;
       const member = path.segments[item + 1];
       const fact = { local, kind: path.kind, line: path.line };
       if (member !== void 0) fact.member = member;
       if (path.unit !== void 0) fact.inUnit = path.unit;
+      if (path.test) fact.test = true;
       this.references.push(fact);
     }
   }
   inlinePath(segments, line, kind, context) {
-    if (segments.length >= 2 && /^[a-z_]/.test(segments[0])) this.inlinePaths.push({ segments, line, kind, unit: context.unit });
+    if (segments.length >= 2 && /^[a-z_]/.test(segments[0])) this.inlinePaths.push({ segments, line, kind, unit: context.unit, test: context.inTests === true });
   }
   /** The modules a scope declares, so a path that starts with one is relative to the scope. */
   declaredMods(scope) {
@@ -9411,6 +9484,7 @@ var Extractor8 = class {
       if (forwarded !== void 0) unit.passThrough = forwarded;
       if (measured.recursive) unit.recursive = true;
       if (memberOf !== void 0 && context.implementsTrait === true) unit.override = true;
+      if (memberOf === void 0 && isProcMacro(node)) unit.entryPoint = true;
       if (memberOf !== void 0 && context.implementsTrait !== true && visibilityOf(node) !== "public") unit.hidden = true;
       if (measured.increments !== void 0) unit.increments = measured.increments;
     }
@@ -9426,7 +9500,12 @@ var Extractor8 = class {
     if (!exposed) fact.internal = true;
     (context.mods.length === 0 ? this.exports : this.innerExports).push(fact);
   }
-  visit(node, context) {
+  visit(node, outer) {
+    let context = outer;
+    if (outer.inTests !== true && itemKinds.has(node.type) && isTestItem(node)) {
+      context = { ...outer, inTests: true };
+      this.testRanges.push({ startLine: itemStartLine(node), endLine: node.endPosition.row + 1 });
+    }
     switch (node.type) {
       case "use_declaration":
         this.useDeclaration(node, context);
@@ -9464,7 +9543,7 @@ var Extractor8 = class {
         const owner = typeName(node.childForFieldName("type")) ?? node.childForFieldName("type")?.text.replace(/\s+/g, " ") ?? "_";
         const body = node.childForFieldName("body");
         this.visitChildrenExcept(node, body, { ...context, owner: void 0 });
-        if (body !== null) this.visitScope(body, { ...context, owner, implementsTrait: node.childForFieldName("trait") !== null, ...isTestItem(node) ? { inTests: true } : {} });
+        if (body !== null) this.visitScope(body, { ...context, owner, implementsTrait: node.childForFieldName("trait") !== null });
         return;
       }
       case "type_item":
@@ -9560,13 +9639,13 @@ var Extractor8 = class {
     const body = node.childForFieldName("body");
     if (body !== null) {
       this.export(node, name, void 0, "namespace", visibility, context);
-      this.visitScope(body, { ...context, mods: [...context.mods, name], exposed: context.exposed && visibility === "public", ...isTestItem(node) ? { inTests: true } : {} });
+      this.visitScope(body, { ...context, mods: [...context.mods, name], exposed: context.exposed && visibility === "public" });
       return;
     }
     const written = pathAttribute(node);
     const specifier = `mod ${[...context.mods, name].join("::")}${written === void 0 ? "" : `@${written}`}`;
     const line = node.startPosition.row + 1;
-    this.imports.push({ specifier, kind: "import", typeOnly: false, line, bindings: [{ imported: "*", local: name, typeOnly: false }] });
+    this.imports.push({ specifier, kind: "import", typeOnly: false, line, bindings: [{ imported: "*", local: name, typeOnly: false }], ...context.inTests === true ? { test: true } : {} });
     this.export(node, name, name, "namespace", visibility, context);
   }
   useDeclaration(node, context) {
@@ -9580,7 +9659,7 @@ var Extractor8 = class {
       if (leaf.glob) {
         const specifier2 = segments.join("::");
         if (visibility === "public" && context.mods.length === 0) this.reexports.push({ specifier: specifier2, typeOnly: false, line: leaf.line, imported: "*", exported: "*" });
-        else this.imports.push({ specifier: specifier2, kind: "import", typeOnly: false, line: leaf.line, bindings: [] });
+        else this.imports.push({ specifier: specifier2, kind: "import", typeOnly: false, line: leaf.line, bindings: [], ...context.inTests === true ? { test: true } : {} });
         continue;
       }
       let item = segments.findIndex((segment, index) => index > 0 && upper.test(segment));
@@ -9591,7 +9670,7 @@ var Extractor8 = class {
       const imported = segments[item];
       const local = leaf.alias ?? segments.at(-1);
       const bindings = local === "_" ? [] : [{ imported, local, typeOnly: false }];
-      this.imports.push({ specifier, kind: "import", typeOnly: false, line: leaf.line, bindings });
+      this.imports.push({ specifier, kind: "import", typeOnly: false, line: leaf.line, bindings, ...context.inTests === true ? { test: true } : {} });
       if (visibility !== "private" && bindings.length > 0 && context.owner === void 0 && context.unit === void 0) {
         const fact = { exported: local, local, line: leaf.line };
         if (visibility === "restricted" || !context.exposed) fact.internal = true;
@@ -9656,6 +9735,7 @@ var Extractor8 = class {
     const fact = { local, kind, line: node.startPosition.row + 1 };
     if (member !== void 0) fact.member = member;
     if (context.unit !== void 0) fact.inUnit = context.unit;
+    if (context.inTests === true) fact.test = true;
     this.references.push(fact);
   }
   /** A path used as a value or a type: its first name is the reference, the next one its member. */
@@ -9755,19 +9835,19 @@ function nameOf2(node) {
 function annotation6(node, callbackParameters) {
   const names = /* @__PURE__ */ new Set();
   let callback = false;
-  const visit2 = (current) => {
+  const visit3 = (current) => {
     if (current.type === "type_identifier") {
       names.add(current.text);
       if (callbackParameters.has(current.text)) callback = true;
     }
     if (current.type === "function_type") callback = true;
-    for (const child of current.namedChildren) visit2(child);
+    for (const child of current.namedChildren) visit3(child);
   };
-  if (node !== null) visit2(node);
+  if (node !== null) visit3(node);
   return { callback, names: [...names].sort() };
 }
-function callbackGenerics(fn) {
-  const names = /* @__PURE__ */ new Set();
+function callbackGenerics(fn, inherited = /* @__PURE__ */ new Set()) {
+  const names = new Set(inherited);
   for (const parameter of field5(fn, "type_parameters")?.namedChildren ?? []) {
     const bounds = field5(parameter, "bounds");
     const name = field5(parameter, "name")?.text;
@@ -9779,8 +9859,8 @@ function callbackGenerics(fn) {
   }
   return names;
 }
-function parametersOf7(fn) {
-  const generics = callbackGenerics(fn);
+function parametersOf7(fn, inherited) {
+  const generics = callbackGenerics(fn, inherited);
   const out = [];
   for (const parameter of field5(fn, "parameters")?.namedChildren ?? []) {
     if (parameter.type !== "parameter") continue;
@@ -9795,12 +9875,19 @@ function attributeNames(attribute2) {
   if (own === "derive") return field5(attribute2, "arguments")?.namedChildren.filter((child) => child.type === "identifier").map((child) => child.text) ?? [];
   return own === null ? [] : [own];
 }
+function itemOf(attribute2) {
+  let next = attribute2.nextNamedSibling;
+  while (next !== null && (next.type === "attribute_item" || comment2(next))) next = next.nextNamedSibling;
+  return next;
+}
 function extractFileCensus8(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
   const constructors = /* @__PURE__ */ new Map();
-  const visit2 = (node, owner) => {
+  const visit3 = (node, owner, generics) => {
+    if (node.type === "attribute_item" ? isTestItem(itemOf(node) ?? node) : itemKinds.has(node.type) && isTestItem(node)) return;
     const line = node.startPosition.row + 1;
     let nextOwner = owner;
+    let nextGenerics = generics;
     switch (node.type) {
       case "use_declaration": {
         const leaves = [];
@@ -9816,6 +9903,7 @@ function extractFileCensus8(root) {
         const name = field5(node, "name")?.text;
         if (name !== void 0) facts.types.push({ name, kind: "interface", line });
         nextOwner = name ?? owner;
+        nextGenerics = callbackGenerics(node);
         break;
       }
       case "type_item": {
@@ -9837,18 +9925,20 @@ function extractFileCensus8(root) {
       case "impl_item": {
         const type = nameOf2(field5(node, "type"));
         const trait = nameOf2(field5(node, "trait"));
+        nextGenerics = callbackGenerics(node);
         if (type !== null && trait !== null) facts.classes.push({ name: type, line, heritage: [trait], constructorTypes: [] });
         if (type !== null && trait === null) {
           const body = field5(node, "body");
           const constructor = body?.namedChildren.find((member) => member.type === "function_item" && field5(member, "name")?.text === "new");
-          if (constructor !== void 0) constructors.set(type, [...constructors.get(type) ?? [], ...parametersOf7(constructor).flatMap((parameter) => parameter.type.names)]);
+          if (constructor !== void 0) constructors.set(type, [...constructors.get(type) ?? [], ...parametersOf7(constructor, nextGenerics).flatMap((parameter) => parameter.type.names)]);
         }
         nextOwner = type;
         break;
       }
       case "function_item": {
         const name = field5(node, "name")?.text;
-        if (name !== void 0) facts.functions.push({ name: owner === null ? name : `${owner}.${name}`, line, parameters: parametersOf7(node) });
+        if (name !== void 0) facts.functions.push({ name: owner === null ? name : `${owner}.${name}`, line, parameters: parametersOf7(node, generics) });
+        nextGenerics = /* @__PURE__ */ new Set();
         break;
       }
       case "attribute_item": {
@@ -9900,13 +9990,91 @@ function extractFileCensus8(root) {
       }
       default:
     }
-    for (const child of node.children) visit2(child, nextOwner);
+    for (const child of node.children) visit3(child, nextOwner, nextGenerics);
   };
-  visit2(root, null);
+  visit3(root, null, /* @__PURE__ */ new Set());
   for (const klass of facts.classes) {
     if (klass.heritage.length === 0) klass.constructorTypes = [...new Set(constructors.get(klass.name) ?? [])].sort();
   }
   return facts;
+}
+
+// packages/parse/src/languages/rust/grammar-repair.ts
+function rustRepairs(root, source) {
+  const edits = /* @__PURE__ */ new Map();
+  const blank = (start, end) => {
+    for (let i = start; i < end; i++) if (source[i] !== "\n" && source[i] !== "\r" && source[i] !== " ") edits.set(i, " ");
+  };
+  visit2(root, source, blank);
+  return [...edits].map(([offset, character]) => ({ offset, character }));
+}
+var attributeHolders = /* @__PURE__ */ new Set(["parameters", "closure_parameters", "struct_pattern"]);
+var primitives2 = /* @__PURE__ */ new Set(["bool", "char", "str", "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i64", "i128", "isize", "f32", "f64"]);
+function visit2(node, source, blank) {
+  if (!node.hasError && !node.isMissing && node.type !== "raw") return;
+  if (node.type === "raw" && !node.isNamed) rawBorrow(node, source, blank);
+  if (node.type === "ERROR") {
+    misplacedAttribute(node, source, blank);
+    boundLifetimes(node, blank);
+    primitiveTurbofish(node, source, blank);
+  }
+  for (const child of node.children) visit2(child, source, blank);
+}
+function rawBorrow(raw, source, blank) {
+  if (raw.parent?.type !== "ERROR") return;
+  const after = raw.nextSibling;
+  if (after !== null && (after.type === "const" || after.type === "mutable_specifier")) return;
+  let at = raw.startIndex - 1;
+  while (at >= 0 && /\s/.test(source[at])) at--;
+  if (source[at] === "&") blank(at, at + 1);
+}
+function misplacedAttribute(error, source, blank) {
+  if (!attributeHolders.has(error.parent?.type ?? "")) return;
+  const start = error.startIndex;
+  if (source[start] !== "#") return;
+  let open = start + 1;
+  while (/\s/.test(source[open] ?? "")) open++;
+  if (source[open] !== "[") return;
+  const end = closingOf(source, open, "[", "]");
+  if (end !== void 0) blank(start, end);
+}
+function boundLifetimes(error, blank) {
+  const children = error.children;
+  for (let i = 1; i < children.length; i++) {
+    if (children[i].type === "for_lifetimes" && children[i - 1].type === "+") blank(children[i].startIndex, children[i].endIndex);
+  }
+}
+function primitiveTurbofish(error, source, blank) {
+  if (error.text !== "::" || !primitives2.has(error.previousSibling?.text ?? "")) return;
+  const open = error.nextSibling;
+  if (open?.type !== "<") return;
+  const end = closingOf(source, open.startIndex, "<", ">");
+  if (end !== void 0) blank(error.startIndex, end);
+}
+function closingOf(source, open, opener, closer) {
+  let depth = 0;
+  for (let i = open; i < source.length; i++) {
+    const c = source[i];
+    if (c === '"') {
+      for (i++; i < source.length && source[i] !== '"'; i++) if (source[i] === "\\") i++;
+      continue;
+    }
+    if (c === "'" && source[i + 2] === "'") {
+      i += 2;
+      continue;
+    }
+    if (c === "'" && source[i + 1] === "\\" && source[i + 3] === "'") {
+      i += 3;
+      continue;
+    }
+    if (c === "-" && source[i + 1] === ">") {
+      i++;
+      continue;
+    }
+    if (c === opener) depth++;
+    else if (c === closer && --depth === 0) return i + 1;
+  }
+  return void 0;
 }
 
 // packages/parse/src/languages/rust/resolve-path.ts
@@ -9981,7 +10149,7 @@ var adapter8 = {
   tier: 2,
   support: "supported",
   lexerProfile: "rust",
-  grammars: [{ spec: { id: "rust", packageName: "tree-sitter-rust", file: "tree-sitter-rust.wasm" }, extensions: [".rs"] }],
+  grammars: [{ spec: { id: "rust", packageName: "tree-sitter-rust", file: "tree-sitter-rust.wasm", repairs: rustRepairs }, extensions: [".rs"] }],
   extractorVersion: extractorVersion4,
   extract: extractFacts8,
   isTestPath: (path) => /(^|\/)tests\//.test(path) || /(^|\/)tests?\.rs$/.test(path) || /_tests?\.rs$/.test(path),
@@ -10102,6 +10270,18 @@ function droppedCounts() {
 
 // packages/history/src/file-class.ts
 import { spawn as spawn2 } from "node:child_process";
+
+// packages/cli-kit/src/generated-patterns.ts
+var BUILTIN_GENERATED_GLOBS = ["*.min.js", "*.min.css", "generated"];
+var configured = [];
+function useGeneratedPatterns(patterns) {
+  configured = [...patterns];
+}
+function generatedPatterns() {
+  return configured;
+}
+
+// packages/history/src/file-class.ts
 var HEADER_LINES = 20;
 var HEADER_BYTES = 4096;
 var COMMENT_LEADER = /^\s*(?:\/\/|\/\*|\*|#|--|;|%|<!--|')/;
@@ -10124,6 +10304,18 @@ function isInVendorDirectory(path) {
   const parts = path.split("/");
   parts.pop();
   return parts.some((part) => VENDOR_DIRECTORIES.includes(part));
+}
+function generatedPathClassifier(patterns = generatedPatterns()) {
+  const builtin = compileGlobs(BUILTIN_GENERATED_GLOBS);
+  const entries = patterns.map((pattern) => pattern.trim()).filter((pattern) => pattern !== "" && !pattern.startsWith("#")).map(
+    (pattern) => pattern.startsWith("!") ? { generated: false, matches: compileGlobs([pattern.slice(1)]) } : { generated: true, matches: compileGlobs([pattern]) }
+  );
+  return (path) => {
+    for (let index = entries.length - 1; index >= 0; index--) {
+      if (entries[index].matches(path)) return entries[index].generated;
+    }
+    return builtin(path) ? true : void 0;
+  };
 }
 var verdicts = /* @__PURE__ */ new Map();
 async function readBlobHeads(repoPath, blobs) {
@@ -10255,11 +10447,14 @@ async function classifyFiles(repoPath, ref, entries, treeFiles, options = {}) {
   const vendored = new Set(attributes.vendored);
   for (const path of paths) if (isInVendorDirectory(path) && !attributes.notVendored.has(path)) vendored.add(path);
   const generated = new Set(attributes.generated);
+  const byPath = generatedPathClassifier();
   const candidate = options.headerCandidate ?? maybeText;
   const toRead = [];
   for (const { path, blob } of entries) {
     if (generated.has(path) || vendored.has(path) || attributes.notGenerated.has(path)) continue;
-    if (typeof blob === "string" && candidate(path)) toRead.push({ path, blob });
+    const verdict = byPath(path);
+    if (verdict === true) generated.add(path);
+    else if (verdict === void 0 && typeof blob === "string" && candidate(path)) toRead.push({ path, blob });
   }
   for (const path of await generatedByHeader(repoPath, toRead, options.read)) generated.add(path);
   return { generated, vendored };
@@ -10431,6 +10626,7 @@ export {
   resetDropped,
   restoreDropped,
   droppedCounts,
+  useGeneratedPatterns,
   GitError,
   runGit,
   gitVersion,
@@ -10453,6 +10649,7 @@ export {
   hasAdapter,
   isTestPath,
   isConfigPath4 as isConfigPath,
+  BAND_RANK,
   higherBand,
   raiseBand,
   cutoffsOf,
