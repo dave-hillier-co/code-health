@@ -24,7 +24,8 @@ test("the shared testPatterns make a path a test", () => {
 test("fixtures and goldens are found by folder and by name", () => {
   for (const path of ["testdata/a.json", "pkg/fixtures/a.json", "goldens/x.png", "a/__snapshots__/x.snap", "out/x.golden", "x.approved.txt"]) expect(isFixturePath(path), path).toBe(true);
   for (const path of ["src/goldenrod.ts", "src/fixture.ts", "src/snapshot.ts"]) expect(isFixturePath(path), path).toBe(false);
-  expect(expectedReason(code("src/a.ts"), data("testdata/a.json"), isTest)).toBe("fixture-or-golden");
+  expect(expectedReason(code("src/a.ts"), data("pkg/fixtures/a.json"), isTest)).toBe("fixture-or-golden");
+  expect(expectedReason(code("src/a.ts"), data("testdata/a.json"), isTest)).toBe("test");
 });
 
 test("two non-code files of one format are expected, two of different formats are not", () => {

@@ -5,6 +5,30 @@
   "$defs": {
     "sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
     "count": { "type": "integer", "minimum": 0 },
+    "possibleNonProductionFolders": {
+      "description": "Present only when some of the production files the command counted are in folders that often hold examples, samples, test inputs or benchmarks: examples, samples, sample, playground, benches, integration, src/it and src/*/resources, at any depth. The files stay in the results; listing a folder in exclude leaves it out. A folder inside another is counted in the outer one only.",
+      "type": "object",
+      "properties": {
+        "productionFiles": { "type": "integer", "minimum": 1, "description": "The production files the command counted." },
+        "folders": {
+          "type": "array",
+          "minItems": 1,
+          "description": "The folders, most files first, then by path.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "folder": { "type": "string", "description": "The folder, repo-relative, ending at the folder the convention names." },
+              "files": { "type": "integer", "minimum": 1 },
+              "share": { "type": "number", "minimum": 0, "maximum": 1, "description": "files as a share of productionFiles, to four places." }
+            },
+            "required": ["folder", "files", "share"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["productionFiles", "folders"],
+      "additionalProperties": false
+    },
     "repo": {
       "type": "object",
       "properties": { "head": { "$ref": "#/$defs/sha" }, "dirty": { "type": "boolean" } },
@@ -39,7 +63,7 @@
           "additionalProperties": { "type": "integer", "minimum": 1 }
         },
         "dropped": {
-          "description": "Present only when files were left out because of what they are: the number of distinct files left out as generated (a linguist-generated attribute or a generated-code header), as vendored (a linguist-vendored attribute or a vendor directory), and as non-code (no language adapter or lexical profile claims them, for a command that ranks only code), and as tests (a command that lists production code first, left out unless `--include-tests` is given). Kinds that left out nothing are not listed.",
+          "description": "Present only when files were left out because of what they are: the number of distinct files left out as generated (a linguist-generated attribute, a minified file, a path with a segment named generated, a match of the config's generatedPatterns, or a generated-code header), as vendored (a linguist-vendored attribute or a vendor directory), and as non-code (no language adapter or lexical profile claims them, for a command that ranks only code), and as tests (a command that lists production code first, left out unless `--include-tests` is given). Kinds that left out nothing are not listed.",
           "type": "object",
           "properties": {
             "generated": { "type": "integer", "minimum": 1 },

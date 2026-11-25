@@ -182,6 +182,9 @@
     "skippedFiles": {
       "$ref": "common.schema.json#/$defs/skippedFiles"
     },
+    "possibleNonProductionFolders": {
+      "$ref": "common.schema.json#/$defs/possibleNonProductionFolders"
+    },
     "fixes": {
       "description": "With --with-fixes: the header of the per-function fix statistics, as `complexity fixes` prints it.",
       "$ref": "common.schema.json#/$defs/fixHeader"

@@ -53,8 +53,9 @@ describe("test-support folders make any file a test", () => {
     "pkg/schema/v2/testing/helpers.go",
     "internal/dispatch/mocks/mock.go",
     "src/testhelpers/db.ts",
+    "modules/caddyhttp/encode/testdata/player.js",
   ];
-  const production = ["pkg/contest/entry.go", "pkg/latest/version.go", "pkg/attestation/sign.go", "pkg/testimony/a.go", "cmd/protest.go"];
+  const production = ["pkg/testdatabase/entry.go", "pkg/contest/entry.go", "pkg/latest/version.go", "pkg/attestation/sign.go", "pkg/testimony/a.go", "cmd/protest.go"];
 
   test.each(support)("%s is a test", (path) => {
     expect(testClassifier()(path)).toBe(true);

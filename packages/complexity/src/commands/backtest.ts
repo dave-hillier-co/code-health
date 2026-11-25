@@ -8,6 +8,7 @@ import { firstParentLine, sampleByTime, sampleLabels } from "@code-health/histor
 import { GrammarSet } from "@code-health/parse/grammars";
 import { ParseCache } from "@code-health/parse/parse-cache";
 import { treeFromRef } from "@code-health/parse/source-tree";
+import { withNonProductionFolders } from "@code-health/parse/non-production-folders";
 import { MEASURE_SUMMARIES, OUTCOME_SUMMARIES, correlate, fileSamples, type FileSample } from "../backtest.ts";
 import { readSettings } from "../config.ts";
 import { measureTree } from "../measure.ts";
@@ -119,7 +120,7 @@ export const command: Command = {
     }
 
     const minChanges = settings.fixes.minRevisions;
-    return {
+    return withNonProductionFolders({
       inputs: { samples: wanted, months, revisions: commits.map((commit) => commit.sha) },
       extra: { evidence: { grade: history.evidence.grade, logicalChangesInWindow: history.evidence.logicalChangesInWindow, usableHistoryMonths: history.evidence.usableHistoryMonths } },
       results: {
@@ -131,6 +132,6 @@ export const command: Command = {
         correlations: correlate(samples, MIN_FILES, minChanges),
         limits: LIMITS,
       },
-    };
+    }, (samples.at(-1) ?? []).map((row) => row.path));
   },
 };

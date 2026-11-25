@@ -56,6 +56,10 @@ and `--limit` (default 20) and `--fields` keep it small. Never ask for a whole r
    lists the first ten. `--include-tests` puts them in the one list, each row with its `role`. `files`, `fixes` and
    `depth` do the same. Say how many tests were left out when you report the top of the list.
 
+   `possibleNonProductionFolders` in the JSON (and a notice in a table) names the folders such as `examples/`,
+   `samples/`, `playground/` and `benches/` whose files are ranked as production code, with their share of the
+   production files. When rows from them are near the top, say so, and that listing the folder in `exclude` leaves it out.
+
 3. For files, use `files`. A run over the whole repository on a clean tree stores the report other plugins read.
 
    ```

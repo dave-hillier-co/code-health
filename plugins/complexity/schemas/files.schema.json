@@ -45,6 +45,9 @@
     "skippedFiles": {
       "$ref": "common.schema.json#/$defs/skippedFiles"
     },
+    "possibleNonProductionFolders": {
+      "$ref": "common.schema.json#/$defs/possibleNonProductionFolders"
+    },
     "results": {
       "type": "array",
       "items": {

@@ -21,7 +21,7 @@ export function guardedUnits(): GitFixture {
       message: "Add the app and its library",
       date: "2024-01-01T09:00:00Z",
       changes: [
-        add("code-health.json", JSON.stringify({ entryPoints: ["src/app/main.ts"], exclude: ["src/generated"] })),
+        add("code-health.json", JSON.stringify({ entryPoints: ["src/app/main.ts"], exclude: ["src/external"] })),
         add("package.json", JSON.stringify({ name: "lib", main: "src/shared/api.ts" })),
         add(
           "src/app/main.ts",
@@ -35,7 +35,7 @@ export function guardedUnits(): GitFixture {
         ),
         add("src/shared/api.ts", "export function api(): number {\n  return 1;\n}\n"),
         add("src/shared/helper.ts", "export function helper(value: number): number {\n  return value + 1;\n}\n"),
-        add("src/generated/client.ts", "export const generated = () => 1;\n"),
+        add("src/external/client.ts", "export const generated = () => 1;\n"),
       ],
     },
     // The code is old by the time of the last commit, so the grace period does not hold anything back.

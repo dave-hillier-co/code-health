@@ -10,6 +10,7 @@ import { defaultRankBy, rankByValues, rankUnits, sortKeys, sortRanked, type Rank
 import { includeTestsHelp, includeTestsOption, splitRoles, wantsTests } from "../roles.ts";
 import { ruleDescriptions } from "../rules.ts";
 import { unitRow } from "../rows.ts";
+import { withNonProductionFolders } from "@code-health/parse/non-production-folders";
 
 export const name = "analyse";
 
@@ -153,5 +154,6 @@ async function compute(context: CommandContext, paths: string[]): Promise<Comman
         "labels",
       ],
     };
-    return output;
+    const productionFiles = new Set(allRows.filter((row) => row.role === "production").map((row) => row.path));
+    return withNonProductionFolders(output, productionFiles);
 }

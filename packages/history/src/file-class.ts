@@ -1,5 +1,7 @@
 import { spawn } from "node:child_process";
 import { recordDropped } from "@code-health/cli-kit/dropped-files";
+import { BUILTIN_GENERATED_GLOBS, generatedPatterns } from "@code-health/cli-kit/generated-patterns";
+import { compileGlobs } from "./glob.ts";
 import { readPathAttributes, type PathAttributes } from "./tree.ts";
 
 /** Lines at the top of a file that are searched for a generated-code marker. */
@@ -41,6 +43,28 @@ export function isInVendorDirectory(path: string): boolean {
   const parts = path.split("/");
   parts.pop();
   return parts.some((part) => VENDOR_DIRECTORIES.includes(part));
+}
+
+/**
+ * Decides by path alone whether a file is generated: each entry of `patterns` is laid over the built-in globs
+ * (`BUILTIN_GENERATED_GLOBS`) in order, a glob makes a matching file generated, a glob with a leading `!` makes it
+ * not generated, and the last entry that matches wins. Undefined when no entry and no built-in glob matches, so the
+ * header decides.
+ */
+export function generatedPathClassifier(patterns: readonly string[] = generatedPatterns()): (path: string) => boolean | undefined {
+  const builtin = compileGlobs(BUILTIN_GENERATED_GLOBS);
+  const entries = patterns
+    .map((pattern) => pattern.trim())
+    .filter((pattern) => pattern !== "" && !pattern.startsWith("#"))
+    .map((pattern) =>
+      pattern.startsWith("!") ? { generated: false, matches: compileGlobs([pattern.slice(1)]) } : { generated: true, matches: compileGlobs([pattern]) },
+    );
+  return (path) => {
+    for (let index = entries.length - 1; index >= 0; index--) {
+      if (entries[index]!.matches(path)) return entries[index]!.generated;
+    }
+    return builtin(path) ? true : undefined;
+  };
 }
 
 const verdicts = new Map<string, boolean>();
@@ -119,7 +143,7 @@ export async function generatedByHeader(repoPath: string, sources: readonly Head
 }
 
 export interface FileClasses {
-  /** Marked linguist-generated, or carrying a generated-code header. */
+  /** Marked linguist-generated, matched by a generated path, or carrying a generated-code header. */
   generated: Set<string>;
   /** Marked linguist-vendored, or below a vendor directory. */
   vendored: Set<string>;
@@ -150,10 +174,12 @@ const noAttributes = (): PathAttributes => ({ generated: new Set(), vendored: ne
 
 /**
  * The one definition of a generated or vendored file, used by every plugin for its source trees and for the paths of
- * its history. A file is generated when `.gitattributes` marks it `linguist-generated` or its first lines carry a
- * generated-code header, and vendored when `.gitattributes` marks it `linguist-vendored` or it lies below a vendor
- * directory. An attribute that is unset or false (`-linguist-generated`, `linguist-vendored=false`) opts the path
- * back in: the header or the directory then does not make it generated or vendored.
+ * its history. A file is generated when `.gitattributes` marks it `linguist-generated`, when its path says so
+ * (`generatedPathClassifier`: the config's `generatedPatterns` over the built-in minified files and `generated`
+ * segments), or when its first lines carry a generated-code header, and vendored when `.gitattributes` marks it
+ * `linguist-vendored` or it lies below a vendor directory. An attribute that is unset or false (`-linguist-generated`,
+ * `linguist-vendored=false`) opts the path back in: the path, the header or the directory then does not make it
+ * generated or vendored. A `generatedPatterns` entry with a leading `!` that matches a path keeps its header unread.
  * `entries` are the paths and blobs at the revision. A path with no blob there (deleted since) is decided by the
  * attributes and the directory alone.
  */
@@ -175,11 +201,14 @@ export async function classifyFiles(
   for (const path of paths) if (isInVendorDirectory(path) && !attributes.notVendored.has(path)) vendored.add(path);
 
   const generated = new Set(attributes.generated);
+  const byPath = generatedPathClassifier();
   const candidate = options.headerCandidate ?? maybeText;
   const toRead: HeadSource[] = [];
   for (const { path, blob } of entries) {
     if (generated.has(path) || vendored.has(path) || attributes.notGenerated.has(path)) continue;
-    if (typeof blob === "string" && candidate(path)) toRead.push({ path, blob });
+    const verdict = byPath(path);
+    if (verdict === true) generated.add(path);
+    else if (verdict === undefined && typeof blob === "string" && candidate(path)) toRead.push({ path, blob });
   }
   for (const path of await generatedByHeader(repoPath, toRead, options.read)) generated.add(path);
   return { generated, vendored };

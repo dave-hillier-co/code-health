@@ -4,6 +4,7 @@ import { builtinOmissions, resetBuiltinOmissions } from "./builtin-excludes.ts";
 import { droppedCounts, resetDropped } from "./dropped-files.ts";
 import { buildDocument } from "./document.ts";
 import { assertNodeVersion } from "./environment.ts";
+import { useGeneratedPatterns } from "./generated-patterns.ts";
 import { CliError, ExitCode, usageError } from "./errors.ts";
 import { readRepoState, type RepoState } from "./repo-state.ts";
 import { shapeResults } from "./results.ts";
@@ -168,6 +169,7 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
   resetBuiltinOmissions();
   resetRunNotes();
   resetDropped();
+  useGeneratedPatterns(config.effective.generatedPatterns);
   const output = await command.run(context);
   if (output.text !== undefined) {
     for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}\n`);

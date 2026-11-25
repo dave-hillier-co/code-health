@@ -78,6 +78,12 @@ export interface SharedConfig {
    * entry with a leading exclamation mark makes it production, and the last matching entry wins.
    */
   testPatterns: string[];
+  /**
+   * Globs that decide which files are generated, laid over the built-in generated paths (minified files and `generated`
+   * segments): a match makes a file generated, an entry with a leading exclamation mark makes it not generated, and the
+   * last matching entry wins.
+   */
+  generatedPatterns: string[];
   /** File extension (no dot, lower case) to lexer profile name: file types the suite has no profile for. */
   languages: Record<string, string>;
   entryPoints: string[];
@@ -127,6 +133,7 @@ export interface ConfigRow {
 const sharedDefaults: SharedConfig = {
   exclude: [],
   testPatterns: [],
+  generatedPatterns: [],
   languages: {},
   entryPoints: [],
   includeRoots: [],
@@ -135,7 +142,7 @@ const sharedDefaults: SharedConfig = {
   history: historyDefaults,
 };
 
-const stringLists = ["exclude", "testPatterns", "entryPoints", "includeRoots", "vagueNames"];
+const stringLists = ["exclude", "testPatterns", "generatedPatterns", "entryPoints", "includeRoots", "vagueNames"];
 
 /**
  * The plugins whose sections may appear in code-health.json. Every plugin reads the one file, so a plugin

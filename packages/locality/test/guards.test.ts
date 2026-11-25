@@ -49,7 +49,7 @@ test("a function used as a value makes its callsite counts unreliable, so it is 
 test("excluded files take no part in the analysis", async () => {
   const { document } = await analyse(guarded);
   expect(document.summary.files).toBe(3);
-  expect(JSON.stringify(document)).not.toContain("src/generated");
+  expect(JSON.stringify(document)).not.toContain("src/external");
 });
 
 test("without configured entry points, entries are the files nothing imports", async () => {

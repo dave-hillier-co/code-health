@@ -6,6 +6,7 @@ import { fileRow } from "../rows.ts";
 import { includeTestsHelp, includeTestsOption, wantsTests } from "../roles.ts";
 import { recordDropped } from "@code-health/cli-kit/dropped-files";
 import { isCodePath } from "@code-health/parse/code-files";
+import { withNonProductionFolders } from "@code-health/parse/non-production-folders";
 
 export const name = "files";
 
@@ -34,7 +35,8 @@ export const command: Command = {
     const rows = all.results as FileRow[];
     const listed = wantsTests(context) ? rows : rows.filter((row) => row.role === "production");
     if (listed.length < rows.length) for (const row of rows) if (row.role === "test") recordDropped("tests", row.path);
-    return { ...all, inputs: { ...all.inputs, includeTests: wantsTests(context) }, results: [...listed].sort(byMeasuredThenScore), presorted: true };
+    const production = rows.filter((row) => row.role === "production").map((row) => row.path);
+    return withNonProductionFolders({ ...all, inputs: { ...all.inputs, includeTests: wantsTests(context) }, results: [...listed].sort(byMeasuredThenScore), presorted: true }, production);
   },
 };
 
