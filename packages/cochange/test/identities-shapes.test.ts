@@ -116,3 +116,13 @@ test("classify finds bot and robot as words of the name or local part, says whic
   expect(rows.map((r) => r.identity)).not.toContain(key(ann));
   expect(rows.map((r) => r.identity)).not.toContain(key(lee));
 });
+
+test("check names its count of commits in the window apart from the whole-history count propose gives", async () => {
+  const check = await json("check");
+  const unmapped = check.results.filter((r: { kind: string }) => r.kind === "unmapped");
+  expect(unmapped.length).toBeGreaterThan(0);
+  for (const row of unmapped) {
+    expect(row).toHaveProperty("windowCommits");
+    expect(row).not.toHaveProperty("commits");
+  }
+});

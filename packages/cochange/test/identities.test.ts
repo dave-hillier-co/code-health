@@ -145,7 +145,7 @@ test("check fails on counter-evidence, reports unmapped identities and measures 
   const kinds = new Set(document.results.map((r: { kind: string }) => r.kind));
   expect(kinds).toEqual(new Set(["counter-evidence", "unmapped"]));
   const unmapped = document.results.filter((r: { kind: string }) => r.kind === "unmapped");
-  expect(unmapped.every((r: { aboveGuideline: boolean; lines: number; commits: number }) => r.aboveGuideline === (r.lines > 0 || r.commits >= 3))).toBe(true);
+  expect(unmapped.every((r: { aboveGuideline: boolean; lines: number; windowCommits: number }) => r.aboveGuideline === (r.lines > 0 || r.windowCommits >= 3))).toBe(true);
   expect(document.results.filter((r: { kind: string }) => r.kind !== "unmapped").every((r: { aboveGuideline: unknown }) => r.aboveGuideline === null)).toBe(true);
   expect(document.measurement.headLines.mappedShare).toBeLessThan(50);
   expect(document.measurement.needsIdentityReview).toBe(true);

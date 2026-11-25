@@ -33,7 +33,6 @@
   "results": [
     {
       "aboveGuideline": null,
-      "commits": null,
       "detail": "P5 is proposed but both active in 9 of the same weeks, never in the same area",
       "identities": [
         "Alex Kim <akim@b.com>",
@@ -42,11 +41,11 @@
       "kind": "counter-evidence",
       "lines": null,
       "linesShare": null,
-      "score": 100
+      "score": 100,
+      "windowCommits": null
     },
     {
       "aboveGuideline": true,
-      "commits": 11,
       "detail": "proposed to be the same person as J Park <Jo@X.com>, last active 2024-05-20",
       "identities": [
         "Jo Park <jo+git@x.com>"
@@ -54,11 +53,11 @@
       "kind": "unmapped",
       "lines": 11,
       "linesShare": 12.4,
-      "score": 11
+      "score": 11,
+      "windowCommits": 11
     },
     {
       "aboveGuideline": true,
-      "commits": 10,
       "detail": "proposed to be the same person as Jo Park <jo+git@x.com>, last active 2024-03-04",
       "identities": [
         "J Park <Jo@X.com>"
@@ -66,11 +65,11 @@
       "kind": "unmapped",
       "lines": 10,
       "linesShare": 11.2,
-      "score": 10
+      "score": 10,
+      "windowCommits": 10
     },
     {
       "aboveGuideline": true,
-      "commits": 9,
       "detail": "proposed to be the same person as Alex Kim <alex@a.com>, last active 2024-03-11",
       "identities": [
         "Alex Kim <akim@b.com>"
@@ -78,11 +77,11 @@
       "kind": "unmapped",
       "lines": 9,
       "linesShare": 10.1,
-      "score": 9
+      "score": 9,
+      "windowCommits": 9
     },
     {
       "aboveGuideline": true,
-      "commits": 9,
       "detail": "proposed to be the same person as Alex Kim <akim@b.com>, last active 2024-03-11",
       "identities": [
         "Alex Kim <alex@a.com>"
@@ -90,11 +89,11 @@
       "kind": "unmapped",
       "lines": 9,
       "linesShare": 10.1,
-      "score": 9
+      "score": 9,
+      "windowCommits": 9
     },
     {
       "aboveGuideline": true,
-      "commits": 8,
       "detail": "proposed to be the same person as jsmith <1234+jsmith@users.noreply.github.com>, last active 2024-04-08",
       "identities": [
         "John Smith <jsmith@users.noreply.github.com>"
@@ -102,11 +101,11 @@
       "kind": "unmapped",
       "lines": 8,
       "linesShare": 9,
-      "score": 8
+      "score": 8,
+      "windowCommits": 8
     },
     {
       "aboveGuideline": true,
-      "commits": 8,
       "detail": "proposed to be the same person as Maria Lopez <maria@corp.com>, last active 2024-05-20",
       "identities": [
         "María López <mlopez@gmail.com>"
@@ -114,11 +113,11 @@
       "kind": "unmapped",
       "lines": 8,
       "linesShare": 9,
-      "score": 8
+      "score": 8,
+      "windowCommits": 8
     },
     {
       "aboveGuideline": true,
-      "commits": 7,
       "detail": "proposed to be the same person as John Smith <jsmith@users.noreply.github.com>, last active 2024-02-12",
       "identities": [
         "jsmith <1234+jsmith@users.noreply.github.com>"
@@ -126,11 +125,11 @@
       "kind": "unmapped",
       "lines": 7,
       "linesShare": 7.9,
-      "score": 7
+      "score": 7,
+      "windowCommits": 7
     },
     {
       "aboveGuideline": true,
-      "commits": 4,
       "detail": "proposed to be the same person as Sam Ro <sam@corp.com>, last active 2024-03-04",
       "identities": [
         "Sam Ro <sam@home.net>"
@@ -138,11 +137,11 @@
       "kind": "unmapped",
       "lines": 4,
       "linesShare": 4.5,
-      "score": 4
+      "score": 4,
+      "windowCommits": 4
     },
     {
       "aboveGuideline": true,
-      "commits": 2,
       "detail": "proposed to be the same person as Sam Ro <sam@home.net>, last active 2024-04-01",
       "identities": [
         "Sam Ro <sam@corp.com>"
@@ -150,11 +149,11 @@
       "kind": "unmapped",
       "lines": 2,
       "linesShare": 2.2,
-      "score": 2
+      "score": 2,
+      "windowCommits": 2
     },
     {
       "aboveGuideline": true,
-      "commits": 13,
       "detail": "proposed to be the same person as María López <mlopez@gmail.com>, last active 2024-03-25",
       "identities": [
         "Maria Lopez <maria@corp.com>"
@@ -162,7 +161,8 @@
       "kind": "unmapped",
       "lines": 0,
       "linesShare": 0,
-      "score": 0
+      "score": 0,
+      "windowCommits": 13
     }
   ],
   "schemaVersion": 1,

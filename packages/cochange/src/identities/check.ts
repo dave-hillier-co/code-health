@@ -13,8 +13,8 @@ export interface Finding {
   /** Identities the finding is about, as `Name <email>`. */
   identities: string[];
   detail: string;
-  /** Unmapped only: commits in the analysis window, lines at HEAD and the share of people's lines. */
-  commits: number | null;
+  /** Unmapped only: commits as author in the analysis window (merge commits are not counted), lines at HEAD and the share of people's lines. `propose` and `list` count `commits` over the whole history. */
+  windowCommits: number | null;
   lines: number | null;
   linesShare: number | null;
   /** Unmapped only: holds lines at HEAD or has at least `significantCommits` commits in the window. A guideline for reading the list: identities below it are listed too, after those above. */
@@ -26,7 +26,7 @@ const CONFLICT_SCORE = 100;
 const compare = (x: string, y: string): number => (x < y ? -1 : x > y ? 1 : 0);
 
 function conflict(kind: FindingKind, identities: string[], detail: string): Finding {
-  return { score: CONFLICT_SCORE, kind, identities: [...new Set(identities)].sort(compare), detail, commits: null, lines: null, linesShare: null, aboveGuideline: null };
+  return { score: CONFLICT_SCORE, kind, identities: [...new Set(identities)].sort(compare), detail, windowCommits: null, lines: null, linesShare: null, aboveGuideline: null };
 }
 
 /**
@@ -91,13 +91,13 @@ export function checkMapping(analysis: IdentityAnalysis, detail: MeasurementDeta
       kind: "unmapped",
       identities: [node.key],
       detail: `proposed to be the same person as ${[...new Set(related)].sort(compare).join("; ")}, last active ${isoDay(node.last)}`,
-      commits,
+      windowCommits: commits,
       lines,
       linesShare: peopleLines === 0 ? 0 : Math.round((lines / peopleLines) * 1000) / 10,
       aboveGuideline: lines > 0 || commits >= significantCommits,
     });
   }
 
-  findings.sort((x, y) => y.score - x.score || (y.commits ?? 0) - (x.commits ?? 0) || compare(x.kind, y.kind) || compare(x.identities.join(), y.identities.join()));
+  findings.sort((x, y) => y.score - x.score || (y.windowCommits ?? 0) - (x.windowCommits ?? 0) || compare(x.kind, y.kind) || compare(x.identities.join(), y.identities.join()));
   return { findings, failed: findings.some((f) => f.kind !== "unmapped") };
 }

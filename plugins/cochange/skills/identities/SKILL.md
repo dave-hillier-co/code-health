@@ -52,6 +52,8 @@ Bots, services and agents are left out of the population of people and out of ev
 
 `check` reads line ownership from the blame cache with the same options as abandonment, so the two shares agree. It reports how much of the code the mapping has settled: the share of lines at HEAD and of commits in the analysis window held by identities that no proposal still names, with bots and services counted separately. It should be close to 100 percent before any abandonment result is trusted. Report it alongside whatever you do next. When `needsIdentityReview` is true, unmapped identities hold more than the guideline `cochange.identities.unmappedShareGuideline` percent of the lines. The measured share is printed beside it. `unmappedStrong` is the part of the unmapped lines held by identities a strong proposal names: accepting those proposals, which needs no decision, settles that many lines. An identity no proposal names, such as an author with one address, counts as settled without a mailmap entry. Below the guideline the unmapped identities are still listed.
 
+Commit counts are named for what they cover. `windowCommits` in `check` counts commits as author in the analysis window. `commits` in `propose`, `list` and `classify` counts commits as author over the whole history. Neither counts merge commits.
+
 `dropped.generated` in `check` can be larger than in `propose` at the same commit. `propose` counts the generated files that commits in the history changed. `check` also blames the files at HEAD and counts the generated ones among them, so a generated file whose current path came only from a pure rename (which the history counts as a rename) is counted by `check` and not by `propose`.
 
 ## Commands
