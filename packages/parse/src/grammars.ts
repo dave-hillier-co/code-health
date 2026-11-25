@@ -45,23 +45,45 @@ export interface LoadOptions {
   grammarDir?: string;
 }
 
+/**
+ * The largest grammar file shipped whole. The plugin directory refuses a plugin with a file over 5 MiB, so
+ * `copyGrammars` writes a larger grammar as parts of at most this size, and `readGrammarFile` joins them.
+ */
+export const GRAMMAR_PART_BYTES = 4 * 1024 * 1024;
+
+/** The name of one part of a grammar file shipped in parts: `<file>.part0`, `<file>.part1`, in order. */
+export function grammarPartName(file: string, index: number): string {
+  return `${file}.part${index}`;
+}
+
+/** The bytes of a grammar file at `path`, whether it is there whole or as parts beside where it would be. */
+export function readGrammarFile(path: string): Buffer {
+  if (existsSync(path)) return readFileSync(path);
+  const parts: Buffer[] = [];
+  while (existsSync(grammarPartName(path, parts.length))) parts.push(readFileSync(grammarPartName(path, parts.length)));
+  if (parts.length === 0) throw new Error(`Grammar file not found: ${path}`);
+  return Buffer.concat(parts);
+}
+
+const shipped = (path: string): boolean => existsSync(path) || existsSync(grammarPartName(path, 0));
+
 const require = createRequire(import.meta.url);
 const loaded = new Map<string, Promise<LoadedGrammar>>();
 let runtimeInit: Promise<void> | undefined;
 
 /**
  * Finds a .wasm file. Bundled, the file sits in `grammars/` next to the
- * bundle, resolved from `import.meta.url`. From source, it falls back to the
- * npm package that ships it.
+ * bundle, resolved from `import.meta.url`, whole or in parts. From source, it
+ * falls back to the npm package that ships it. Read it with `readGrammarFile`.
  */
 function locate(file: string, packageName: string, grammarDir: string | undefined): string {
   if (grammarDir !== undefined) {
     const explicit = join(grammarDir, file);
-    if (!existsSync(explicit)) throw new Error(`Grammar file not found: ${explicit}`);
+    if (!shipped(explicit)) throw new Error(`Grammar file not found: ${explicit}`);
     return explicit;
   }
   const bundled = fileURLToPath(new URL(`./grammars/${file}`, import.meta.url));
-  if (existsSync(bundled)) return bundled;
+  if (shipped(bundled)) return bundled;
   try {
     return require.resolve(`${packageName}/${file}`);
   } catch {
@@ -107,7 +129,7 @@ async function load(spec: GrammarSpec, grammarDir: string | undefined): Promise<
   const id = spec.id;
   const path = locate(spec.file, spec.packageName, grammarDir);
   const runtimePath = locate(runtimeSpec.file, runtimeSpec.packageName, grammarDir);
-  const bytes = readFileSync(path);
+  const bytes = readGrammarFile(path);
   await initRuntime(runtimePath);
   const language = await Language.load(new Uint8Array(bytes));
   const parser = new Parser();

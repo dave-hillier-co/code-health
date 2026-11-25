@@ -4,10 +4,11 @@ import { createRequire as __codeHealthCreateRequire } from "node:module"; import
 import {
   projectFromFiles,
   readProjectFiles
-} from "./chunk-PXP3VSAO.mjs";
+} from "./chunk-HRDK5W7I.mjs";
 import {
   require_ts_morph
-} from "./chunk-7KKGBP3S.mjs";
+} from "./chunk-4MA76AFQ.mjs";
+import "./chunk-R7JBIEAX.mjs";
 import {
   oncePerTree,
   sourceFilesOf

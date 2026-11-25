@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { GitFixture } from "@code-health/fixtures/git-fixture";
-import { runtimeSpec, shippedGrammarSpecs } from "@code-health/parse/grammars";
+import { shippedGrammarFiles } from "@code-health/parse/copy-grammars";
 import { bundledTools, grammarsPath, toolParses } from "../bundle.mjs";
 
 vi.setConfig({ testTimeout: 120_000, hookTimeout: 120_000 });
@@ -17,7 +17,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
  * the ones the analysed repository has files for. Shipping is checked on the committed `dist/grammars`, loading on a copy of a
  * bundle that has lost the grammars the repository does not need.
  */
-const shipped = [...new Set([...shippedGrammarSpecs().map((spec) => spec.file), runtimeSpec.file])].sort();
+const shipped = shippedGrammarFiles();
 
 test("the plugin has tools that parse, and ships the grammar of every supported adapter, with the runtime, and nothing else", async () => {
   const parsing: string[] = [];

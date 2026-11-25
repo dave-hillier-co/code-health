@@ -17,7 +17,7 @@ import {
 } from "./chunk-QOYPGNKA.mjs";
 import {
   isSourceFile
-} from "./chunk-2WHK5LPL.mjs";
+} from "./chunk-BOLSKSQW.mjs";
 import {
   BUILTIN_EXCLUDE_ENTRIES,
   GitError,
@@ -40,8 +40,8 @@ import {
 } from "./chunk-C4HOGH7Q.mjs";
 import {
   analyseTree
-} from "./chunk-QASHDEFY.mjs";
-import "./chunk-Z64A23YB.mjs";
+} from "./chunk-BCPIBXNS.mjs";
+import "./chunk-22NPJQEV.mjs";
 import {
   ModuleTree,
   adapterForPath,
@@ -6729,7 +6729,7 @@ var command4 = {
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-Z7EDTPAA.mjs");
+    const { performMove } = await import("./chunk-IBZ5RPUI.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
     for (const broken of moved?.breaks ?? []) refusals.push({ code: "does-not-compile", detail: broken });
@@ -10433,7 +10433,7 @@ async function dryRun(tree, candidate, settings, files, go, rust) {
   const base = { destination: plan.destination, filesMoved: plan.operations.length, refusal: plan.refusals.length === 0 ? null : refusalLine(plan.refusals) };
   if (plan.refusals.length > 0) return { ...base, rewrites: 0, filesRewritten: 0, filesEdited: 0, failure: null, warnings: [] };
   try {
-    const { performMove } = await import("./chunk-Z7EDTPAA.mjs");
+    const { performMove } = await import("./chunk-IBZ5RPUI.mjs");
     const moved = await performMove(tree, plan.operations, { confirm: false });
     if ((moved.breaks ?? []).length > 0) {
       return { ...base, refusal: refusalLine((moved.breaks ?? []).map((detail) => ({ code: "does-not-compile", detail }))), rewrites: 0, filesRewritten: 0, filesEdited: 0, failure: null, warnings: [] };
@@ -11199,8 +11199,8 @@ var command6 = {
     let typed;
     let results = [];
     if (chosen.length > 0) {
-      const { scrutinise } = await import("./chunk-GJBH6QAE.mjs");
-      const { buildProject } = await import("./chunk-LTQ7IVTC.mjs");
+      const { scrutinise } = await import("./chunk-WVK5IZCW.mjs");
+      const { buildProject } = await import("./chunk-2FMQ5X3V.mjs");
       const loaded = await buildProject(await treeFromRef(context.repo.root, "HEAD"));
       typed = loaded;
       results = chosen.map((candidate) => scrutinise(candidate, candidate.recommendation === "scrutinise" ? "high-fan-in" : "requested", loaded, project.isTest));
@@ -11420,7 +11420,7 @@ var command8 = {
     const commitTree = await treeFromRef(root, ref);
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" }, goPackagesOf(project), rustModulesOf(project));
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-HVTRBVTW.mjs");
+    const { verifyMove } = await import("./chunk-ZVLVE3AX.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;
