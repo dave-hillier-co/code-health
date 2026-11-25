@@ -80,7 +80,7 @@ export async function rankedOutput(context: CommandContext, history: LoadedHisto
       "recommendation",
       ...(by === "file" ? ["siblingTest", "findings"] : []),
     ],
-    extra: { complexitySource: complexity.source, fixConvention, contributors: contributorsOf(history) },
+    extra: { complexitySource: complexity.source, complexityMeasure: "indentation-complexity", fixConvention, contributors: contributorsOf(history) },
     notices: fixConvention.note === null ? [] : [fixConvention.note.replace(/\.$/, "")],
   };
 }

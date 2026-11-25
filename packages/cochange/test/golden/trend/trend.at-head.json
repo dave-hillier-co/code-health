@@ -1,0 +1,177 @@
+{
+  "command": "trend",
+  "complexityMeasure": "indentation-complexity",
+  "complexitySource": "indentation",
+  "config": "0000000000000000",
+  "evidence": {
+    "activeContributors": 1,
+    "commitSize": {
+      "earlierMedian": 1,
+      "laterMedian": 1,
+      "shifted": false
+    },
+    "grade": "weak",
+    "guidelines": {
+      "moderate": {
+        "contributors": 2,
+        "logicalChanges": 50,
+        "months": 6
+      },
+      "strong": {
+        "contributors": 5,
+        "logicalChanges": 300,
+        "months": 24
+      }
+    },
+    "importedHistory": [],
+    "logicalChangesInWindow": 2,
+    "truncated": {
+      "availableSince": null,
+      "boundaryCommits": 0,
+      "shallow": false
+    },
+    "usableHistoryMonths": 2,
+    "window": {
+      "months": 12,
+      "since": 1677661200,
+      "until": 1709283600
+    }
+  },
+  "filtersApplied": {
+    "blameIgnoreRevs": ".git-blame-ignore-revs",
+    "botPatterns": [],
+    "dropped": {
+      "blameIgnoredCommits": 0,
+      "botCommits": 1,
+      "emptyAfterFiltering": 0,
+      "excludedByGlob": 0,
+      "generated": 0,
+      "importedCommits": 0,
+      "lockfiles": 0,
+      "outsideWindow": 0,
+      "pureRenames": 0,
+      "shallowBoundaryCommits": 0,
+      "suiteCommits": 0,
+      "vendored": 0
+    },
+    "excludeGlobs": [],
+    "excludeImported": true,
+    "excludeSuiteCommits": false,
+    "gitattributes": true,
+    "grouping": {
+      "issuePattern": null,
+      "mergedCommits": 0,
+      "mode": "off",
+      "windowSeconds": null
+    },
+    "lockfiles": true,
+    "maxChangesetSize": 30,
+    "nonPerson": {
+      "builtinBotPatterns": [
+        "\\[bot\\]",
+        "^dependabot",
+        "^renovate",
+        "^github-actions",
+        "^greenkeeper",
+        "^snyk-bot",
+        "^mergify",
+        "^imgbot",
+        "^allcontributors",
+        "^pre-commit-ci",
+        "<bot@renovateapp\\.com>"
+      ],
+      "builtinServiceNames": [
+        "build",
+        "builds",
+        "buildbot",
+        "jenkins",
+        "release",
+        "releases",
+        "ci",
+        "deploy",
+        "deployer",
+        "automation",
+        "teamcity",
+        "travis",
+        "circleci",
+        "gitlab ci",
+        "azure pipelines",
+        "service account"
+      ],
+      "decisions": 0,
+      "servicePatterns": []
+    },
+    "oversizedChanges": 0
+  },
+  "inputs": {
+    "guideline": 0.2,
+    "path": "src/engine.ts",
+    "samples": 10
+  },
+  "repo": {
+    "dirty": false,
+    "head": "1cd6a14aa22bd8f5121d891c4291879e99c0477c"
+  },
+  "results": {
+    "path": "src/engine.ts",
+    "revisions": 2,
+    "samples": [
+      {
+        "bytes": 265,
+        "commit": "911fef4a6e28b7e942297fab4892f0cc33738fec",
+        "complexity": 1,
+        "date": "2024-01-01T09:00:00.000Z",
+        "lines": 13,
+        "path": "src/engine.ts"
+      },
+      {
+        "bytes": 287,
+        "commit": "9e5d2d78d973bc6936835f13e18f202011df42cd",
+        "complexity": 4,
+        "date": "2024-02-01T09:00:00.000Z",
+        "lines": 15,
+        "path": "src/engine.ts"
+      },
+      {
+        "atHead": true,
+        "bytes": 415,
+        "commit": "1cd6a14aa22bd8f5121d891c4291879e99c0477c",
+        "complexity": 36,
+        "date": "2024-03-01T09:00:00.000Z",
+        "lines": 23,
+        "path": "src/engine.ts"
+      }
+    ],
+    "summary": {
+      "changeRatio": 35,
+      "complexity": {
+        "change": 35,
+        "first": 1,
+        "last": 36
+      },
+      "direction": "worsening",
+      "guideline": 0.2,
+      "lines": {
+        "change": 10,
+        "first": 13,
+        "last": 23
+      },
+      "peak": {
+        "commit": "1cd6a14aa22bd8f5121d891c4291879e99c0477c",
+        "complexity": 36,
+        "date": "2024-03-01T09:00:00.000Z"
+      }
+    }
+  },
+  "schemaVersion": 1,
+  "tool": "cochange",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  },
+  "window": {
+    "since": "2024-01-01T09:00:00.000Z",
+    "until": "2024-03-01T09:00:00.000Z"
+  }
+}

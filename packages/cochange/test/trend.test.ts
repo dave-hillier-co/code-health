@@ -84,7 +84,9 @@ test("a binary file has size but no complexity", async () => {
 });
 
 test("the complexity source is the indentation proxy, and a single-file run is not stored as a report", async () => {
-  expect(JSON.parse((await trend(after)).stdout).complexitySource).toBe("indentation");
+  const document = JSON.parse((await trend(after)).stdout);
+  expect(document.complexitySource).toBe("indentation");
+  expect(document.complexityMeasure).toBe("indentation-complexity");
   expect(existsSync(reportPath(repo.path, "trend"))).toBe(false);
 });
 

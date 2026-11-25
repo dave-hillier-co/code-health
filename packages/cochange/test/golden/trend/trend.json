@@ -1,5 +1,6 @@
 {
   "command": "trend",
+  "complexityMeasure": "indentation-complexity",
   "complexitySource": "indentation",
   "config": "0000000000000000",
   "evidence": {

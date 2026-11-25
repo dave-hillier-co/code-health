@@ -1,5 +1,6 @@
 {
   "command": "hotspots",
+  "complexityMeasure": "indentation-complexity",
   "complexitySource": "complexity-report",
   "config": "0000000000000000",
   "contributors": {
