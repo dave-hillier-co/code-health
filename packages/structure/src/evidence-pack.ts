@@ -1,6 +1,6 @@
 import { compareIds } from "@code-health/graph/graph";
 import type { Census } from "./census/census.ts";
-import { nearbyMechanisms, nearbyOmitted, type NearbyMechanism } from "./census/nearby.ts";
+import { nearbyMechanisms, type NearbyMechanism } from "./census/nearby.ts";
 import type { Unblock } from "./locality-report.ts";
 import { findCycles, unblocksOf } from "./cycles.ts";
 import { couplingId, judgePair, orientPair, type QuadrantJudgement } from "./coupling.ts";
@@ -9,7 +9,7 @@ import { layerRuleOf, type LayerRuleBreach } from "./layer-rule.ts";
 import type { StructureSettings } from "./config.ts";
 import type { Model } from "./model.ts";
 import { describeEdge, type SymbolUse } from "./modules.ts";
-import { edgeKey, folderOf } from "./project.ts";
+import { edgeKey } from "./project.ts";
 import { round3, type AgainstStability, type Stability } from "./stability.ts";
 import { judgeEdge, stabilityOfModule, unstableId } from "./unstable.ts";
 import type { Hub, HubFeature } from "./hubs.ts";
@@ -68,9 +68,9 @@ export interface EvidencePack {
   coChange: CoChangeFigures;
   misplacement: Misplacement[];
   unblocks: Unblock[];
-  /** Census entries in or next to the two modules, nearest first. See `structure census` for the whole inventory. */
+  /** Census entries in or next to the two modules, those in their packages first, then nearest first. See `structure census` for the whole inventory. */
   nearbyMechanisms: NearbyMechanism[];
-  /** Census entries beyond the listed ones, farther away than the last listed. */
+  /** Census occurrences the listed entries do not stand for, ranked after the last listed. */
   nearbyMechanismsOmitted: number;
   /** The layer rules the edge's imports break, one entry per pair of layers, or null when it breaks none. */
   layerRule: LayerRuleBreach[] | null;
@@ -194,15 +194,12 @@ export function evidencePack(
     coChange: coChangeFigures(model, from, to),
     misplacement: misplacement(model, from, to, detail.symbols),
     unblocks: unblocksOf(model, from, to).sort((a, b) => b.unblockedGain - a.unblockedGain || compareIds(a.unit, b.unit)),
-    nearbyMechanisms: nearbyMechanisms(
-      census,
-      (model.graph.filesOf.get(from) ?? []).map(folderOf),
-      (model.graph.filesOf.get(to) ?? []).map(folderOf),
-    ),
-    nearbyMechanismsOmitted: nearbyOmitted(census),
+    ...nearbyFields(nearbyMechanisms(census, { from: model.graph.filesOf.get(from) ?? [], to: model.graph.filesOf.get(to) ?? [], packageOf: model.project.packageOf })),
     layerRule: rule,
   };
 }
+
+const nearbyFields = ({ listed, omitted }: { listed: NearbyMechanism[]; omitted: number }) => ({ nearbyMechanisms: listed, nearbyMechanismsOmitted: omitted });
 
 export interface HubFeaturePack extends HubFeature {
   /** The symbols the hub uses from the feature, most used first. Empty when the hub only names the feature in a path string. */
@@ -230,7 +227,7 @@ export interface HubEvidencePack {
   unblocks: Unblock[];
   /** Census entries in or next to the hub's folder and its features, nearest first. */
   nearbyMechanisms: NearbyMechanism[];
-  /** Census entries beyond the listed ones, farther away than the last listed. */
+  /** Census occurrences the listed entries do not stand for, ranked after the last listed. */
   nearbyMechanismsOmitted: number;
 }
 
@@ -259,11 +256,8 @@ export function hubEvidencePack(model: Model, hub: Hub, census: Census): HubEvid
     signals: hub.signals,
     stability: stabilityOfModule(model, hub.module) ?? null,
     unblocks,
-    nearbyMechanisms: nearbyMechanisms(
-      census,
-      [folderOf(hub.file)],
-      hub.features.flatMap((feature) => (model.graph.filesOf.get(feature.module) ?? []).map(folderOf)),
+    ...nearbyFields(
+      nearbyMechanisms(census, { from: [hub.file], to: hub.features.flatMap((feature) => model.graph.filesOf.get(feature.module) ?? []), packageOf: model.project.packageOf }),
     ),
-    nearbyMechanismsOmitted: nearbyOmitted(census),
   };
 }

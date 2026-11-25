@@ -35,10 +35,23 @@ export interface Occurrence {
   detail: string;
 }
 
+/** Calls that match a mechanism's names but were not counted, with why. */
+export interface LookAlike {
+  mechanism: Mechanism;
+  /** The method or function name called. */
+  name: string;
+  /** Calls left out. */
+  count: number;
+  /** Types and files of the repository that define the name. */
+  definitions: number;
+  detail: string;
+}
+
 export interface Census {
   /** Production files of every supported language that the census read. */
   files: number;
   occurrences: Occurrence[];
+  lookAlikes: LookAlike[];
 }
 
 function isNamed(folder: string, names: ReadonlySet<string>): boolean {
@@ -84,6 +97,42 @@ class Reader {
   }
 }
 
+/**
+ * The send names (event names that are not listen names) that the repository defines itself, only on types
+ * and files with no listen method and no event base type, with how many types and files define each. A call
+ * to such a name runs the repository's own code, which nobody subscribes to: telemetry's `emit`, a logging
+ * handler's `emit`. Keyed by adapter id, because each language has its own names.
+ */
+function ownSendNames(files: ReadonlyMap<string, FileCensus>, adapterOf: ReadonlyMap<string, string>, stated: ReadonlySet<string>): Map<string, Map<string, number>> {
+  const definers = new Map<string, Map<string, Set<string>>>();
+  const listening = new Set<string>();
+  for (const [path, file] of files) {
+    const adapterId = adapterOf.get(path)!;
+    const detectors = censusDetectorsOf(adapterId);
+    for (const klass of file.classes) {
+      if (klass.heritage.some((name) => detectors.eventBaseTypes.has(name))) listening.add(`${adapterId}\0${klass.name}`);
+    }
+    for (const fn of file.functions) {
+      const dot = fn.name.lastIndexOf(".");
+      const owner = `${adapterId}\0${dot === -1 ? `file:${path}` : fn.name.slice(0, dot)}`;
+      const name = fn.name.slice(dot + 1);
+      if (detectors.listenMethods.has(name)) listening.add(owner);
+      else if ((detectors.eventMethods.has(name) || detectors.eventFunctions.has(name)) && !stated.has(name)) {
+        const byName = definers.get(adapterId) ?? new Map<string, Set<string>>();
+        definers.set(adapterId, byName.set(name, (byName.get(name) ?? new Set()).add(owner)));
+      }
+    }
+  }
+  const out = new Map<string, Map<string, number>>();
+  for (const [adapterId, byName] of definers) {
+    for (const [name, owners] of byName) {
+      if ([...owners].some((owner) => listening.has(owner))) continue;
+      out.set(adapterId, (out.get(adapterId) ?? new Map<string, number>()).set(name, owners.size));
+    }
+  }
+  return out;
+}
+
 /** Reads every production file of the project and finds the decoupling mechanisms already in use. */
 export async function buildCensus(tree: SourceTree, project: Project, settings: CensusSettings): Promise<Census> {
   const files = new Map<string, FileCensus>();
@@ -119,14 +168,20 @@ export async function buildCensus(tree: SourceTree, project: Project, settings: 
     return names;
   };
 
+  const ownSends = ownSendNames(files, adapterOf, new Set(settings.eventCalls));
+  const lookAlikeCalls = new Map<string, number>();
+
   const implementers = new Map<string, { interfacePath: string; line: number; name: string; folders: Set<string> }>();
   const projectFiles = new Set(project.files);
   const callers = new Map<string, Set<string>>();
+  // Uses of a type by any kind, for a method whose calls the graph does not resolve (`Queue::new(..)` in Rust is a use of `Queue`).
+  const typeUsers = new Map<string, Set<string>>();
   for (const consumer of project.analysis.consumers) {
-    if (consumer.kind !== "call" || consumer.toSymbol === undefined || !projectFiles.has(consumer.from)) continue;
+    if (consumer.toSymbol === undefined || !projectFiles.has(consumer.from)) continue;
     if (folderOf(consumer.from) === folderOf(consumer.to)) continue;
     const key = `${consumer.to}#${consumer.toSymbol}`;
-    callers.set(key, (callers.get(key) ?? new Set()).add(folderOf(consumer.from)));
+    if (consumer.kind === "call") callers.set(key, (callers.get(key) ?? new Set()).add(folderOf(consumer.from)));
+    if (consumer.kind === "call" || consumer.kind === "reference") typeUsers.set(key, (typeUsers.get(key) ?? new Set()).add(folderOf(consumer.from)));
   }
   const symbolBased = new Set(registeredAdapters.filter((adapter) => adapter.dependencies.model === "symbol-based").map((adapter) => adapter.id));
   const callbackAliases = (path: string, names: readonly string[], detectors: CensusDetectors): boolean =>
@@ -186,7 +241,10 @@ export async function buildCensus(tree: SourceTree, project: Project, settings: 
       } else if (call.receiver !== null && detectors.handlerReceiver.test(call.receiver) && detectors.handlerMethods.has(call.method)) {
         add({ mechanism: "handlers", variant: "dispatch", path, line: call.line, detail: where });
       } else if (call.receiver !== null ? eventNames(adapterId, detectors).has(call.method) && !detectors.platformReceivers.has(call.receiver) : detectors.eventFunctions.has(call.method) || settings.eventCalls.includes(call.method)) {
-        add({ mechanism: "events", variant: "call", path, line: call.line, detail: where });
+        if (ownSends.get(adapterId)?.has(call.method)) {
+          const key = `${adapterId}\0${call.method}`;
+          lookAlikeCalls.set(key, (lookAlikeCalls.get(key) ?? 0) + 1);
+        } else add({ mechanism: "events", variant: "call", path, line: call.line, detail: where });
       } else if (registers) {
         add({ mechanism: "registries", variant: "register-call", path, line: call.line, detail: where });
       }
@@ -198,17 +256,21 @@ export async function buildCensus(tree: SourceTree, project: Project, settings: 
     for (const fn of file.functions) {
       const parameter = fn.parameters.find((p) => p.type.callback || callbackAliases(path, p.type.names, detectors));
       if (!parameter) continue;
-      // A symbol-based graph resolves a use to the type that declares it, so a method is reached through its class.
-      const owner = symbolBased.has(adapterId) && fn.name.includes(".") ? fn.name.slice(0, fn.name.lastIndexOf(".")) : undefined;
-      const callerFolders = [...(callers.get(`${path}#${fn.name}`) ?? (owner === undefined ? undefined : callers.get(`${path}#${owner}`)) ?? [])].sort(compareUtf8);
+      // A symbol-based graph resolves a call to the type that declares the method, and an import-based one records
+      // the use of the type (an import, `Type::new(..)`), so a method is reached through its type.
+      const owner = fn.name.includes(".") ? fn.name.slice(0, fn.name.lastIndexOf(".")) : undefined;
+      const throughType = owner === undefined ? undefined : (symbolBased.has(adapterId) ? callers : typeUsers).get(`${path}#${owner}`);
+      const direct = callers.get(`${path}#${fn.name}`);
+      const callerFolders = [...(direct ?? throughType ?? [])].sort(compareUtf8);
       if (callerFolders.length === 0) continue;
+      const reach = direct === undefined && !symbolBased.has(adapterId) ? `is a method of ${owner}, which is used from` : "is called from";
       add({
         mechanism: "callbacks",
         variant: "function-parameter",
         path,
         line: fn.line,
         folders: callerFolders,
-        detail: `${fn.name}(${parameter.name}) is called from ${callerFolders.join(", ")}`,
+        detail: `${fn.name}(${parameter.name}) ${reach} ${callerFolders.join(", ")}`,
       });
     }
   }
@@ -243,5 +305,21 @@ export async function buildCensus(tree: SourceTree, project: Project, settings: 
       compareUtf8(a.variant, b.variant) ||
       compareUtf8(a.detail, b.detail),
   );
-  return { files: files.size, occurrences };
+  // One entry per name: the same name in two languages is still one name to the reader.
+  const byName = new Map<string, { count: number; definitions: number }>();
+  for (const [key, count] of lookAlikeCalls) {
+    const [adapterId, name] = key.split("\0") as [string, string];
+    const entry = byName.get(name) ?? { count: 0, definitions: 0 };
+    byName.set(name, { count: entry.count + count, definitions: entry.definitions + ownSends.get(adapterId)!.get(name)! });
+  }
+  const lookAlikes = [...byName]
+    .map(([name, { count, definitions }]): LookAlike => ({
+      mechanism: "events",
+      name,
+      count,
+      definitions,
+      detail: `${name} is defined in this repository on ${definitions === 1 ? "1 type or file, which has no listen method and no event base type" : `${definitions} types or files, and none of them has a listen method or an event base type`}, so a call runs that code and notifies no listener`,
+    }))
+    .sort((a, b) => b.count - a.count || compareUtf8(a.name, b.name));
+  return { files: files.size, occurrences, lookAlikes };
 }

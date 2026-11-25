@@ -11,6 +11,7 @@ export const language: CensusLanguage = {
   detectors: {
     eventMethods: new Set(["emit", "connect", "disconnect", "notify", "notifyAll", "subscribe", "unsubscribe", "publish", "dispatch", "fire", "trigger", "addListener", "removeListener"]),
     eventFunctions: new Set(["emit", "connect", "dispatch", "publish", "subscribe", "notify"]),
+    listenMethods: new Set(["connect", "disconnect", "subscribe", "unsubscribe", "addListener", "removeListener"]),
     platformReceivers: new Set(["std", "boost", "this", "cin", "cout", "cerr", "clog", "stdin", "stdout", "stderr"]),
     eventBaseTypes: new Set(["QObject", "QWidget", "QAbstractItemModel", "has_slots", "trackable", "Observable", "Subject", "EventEmitter"]),
     containerReceiver: /(container|injector|kernel|ioc)$/i,

@@ -15,6 +15,8 @@ export interface CensusRow {
   /** The folders each occurrence involves, most occurrences first. */
   folders: { folder: string; count: number }[];
   examples: { variant: string; path: string; line: number | null; detail: string }[];
+  /** Calls that match the mechanism's names and were left out of `count`, one entry per name, most calls first. */
+  lookAlikes: { name: string; count: number; definitions: number; detail: string }[];
 }
 
 function tally(keys: Iterable<string>): [string, number][] {
@@ -54,6 +56,7 @@ export function censusRows(census: Census): CensusRow[] {
       variants: tally(found.map((o) => o.variant)).map(([variant, count]) => ({ variant, count })),
       folders,
       examples: examplesOf(found, folders).map(({ variant, path, line, detail }) => ({ variant, path, line, detail })),
+      lookAlikes: census.lookAlikes.filter((l) => l.mechanism === mechanism).map(({ name, count, definitions, detail }) => ({ name, count, definitions, detail })),
     };
   });
 }

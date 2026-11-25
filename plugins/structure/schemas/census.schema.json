@@ -160,6 +160,36 @@
               ],
               "additionalProperties": false
             }
+          },
+          "lookAlikes": {
+            "description": "Calls that match the mechanism's names and are left out of count, one entry per name, most calls first. For events: a send name (emit, publish, notify and the like) that the repository defines only on types and files with no listen method and no event base type.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "count": {
+                  "description": "Calls left out.",
+                  "$ref": "common.schema.json#/$defs/count"
+                },
+                "definitions": {
+                  "description": "Types and files of the repository that define the name.",
+                  "$ref": "common.schema.json#/$defs/count"
+                },
+                "detail": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "count",
+                "definitions",
+                "detail"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "required": [
@@ -169,7 +199,8 @@
           "files",
           "variants",
           "folders",
-          "examples"
+          "examples",
+          "lookAlikes"
         ],
         "additionalProperties": false
       }

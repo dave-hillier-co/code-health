@@ -10,6 +10,7 @@ export const language: CensusLanguage = {
   detectors: {
     eventMethods: new Set(["publishEvent", "emit", "tryEmit", "publish", "dispatch", "subscribe", "unsubscribe", "addListener", "removeListener"]),
     eventFunctions: new Set(["publishEvent", "emit", "tryEmit"]),
+    listenMethods: new Set(["subscribe", "unsubscribe", "addListener", "removeListener"]),
     platformReceivers: new Set(["System", "Runtime", "Thread", "Platform", "Math"]),
     eventBaseTypes: new Set(["Observable", "PropertyChangeSupport", "EventBus", "Subject", "BehaviorSubject", "PublishSubject", "ReplaySubject", "MutableSharedFlow", "MutableStateFlow", "Channel", "BroadcastChannel"]),
     containerReceiver: /(container|injector|beanfactory|applicationcontext|binder|kernel|koin|ioc)$/i,

@@ -9,6 +9,12 @@ export interface CensusDetectors {
   eventMethods: ReadonlySet<string>;
   /** Names that mean an event when called on their own, not only on a receiver. */
   eventFunctions: ReadonlySet<string>;
+  /**
+   * The event names that register or remove a listener (`on`, `subscribe`). The other event names send. A
+   * send name the repository defines only on types and files that have none of these, and no event base
+   * type, is a look-alike: a call runs that code and notifies no listener.
+   */
+  listenMethods: ReadonlySet<string>;
   /** Receivers that are the runtime or the platform, whose `on` is not the codebase's own events. */
   platformReceivers: ReadonlySet<string>;
   /** Base types that make a class an event source. */

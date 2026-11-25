@@ -150,6 +150,15 @@
         "detail": {
           "type": "string"
         },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Census occurrences the entry stands for: the same mechanism, variant and detail in the same folders. path and line are the first of them."
+        },
+        "samePackage": {
+          "type": "boolean",
+          "description": "The entry is in the package (crate, workspace member, project) of one of the two modules. These entries are listed first."
+        },
         "distance": {
           "type": "integer",
           "minimum": 0,
@@ -169,6 +178,8 @@
         "path",
         "line",
         "detail",
+        "count",
+        "samePackage",
         "distance",
         "near"
       ],
@@ -454,7 +465,7 @@
         "nearbyMechanismsOmitted": {
           "type": "integer",
           "minimum": 0,
-          "description": "Census entries not listed in nearbyMechanisms because of the limit of ten."
+          "description": "Census occurrences that the entries of nearbyMechanisms do not stand for, because of the limit of ten entries."
         },
         "layerRule": {
           "type": [
@@ -814,7 +825,7 @@
         "nearbyMechanismsOmitted": {
           "type": "integer",
           "minimum": 0,
-          "description": "Census entries not listed in nearbyMechanisms because of the limit of ten."
+          "description": "Census occurrences that the entries of nearbyMechanisms do not stand for, because of the limit of ten entries."
         },
         "signalsReached": {
           "type": "integer",

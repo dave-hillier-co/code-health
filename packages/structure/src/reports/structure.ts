@@ -359,6 +359,11 @@ function stabilityBlocks(packageRows: readonly PackageRow[], allAgainst: readonl
 
 function censusBlocks(rows: readonly CensusRow[]): Block[] {
   const none = rows.filter((row) => row.count === 0).map((row) => row.mechanism);
+  const lookAlikes = rows.flatMap((row) =>
+    row.lookAlikes.length === 0
+      ? []
+      : [`${row.mechanism}: ${nameList(row.lookAlikes.map((l) => `${l.name} (${plural(l.count, "call")})`), 5)}`],
+  );
   return [
     {
       type: "ranked-table",
@@ -386,6 +391,15 @@ function censusBlocks(rows: readonly CensusRow[]): Block[] {
       level: "notice",
       text: `The census describes and does not judge. ${none.length === 0 ? "Every mechanism is in use here." : `A count of zero is a finding: ${none.join(", ")} ${none.length === 1 ? "is" : "are"} not in use here, so choosing ${none.length === 1 ? "it" : "one"} would introduce something new.`}`,
     },
+    ...(lookAlikes.length === 0
+      ? []
+      : [
+          {
+            type: "notice" as const,
+            level: "notice" as const,
+            text: `Calls left out of the counts as look-alikes, ${lookAlikes.join("; ")}. The repository defines each of these send names only on types and files that have no listen method and no event base type, so a call runs that code and notifies no listener. \`structure census\` lists them under lookAlikes.`,
+          },
+        ]),
   ];
 }
 
