@@ -4,7 +4,7 @@ The structural layer: web-tree-sitter loading, a parse cache, the language adapt
 
 ## Language adapters
 
-A language is a `LanguageAdapter` (`language-adapter.ts`) in `languages/<id>/adapter.ts`, registered by one line in `registered-adapters.ts`. `languages.ts` is the registry every plugin asks (`adapterForPath`, `isTestPath`, `discoverBoundaries`, ...); no plugin imports a language. CONTRIBUTING.md lists every file a new language adds.
+A language is a `LanguageAdapter` (`language-adapter.ts`) in `languages/<id>/adapter.ts`, registered by one line in `registered-adapters.ts`. `languages.ts` is the registry every tool asks (`adapterForPath`, `isTestPath`, `discoverBoundaries`, ...); no tool imports a language. CONTRIBUTING.md lists every file a new language adds.
 
 | Member | Provides |
 |---|---|
@@ -15,7 +15,7 @@ A language is a `LanguageAdapter` (`language-adapter.ts`) in `languages/<id>/ada
 | `census` | Syntactic facts for the structure census (`census-facts.ts`). |
 | `packaging`, `abstractTypes` | The ecosystems whose packages the adapter reads, and which declarations count as types and as abstract. |
 | `mover` | What locality can do: a deterministic codemod, a file move, or an agent edit, and an optional external tool that confirms references. |
-| `support` | `experimental` until the conformance suites pass for every plugin, then `supported`. Only supported adapters analyse repositories and ship grammars. |
+| `support` | `experimental` until the conformance suites pass for every tool, then `supported`. Only supported adapters analyse repositories and ship grammars. |
 
 ## Grammars
 
@@ -28,7 +28,7 @@ Grammars come from npm packages that ship prebuilt `.wasm` files, so there are n
 | `javascript` (`.js`, `.jsx`, `.mjs`, `.cjs`) | `tree-sitter-javascript` | `tree-sitter-javascript.wasm` |
 | runtime | `web-tree-sitter` | `web-tree-sitter.wasm` |
 
-A plugin that parses ships the grammar of every supported adapter next to its bundle, in `dist/grammars/`, and loads only the ones the repository it analyses has files for (`GrammarSet` loads a grammar when the first file needs it). `grammars.ts` resolves them relative to `import.meta.url`: `grammars/` beside the bundle first, then the npm package when running from source. A plugin's build script bundles its CLI with esbuild and then calls `copyGrammars(<plugin>/dist/grammars)` from `copy-grammars.ts`, which copies the runtime and `shippedGrammarSpecs()`.
+The plugin ships the grammar of every supported adapter next to the tools' bundles, in `dist/grammars/`, and a tool loads only the ones the repository it analyses has files for (`GrammarSet` loads a grammar when the first file needs it). `grammars.ts` resolves them relative to `import.meta.url`: `grammars/` beside the bundle first, then the npm package when running from source. The build script bundles each tool's CLI with esbuild and, when any tool parses, calls `copyGrammars(tools/code-health/dist/grammars)` from `copy-grammars.ts`, which copies the runtime and `shippedGrammarSpecs()`.
 
 A grammar's version is a hash of the bytes of its `.wasm` and of the runtime's, so it is available in a bundle and cannot drift from what was loaded.
 

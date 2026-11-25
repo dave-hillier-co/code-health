@@ -30,6 +30,9 @@ const good = (plugin: string, skill: string) =>
 function skill(plugin: string, name: string, text: string) {
   const dir = join(root, "plugins", plugin, "skills", name);
   mkdirSync(dir, { recursive: true });
+  // The CLIs a skill may pre-approve are the packages with a CLI source: here, one named for the plugin.
+  mkdirSync(join(root, "packages", plugin, "src"), { recursive: true });
+  writeFileSync(join(root, "packages", plugin, "src", "main.ts"), "");
   writeFileSync(join(dir, "SKILL.md"), text);
   syncRedFlags(root);
   return dir;
@@ -67,7 +70,7 @@ test("a name that differs from the folder, a missing description and no frontmat
   expect(problems).toContain("plugins/p/skills/three/SKILL.md has no YAML frontmatter");
 });
 
-test("allowed-tools must be the plugin's own CLI and nothing broader", () => {
+test("allowed-tools must be one of the plugin's CLIs and nothing broader", () => {
   skill("p", "wide", good("p", "wide").replace(/allowed-tools: .*/, "allowed-tools: Bash"));
   skill("p", "other", good("p", "other").replace(/allowed-tools: .*/, `allowed-tools: ${allowedToolFor("q")}`));
   skill("p", "extra", good("p", "extra").replace(/allowed-tools: .*/, `allowed-tools: ${allowedToolFor("p")} Read`));

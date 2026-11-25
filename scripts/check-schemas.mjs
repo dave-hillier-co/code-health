@@ -1,10 +1,10 @@
 import { readdirSync, readFileSync, existsSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 
-const defaultRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+import { defaultRoot, pluginDir, PLUGIN } from "./layout.mjs";
 
 const directories = (path) =>
   existsSync(path) ? readdirSync(path, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort() : [];
@@ -13,13 +13,13 @@ const files = (path, suffix) =>
 const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
 
 /**
- * Compiles every plugin's JSON Schemas and validates every golden output against
+ * Compiles every tool's JSON Schemas and validates every golden output against
  * the schema of its command.
  *
- * A golden at `packages/<plugin>/test/golden/<scenario>/<command>[.<variant>].json`
- * is validated against `plugins/<plugin>/schemas/<command>.schema.json`.
+ * A golden at `packages/<tool>/test/golden/<scenario>/<command>[.<variant>].json`
+ * is validated against `plugins/code-health/schemas/<tool>/<command>.schema.json`.
  * Scenarios whose directory starts with an underscore are exempt, and so are
- * goldens of a package that has no plugin folder.
+ * goldens of a package that has no schemas folder.
  *
  * @param {string} [root] repository root
  * @returns {{ schemas: number, goldens: number, problems: string[] }}
@@ -29,8 +29,10 @@ export function checkSchemas(root = defaultRoot) {
   let schemas = 0;
   let goldens = 0;
 
-  for (const plugin of directories(join(root, "plugins"))) {
-    const schemaDir = join(root, "plugins", plugin, "schemas");
+  const schemasRoot = join(pluginDir(root), "schemas");
+  for (const tool of directories(schemasRoot)) {
+    const schemaDir = join(schemasRoot, tool);
+    const shown = `plugins/${PLUGIN}/schemas/${tool}`;
     const ajv = new Ajv2020({ strict: true, allErrors: true });
     addFormats(ajv);
 
@@ -39,7 +41,7 @@ export function checkSchemas(root = defaultRoot) {
       try {
         ajv.addSchema(readJson(join(schemaDir, name)));
       } catch (error) {
-        problems.push(`plugins/${plugin}/schemas/${name}: ${error.message}`);
+        problems.push(`${shown}/${name}: ${error.message}`);
       }
     }
     for (const name of names) {
@@ -47,19 +49,19 @@ export function checkSchemas(root = defaultRoot) {
         ajv.getSchema(readJson(join(schemaDir, name)).$id);
         schemas++;
       } catch (error) {
-        problems.push(`plugins/${plugin}/schemas/${name}: ${error.message}`);
+        problems.push(`${shown}/${name}: ${error.message}`);
       }
     }
 
-    const goldenRoot = join(root, "packages", plugin, "test", "golden");
+    const goldenRoot = join(root, "packages", tool, "test", "golden");
     for (const scenario of directories(goldenRoot).filter((s) => !s.startsWith("_"))) {
       for (const file of files(join(goldenRoot, scenario), ".json")) {
         goldens++;
-        const where = `packages/${plugin}/test/golden/${scenario}/${file}`;
+        const where = `packages/${tool}/test/golden/${scenario}/${file}`;
         const command = basename(file, ".json").split(".")[0];
         const validate = ajv.getSchema(`${command}.schema.json`);
         if (!validate) {
-          problems.push(`${where}: no schema plugins/${plugin}/schemas/${command}.schema.json`);
+          problems.push(`${where}: no schema ${shown}/${command}.schema.json`);
           continue;
         }
         const document = readJson(join(goldenRoot, scenario, file));

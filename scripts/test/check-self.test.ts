@@ -7,7 +7,7 @@ import { checkSelf, excludedSource } from "../check-self.mjs";
 const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 interface Report {
-  commands: { plugin: string; command: string; exitCode: number }[];
+  commands: { tool: string; command: string; exitCode: number }[];
   failures: string[];
 }
 
@@ -29,7 +29,7 @@ function repoWith(files: Record<string, string>): GitFixture {
   return fixture;
 }
 
-const check = (repo: GitFixture): Promise<Report> => checkSelf({ root: repo.path, plugins: join(repositoryRoot, "plugins") });
+const check = (repo: GitFixture): Promise<Report> => checkSelf({ root: repo.path, dist: join(repositoryRoot, "plugins", "code-health", "dist") });
 
 const clean = {
   "src/a.ts": "import { b } from './b.ts';\nexport const a = b + 1;\n",
@@ -37,10 +37,10 @@ const clean = {
 };
 
 describe("check:self", () => {
-  it("runs every plugin's analysis commands and passes on a clean repository", async () => {
+  it("runs every tool's analysis commands and passes on a clean repository", async () => {
     const report = await check(repoWith(clean));
     expect(report.failures).toEqual([]);
-    expect(report.commands.map((c) => `${c.plugin} ${c.command}`)).toEqual([
+    expect(report.commands.map((c) => `${c.tool} ${c.command}`)).toEqual([
       "cochange hotspots",
       "cochange coupling",
       "complexity analyse",

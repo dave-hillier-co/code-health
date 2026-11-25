@@ -10,7 +10,7 @@ import { cli } from "../../packages/cochange/src/cli.ts";
 
 vi.setConfig({ testTimeout: 120_000 });
 
-const evals = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "plugins", "cochange", "evals");
+const evals = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "plugins", "code-health", "evals", "cochange");
 const made: string[] = [];
 afterAll(() => made.forEach((dir) => rmSync(dir, { recursive: true, force: true })));
 

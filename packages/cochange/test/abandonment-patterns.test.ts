@@ -15,7 +15,7 @@ vi.setConfig({ testTimeout: 120_000 });
 
 const Ajv2020 = Ajv2020Module.default;
 const addFormats = addFormatsModule.default;
-const schemaDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "plugins", "cochange", "schemas");
+const schemaDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "plugins", "code-health", "schemas", "cochange");
 const ajv = new Ajv2020({ strict: true, allErrors: true });
 addFormats(ajv);
 ajv.addSchema(JSON.parse(readFileSync(join(schemaDir, "common.schema.json"), "utf8")));

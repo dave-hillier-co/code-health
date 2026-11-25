@@ -14,7 +14,7 @@ import { indentedHistory, steadyHistory } from "./support/scenarios.ts";
 const Ajv2020 = Ajv2020Module.default;
 const addFormats = addFormatsModule.default;
 
-const schemaDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "plugins", "cochange", "schemas");
+const schemaDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "plugins", "code-health", "schemas", "cochange");
 const load = (name: string) => JSON.parse(readFileSync(join(schemaDir, name), "utf8"));
 
 const ajv = new Ajv2020({ strict: true, allErrors: true });

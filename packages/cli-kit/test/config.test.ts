@@ -297,7 +297,7 @@ test("$schema and every plugin's section are known, whichever plugin reads the f
   expect(() => load()).not.toThrow();
 });
 
-test("the known plugin sections are the plugins of this repository", () => {
-  const plugins = readdirSync(fileURLToPath(new URL("../../../plugins", import.meta.url))).sort();
-  expect([...PLUGIN_SECTIONS].sort()).toEqual(plugins);
+test("the known sections are the tools of this repository", () => {
+  const tools = readdirSync(fileURLToPath(new URL("../../../plugins/code-health/schemas", import.meta.url))).sort();
+  expect([...PLUGIN_SECTIONS].sort()).toEqual(tools);
 });

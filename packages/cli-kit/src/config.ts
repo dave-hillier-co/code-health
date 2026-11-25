@@ -146,7 +146,7 @@ const stringLists = ["exclude", "testPatterns", "generatedPatterns", "entryPoint
 
 /**
  * The plugins whose sections may appear in code-health.json. Every plugin reads the one file, so a plugin
- * cannot tell another's section from a misspelt key without this list. A test keeps it equal to `plugins/`.
+ * cannot tell another's section from a misspelt key without this list. A test keeps it equal to the folders of `plugins/code-health/schemas/`.
  */
 export const PLUGIN_SECTIONS: readonly string[] = ["cochange", "complexity", "locality", "structure"];
 

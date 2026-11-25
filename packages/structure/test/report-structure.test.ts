@@ -12,7 +12,7 @@ import { structureReportRepository, unresolvedIncludesRepository } from "./suppo
 import { runStructure } from "./support/run.ts";
 
 const Ajv2020 = Ajv2020Module.default;
-const schema = JSON.parse(readFileSync(join(GOLDEN_DIR, "..", "..", "..", "..", "plugins", "structure", "schemas", "report.schema.json"), "utf8"));
+const schema = JSON.parse(readFileSync(join(GOLDEN_DIR, "..", "..", "..", "..", "plugins", "code-health", "schemas", "structure", "report.schema.json"), "utf8"));
 const validate = new Ajv2020({ strict: true, allErrors: true }).compile(schema);
 
 let repo: GitFixture;

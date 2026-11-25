@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
+import { tools } from "./layout.mjs";
 import { skillDirectories } from "./sync-red-flags.mjs";
 
 const defaultRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -11,8 +12,8 @@ export const MAX_SKILL_LINES = 500;
 /** The Agent Skills limit on a description. */
 export const MAX_DESCRIPTION_LENGTH = 1024;
 
-/** The one tool a skill may pre-approve: its own plugin's bundled CLI. */
-export const allowedToolFor = (plugin) => `Bash(node \${CLAUDE_PLUGIN_ROOT}/dist/${plugin}.mjs *)`;
+/** The one thing a skill may pre-approve: one of the plugin's bundled CLIs. */
+export const allowedToolFor = (tool) => `Bash(node \${CLAUDE_PLUGIN_ROOT}/dist/${tool}.mjs *)`;
 
 /** Splits a SKILL.md into its parsed frontmatter and body. `frontmatter` is null when there is none or it is not YAML. */
 export function splitFrontmatter(text) {
@@ -39,7 +40,8 @@ function toolList(value) {
  *
  * - `SKILL.md` exists, is at most 500 lines, and has YAML frontmatter
  * - `name` equals the folder name; `description` is present and at most 1024 characters
- * - `allowed-tools` is exactly the plugin's own CLI, `Bash(node ${CLAUDE_PLUGIN_ROOT}/dist/<plugin>.mjs *)`
+ * - `allowed-tools` is exactly one of the plugin's CLIs, `Bash(node ${CLAUDE_PLUGIN_ROOT}/dist/<tool>.mjs *)`,
+ *   where `<tool>` is a package with a CLI source (`packages/<tool>/src/main.ts`)
  * - `references/` holds only Markdown, includes the generated `red-flags.md`, and every
  *   `references/...` link in SKILL.md resolves
  *
@@ -49,6 +51,7 @@ function toolList(value) {
 export function checkSkills(root = defaultRoot) {
   const problems = [];
   const dirs = skillDirectories(root);
+  const allowed = tools(root).map(allowedToolFor);
   for (const dir of dirs) {
     const [plugin, , skill] = dir.slice(join(root, "plugins").length + 1).split(/[\\/]/);
     const where = `plugins/${plugin}/skills/${skill}`;
@@ -72,10 +75,9 @@ export function checkSkills(root = defaultRoot) {
       } else if (description.length > MAX_DESCRIPTION_LENGTH) {
         problems.push(`${where}/SKILL.md: description is ${description.length} characters; the limit is ${MAX_DESCRIPTION_LENGTH}`);
       }
-      const tools = toolList(frontmatter["allowed-tools"]);
-      const expected = allowedToolFor(plugin);
-      if (tools.length !== 1 || tools[0] !== expected) {
-        problems.push(`${where}/SKILL.md: allowed-tools must be exactly ${expected}`);
+      const listed = toolList(frontmatter["allowed-tools"]);
+      if (listed.length !== 1 || !allowed.includes(listed[0])) {
+        problems.push(`${where}/SKILL.md: allowed-tools must be exactly one of ${allowed.join(", ") || allowedToolFor("<tool>")}`);
       }
     }
 

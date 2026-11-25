@@ -12,7 +12,7 @@ import { buildRepo } from "./support/scenarios.ts";
 // A cold node and the grammars' wasm can take long on a loaded machine, and these suites run beside every other.
 vi.setConfig({ testTimeout: 120_000, hookTimeout: 120_000 });
 
-const dist = fileURLToPath(new URL("../../../plugins/complexity/dist", import.meta.url));
+const dist = fileURLToPath(new URL("../../../plugins/code-health/dist", import.meta.url));
 
 let installed: string;
 let repo: GitFixture;

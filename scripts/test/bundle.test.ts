@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { GitFixture } from "@code-health/fixtures/git-fixture";
-import { bundle, bundleChunks, bundledPlugins, staleBundles } from "../bundle.mjs";
+import { bundle, bundleChunks, bundledTools, staleBundles } from "../bundle.mjs";
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -41,8 +41,8 @@ afterAll(() => {
   repo.dispose();
 });
 
-test("plugins with a CLI source are bundled", () => {
-  expect(bundledPlugins(root)).toContain("cochange");
+test("packages with a CLI source are bundled", () => {
+  expect(bundledTools(root)).toContain("cochange");
 });
 
 test("a rebuild is byte identical", async () => {

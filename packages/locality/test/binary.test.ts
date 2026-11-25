@@ -13,7 +13,7 @@ import { distantHelpers } from "./support/scenarios.ts";
 vi.setConfig({ testTimeout: 120_000, hookTimeout: 120_000 });
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
-const dist = join(root, "plugins", "locality", "dist");
+const dist = join(root, "plugins", "code-health", "dist");
 const source = join(root, "packages", "locality", "src", "main.ts");
 
 let repo: GitFixture;

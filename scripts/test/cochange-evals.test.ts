@@ -10,7 +10,7 @@ import { cli } from "../../packages/cochange/src/cli.ts";
 
 vi.setConfig({ testTimeout: 120_000 });
 
-const evals = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "plugins", "cochange", "evals");
+const evals = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "plugins", "code-health", "evals", "cochange");
 const cases = readdirSync(evals, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort();
 // The identities, abandonment and risk cases have their own scaffolds, which build different repositories.
 const scaffolded = cases.filter((name) => !name.startsWith("identities-") && !name.startsWith("abandonment-") && !name.startsWith("risk-")).filter((name) => parse(readFileSync(join(evals, name, "case.yaml"), "utf8")).context?.scaffold_script);

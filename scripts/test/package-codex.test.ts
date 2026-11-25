@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { parse } from "yaml";
-import { codexInstructions, codexSkills, packageAllCodex, packageCodex } from "../package-codex.mjs";
+import { codexInstructions, codexSkills, packageAllCodex, packageCodex, toolRuntimeFiles } from "../package-codex.mjs";
 import { distantHelpers } from "../../packages/locality/test/support/scenarios.ts";
 import { manifestsRepository } from "../../packages/structure/test/packaging/support/scenarios.ts";
 
@@ -40,13 +40,18 @@ test.each(Object.entries(codexSkills))("%s installs independently with portable 
       expect(existsSync(join(dirname(join(skill, file)), target)), `${file}: ${target}`).toBe(true);
     }
   }
-  const original = join(root, "plugins", metadata.plugin, "dist");
+  // The plugin's dist holds every tool's bundle; a standalone skill carries its own tool's and no other's.
+  const original = join(root, "plugins", "code-health", "dist");
   const installed = join(skill, "scripts", "dist");
-  const files = readdirSync(original, { recursive: true, withFileTypes: true }).filter((entry) => entry.isFile());
+  const files = readdirSync(installed, { recursive: true, withFileTypes: true }).filter((entry) => entry.isFile());
   for (const file of files) {
-    const path = join(file.parentPath, file.name).slice(original.length + 1);
+    const path = join(file.parentPath, file.name).slice(installed.length + 1);
     expect(readFileSync(join(installed, path)).equals(readFileSync(join(original, path))), path).toBe(true);
   }
+  const top = readdirSync(installed);
+  expect(top).toEqual(expect.arrayContaining([`${metadata.tool}.mjs`, "THIRD_PARTY_NOTICES.md", "grammars"]));
+  expect(top.filter((name) => !name.startsWith("chunk-") && name.endsWith(".mjs"))).toEqual([`${metadata.tool}.mjs`]);
+  expect(readdirSync(join(installed, "grammars")).sort()).toEqual(readdirSync(join(original, "grammars")).sort());
 });
 
 const smokeCommands: Record<string, string[][]> = {
@@ -63,7 +68,7 @@ test.each(Object.entries(smokeCommands))("%s runs after standalone installation 
   const repo = name === "packaging" ? manifestsRepository() : distantHelpers();
   try {
     const head = repo.git("rev-parse", "HEAD");
-    const plugin = codexSkills[name as keyof typeof codexSkills].plugin;
+    const plugin = codexSkills[name as keyof typeof codexSkills].tool;
     // Copy only this skill, so siblings cannot satisfy a missing dependency.
     const installed = join(temporary, `standalone ${name}`);
     cpSync(join(suite, name), installed, { recursive: true });
@@ -150,7 +155,8 @@ test("a relocated standalone skill analyses a repository without its source chec
   for (const match of instructions.matchAll(/\]\((references\/[^)#]+)(?:#[^)]*)?\)/g)) {
     expect(existsSync(join(installed, match[1]!))).toBe(true);
   }
-  expect(readdirSync(join(installed, "scripts", "dist")).sort()).toEqual(readdirSync(join(root, "plugins", "cochange", "dist")).sort());
+  expect(readdirSync(join(installed, "scripts", "dist")).sort()).toEqual(toolRuntimeFiles("cochange", root));
+  expect(readdirSync(join(installed, "schemas")).sort()).toEqual(readdirSync(join(root, "plugins", "code-health", "schemas", "cochange")).sort());
   expect(existsSync(join(installed, "LICENSE"))).toBe(true);
   expect(existsSync(join(installed, "scripts", "dist", "THIRD_PARTY_NOTICES.md"))).toBe(true);
   expect(() => packageCodex(installed, root)).toThrow("already exists");
@@ -181,6 +187,6 @@ test("a relocated standalone skill analyses a repository without its source chec
 }, 120_000);
 
 test("changed source instructions cannot silently retain a host-specific workflow", () => {
-  const source = readFileSync(join(root, "plugins/cochange/skills/cochange/SKILL.md"), "utf8");
+  const source = readFileSync(join(root, "plugins/code-health/skills/cochange/SKILL.md"), "utf8");
   expect(() => codexInstructions(source.replace("To ask how often agents finish a coupled change,", "Changed transcript workflow:"))).toThrow("Expected one match");
 });

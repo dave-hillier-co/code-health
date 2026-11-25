@@ -1,16 +1,16 @@
 # Design Red Flags — Shared Reference
 
-Part of the code-health suite. The red flags come from John Ousterhout's *A Philosophy of Software Design*. Every plugin's skill ships a copy of this reference, in `skills/<name>/references/red-flags.md`, generated from one source file at build time. Each plugin stays self-contained and they all use the same vocabulary.
+Part of the code-health suite. The red flags come from John Ousterhout's *A Philosophy of Software Design*. Every skill ships a copy of this reference, in `skills/<name>/references/red-flags.md`, generated from one source file at build time. Each tool stays self-contained and they all use the same vocabulary.
 
 ## Why red flags
 
 The CLIs measure. Red flags give the agent a vocabulary for judgement. A metric says *where* to look. A red flag names *what is wrong* and points at the remedy. Ousterhout's frame is complexity as anything that makes a system hard to understand and change, showing up as change amplification, cognitive load and unknown unknowns. That is the same outcome this suite measures, so the two fit.
 
-The central idea is **deep modules**: a simple interface over a substantial implementation. It reconciles the suite's plugins. Locality removes shallow indirection, complexity reduces cognitive load without scattering code into shallow helpers, and co-change exposes the leakage that shallow boundaries cause.
+The central idea is **deep modules**: a simple interface over a substantial implementation. It reconciles the suite's tools. Locality removes shallow indirection, complexity reduces cognitive load without scattering code into shallow helpers, and co-change exposes the leakage that shallow boundaries cause.
 
 ## The red flags
 
-For each flag, the table gives the suite's mechanical signal, if there is one, and the plugin that emits it. The skill's review supplies the judgement in every case. A signal raises a flag for review. It never proves one.
+For each flag, the table gives the suite's mechanical signal, if there is one, and the tool that emits it. The skill's review supplies the judgement in every case. A signal raises a flag for review. It never proves one.
 
 | Red flag | Meaning | Mechanical signal | Emitted by |
 |---|---|---|---|
@@ -34,7 +34,7 @@ For each flag, the table gives the suite's mechanical signal, if there is one, a
 1. **Name the flag.** Each finding the agent reports or acts on cites the red flag it judges present, or states that none applies. A finding with no red flag and no outcome evidence is a candidate for dismissal.
 2. **Prefer deepening to splitting.** When reducing complexity, the preferred moves are those that hide more behind an interface: merging shallow pieces, pulling special cases up to callers, defining errors out of existence, choosing better defaults. Extracting a helper is acceptable only when the result is deep, and it stays local (same file, module-private) unless co-change evidence says otherwise.
 3. **Inlining is a legitimate remedy.** Following Carmack and Blow, code read straight down, with its state and order visible, is often clearer than a chain of single-use calls. Removing a shallow layer by inlining it deepens what remains.
-4. **Scrutinise what is widely used.** A defect, a leaky interface or a special-general mixture in a utility with many consumers is multiplied by every consumer. High fan-in justifies the utility's location (the locality plugin reviews such a unit and does not move it), and it also makes the utility the first place to look for red flags.
+4. **Scrutinise what is widely used.** A defect, a leaky interface or a special-general mixture in a utility with many consumers is multiplied by every consumer. High fan-in justifies the utility's location (the locality tool reviews such a unit and does not move it), and it also makes the utility the first place to look for red flags.
 5. **Record overrides.** When the agent goes against a mechanical recommendation because of a red flag, or ignores a signal it judges a false positive, the commit message or report records the flag and the reason.
 
 ## Limits

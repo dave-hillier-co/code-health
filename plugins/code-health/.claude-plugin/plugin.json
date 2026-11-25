@@ -1,0 +1,11 @@
+{
+  "name": "code-health",
+  "displayName": "Code Health",
+  "version": "0.1.0",
+  "description": "Finds where code is expensive to change, guides an agent through fixing it, and measures whether later changes got cheaper. Four CLIs read git history and source structure: co-change and hotspots, function complexity, dependencies and package boundaries, and how far code lives from the code that uses it.",
+  "author": { "name": "David Hillier", "email": "dave@hillier.co" },
+  "license": "AGPL-3.0-only OR LicenseRef-Commercial",
+  "repository": "https://github.com/dave-hillier-co/code-health",
+  "keywords": ["code-health", "git", "history", "co-change", "hotspots", "coupling", "change-risk", "knowledge-loss", "complexity", "cognitive-complexity", "refactoring", "ci", "dependencies", "import-cycles", "packages", "locality"],
+  "engines": { "claude-code": ">=2.1.0" }
+}

@@ -244,7 +244,7 @@ The figures above leave two questions open, and the command has options for both
 
 ## What it means for the suite
 
-- **The harness is an independent outcome measure.** Hidden tests, regression tests that accumulate, and dollars per checkpoint measure whether a later change succeeded and what it cost, without reference to any static score. An agent run with and without the plugins could be compared on solve rate and cost at the later checkpoints.
+- **The harness is an independent outcome measure.** Hidden tests, regression tests that accumulate, and dollars per checkpoint measure whether a later change succeeded and what it cost, without reference to any static score. An agent run with and without the plugin could be compared on solve rate and cost at the later checkpoints.
 - **The fit is partial.** A trajectory has at most 8 commits, so history-based findings would be graded weak. The workspaces are far smaller than the repositories the suite is built for.
 - **Neither metric is a score to act on.** Verbosity is lint. Erosion is one structural score with a fixed cutoff, and the paper's own table shows it predicts cost less well than line count. `complexity report trends` draws it beside code lines and the mean and largest cyclomatic complexity so that the measures can be compared on a repository's own history, not because any of them is a target.
 - **Size and change history carry the signal.** On real repositories a file's complexity mostly repeats its size, and prior change is what adds to it. A complexity ranking is most useful weighted by change, which is what `complexity analyse` does by default and what a hotspot is.

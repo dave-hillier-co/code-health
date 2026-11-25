@@ -23,22 +23,22 @@ vi.setConfig({ testTimeout: 120_000, hookTimeout: 120_000 });
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 /**
- * The committed bundles, installed as a plugin is: a copy with no node_modules beside it. A module that the
+ * The committed bundles, installed as the plugin is: a copy with no node_modules beside it. A module that the
  * bundle left out, or a grammar or ts-morph that fails to load, breaks here and not in the source tests.
  */
 let installed: string;
 const fixtures: GitFixture[] = [];
 beforeAll(() => {
   installed = mkdtempSync(join(tmpdir(), "dist-smoke-"));
-  for (const plugin of ["cochange", "complexity", "locality", "structure"]) cpSync(join(root, "plugins", plugin, "dist"), join(installed, plugin, "dist"), { recursive: true });
+  cpSync(join(root, "plugins", "code-health", "dist"), join(installed, "dist"), { recursive: true });
 });
 afterAll(() => {
   rmSync(installed, { recursive: true, force: true });
   for (const fixture of fixtures) fixture.dispose();
 });
 
-function run(plugin: string, cwd: string, args: string[]) {
-  const result = spawnSync(process.execPath, [join(installed, plugin, "dist", `${plugin}.mjs`), ...args, "--json"], { cwd, encoding: "utf8" });
+function run(tool: string, cwd: string, args: string[]) {
+  const result = spawnSync(process.execPath, [join(installed, "dist", `${tool}.mjs`), ...args, "--json"], { cwd, encoding: "utf8" });
   return { status: result.status, stderr: result.stderr, document: result.stdout === "" ? undefined : JSON.parse(result.stdout) };
 }
 
@@ -48,7 +48,7 @@ const fixture = (make: () => GitFixture): GitFixture => {
   return made;
 };
 
-describe("every plugin's installed bundle runs its newest commands", () => {
+describe("every tool's installed bundle runs its newest commands", () => {
   test("cochange: blame refresh and risk explain", () => {
     const repo = fixture(distantHelpers);
     expect(run("cochange", repo.path, ["blame", "refresh"])).toMatchObject({ status: 0, stderr: "", document: { command: "blame" } });
@@ -72,7 +72,7 @@ describe("every plugin's installed bundle runs its newest commands", () => {
   });
 });
 
-describe("every plugin's installed bundle runs the commands of the outcome and risk work", () => {
+describe("every tool's installed bundle runs the commands of the outcome and risk work", () => {
   const sessions = () => mkdtempSync(join(tmpdir(), "dist-smoke-sessions-"));
 
   test("cochange: risk loads the on-demand parse chunk and names its evidence as from parse", () => {
@@ -139,7 +139,7 @@ describe("every plugin's installed bundle runs the commands of the outcome and r
   });
 });
 
-describe("every plugin's installed bundle reads a file of each supported language", () => {
+describe("every tool's installed bundle reads a file of each supported language", () => {
   test.each(Object.entries(adapterSamples))("%s: complexity measures its function and structure reads its census", (_id, sample) => {
     const repo = fixture(() => GitFixture.build([{ type: "commit", message: "one", date: "2024-01-01T00:00:00Z", changes: [{ op: "add", path: sample.path, content: sample.source }] }]));
     const measured = run("complexity", repo.path, ["analyse", "--layer", "structural"]);

@@ -20,7 +20,7 @@ beforeAll(() => {
   repo = cyclesRepository();
   // As Claude Code installs a plugin: a copy of dist with no node_modules anywhere above it.
   installed = mkdtempSync(join(tmpdir(), "structure-installed-"));
-  cpSync(join(root, "plugins", "structure", "dist"), join(installed, "dist"), { recursive: true });
+  cpSync(join(root, "plugins", "code-health", "dist"), join(installed, "dist"), { recursive: true });
 });
 afterAll(() => {
   // beforeAll may have failed before either exists, so each is released only if it was made.

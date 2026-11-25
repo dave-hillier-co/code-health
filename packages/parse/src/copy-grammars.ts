@@ -4,7 +4,7 @@ import { locateGrammarFile, runtimeSpec, shippedGrammarSpecs } from "./grammars.
 
 /**
  * Copies the .wasm files a parsing plugin needs into `destination`, normally
- * `plugins/<plugin>/dist/grammars`, where the bundled CLI finds them relative
+ * `plugins/code-health/dist/grammars`, where the bundled CLI finds them relative
  * to `import.meta.url`. A plugin ships the grammar of every supported adapter;
  * which of them it loads depends on the repository it analyses. A plugin's
  * build script calls this after esbuild. Returns the copied file names, sorted.

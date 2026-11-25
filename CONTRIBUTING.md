@@ -1,6 +1,6 @@
 # Contributing
 
-This file says how to work in the repository: how to add a plugin, a command, a report, a skill or a language, and which checks gate a change. `README.md` describes the layout, `docs/basis.md` explains why the suite is built as it is, and `docs/languages.md` says how each language is read. The code, its tests and its golden files are the source of truth for behaviour.
+This file says how to work in the repository: how to add a tool, a command, a report, a skill or a language, and which checks gate a change. `README.md` describes the layout, `docs/basis.md` explains why the suite is built as it is, and `docs/languages.md` says how each language is read. The code, its tests and its golden files are the source of truth for behaviour.
 
 ## Contributions
 
@@ -14,61 +14,59 @@ External contributions are not accepted yet. Until contribution terms are publis
 - Output is deterministic: no wall clock, no listing order, no absolute paths in results.
 - Install packages with the npm CLI (`npm install <pkg> -w <workspace>`), never by editing `package.json`.
 - One logical change per commit. Run `npm run check` before committing.
-- A change under `plugins/<plugin>/` needs a rebuilt, committed `dist/` (`npm run build`). Plugin versions stay at `0.1.0` until the first public release, so no bump is needed. The version lives in `plugin.json` only, never in the marketplace entry.
+- The repository ships one plugin, `plugins/code-health/`, which holds every skill and the bundled CLI of every tool (`cochange`, `complexity`, `locality`, `structure`). A tool is a package with a CLI source at `packages/<t>/src/main.ts`.
+- A change to a tool's source needs a rebuilt, committed `dist/` (`npm run build`). The plugin's version stays at `0.1.0` until the first public release, so no bump is needed. The version lives in `plugin.json` only, never in the marketplace entry.
 - Evergreen content only in `README.md`, `CONTRIBUTING.md` and `docs/`: no status updates.
 - Numeric values are guidelines that order and annotate results. A new one is a named config key whose schema description says it is a guideline and where its default comes from, and it never hides a result or sets exit code 1 (see "Guidelines" in `docs/basis.md`).
 
-## Adding a plugin
+## Adding a tool
 
 ```
-npm run new-plugin -- <name> --description "<one sentence>" [--parses]
+npm run new-tool -- <name> [--parses]
 npm install
 npm run build
 npm test
 ```
 
-`<name>` is kebab-case and must not start with `claude-`, `anthropic-` or `cc-plugin-`. Pass `--parses` when the plugin needs syntax trees. `npm install` links the new workspace and updates the lock file, so commit `package-lock.json` with the plugin.
+`<name>` is kebab-case. Pass `--parses` when the tool needs syntax trees. `npm install` links the new workspace and updates the lock file, so commit `package-lock.json` with the tool. A new tool adds no plugin: its bundle, schemas, skills and evals go in `plugins/code-health/`.
 
-The scaffold (`scripts/new-plugin.mjs`, templates in `scripts/templates/plugin/`) creates:
+The scaffold (`scripts/new-tool.mjs`, templates in `scripts/templates/tool/`) creates:
 
 | Path | Purpose |
 |---|---|
-| `plugins/<p>/.claude-plugin/plugin.json` | Manifest, version `0.1.0`. Author, license, repository and engines are copied from an existing plugin. |
-| `plugins/<p>/README.md` | What the plugin does, that it belongs to the suite, and how to install it. Add its skills and commands, and add the plugin to the table in each other plugin's README and in the root `README.md`. |
-| `.claude-plugin/marketplace.json` | A new entry with `name`, `source` and `description`, and no version. |
-| `plugins/<p>/schemas/common.schema.json` | The envelope shared by every command schema, with `tool` fixed to `<p>`. |
-| `plugins/<p>/schemas/<command>.schema.json` | Schema of the placeholder command. |
-| `packages/<p>/package.json`, `tsconfig.json` | A private workspace named `@code-health/<p>`. |
-| `packages/<p>/src/main.ts` | The CLI entry. `scripts/bundle.mjs` bundles every plugin whose `packages/<p>/src/main.ts` exists, to `plugins/<p>/dist/<p>.mjs`. |
-| `packages/<p>/src/{cli,tool,config,commands}.ts` | CLI definition, tool name and schema version, config section, command list. |
-| `packages/<p>/src/commands/<command>.ts` | One placeholder command (`describe`, or `parse` with `--parses`). Replace it with the plugin's first real command. |
-| `packages/<p>/test/` | A runner (`support/run.ts`) and a test of the placeholder command. |
+| `plugins/code-health/schemas/<t>/common.schema.json` | The envelope shared by every command schema, with `tool` fixed to `<t>`. |
+| `plugins/code-health/schemas/<t>/<command>.schema.json` | Schema of the placeholder command. |
+| `packages/<t>/package.json`, `tsconfig.json` | A private workspace named `@code-health/<t>`. |
+| `packages/<t>/src/main.ts` | The CLI entry. `scripts/bundle.mjs` bundles every package whose `packages/<t>/src/main.ts` exists, to `plugins/code-health/dist/<t>.mjs`. |
+| `packages/<t>/src/{cli,tool,config,commands}.ts` | CLI definition, tool name and schema version, config section, command list. |
+| `packages/<t>/src/commands/<command>.ts` | One placeholder command (`describe`, or `parse` with `--parses`). Replace it with the tool's first real command. |
+| `packages/<t>/test/` | A runner (`support/run.ts`) and a test of the placeholder command. |
 
 ### Commands
 
-A command is a module in `packages/<p>/src/commands/` exporting `name`, `command` and optionally `rules`. Add it to `commandModules` in `commands.ts`, one import and one list entry in alphabetical order. Commands that read history use `analysisCommand` as `packages/cochange/src/analysis-command.ts` does. Reuse the shared packages (`cli-kit`, `history`, `lexical`, `parse`, `graph`) before writing a capability: if a package already does it, import it.
+A command is a module in `packages/<t>/src/commands/` exporting `name`, `command` and optionally `rules`. Add it to `commandModules` in `commands.ts`, one import and one list entry in alphabetical order. Commands that read history use `analysisCommand` as `packages/cochange/src/analysis-command.ts` does. Reuse the shared packages (`cli-kit`, `history`, `lexical`, `parse`, `graph`) before writing a capability: if a package already does it, import it.
 
 Every command gets:
 
-1. a schema `plugins/<p>/schemas/<command>.schema.json` composing `common.schema.json`,
-2. golden outputs at `packages/<p>/test/golden/<scenario>/<command>[.<variant>].json`, written through `expectGoldenIn` from `@code-health/fixtures/cli-testing` (wrap it as `packages/cochange/test/support/golden.ts` does) and refreshed with `UPDATE_GOLDEN=1`, with the diff reviewed,
+1. a schema `plugins/code-health/schemas/<t>/<command>.schema.json` composing `common.schema.json`,
+2. golden outputs at `packages/<t>/test/golden/<scenario>/<command>[.<variant>].json`, written through `expectGoldenIn` from `@code-health/fixtures/cli-testing` (wrap it as `packages/cochange/test/support/golden.ts` does) and refreshed with `UPDATE_GOLDEN=1`, with the diff reviewed,
 3. a test that runs the CLI in-process with `runInProcess` from the same module.
 
 `npm run check:schemas` compiles every schema and validates every golden against the schema named by its file name. Scenario folders starting with an underscore are exempt.
 
-A command may group subcommands that share its setup, as `structure packages <list|cohesion|coupling|boundaries|candidates|evidence|check|outcome>` does. The command module dispatches on its first positional argument to subcommands in `packages/<p>/src/<area>/commands/`, which each export a `Subcommand` (`summary`, optional `options`, `analyse`). They share one schema, `plugins/<p>/schemas/<command>.schema.json`, whose branches are selected by `inputs.subcommand`. Goldens name the subcommand as the variant, such as `packages.list.json`.
+A command may group subcommands that share its setup, as `structure packages <list|cohesion|coupling|boundaries|candidates|evidence|check|outcome>` does. The command module dispatches on its first positional argument to subcommands in `packages/<t>/src/<area>/commands/`, which each export a `Subcommand` (`summary`, optional `options`, `analyse`). They share one schema, `plugins/code-health/schemas/<t>/<command>.schema.json`, whose branches are selected by `inputs.subcommand`. Goldens name the subcommand as the variant, such as `packages.list.json`.
 
 ### Modules loaded on demand
 
-A module a command loads with `await import("./x.ts")` is built into `plugins/<p>/dist/chunk-<hash>.mjs`, with whatever only it uses, and is read only when the command runs. Use it for a heavy dependency that most commands never need, as locality does for ts-morph. A module that holds shared state must stay in the main bundle: a chunk is another file, so it would not be the same module. `npm run build` writes the chunks and removes ones that are no longer produced, and `npm run check:dist` compares them.
+A module a command loads with `await import("./x.ts")` is built into `plugins/code-health/dist/chunk-<hash>.mjs`, with whatever only it uses, and is read only when the command runs. Use it for a heavy dependency that most commands never need, as locality does for ts-morph. A module that holds shared state must stay in the main bundle: a chunk is another file, so it would not be the same module. `npm run build` writes the chunks and removes ones that are no longer produced, and `npm run check:dist` compares them.
 
-### Plugins that parse
+### Tools that parse
 
-A plugin parses when its bundle includes `packages/parse/src/grammars.ts`, directly or through another package. The build detects this and copies the tree-sitter `.wasm` files into `plugins/<p>/dist/grammars/` with `copyGrammars` from `packages/parse/src/copy-grammars.ts`. Nothing else is needed in the plugin:
+A tool parses when its bundle includes `packages/parse/src/grammars.ts`, directly or through another package. When any tool parses, the build copies the tree-sitter `.wasm` files into `plugins/code-health/dist/grammars/`, once for all the tools, with `copyGrammars` from `packages/parse/src/copy-grammars.ts`. Nothing else is needed in the tool:
 
 - Load grammars with `loadGrammar` from `@code-health/parse/grammars`. It resolves `grammars/` relative to `import.meta.url`, so the installed bundle finds them beside itself, and falls back to the npm packages when running from source.
-- The `dist/grammars/` files are committed, and `npm run check:dist` fails when they differ from a fresh build or exist for a plugin that does not parse.
-- `scripts/test/new-plugin.test.ts` shows the check to copy for a new parsing plugin: build, copy `dist/` to a directory with no `node_modules`, run the bundled CLI there to parse a file.
+- The `dist/grammars/` files are committed, and `npm run check:dist` fails when they differ from a fresh build or exist when no tool parses.
+- `scripts/test/new-tool.test.ts` shows the check to copy for a new parsing tool: build, copy `dist/` to a directory with no `node_modules`, run the bundled CLI there to parse a file.
 
 ### Bundles
 
@@ -87,9 +85,9 @@ Four commands calibrate or evaluate the suite on a corpus of repositories. They 
 
 To run them on a corpus:
 
-1. Build first with `npm run build`, so `plugins/*/dist` is current.
+1. Build first with `npm run build`, so `plugins/code-health/dist` is current.
 2. For each repository, use a full clone (a shallow clone has truncated history), on a clean working tree, and put `code-health.json` there when a command needs a setting such as `cochange.knowledge.enabled` or `history.windowMonths`. Do not commit the file to the repository under test. For `complexity backtest`, list in `exclude` the folders of fixtures, samples, examples and test inputs that the test patterns do not catch (`playground/**`, `sample/**`; the command's `possibleNonProductionFolders` names the candidates): such files are small, simple and rarely changed, and counted as production code they make complexity appear to predict change.
-3. Run `node plugins/<plugin>/dist/<plugin>.mjs <command> <subcommand> [options] --json` from inside the clone, for example `node /path/to/code-health/plugins/cochange/dist/cochange.mjs risk backtest --json`. Pipe the JSON to a file outside the clone. The first run of a large repository is slow, because it refreshes the history cache, and blame for abandonment.
+3. Run `node plugins/code-health/dist/<tool>.mjs <command> <subcommand> [options] --json` from inside the clone, for example `node /path/to/code-health/plugins/code-health/dist/cochange.mjs risk backtest --json`. Pipe the JSON to a file outside the clone. The first run of a large repository is slow, because it refreshes the history cache, and blame for abandonment.
 4. Read `evidence.grade` first. Read `risk backtest` by `separation`, `abandonment backtest` by `precision` and `recall` (null means a zero denominator, which is not a score), `locality measure premise` by `verdict` with `tasks.measured`, and `complexity backtest` by `partialOnCodeLines` with `fileSamples` (`functionSamples` with `--unit function`), or `pooledPartialOnCodeLines` with `pooledSamples` where too few periods have enough samples, as for fix share: a measure that only repeats what code lines says has a partial correlation near 0. State the sample size next to each figure.
 
 The outcome commands (`cochange outcome`, `complexity outcome`, `structure packages outcome`, `locality measure baseline` and `compare`) measure what a user acted on and stay user-facing. `locality measure change` is user-facing too: it measures one change, not an outcome.
@@ -136,12 +134,12 @@ commitsInSnapshot(snapshot): Set<sha>
 
 ## Skills
 
-A skill lives at `plugins/<p>/skills/<skill>/`. `npm run check:skills` enforces these conventions:
+A skill lives at `plugins/code-health/skills/<skill>/`, beside the skills of every other tool, so its name is unique in the plugin. `npm run check:skills` enforces these conventions:
 
 - `SKILL.md` has YAML frontmatter and at most 500 lines. Workflow, decision policy and commit discipline go in `SKILL.md`; guidelines and long explanations go in `references/`.
 - `name` equals the folder name.
 - `description` is required, at most 1024 characters, and says when to use the skill in the user's terms ("before refactoring", "code that is hard to change"), not what the CLI does. Trigger evals cover it.
-- `allowed-tools` is exactly one entry, the plugin's own CLI: `Bash(node ${CLAUDE_PLUGIN_ROOT}/dist/<p>.mjs *)`. Never anything broader.
+- `allowed-tools` is exactly one entry, the CLI of the tool the skill runs: `Bash(node ${CLAUDE_PLUGIN_ROOT}/dist/<t>.mjs *)`. Never anything broader.
 - `${CLAUDE_PLUGIN_ROOT}` is substituted in skill text but is not set in the environment of the commands the skill runs, so write the CLI path out in full in the skill text.
 - `references/` holds Markdown only. Link from `SKILL.md` with relative paths (`references/<file>.md`); the check fails on a link that does not resolve.
 - `references/red-flags.md` is generated. See below.
@@ -150,17 +148,17 @@ A skill lives at `plugins/<p>/skills/<skill>/`. `npm run check:skills` enforces 
 ---
 name: <skill>
 description: <When the user ...>
-allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/dist/<p>.mjs *)
+allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/dist/<t>.mjs *)
 ---
 ```
 
 ### Shared red flags
 
-`shared/red-flags.md` is the single source of the design vocabulary. `npm run build` copies it byte for byte to `plugins/*/skills/*/references/red-flags.md`, and `npm run check:red-flags` (part of `npm run check` and CI) fails when a copy differs or is missing. Edit only the shared file, then build and commit the copies together. `shared/reports.md`, how an agent writes a report's judgement, is copied and checked the same way.
+`shared/red-flags.md` is the single source of the design vocabulary. `npm run build` copies it byte for byte to `plugins/code-health/skills/*/references/red-flags.md`, and `npm run check:red-flags` (part of `npm run check` and CI) fails when a copy differs or is missing. Edit only the shared file, then build and commit the copies together. `shared/reports.md`, how an agent writes a report's judgement, is copied and checked the same way.
 
 ### Adding a report
 
-A plugin adds a report as one entry in the `reportCommand({ ... })` registration of its `commands/report.ts` (see `packages/cochange/src/commands/report.ts`). The entry is a `ReportKind` from `@code-health/cli-kit/report-command`: its `build` returns the title, the stamp inputs, the header facts, sections of blocks (components from `@code-health/report`), the fixed limits and the slots. Three helpers keep the page short and honest, all from `@code-health/report`:
+A tool adds a report as one entry in the `reportCommand({ ... })` registration of its `commands/report.ts` (see `packages/cochange/src/commands/report.ts`). The entry is a `ReportKind` from `@code-health/cli-kit/report-command`: its `build` returns the title, the stamp inputs, the header facts, sections of blocks (components from `@code-health/report`), the fixed limits and the slots. Three helpers keep the page short and honest, all from `@code-health/report`:
 
 - **Empty content.** A `ranked-table` with no rows and a `stability-chart` with fewer than 3 points print one notice line, and a section whose blocks are all empty or notices prints as one line. Set `emptyText` on the block to say why it is empty ("No hubs: no file reached 2 of the 4 signals."); without it the line is "<caption>: no rows.".
 - **Slots for empty content.** Return `dropEmptySlots({ title, inputs, header, sections, limits, slots })` from `empty-block.ts` instead of the plain build. It removes each `judgement` block, and its slot, that follows only empty blocks in its section (back to the previous judgement block or the section start; notices do not count), so the agent is never asked to judge nothing. A judgement with no block before it, such as a section's summary, is kept.
@@ -205,7 +203,7 @@ The lexer profile the adapter names (`lexerProfile`) already exists in `packages
 
 ### Conformance
 
-An adapter starts `support: "experimental"`. It is registered and tested, analyses no repository and ships no grammar. It becomes `supported` only when every suite below passes for it, so the change that flips the field is the one that proves the language. Every suite runs over every registered adapter, through each plugin's real code.
+An adapter starts `support: "experimental"`. It is registered and tested, analyses no repository and ships no grammar. It becomes `supported` only when every suite below passes for it, so the change that flips the field is the one that proves the language. Every suite runs over every registered adapter, through each tool's real code.
 
 | Area under `fixtures/languages/<id>/` | Run by | Pins, counted by hand |
 |---|---|---|
@@ -223,15 +221,15 @@ Record the lexical agreement with `UPDATE_AGREEMENT=1 npx vitest run packages/pa
 
 ### Grammars
 
-A parsing plugin ships the grammar of every supported adapter in `dist/grammars/`, from the adapters' `grammars`, and loads only the ones the analysed repository has files for. Nothing is listed by hand: a new supported language changes the committed `dist/grammars` of every parsing plugin, so `npm run build` follows.
+The plugin ships the grammar of every supported adapter in `dist/grammars/`, from the adapters' `grammars`, and a tool loads only the ones the analysed repository has files for. Nothing is listed by hand: a new supported language changes the committed `dist/grammars`, so `npm run build` follows.
 
 ## Evals
 
-Skill evals run with `claude plugin eval`, which bills tokens, so they run on demand and before a release and never in CI. Cases live at `plugins/<p>/evals/<case>/case.yaml`, one folder per case, and ship with the plugin.
+Skill evals run with `claude plugin eval`, which bills tokens, so they run on demand and before a release and never in CI. Cases live at `plugins/code-health/evals/<t>/<case>/case.yaml`, one folder per case under the tool whose skills it exercises, and ship with the plugin. A run loads the whole plugin, so every skill is present, as it is when installed: a case that expects one skill not to load names that skill in its grader. `npm run check:evals` requires a folder of cases for every tool a skill runs.
 
-- Format: `schema_version: "1.0"`, `name` (equal to the folder name), `execution.prompt`, `execution.model`, optional `runs`, `max_turns`, `timeout_seconds`, `tags`, and at least one grader (`regex`, `tool_used`, `tool_order`, `file_exists`, `llm`, `baseline`) with unique names. `scripts/eval-case.schema.json` is the schema `claude plugin eval` loads against. `plugins/cochange/evals/trigger-hotspots/case.yaml` is a minimal example, and `briefing-before-change` one with a scaffolded repository.
+- Format: `schema_version: "1.0"`, `name` (equal to the folder name), `execution.prompt`, `execution.model`, optional `runs`, `max_turns`, `timeout_seconds`, `tags`, and at least one grader (`regex`, `tool_used`, `tool_order`, `file_exists`, `llm`, `baseline`) with unique names. `scripts/eval-case.schema.json` is the schema `claude plugin eval` loads against. `plugins/code-health/evals/cochange/trigger-hotspots/case.yaml` is a minimal example, and `briefing-before-change` one with a scaffolded repository.
 - Use `case.yaml`, not the `prompt.md` form, because only `case.yaml` can pin the model.
-- A case that needs a repository sets `context.scaffold_script`, which runs only when `--scaffold` is passed. List the tools a case needs in `execution.allowed_tools`, and grant them with `--allow-tools`: `npm run evals -- <plugin> -- --scaffold --allow-tools Bash,Read,Edit,Write,Grep,Glob`.
+- A case that needs a repository sets `context.scaffold_script`, which runs only when `--scaffold` is passed. List the tools a case needs in `execution.allowed_tools`, and grant them with `--allow-tools`: `npm run evals -- <tool> -- --scaffold --allow-tools Bash,Read,Edit,Write,Grep,Glob`.
 - `shared/evals.json` pins `model`, `judgeModel` and `maxCostUsd`. Every case sets `execution.model` to the pinned model, and `npm run check:evals` (part of `npm run check` and CI) validates every case without running it.
 - Cover triggering (the skill loads on relevant prompts and not on unrelated ones) and behaviour (it runs the CLI, respects commit discipline, cites red flags).
 - A behaviour case that needs a repository sets `context.scaffold_script` to a script in its own folder that builds one in the working directory. Claude Code runs it only with `--scaffold`. Give the script a fixed history (explicit dates), and test it: `scripts/test/cochange-evals.test.ts` runs the scripts and checks the CLI's answers against what the graders look for.
@@ -240,15 +238,15 @@ Skill evals run with `claude plugin eval`, which bills tokens, so they run on de
 Run them with:
 
 ```
-npm run evals -- <plugin>               # billed; model, judge model and cost ceiling from shared/evals.json
-npm run evals -- <plugin> --validate    # cost ceiling 0: Claude Code loads and validates every case, nothing is billed
-npm run evals -- <plugin> -- --case <glob> --runs 1   # options after the second -- go to claude plugin eval
-npm run evals -- <plugin> -- --scaffold --allow-tools Bash Edit Write   # behaviour cases: build their repositories and grant their tools
+npm run evals -- <tool>               # billed, that tool's cases; model, judge model and cost ceiling from shared/evals.json
+npm run evals -- <tool> --validate    # cost ceiling 0: Claude Code loads and validates every case, nothing is billed
+npm run evals -- <tool> -- --case <glob> --runs 1   # options after the second -- go to claude plugin eval
+npm run evals -- <tool> -- --scaffold --allow-tools Bash Edit Write   # behaviour cases: build their repositories and grant their tools
 ```
 
-A case that needs a repository sets `context.scaffold_script` (a script that builds it in the working directory), and a case that edits files or runs commands lists those tools in `execution.allowed_tools`. Claude Code runs neither unless the operator opts in: `npm run evals -- <plugin> -- --scaffold --allow-tools Bash Write Edit`.
+A case that needs a repository sets `context.scaffold_script` (a script that builds it in the working directory), and a case that edits files or runs commands lists those tools in `execution.allowed_tools`. Claude Code runs neither unless the operator opts in: `npm run evals -- <tool> -- --scaffold --allow-tools Bash Write Edit`.
 
-Results and the HTML report are written to `.cache/evals/<plugin>/`, outside the plugin folder. The runner refuses to run when `CI` is set.
+Results and the HTML report are written to `.cache/evals/<tool>/`, outside the plugin folder. The runner refuses to run when `CI` is set.
 
 ## Checks
 
@@ -261,6 +259,6 @@ Results and the HTML report are written to `.cache/evals/<plugin>/`, outside the
 | `npm run check:skills` | a skill breaks the conventions above |
 | `npm run check:evals` | an eval case is invalid or does not use the pinned model |
 | `npm run check:schemas` | a schema does not compile or a golden does not match it |
-| `npm run check:config-schema` | `code-health.schema.json` differs from what the plugins' config sections generate: run `npm run config-schema` after changing a section's defaults |
+| `npm run check:config-schema` | `code-health.schema.json` differs from what the tools' config sections generate: run `npm run config-schema` after changing a section's defaults |
 | `npm run check:self` | a bundled CLI exits non-zero on this repository, reports syntax errors in a source file, or finds an import cycle outside the paths `code-health.json` excludes |
 | `npm run check:plugins` | `claude plugin validate --strict` reports a problem (skipped locally without the `claude` CLI, required in CI) |

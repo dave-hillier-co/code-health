@@ -11,7 +11,7 @@ import { GOLDEN_DIR } from "./support/golden.ts";
 import { runCochange } from "./support/run.ts";
 
 const Ajv2020 = Ajv2020Module.default;
-const schema = JSON.parse(readFileSync(join(GOLDEN_DIR, "..", "..", "..", "..", "plugins", "cochange", "schemas", "report.schema.json"), "utf8"));
+const schema = JSON.parse(readFileSync(join(GOLDEN_DIR, "..", "..", "..", "..", "plugins", "code-health", "schemas", "cochange", "report.schema.json"), "utf8"));
 const validate = new Ajv2020({ strict: true, allErrors: true }).compile(schema);
 
 let repo: GitFixture;
