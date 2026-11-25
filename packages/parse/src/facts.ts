@@ -66,6 +66,8 @@ export interface UnitFact extends UnitShape {
   test?: true;
   /** The method overrides or implements one its type inherits, so it is not a free-standing helper. Absent otherwise. */
   override?: true;
+  /** A function its framework calls by an attribute, so its name and signature are fixed: a Rust procedural macro. Absent otherwise. */
+  entryPoint?: true;
 }
 
 export interface BindingFact {

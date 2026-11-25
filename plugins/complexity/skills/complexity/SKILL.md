@@ -77,7 +77,10 @@ and `--limit` (default 20) and `--fields` keep it small. Never ask for a whole r
    interface), plus the exported functions and public methods whose whole body forwards to one call. A function the
    language does not export (private, internal, package-private, lower-case, underscore-prefixed) has no row, and
    `summary.passThroughNotExported` counts the pass-throughs left out. A row labelled `pass-through` names the call it
-   forwards to. A row labelled `shallow` hides little behind its interface. Both are signals to review against the
+   forwards to. A pass-through also labelled `required` implements or overrides an inherited method, or is called by a
+   framework through an attribute (`required` says which: `interface` or `entry-point`), so it cannot be inlined: those
+   rows come after the removable pass-throughs, and `summary.passThroughByKind` counts each kind. A row labelled
+   `shallow` hides little behind its interface. Both are signals to review against the
    *shallow module* and *pass-through method* red flags, never findings on their own: read the function, and the
    callers, before acting. The guideline is `interfaceDepth.shallow`, and depth needs a structural adapter, so
    other languages are counted in `summary.filesWithoutAdapter` and not listed. Details in

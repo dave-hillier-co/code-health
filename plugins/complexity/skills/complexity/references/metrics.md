@@ -51,12 +51,15 @@ of any supported language. It is never gated.
 | `interface` | A function: its parameters (a destructured object counts once), at least 1. A class: its constructor parameters plus its reachable members, so everything except `private` members and `#` fields, at least 1. A module: the names it exports, re-exports included. |
 | `depth` | `nodes` divided by `interface`, to two places. Higher is deeper. |
 | `passThrough` | The call a function's whole body forwards to. The body is one statement that is a call (`return`, `await`, `as` and `!` do not count as work), and every argument is a parameter, a spread of one, or a literal. A `new`, a computed argument or a second statement is the function doing work. |
+| `required` | What fixes the unit's name and signature, where the language marks it. `interface`: a method that implements or overrides an inherited one (a method of a Rust trait impl, a Java method annotated `@Override`, a C#, C++, Kotlin or TypeScript method marked `override`, a Python method decorated `@override`). `entry-point`: a function a framework calls by an attribute (a Rust `#[proc_macro]`, `#[proc_macro_attribute]` or `#[proc_macro_derive]` function). Null otherwise, including a Go method or an unmarked C# or TypeScript interface implementation. A pass-through with a value is also labelled `required`. |
 
 Rows are the exported top-level functions and classes, each module that exports something, and the exported pass-throughs
 (a public method of an exported class counts as exported; "exported" follows the language: capitalised in Go, `public` in C#
 and Java, `export` in TypeScript, `pub` in Rust, no leading underscore in Python). A pass-through that is not exported has no
 row and is counted in `summary.passThroughNotExported`. A row is `shallow` when it is exported, is not a method and has
-fewer than `interfaceDepth.shallow` (default 10) nodes per interface element. Pass-throughs sort first, then the shallowest.
+fewer than `interfaceDepth.shallow` (default 10) nodes per interface element. Pass-throughs that could be removed sort
+first, then the `required` ones, then the rest, each group shallowest first. `summary.passThroughByKind` counts the listed
+pass-throughs as `removable`, `interface` and `entryPoint`.
 A small helper with one clear purpose is often shallow and right: read before acting. `files` carries `interfaceDepth`, the
 mean depth over a file's exported functions and classes, and `passThroughs`, so a campaign can be checked for splitting.
 

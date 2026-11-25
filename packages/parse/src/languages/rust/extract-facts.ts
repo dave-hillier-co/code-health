@@ -9,7 +9,7 @@ import { rustMetricRules, typeName } from "./metric-rules.ts";
  * Bump when the extraction rules change in a way that alters facts for the same source, so cached facts from
  * older rules are not reused.
  */
-export const extractorVersion = 3;
+export const extractorVersion = 4;
 
 /**
  * How a Rust file is read, in terms the import model understands (see resolve-path.ts for the specifiers).
@@ -74,6 +74,11 @@ function attributeNamed(node: Node, name: string): Node | undefined {
 /** The item carries `#[cfg(test)]`, `#[test]` or an async runtime's `::test` attribute, so it is test code wherever its file sits. */
 function isTestItem(node: Node): boolean {
   return attributesOf(node).some((item) => /^#\[\s*(cfg\s*\(\s*test\s*\)|(\w+::)*test(\s*\(.*\))?)\s*\]$/s.test(item.text.trim()));
+}
+
+/** The function is a procedural macro, which the compiler calls by its `#[proc_macro]`, `#[proc_macro_attribute]` or `#[proc_macro_derive]` attribute. */
+function isProcMacro(node: Node): boolean {
+  return attributesOf(node).some((item) => /^#\[\s*proc_macro(_attribute|_derive)?\b/.test(item.text.trim()));
 }
 
 function pathAttribute(node: Node): string | undefined {
@@ -338,6 +343,7 @@ class Extractor {
       if (forwarded !== undefined) unit.passThrough = forwarded;
       if (measured.recursive) unit.recursive = true;
       if (memberOf !== undefined && context.implementsTrait === true) unit.override = true;
+      if (memberOf === undefined && isProcMacro(node)) unit.entryPoint = true;
       if (memberOf !== undefined && context.implementsTrait !== true && visibilityOf(node) !== "public") unit.hidden = true;
       if (measured.increments !== undefined) unit.increments = measured.increments;
     }

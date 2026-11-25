@@ -94,6 +94,20 @@ export const ruleDescriptions: Record<string, Rule> = {
       "two interfaces repeat each other. A call with a computed argument, a new, or several statements is the function doing work.",
       "Remedies: let callers use the callee, or move the behaviour that justified the layer into it. A function that exists to satisfy a",
       "dependency boundary, or to give a stable name to a changing callee, may be right to keep. Judge it before removing it.",
+      "A pass-through that something else requires is also labelled required, and `depth` ranks it after the ones that could be removed. See `explain required`.",
+    ].join("\n"),
+  },
+  required: {
+    summary: "Required: a pass-through whose name and signature something outside it fixes, so it cannot simply be removed",
+    explanation: [
+      "`depth` sets `required` on a unit, and labels a pass-through `required`, when the language shows that something outside the unit fixes it:",
+      "interface, a method that implements or overrides one its type inherits (a method of a Rust trait impl, a Java method annotated @Override,",
+      "a C#, C++, Kotlin or TypeScript method marked override, a Python method decorated @override); entry-point, a function a framework calls",
+      "by an attribute (a Rust #[proc_macro], #[proc_macro_attribute] or #[proc_macro_derive] function). A method that implements an interface",
+      "without such a marker (Go, a C# or TypeScript interface implementation) is not recognised, and stays an ordinary pass-through.",
+      "`depth` ranks removable pass-throughs first, then the required ones, and summary.passThroughByKind counts each kind. A required",
+      "pass-through is part of a contract: the question is whether the type needs to implement it, or whether the callee could, not whether",
+      "the layer can be inlined.",
     ].join("\n"),
   },
   fixes: {

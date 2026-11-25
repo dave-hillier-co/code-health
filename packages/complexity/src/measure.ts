@@ -60,7 +60,11 @@ export interface InterfaceUnit {
   passThrough?: string;
   /** A method code outside its class cannot call (the language's own rule), so it is not part of the class's interface. */
   hidden?: true;
+  /** Something outside the unit fixes its name and signature: an interface or base type it implements or overrides, or a framework that calls it by an attribute. */
+  required?: RequiredBy;
 }
+
+export type RequiredBy = "interface" | "entry-point";
 
 export interface FileRecord {
   path: string;
@@ -183,6 +187,7 @@ function interfaceUnits(path: string, facts: FileFacts): NonNullable<FileRecord[
       nodes: unit.shape.nodes,
       interfaceSize: unit.shape.interfaceSize,
       ...(unit.passThrough === undefined ? {} : { passThrough: unit.passThrough }),
+      ...(unit.override === true ? { required: "interface" as const } : unit.entryPoint === true ? { required: "entry-point" as const } : {}),
     });
   }
   return { units, module: { nodes: facts.nodes, exports: facts.exports.length + facts.reexports.length } };

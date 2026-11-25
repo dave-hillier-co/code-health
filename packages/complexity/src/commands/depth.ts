@@ -1,7 +1,7 @@
 import type { Command, CommandContext, Rule } from "@code-health/cli-kit/run-cli";
 import { measureCurrent, storeReport } from "../analysis.ts";
 import { normalisePaths, pathSelector } from "../current-tree.ts";
-import { depthRows, passThroughCount } from "../interface-depth.ts";
+import { byDepthRank, depthRows, passThroughCount } from "../interface-depth.ts";
 import { includeTestsHelp, includeTestsOption, splitRoles, wantsTests } from "../roles.ts";
 import { ruleDescriptions } from "../rules.ts";
 import { skipReport } from "@code-health/history/reports";
@@ -17,7 +17,8 @@ function isPartial(context: CommandContext): boolean {
 
 /**
  * The interface depth signal: exported functions, classes and modules by depth, shallowest first, with
- * the exported pass-throughs ranked above them. A pass-through that is not exported has no row and is counted in the
+ * the exported pass-throughs ranked above them: first the ones that could be removed, then the ones an interface, a base type
+ * or a framework requires. A pass-through that is not exported has no row and is counted in the
  * summary. Tests are set apart unless `--include-tests` is given. The structural layer only, because depth needs the syntax tree.
  * A whole-repository run on a clean tree stores `complexity.depth`.
  */
@@ -30,7 +31,7 @@ export const command: Command = {
     const paths = normalisePaths(context.positionals);
     const inPaths = pathSelector(paths);
     const files = measurement.files.filter((file) => inPaths(file.path));
-    const all = files.flatMap((file) => depthRows(file, settings.shallowDepth)).sort((a, b) => b.score - a.score || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
+    const all = files.flatMap((file) => depthRows(file, settings.shallowDepth)).sort(byDepthRank);
     const { listed: rows, tests } = splitRoles(all, wantsTests(context));
 
     const summary = {
@@ -39,6 +40,12 @@ export const command: Command = {
       rows: rows.length,
       shallow: rows.filter((row) => row.labels.includes("shallow")).length,
       passThrough: rows.filter((row) => row.passThrough !== null).length,
+      /** The listed pass-throughs by what keeps them: nothing, an interface or base type, or a framework that calls them. */
+      passThroughByKind: {
+        removable: rows.filter((row) => row.passThrough !== null && row.required === null).length,
+        interface: rows.filter((row) => row.passThrough !== null && row.required === "interface").length,
+        entryPoint: rows.filter((row) => row.passThrough !== null && row.required === "entry-point").length,
+      },
       /** Pass-through functions with no row because the language does not export them. */
       passThroughNotExported: files.reduce((sum, file) => sum + passThroughCount(file), 0) - all.filter((row) => row.passThrough !== null && row.kind !== "module").length,
     };
@@ -46,7 +53,8 @@ export const command: Command = {
       inputs: { tree: current.kind, paths, shallow: settings.shallowDepth, includeTests: wantsTests(context) },
       extra: { summary, ...(tests === null ? {} : { tests }), skippedFiles: measurement.skippedFiles },
       results: rows,
-      columns: ["path", "unit", "kind", "role", "exported", "nodes", "interface", "depth", "passThrough", "labels"],
+      presorted: true,
+      columns: ["path", "unit", "kind", "role", "exported", "nodes", "interface", "depth", "passThrough", "required", "labels"],
       notices: tests === null || tests.count === 0 ? [] : [`${tests.count} test rows are not listed (--include-tests lists them with the production code, and the JSON has the first ${tests.listed} in \`tests\`)`],
     };
     if (!isPartial(context) && current.kind === "head") await storeReport(context, name, output);
