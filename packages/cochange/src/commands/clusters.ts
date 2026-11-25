@@ -139,9 +139,11 @@ export const command = analysisCommand(name, {
         evidence: { pairs: inside.length, weakestSupport, clearsMinimum: weakestSupport >= settings.minSupport },
       };
     });
-    rows.sort((x, y) => y.score - x.score || compareBytes(x.path, y.path));
+    // The score multiplies a mean over a cluster's pairs, so a two-file cluster and a ten-file one are not on one scale: findings first.
+    rows.sort((x, y) => Number(y.findings.length > 0) - Number(x.findings.length > 0) || y.score - x.score || compareBytes(x.path, y.path));
 
     return {
+      presorted: true,
       inputs: { minDegree, minSupport, magnet: MAGNET, clusterMinFolders: CLUSTER_MIN_FOLDERS },
       results: rows,
       columns: ["path", "score", "size", "folders", "spread", "meanDegree", "findings"],
