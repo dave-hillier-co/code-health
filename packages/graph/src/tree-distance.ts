@@ -19,16 +19,27 @@ export function folderOf(path: string): string {
 
 /** Depth of a folder: the root `""` is 0. A file has the depth of its folder. */
 export function depthOf(folder: string): number {
-  return folder === "" ? 0 : folder.split("/").length;
+  if (folder === "") return 0;
+  let depth = 1;
+  for (let at = folder.indexOf("/"); at !== -1; at = folder.indexOf("/", at + 1)) depth++;
+  return depth;
 }
 
+const SLASH = 47;
+
+/** How many leading folder names two folders share. Read character by character, since the analysis asks it for every candidate target of every unit. */
 function commonDepth(a: string, b: string): number {
   if (a === "" || b === "") return 0;
-  const left = a.split("/");
-  const right = b.split("/");
+  const shorter = Math.min(a.length, b.length);
   let shared = 0;
-  while (shared < left.length && shared < right.length && left[shared] === right[shared]) shared++;
-  return shared;
+  for (let at = 0; at < shorter; at++) {
+    const code = a.charCodeAt(at);
+    if (code !== b.charCodeAt(at)) return shared;
+    if (code === SLASH) shared++;
+  }
+  // One is the other, or the other with more names after a slash.
+  if (a.length === b.length) return shared + 1;
+  return (a.length > shorter ? a : b).charCodeAt(shorter) === SLASH ? shared + 1 : shared;
 }
 
 /** Distance between two folders, given as repo-relative POSIX paths (`""` is the root). */

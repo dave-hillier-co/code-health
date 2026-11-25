@@ -12,7 +12,7 @@ import { bestTarget, type BoundaryEdge } from "./footprint.ts";
 import { ageDays, isoDate, pairing, type History } from "./history-evidence.ts";
 import type { Edge, Model, RawUnit } from "./model.ts";
 import { countLines, goPackagesOf, rustModulesOf, unitText, type Project } from "./project.ts";
-import { manifestFolders, placementRefusals, relocate } from "./placement.ts";
+import { firstPlacementRefusal, manifestFolders, relocate } from "./placement.ts";
 import { recommend, type Decision, type RecommendInput } from "./recommend.ts";
 import { reasonFor } from "./reason.ts";
 import { flagParameters, isPassThrough, vagueSegment } from "./signals.ts";
@@ -423,11 +423,16 @@ export function analyseProject(project: Project, model: Model, settings: Localit
   for (const unit of analysis.units) unitsByFile.set(unit.path, [...(unitsByFile.get(unit.path) ?? []), unit]);
 
   /** Go test files that use unexported names declared in `files`, and in no other file. */
+  let goTestUses: Map<string, Set<string>> | undefined;
   function goTestsOf(files: ReadonlySet<string>): string[] {
-    const declaredBy = new Map<string, Set<string>>();
-    for (const [declared, uses] of go.unexportedUses) {
-      for (const { by } of uses) if (project.isTest(by)) declaredBy.set(by, (declaredBy.get(by) ?? new Set()).add(declared));
+    // Which files declare the unexported names each Go test file uses: the same for every unit, so found once.
+    if (goTestUses === undefined) {
+      goTestUses = new Map();
+      for (const [declared, uses] of go.unexportedUses) {
+        for (const { by } of uses) if (project.isTest(by)) goTestUses.set(by, (goTestUses.get(by) ?? new Set()).add(declared));
+      }
     }
+    const declaredBy = goTestUses;
     return [...declaredBy].filter(([, declared]) => [...declared].every((file) => files.has(file)) && [...declared].some((file) => files.has(file))).map(([test]) => test);
   }
 
@@ -516,7 +521,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
     const memo = new Map<string, { label: string; detail: string } | undefined>();
     return (folder) => {
       if (!memo.has(folder)) {
-        const [first] = placementRefusals(relocate(files, tests, base, folder), manifests, project.tree, go, rust);
+        const first = firstPlacementRefusal(relocate(files, tests, base, folder), manifests, project.tree, go, rust);
         memo.set(folder, first === undefined ? groupingRefusal(files, folder) : { label: first.label, detail: first.detail });
       }
       return memo.get(folder);
