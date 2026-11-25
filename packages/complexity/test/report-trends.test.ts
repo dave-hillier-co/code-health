@@ -157,6 +157,11 @@ describe("report trends", () => {
     expect(document.data.sections.find((s) => s.id === "gaming")!.blocks.some((b) => b.type === "notice")).toBe(false);
   });
 
+  test("the limits state what the figures cannot show and cite no study", () => {
+    expect(document.data.limits.some((limit) => limit.includes("was checked against what changes cost in this repository"))).toBe(true);
+    expect(document.data.limits.join("\n")).not.toMatch(/SlopCodeBench|paper/);
+  });
+
   test("the slots ask for the trend and for folders to look at", () => {
     expect(document.slots.map((slot) => slot.id)).toEqual(["trend", "folders"]);
     expect(document.slots[0]!.verdicts).toEqual(["less-concentrated", "no-clear-change", "more-concentrated"]);

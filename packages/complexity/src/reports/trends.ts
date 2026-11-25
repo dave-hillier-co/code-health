@@ -265,7 +265,7 @@ export const trendsReport: ReportKind = {
       sections,
       limits: [
         "This is a leading indicator. It shows the size and shape of the code at each sample and says nothing about whether changes cost less or more: `complexity outcome` measures that.",
-        "These are the measures the SlopCodeBench paper set against the cost of an agent's next change. Code lines had the strongest link there, the largest and mean cyclomatic complexity a weaker one, and the weighted percent above a cutoff the weakest. That was measured on small programs written by one agent, not on this repository.",
+        "None of these figures was checked against what changes cost in this repository, so the page does not say which of them matters most for the next change.",
         `More concentrated, less concentrated and no clear change are labels from a guideline: the last value differs from the first by more than ${formatNumber(TREND_TOLERANCE * 100)} percent of it. The guideline labels the change and decides nothing.`,
         "The function figures cover the functions a grammar measured, with a nested function counted in the function that holds it. A file read by the lexical layer alone adds its code lines and no function. Test code is left out.",
         "Every sample is read with the config of the checkout (excludes, test patterns, guidelines) and the parsers of this version, not those of the time.",
