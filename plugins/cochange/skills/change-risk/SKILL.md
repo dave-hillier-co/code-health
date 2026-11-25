@@ -8,7 +8,7 @@ allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/dist/cochange.mjs *)
 
 Review effort is usually spread evenly, or by size. Neither matches where merges go wrong. A ten-line change to a hotspot, by someone who has never touched it, missing the file that always changes with it, deserves more attention than five hundred lines in code the author wrote last month. The CLI computes every factor from the repository's own history and shows it. You judge what to do about it. The level, when there is one, is advice for review and never a gate.
 
-All commands run as `node ${CLAUDE_PLUGIN_ROOT}/dist/cochange.mjs risk <command>`. Output is JSON when piped. It refreshes the history cache first, and the blame cache for the touched files when placement will be computed. A first run on a large repository takes a while. `risk` exits 0 whatever the level, and non-zero only for a usage or environment error.
+All commands run as `node ${CLAUDE_PLUGIN_ROOT}/dist/cochange.mjs risk <command>`. Output is JSON when piped. It refreshes the history cache first, and the blame cache for the touched files when placement will be computed. A first run on a large repository takes a long time, and while another command is filling the blame cache this one waits and prints the holder on stderr; `--no-refresh` reuses the caches as they are. `risk` exits 0 whatever the level, and non-zero only for a usage or environment error.
 
 ## Rules
 

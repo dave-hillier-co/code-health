@@ -142,7 +142,8 @@ test("separate processes refreshing the blame cache at once take turns, each fil
     const bundlePath = join(work, "cochange.mjs");
     const runs = await Promise.all([blameRefresh(blame.path, bundlePath), blameRefresh(blame.path, bundlePath), blameRefresh(blame.path, bundlePath)]);
     for (const run of runs) {
-      expect(run.stderr).toBe("");
+      // On a slow machine a run may wait long enough to say so; nothing else goes to stderr.
+      expect(run.stderr.split("\n").filter((line) => line !== "" && !line.startsWith("waiting for blame.lock: "))).toEqual([]);
       expect(run.status).toBe(0);
     }
     const results = runs.map(refreshed);

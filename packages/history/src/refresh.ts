@@ -103,7 +103,7 @@ export async function refresh(repoPath: string, options: RefreshOptions = {}): P
 
   return withLock(
     location.lockPath,
-    async () => {
+    async (lock) => {
       // Read shallow state and reachability under the lock so a concurrent
       // refresh that finished first leaves us nothing to do.
       const shallow = await readShallowInfo(location.repoRoot);
@@ -124,6 +124,7 @@ export async function refresh(repoPath: string, options: RefreshOptions = {}): P
           const batch = missing.slice(i, i + batchSize);
           const out = await runGit(location.repoRoot, logArgs(settings), { input: batch.join("\n") + "\n" });
           insertCommits(db, parseLog(out), boundary);
+          lock.progress(`read ${i + batch.length} of ${missing.length} commits`);
         }
         setMeta(db, "git_version", version);
         return { headSha, added: missing.length, reachable: reachable.length, rebuilt, shallow, gitVersion: version };

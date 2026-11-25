@@ -23,8 +23,14 @@ function mapped(error: unknown): CliError {
 
 test("a missing cache, lock timeout and unavailable sqlite are environment errors", () => {
   expect(mapped(new NoCacheError("x"))).toMatchObject({ exitCode: ExitCode.Environment, code: "no-cache" });
-  expect(mapped(new LockTimeoutError("/x.lock"))).toMatchObject({ exitCode: ExitCode.Environment, code: "lock-timeout" });
+  expect(mapped(new LockTimeoutError("/x.lock", "process 1", 1_000))).toMatchObject({ exitCode: ExitCode.Environment, code: "lock-timeout" });
   expect(mapped(new SqliteUnavailableError())).toMatchObject({ exitCode: ExitCode.Environment, code: "node-too-old" });
+});
+
+test("a lock timeout says how to go on without waiting", () => {
+  expect(mapped(new LockTimeoutError("/repo/.cache/code-health/blame.lock", "process 12 (cochange abandonment current)", 300_000)).message).toBe(
+    "Timed out waiting for blame.lock: process 12 (cochange abandonment current) holds it and showed no progress for 5m 0s; run the command again once that process finishes, or pass --no-refresh to read the cache as it is without waiting",
+  );
 });
 
 test("an invalid configured pattern is a config error", () => {

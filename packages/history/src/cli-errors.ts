@@ -11,7 +11,9 @@ export function mapHistoryError(error: unknown): CliError | undefined {
   if (error instanceof RefNotFoundError) return usageError(error.message);
   if (error instanceof InvalidPatternError) return configError(error.message);
   if (error instanceof NoCacheError) return environmentError("no-cache", error.message);
-  if (error instanceof LockTimeoutError) return environmentError("lock-timeout", error.message);
+  if (error instanceof LockTimeoutError) {
+    return environmentError("lock-timeout", `${error.message}; run the command again once that process finishes, or pass --no-refresh to read the cache as it is without waiting`);
+  }
   if (error instanceof SqliteUnavailableError) return environmentError("node-too-old", error.message);
   if (error instanceof GitError) return environmentError("git-failed", error.message);
   return undefined;
