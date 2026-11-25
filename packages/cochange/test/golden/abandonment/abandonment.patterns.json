@@ -160,6 +160,69 @@
       "unreliableShare": 0
     },
     {
+      "activeAuthors": 1,
+      "basis": "blame",
+      "busFactor": 1,
+      "complexity": 0,
+      "complexityPercentile": 0.5,
+      "formerAuthors": 0,
+      "formerShare": 0,
+      "hotspot": false,
+      "hotspotPercentile": 0.1667,
+      "kind": "code",
+      "meaningfulAuthors": 1,
+      "path": "src/ui/view.ts",
+      "pattern": "single-owner",
+      "patterns": [
+        "single-owner"
+      ],
+      "peopleLines": 10,
+      "topActiveShare": 1,
+      "unreliableShare": 0
+    },
+    {
+      "activeAuthors": 1,
+      "basis": "blame",
+      "busFactor": 1,
+      "complexity": 0,
+      "complexityPercentile": 0.5,
+      "formerAuthors": 0,
+      "formerShare": 0,
+      "hotspot": false,
+      "hotspotPercentile": 0,
+      "kind": "code",
+      "meaningfulAuthors": 1,
+      "path": "src/util/log.ts",
+      "pattern": "single-owner",
+      "patterns": [
+        "single-owner"
+      ],
+      "peopleLines": 10,
+      "topActiveShare": 1,
+      "unreliableShare": 0
+    },
+    {
+      "activeAuthors": 0,
+      "basis": "blame",
+      "busFactor": null,
+      "complexity": 0,
+      "complexityPercentile": 0.5,
+      "formerAuthors": 1,
+      "formerShare": 1,
+      "hotspot": false,
+      "hotspotPercentile": 0,
+      "kind": "code",
+      "meaningfulAuthors": 0,
+      "path": "src/gen/deps.ts",
+      "pattern": "inconclusive",
+      "patterns": [
+        "inconclusive"
+      ],
+      "peopleLines": 5,
+      "topActiveShare": 0,
+      "unreliableShare": 0.5
+    },
+    {
       "activeAuthors": 2,
       "basis": "blame",
       "busFactor": 2,
@@ -233,69 +296,6 @@
       "patterns": [],
       "peopleLines": 10,
       "topActiveShare": 0.1,
-      "unreliableShare": 0
-    },
-    {
-      "activeAuthors": 0,
-      "basis": "blame",
-      "busFactor": null,
-      "complexity": 0,
-      "complexityPercentile": 0.5,
-      "formerAuthors": 1,
-      "formerShare": 1,
-      "hotspot": false,
-      "hotspotPercentile": 0,
-      "kind": "code",
-      "meaningfulAuthors": 0,
-      "path": "src/gen/deps.ts",
-      "pattern": "inconclusive",
-      "patterns": [
-        "inconclusive"
-      ],
-      "peopleLines": 5,
-      "topActiveShare": 0,
-      "unreliableShare": 0.5
-    },
-    {
-      "activeAuthors": 1,
-      "basis": "blame",
-      "busFactor": 1,
-      "complexity": 0,
-      "complexityPercentile": 0.5,
-      "formerAuthors": 0,
-      "formerShare": 0,
-      "hotspot": false,
-      "hotspotPercentile": 0.1667,
-      "kind": "code",
-      "meaningfulAuthors": 1,
-      "path": "src/ui/view.ts",
-      "pattern": "single-owner",
-      "patterns": [
-        "single-owner"
-      ],
-      "peopleLines": 10,
-      "topActiveShare": 1,
-      "unreliableShare": 0
-    },
-    {
-      "activeAuthors": 1,
-      "basis": "blame",
-      "busFactor": 1,
-      "complexity": 0,
-      "complexityPercentile": 0.5,
-      "formerAuthors": 0,
-      "formerShare": 0,
-      "hotspot": false,
-      "hotspotPercentile": 0,
-      "kind": "code",
-      "meaningfulAuthors": 1,
-      "path": "src/util/log.ts",
-      "pattern": "single-owner",
-      "patterns": [
-        "single-owner"
-      ],
-      "peopleLines": 10,
-      "topActiveShare": 1,
       "unreliableShare": 0
     }
   ],

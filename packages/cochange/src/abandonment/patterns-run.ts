@@ -71,6 +71,7 @@ export async function patternsCommand(context: CommandContext): Promise<CommandO
     extra: commonExtra(p, { summary: measured.summary, complexitySource: measured.complexity.source }),
     notices: p.notices,
     results: measured.files,
+    presorted: true,
     columns: ["path", "kind", "pattern", "hotspot", "hotspotPercentile", "complexity", "peopleLines", "activeAuthors", "formerAuthors", "topActiveShare", "formerShare", "meaningfulAuthors", "busFactor", "patterns"],
   };
 }
