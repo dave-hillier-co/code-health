@@ -27,7 +27,7 @@ export const adapter: LanguageAdapter = {
   dependencies: {
     model: "import-based",
     isConfigPath,
-    createResolver: (paths, configs) => new PathResolver(paths, configs),
+    createResolver: (paths, configs, facts) => new PathResolver(paths, configs, facts),
   },
   boundaries: rustBoundaries,
   census: { extract: extractFileCensus },

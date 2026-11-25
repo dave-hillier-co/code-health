@@ -172,6 +172,7 @@ export class ModuleTree {
   private readonly tree: ReadonlySet<string>;
   private readonly implicitRoots: readonly string[];
   private readonly places = new Map<string, ModulePlace | undefined>();
+  private readonly crateOfDirectory = new Map<string, Crate | undefined>();
 
   constructor(paths: readonly string[], crates: readonly Crate[]) {
     this.tree = new Set(paths);
@@ -184,13 +185,17 @@ export class ModuleTree {
     return this.tree.has(path);
   }
 
+  /** The crate with the deepest directory above the file. Files of one directory have one crate, so it is found once per directory. */
   crateOf(file: string): Crate | undefined {
+    const directory = posix.dirname(file);
+    if (this.crateOfDirectory.has(directory)) return this.crateOfDirectory.get(directory);
     let best: Crate | undefined;
     for (const crate of this.crates) {
       if (crate.name === null) continue;
       if (crate.dir !== "." && !file.startsWith(`${crate.dir}/`)) continue;
       if (best === undefined || crate.dir.length > best.dir.length) best = crate;
     }
+    this.crateOfDirectory.set(directory, best);
     return best;
   }
 
@@ -202,9 +207,14 @@ export class ModuleTree {
     if (roots.includes(file)) root = file;
     else {
       const rank = (candidate: string): number => (candidate === crate?.libRoot || /(^|\/)lib\.rs$/.test(candidate) ? 0 : /(^|\/)main\.rs$/.test(candidate) ? 1 : 2);
+      // A target whose root is one file inside the library's own tree (a `[[bin]]` with a `path` under `src/`) takes
+      // no other file: the files beside it are modules of the library.
+      const libDir = crate?.libRoot === undefined ? undefined : posix.dirname(crate.libRoot);
+      const insideLibrary = (candidate: string): boolean =>
+        libDir !== undefined && candidate !== crate?.libRoot && file.startsWith(`${libDir}/`) && candidate.startsWith(`${libDir}/`) && !candidate.startsWith(`${libDir}/bin/`) && posix.basename(candidate) !== "main.rs";
       const candidates = roots.filter((candidate) => {
         const dir = posix.dirname(candidate);
-        return dir === "." || file.startsWith(`${dir}/`);
+        return (dir === "." || file.startsWith(`${dir}/`)) && !insideLibrary(candidate);
       });
       candidates.sort((a, b) => posix.dirname(b).length - posix.dirname(a).length || rank(a) - rank(b) || compare(a, b));
       const shortest = candidates[0] === undefined ? undefined : posix.dirname(candidates[0]).length;
@@ -235,22 +245,37 @@ export class ModuleTree {
    * for an inline module and stepped over, so the files of modules declared inside it are still found. A
    * name that starts with a capital is an item, which ends the walk. `consumed` counts the names up to the
    * last file reached, so the rest name items of that file.
+   *
+   * `reexported`, when given, says which file a name of a module file is when the module only re-exports it
+   * (`pub use other::name`), and the walk moves into that file, which may be in another crate. It says null for
+   * a name that is re-exported from outside the tree, which ends the walk with `outside` set.
    */
-  walk(from: { file: string; root: string }, names: readonly string[]): { file: string; consumed: number } {
+  walk(from: { file: string; root: string }, names: readonly string[], reexported?: (file: string, name: string) => string | null | undefined): { file: string; consumed: number; outside?: true; via?: string } {
     let file = from.file;
-    let directory = moduleDirectory(file, from.root);
+    let root = from.root;
+    let directory = moduleDirectory(file, root);
     let consumed = 0;
+    let via: string | undefined;
     for (let index = 0; index < names.length; index++) {
       const name = names[index]!;
       const found = this.child(directory, name);
+      const elsewhere = found === undefined ? reexported?.(file, name) : undefined;
       if (found !== undefined) {
         file = found;
-        directory = moduleDirectory(found, from.root);
+        directory = moduleDirectory(found, root);
+        consumed = index + 1;
+      } else if (elsewhere === null) {
+        return { file, consumed, outside: true };
+      } else if (elsewhere !== undefined && elsewhere !== file) {
+        via ??= file;
+        file = elsewhere;
+        root = this.placeOf(elsewhere)?.root ?? elsewhere;
+        directory = moduleDirectory(elsewhere, root);
         consumed = index + 1;
       } else if (/^[a-z_]/.test(name)) {
         directory = posix.join(directory, name);
       } else break;
     }
-    return { file, consumed };
+    return { file, consumed, ...(via === undefined ? {} : { via }) };
   }
 }

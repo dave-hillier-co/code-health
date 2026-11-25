@@ -22,15 +22,17 @@ export function deepImports(context: FindingContext, reuse: ReuseAnalysis): Find
   const excluded = compileGlobs(model.settings.exclude);
   const found = new Map<string, Imports>();
   for (const edge of model.project.analysis.importEdges) {
-    if (edge.pairing === true || excluded(edge.from) || excluded(edge.to) || isTestPath(edge.to)) continue;
+    // The file the statement names is what it imports of the package, whichever file a re-export leads on to.
+    const target = edge.via ?? edge.to;
+    if (edge.pairing === true || excluded(edge.from) || excluded(target) || isTestPath(target)) continue;
     const consumer = model.index.owner(edge.from);
-    const owner = model.index.owner(edge.to);
+    const owner = model.index.owner(target);
     if (consumer === undefined || owner === undefined || consumer === owner) continue;
     const entries = reuse.profiles.get(owner)?.entries;
-    if (!entries || entries.files.has(edge.to)) continue;
+    if (!entries || entries.files.has(target)) continue;
     const key = edgeKey(consumer, owner);
     const entry = found.get(key) ?? { files: new Set<string>(), importers: new Set<string>(), tests: 0 };
-    entry.files.add(edge.to);
+    entry.files.add(target);
     entry.importers.add(edge.from);
     if (edge.test === true || isTestPath(edge.from)) entry.tests++;
     found.set(key, entry);

@@ -1,0 +1,39 @@
+{
+  "units": {
+    "src/amqp.rs": [["connect", "function", 3, 5]],
+    "src/net/tls.rs": [["TlsConfig", "class", 1, 3]],
+    "src/stats/ewma.rs": [["AtomicEwma", "class", 1, 3]],
+    "src/stats/gauge.rs": [["Gauge", "class", 3, 6]],
+    "src/stats/mod.rs": [["Window", "class", 7, 9]]
+  },
+  "importEdges": [
+    "src/amqp.rs -> src/net/tls.rs import via src/lib.rs",
+    "src/lib.rs -> src/amqp.rs import nominal",
+    "src/lib.rs -> src/net/mod.rs import nominal",
+    "src/lib.rs -> src/net/tls.rs reexport nominal via src/net/mod.rs",
+    "src/lib.rs -> src/stats/mod.rs import nominal",
+    "src/net/mod.rs -> src/net/tls.rs import nominal",
+    "src/stats/gauge.rs -> src/stats/ewma.rs import via src/stats/mod.rs",
+    "src/stats/gauge.rs -> src/stats/mod.rs import",
+    "src/stats/mod.rs -> src/stats/ewma.rs import nominal",
+    "src/stats/mod.rs -> src/stats/ewma.rs reexport nominal",
+    "src/stats/mod.rs -> src/stats/gauge.rs import nominal",
+    "src/stats/mod.rs -> src/stats/gauge.rs reexport nominal"
+  ],
+  "fileEdges": [
+    "src/amqp.rs -> src/net/tls.rs reference call=0 reference=1",
+    "src/stats/gauge.rs -> src/stats/ewma.rs reference call=0 reference=1",
+    "src/stats/gauge.rs -> src/stats/mod.rs reference call=0 reference=1"
+  ],
+  "consumers": [
+    "src/amqp.rs#connect -> src/net/tls.rs#TlsConfig reference x1",
+    "src/stats/gauge.rs -> src/stats/ewma.rs#AtomicEwma reference x1",
+    "src/stats/gauge.rs -> src/stats/mod.rs#Window reference x1"
+  ],
+  "unresolved": [],
+  "barrels": [
+    "src/lib.rs",
+    "src/net/mod.rs"
+  ],
+  "syntaxErrors": []
+}

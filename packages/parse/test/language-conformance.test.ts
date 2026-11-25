@@ -29,7 +29,7 @@ function render(analysis: ProjectAnalysis): Required<AdapterExpected> {
   for (const unit of analysis.units) (units[unit.path] ??= []).push([unit.qualifiedName, unit.kind, unit.startLine, unit.endLine]);
   return {
     units,
-    importEdges: analysis.importEdges.map((edge) => `${edge.from} -> ${edge.to} ${edge.kind}${edge.typeOnly ? " type" : ""}`),
+    importEdges: analysis.importEdges.map((edge) => `${edge.from} -> ${edge.to} ${edge.kind}${edge.typeOnly ? " type" : ""}${edge.nominal === true ? " nominal" : ""}${edge.via === undefined ? "" : ` via ${edge.via}`}`),
     fileEdges: analysis.fileEdges.map((edge) => `${edge.from} -> ${edge.to} ${edge.kind} call=${edge.calls} reference=${edge.references}`),
     consumers: analysis.consumers.map(
       (consumer) =>

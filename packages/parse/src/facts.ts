@@ -86,6 +86,8 @@ export interface ImportFact {
   bindings: BindingFact[];
   /** The statement is test code inside a file that is not a test file by its name: in a Rust `#[cfg(test)]` module. Absent otherwise. */
   test?: true;
+  /** The statement declares the module it names as a child of this one (Rust `mod name;`). It says where the file sits and is no use of it. Absent otherwise. */
+  declares?: true;
 }
 
 /** One name re-exported from another module. */
@@ -97,6 +99,11 @@ export interface ReexportFact {
   imported: string;
   /** Name exported from this module, or `*` when everything is passed through under its own names. */
   exported: string;
+  /**
+   * Set when the names are not part of the file's public surface: a Rust glob `use` that is `pub(crate)` or otherwise
+   * restricted, or private. Resolution reaches through it, and the exported names do not list what it brings in.
+   */
+  visibility?: "restricted" | "private";
 }
 
 /** What a top-level declaration declares, for the exports that name it. Type-only declarations are `interface` and `type`. */
@@ -214,6 +221,11 @@ export interface FileFacts {
    * from each outermost test item's first attribute to its end, in order. Absent when there is none.
    */
   testRanges?: { startLine: number; endLine: number }[];
+  /**
+   * The file invokes a macro where an item belongs (Rust `cfg_if! { .. }`, `include_proto!(..)`), so it may define names
+   * its exports do not list. A name asked of the file and not found is taken to be defined by it. Absent otherwise.
+   */
+  itemMacros?: true;
   /** The syntax tree nests deeper than `MAX_TREE_DEPTH`, so the file was read as empty: it has no units, imports or references. */
   tooDeep?: true;
 }

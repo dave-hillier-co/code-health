@@ -10,7 +10,7 @@ import { attributesOf, isTestItem, itemKinds, itemStartLine } from "./test-code.
  * Bump when the extraction rules change in a way that alters facts for the same source, so cached facts from
  * older rules are not reused.
  */
-export const extractorVersion = 5;
+export const extractorVersion = 6;
 
 /**
  * How a Rust file is read, in terms the import model understands (see resolve-path.ts for the specifiers).
@@ -19,9 +19,20 @@ export const extractorVersion = 5;
  *   first segment after the module path that starts with a capital (a type, so `use a::Enum::Variant`
  *   imports `Enum`), otherwise the last. `self` and `super` are counted from the file's module, with inline
  *   modules unwound, and a leading name that a `mod` of the same scope declares is that module.
- * - `mod name;` is an import of the module's file, bound to its name, and an export of it, so a path through
- *   the module finds the file. A `use` that is `pub` is an export of its binding, a pass-through as in
- *   TypeScript's `export { a } from`, and a `pub use a::*` is a star re-export.
+ * - `mod name;` is an import of the module's file, bound to its name and marked `declares`, and an export of it,
+ *   so a path through the module finds the file. A `use` that is `pub` is an export of its binding, a
+ *   pass-through as in TypeScript's `export { a } from`. A glob `use a::*` is a star re-export, with its
+ *   `visibility` when it is not plain `pub`: the names it brings in are found through the file whatever its
+ *   visibility, and the code of the file uses them bare. `use a;` and `use a as b;` bind the crate `a` whole.
+ * - A path written out in code is read as a `use` of the same path: `serde_json::to_string(x)`,
+ *   `crate::config::load()`, `super::Registry`.
+ * - `macro_rules! name` is a unit and an export, both named `name!`, internal unless `#[macro_export]`. A bare
+ *   `name!(..)` that no `use` binds is an import of `name!` from the specifier `macro name`, which the resolver
+ *   finds anywhere in the crate. Macros of the standard library are left out. A function with
+ *   `#[proc_macro_derive(Name)]` is also exported as `Name`.
+ * - A macro invoked where an item belongs sets `itemMacros`: what it expands to is not parsed, so the file may
+ *   define names that are not listed.
+ * - A `use` path that starts with a name another `use` of the file binds goes on from what that name is.
  * - Every item of a file is an export, flagged `internal` unless it is plain `pub`. Resolution reaches
  *   private items, because a child module may use them, and the public surface does not list them. Items of
  *   inline modules are exported under their own names, after the file's own, so a path that ends in an
@@ -68,6 +79,22 @@ function attributeNamed(node: Node, name: string): Node | undefined {
 /** The function is a procedural macro, which the compiler calls by its `#[proc_macro]`, `#[proc_macro_attribute]` or `#[proc_macro_derive]` attribute. */
 function isProcMacro(node: Node): boolean {
   return attributesOf(node).some((item) => /^#\[\s*proc_macro(_attribute|_derive)?\b/.test(item.text.trim()));
+}
+
+/** The name a derive macro is used under: `Name` in `#[proc_macro_derive(Name, attributes(..))]`. */
+function derivedName(node: Node): string | undefined {
+  for (const item of attributesOf(node)) {
+    const found = /^#\[\s*proc_macro_derive\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)/.exec(item.text.trim());
+    if (found !== null) return found[1];
+  }
+  return undefined;
+}
+
+/** True for a macro invoked where an item belongs: at the top of a file or of an inline module. */
+function standsForItems(node: Node): boolean {
+  let parent = node.parent;
+  if (parent?.type === "expression_statement") parent = parent.parent;
+  return parent?.type === "source_file" || parent?.type === "declaration_list";
 }
 
 function pathAttribute(node: Node): string | undefined {
@@ -206,6 +233,29 @@ interface InlinePath {
 
 const compareLines = (a: { line: number }, b: { line: number }): number => a.line - b.line;
 
+/** Macros of `std` and `core`, which are no file of the tree. */
+const standardMacros = new Set([
+  "addr_of", "addr_of_mut", "asm", "assert", "assert_eq", "assert_ne", "cfg", "column", "compile_error", "concat", "concat_idents", "const_format_args",
+  "dbg", "debug_assert", "debug_assert_eq", "debug_assert_ne", "env", "eprint", "eprintln", "file", "format", "format_args", "global_asm", "include",
+  "include_bytes", "include_str", "is_x86_feature_detected", "line", "macro_rules", "matches", "module_path", "option_env", "panic", "pin", "print",
+  "println", "ready", "stringify", "thread_local", "todo", "try", "unimplemented", "unreachable", "vec", "write", "writeln",
+]);
+
+/** Names of the standard prelude, which no glob import of the tree brings in. */
+const preludeNames = new Set([
+  "Self", "Some", "None", "Ok", "Err", "Option", "Result", "Vec", "String", "Box", "Default", "Clone", "Copy", "Send", "Sync", "Sized", "Drop", "Fn", "FnMut",
+  "FnOnce", "From", "Into", "TryFrom", "TryInto", "Iterator", "IntoIterator", "Extend", "AsRef", "AsMut", "ToOwned", "ToString", "PartialEq", "Eq",
+  "PartialOrd", "Ord", "Debug", "Hash", "drop",
+]);
+
+/** A bare `name!(..)` invocation, kept until the file's imports and macros are known. */
+interface MacroUse {
+  name: string;
+  line: number;
+  unit: string | undefined;
+  test: boolean;
+}
+
 class Extractor {
   readonly units: UnitFact[] = [];
   readonly imports: ImportFact[] = [];
@@ -216,6 +266,11 @@ class Extractor {
   private readonly nameCounts = new Map<string, number>();
   private readonly inlineModules = new Set<string>();
   private readonly inlinePaths: InlinePath[] = [];
+  /** Paths in code that start at `crate`, `self` or `super`, already counted from the file's own module. */
+  private readonly relativePaths: InlinePath[] = [];
+  private readonly macroUses: MacroUse[] = [];
+  private readonly macros = new Set<string>();
+  private itemMacros = false;
   private readonly testRanges: { startLine: number; endLine: number }[] = [];
   private codeRows: boolean[] | undefined;
   private root: Node | undefined;
@@ -235,10 +290,18 @@ class Extractor {
       names.add(inner.exported);
       this.exports.push(inner);
     }
+    this.ownMacros();
+    this.pathsThroughBindings();
     const locals = new Set<string>();
     for (const imported of this.imports) for (const binding of imported.bindings) locals.add(binding.local);
     this.inlineCrates(root, locals);
+    this.bareMacros(locals);
     for (const imported of this.imports) for (const binding of imported.bindings) locals.add(binding.local);
+    // A glob import binds names this file cannot list, so the uses that may be one of them are kept for the model to look up.
+    const globs = this.reexports.some((reexport) => reexport.exported === "*");
+    const declared = new Set([...this.exports.map((exported) => exported.exported), ...this.units.map((unit) => unit.qualifiedName)]);
+    const mayBeGlobbed = (reference: ReferenceFact): boolean =>
+      globs && !declared.has(reference.local) && !preludeNames.has(reference.local) && !primitives.has(reference.local) && (upper.test(reference.local) || reference.kind === "call" || reference.member !== undefined);
     const classes = new Set(this.units.filter((unit) => unit.kind === "class").map((unit) => unit.qualifiedName));
     for (const unit of this.units) {
       const dot = unit.qualifiedName.lastIndexOf(".");
@@ -249,9 +312,10 @@ class Extractor {
       imports: this.imports,
       reexports: this.reexports,
       exports: this.exports,
-      references: this.references.filter((reference) => locals.has(reference.local)),
+      references: this.references.filter((reference) => locals.has(reference.local) || mayBeGlobbed(reference)),
       nodes: nodeCount(root, (node) => isComment(node) || node.type === "use_declaration") - 1,
       hasSyntaxErrors: root.hasError,
+      ...(this.itemMacros ? { itemMacros: true as const } : {}),
       ...(this.testRanges.length === 0 ? {} : { testRanges: this.testRanges }),
     };
   }
@@ -263,11 +327,14 @@ class Extractor {
   private inlineCrates(root: Node, locals: ReadonlySet<string>): void {
     const modules = new Set(root.descendantsOfType("mod_item").map((item) => item.childForFieldName("name")?.text));
     const known = new Map<string, ImportFact>();
-    for (const path of this.inlinePaths) {
+    const outside = this.inlinePaths.filter((path) => {
       const [first] = path.segments as [string];
-      if (locals.has(first) || modules.has(first) || primitives.has(first) || builtinCrates.has(first)) continue;
+      return !(locals.has(first) || modules.has(first) || primitives.has(first) || builtinCrates.has(first));
+    });
+    for (const path of [...outside, ...this.relativePaths]) {
       let item = path.segments.findIndex((segment, index) => index > 0 && upper.test(segment));
       if (item < 0) item = path.segments.length - 1;
+      if (item < 1 || isOwnModule(path.segments.slice(0, item), this.inlineModules)) continue;
       const local = path.segments.slice(0, item + 1).join("::");
       const imported = known.get(local);
       if (imported === undefined) {
@@ -286,7 +353,75 @@ class Extractor {
   }
 
   private inlinePath(segments: string[], line: number, kind: "call" | "reference", context: Context): void {
-    if (segments.length >= 2 && /^[a-z_]/.test(segments[0]!)) this.inlinePaths.push({ segments, line, kind, unit: context.unit, test: context.inTests === true });
+    if (segments.length < 2) return;
+    const [first] = segments as [string];
+    if (first === "crate" || first === "self" || first === "super") {
+      const counted = normalise(segments, context);
+      if (counted !== undefined && counted.every((segment) => !segment.startsWith("$"))) this.relativePaths.push({ segments: counted, line, kind, unit: context.unit, test: context.inTests === true });
+    } else if (/^[a-z_]/.test(first)) this.inlinePaths.push({ segments, line, kind, unit: context.unit, test: context.inTests === true });
+  }
+
+  /**
+   * `use a::b; use b::Name;`: the second path starts with a name the first binds, not with a crate, so it is
+   * written out from what that name is. One step is followed, which is what the idiom uses.
+   */
+  private pathsThroughBindings(): void {
+    const bound = new Map<string, string>();
+    for (const imported of this.imports) {
+      if (imported.specifier === null || imported.declares === true || imported.specifier.startsWith("mod ")) continue;
+      for (const binding of imported.bindings) {
+        if (!/^[a-z_]/.test(binding.local) || bound.has(binding.local)) continue;
+        bound.set(binding.local, binding.imported === "*" ? imported.specifier : `${imported.specifier}::${binding.imported}`);
+      }
+    }
+    if (bound.size === 0) return;
+    const through = (specifier: string): string => {
+      const split = specifier.indexOf("::");
+      const first = split < 0 ? specifier : specifier.slice(0, split);
+      const target = bound.get(first);
+      if (target === undefined || target === specifier || target.startsWith(`${first}::`)) return specifier;
+      return split < 0 ? target : `${target}${specifier.slice(split)}`;
+    };
+    for (const imported of this.imports) {
+      if (imported.specifier === null || imported.declares === true) continue;
+      // The statement that binds the name is not a path through it.
+      if (imported.bindings.some((binding) => bound.get(binding.local) === (binding.imported === "*" ? imported.specifier : `${imported.specifier}::${binding.imported}`))) continue;
+      imported.specifier = through(imported.specifier);
+    }
+    for (const reexport of this.reexports) reexport.specifier = through(reexport.specifier);
+  }
+
+  /** A `use name;` of a macro the file defines (`pub(crate) use name;` after `macro_rules! name`) exports the macro under the plain name. */
+  private ownMacros(): void {
+    if (this.macros.size === 0) return;
+    const rebound = new Set<ImportFact>();
+    for (const imported of this.imports) {
+      const [binding] = imported.bindings;
+      if (binding === undefined || imported.bindings.length !== 1 || binding.imported !== "*" || imported.specifier !== binding.local || !this.macros.has(binding.local)) continue;
+      rebound.add(imported);
+      for (const exported of [...this.exports, ...this.innerExports]) if (exported.local === binding.local) exported.local = `${binding.local}!`;
+    }
+    if (rebound.size > 0) this.imports.splice(0, this.imports.length, ...this.imports.filter((imported) => !rebound.has(imported)));
+  }
+
+  /** A bare `name!(..)` that neither a `use` nor the file itself gives a meaning is a macro of the crate, or of a crate it depends on. */
+  private bareMacros(locals: ReadonlySet<string>): void {
+    const known = new Map<string, ImportFact>();
+    for (const use of this.macroUses) {
+      if (locals.has(use.name) || this.macros.has(use.name) || standardMacros.has(use.name)) continue;
+      const local = `${use.name}!`;
+      const imported = known.get(local);
+      if (imported === undefined) {
+        const fact: ImportFact = { specifier: `macro ${use.name}`, kind: "import", typeOnly: false, line: use.line, bindings: [{ imported: local, local, typeOnly: false }] };
+        if (use.test) fact.test = true;
+        known.set(local, fact);
+        this.imports.push(fact);
+      } else if (!use.test) delete imported.test;
+      const fact: ReferenceFact = { local, kind: "call", line: use.line };
+      if (use.unit !== undefined) fact.inUnit = use.unit;
+      if (use.test) fact.test = true;
+      this.references.push(fact);
+    }
   }
 
   /** The modules a scope declares, so a path that starts with one is relative to the scope. */
@@ -310,8 +445,8 @@ class Extractor {
     for (let i = 0; i < node.childCount; i++) {
       const child = node.child(i);
       if (child === null || !child.isNamed) continue;
-      // The name a declaration introduces is not a use of anything.
-      if (node.fieldNameForChild(i) === "name" && !node.type.startsWith("scoped_")) continue;
+      // The name a declaration introduces is not a use of anything. The name of a struct literal is a use of the type.
+      if (node.fieldNameForChild(i) === "name" && !node.type.startsWith("scoped_") && node.type !== "struct_expression") continue;
       this.visit(child, context);
     }
   }
@@ -347,6 +482,19 @@ class Extractor {
     return qualifiedName;
   }
 
+  /** A `macro_rules!` definition as a unit named `name!`. It has no metrics: its body is token patterns, which are not parsed. */
+  private declareMacro(name: string, node: Node, context: Context): string {
+    const base = [this.prefix(context), `${name}!`].filter((part) => part !== "").join(".");
+    const seen = this.nameCounts.get(base) ?? 0;
+    this.nameCounts.set(base, seen + 1);
+    const qualifiedName = seen === 0 ? base : `${base}~${seen + 1}`;
+    const unit: UnitFact = { qualifiedName, kind: "macro", startLine: node.startPosition.row + 1, endLine: node.endPosition.row + 1, source: "structural" };
+    if (context.unit !== undefined) unit.parent = context.unit;
+    if (context.inTests === true || isTestItem(node)) unit.test = true;
+    this.units.push(unit);
+    return qualifiedName;
+  }
+
   private export(node: Node, name: string, local: string | undefined, kind: ExportFact["kind"], visibility: Visibility, context: Context): void {
     // Members of a type or trait are reached through it, and nested items through their function.
     if (context.owner !== undefined || context.unit !== undefined) return;
@@ -378,6 +526,8 @@ class Extractor {
         const kind: UnitKind = member === undefined ? "function" : "method";
         const qualified = this.declareUnit(name, kind, node, context, node, member);
         this.export(node, name, qualified, "function", visibilityOf(node), context);
+        const derives = member === undefined ? derivedName(node) : undefined;
+        if (derives !== undefined) this.export(node, derives, qualified, "function", "public", context);
         this.functionParts(node, { ...context, unit: qualified, owner: undefined });
         return;
       }
@@ -414,7 +564,10 @@ class Extractor {
       }
       case "macro_definition": {
         const name = node.childForFieldName("name")?.text;
-        if (name !== undefined) this.export(node, name, undefined, undefined, attributeNamed(node, "macro_export") === undefined ? "private" : "public", context);
+        if (name === undefined) return;
+        const qualified = this.declareMacro(name, node, context);
+        this.export(node, `${name}!`, qualified, undefined, attributeNamed(node, "macro_export") === undefined ? "private" : "public", { ...context, exposed: true });
+        if (context.owner === undefined && context.unit === undefined) this.macros.add(name);
         return;
       }
       case "let_declaration":
@@ -505,9 +658,9 @@ class Extractor {
       return;
     }
     const written = pathAttribute(node);
-    const specifier = `mod ${[...context.mods, name].join("::")}${written === undefined ? "" : `@${written}`}`;
+    const specifier = `mod ${[...context.mods, name.replace(/^r#/, "")].join("::")}${written === undefined ? "" : `@${written}`}`;
     const line = node.startPosition.row + 1;
-    this.imports.push({ specifier, kind: "import", typeOnly: false, line, bindings: [{ imported: "*", local: name, typeOnly: false }], ...(context.inTests === true ? { test: true as const } : {}) });
+    this.imports.push({ specifier, kind: "import", typeOnly: false, line, bindings: [{ imported: "*", local: name, typeOnly: false }], declares: true, ...(context.inTests === true ? { test: true as const } : {}) });
     this.export(node, name, name, "namespace", visibility, context);
   }
 
@@ -519,10 +672,33 @@ class Extractor {
       const segments = normalise(leaf.segments, context);
       if (segments === undefined) continue;
       if (isOwnModule(segments, this.inlineModules)) continue;
+      const test = context.inTests === true ? { test: true as const } : {};
       if (leaf.glob) {
+        const last = segments.at(-1)!;
+        if (segments.length > 1 && upper.test(last)) {
+          // `use a::Shape::*` brings in the variants of a type, which is a use of the type.
+          this.imports.push({ specifier: segments.slice(0, -1).join("::"), kind: "import", typeOnly: false, line: leaf.line, bindings: [{ imported: last, local: `${last}::*`, typeOnly: false }], ...test });
+          continue;
+        }
         const specifier = segments.join("::");
-        if (visibility === "public" && context.mods.length === 0) this.reexports.push({ specifier, typeOnly: false, line: leaf.line, imported: "*", exported: "*" });
-        else this.imports.push({ specifier, kind: "import", typeOnly: false, line: leaf.line, bindings: [], ...(context.inTests === true ? { test: true as const } : {}) });
+        if (context.inTests === true) {
+          this.imports.push({ specifier, kind: "import", typeOnly: false, line: leaf.line, bindings: [], ...test });
+          continue;
+        }
+        const exposed = visibility === "public" && context.exposed;
+        this.reexports.push({ specifier, typeOnly: false, line: leaf.line, imported: "*", exported: "*", ...(exposed ? {} : { visibility: visibility === "private" ? ("private" as const) : ("restricted" as const) }) });
+        continue;
+      }
+      if (segments.length === 1) {
+        // `use a;` and `use a as b;` bind a crate whole.
+        const local = leaf.alias ?? segments[0]!;
+        if (local === "_") continue;
+        this.imports.push({ specifier: segments[0]!, kind: "import", typeOnly: false, line: leaf.line, bindings: [{ imported: "*", local, typeOnly: false }], ...test });
+        if (visibility !== "private" && context.owner === undefined && context.unit === undefined) {
+          const fact: ExportFact = { exported: local, local, line: leaf.line };
+          if (visibility === "restricted" || !context.exposed) fact.internal = true;
+          (context.mods.length === 0 ? this.exports : this.innerExports).push(fact);
+        }
         continue;
       }
       let item = segments.findIndex((segment, index) => index > 0 && upper.test(segment));
@@ -614,7 +790,11 @@ class Extractor {
       return;
     }
     const [first, second] = segments as [string, string | undefined];
-    if (first === "self" || first === "crate" || first === "super" || first === "Self") return;
+    if (first === "Self") return;
+    if (first === "self" || first === "crate" || first === "super") {
+      this.inlinePath(segments, node.startPosition.row + 1, kind, context);
+      return;
+    }
     this.reference(first, node, context, kind, second);
     this.inlinePath(segments, node.startPosition.row + 1, kind, context);
     // Type arguments inside the path (`Vec::<Foo>::new`) are uses of their own.
@@ -636,7 +816,11 @@ class Extractor {
 
   private macro(node: Node, context: Context): void {
     const name = node.childForFieldName("macro");
-    if (name?.type === "identifier") this.reference(name.text, name, context, "call");
+    if (context.owner === undefined && context.unit === undefined && standsForItems(node)) this.itemMacros = true;
+    if (name?.type === "identifier") {
+      this.reference(name.text, name, context, "call");
+      this.macroUses.push({ name: name.text, line: name.startPosition.row + 1, unit: context.unit, test: context.inTests === true });
+    }
     else if (name?.type === "scoped_identifier") this.path(name, context, "call");
     for (const tree of node.namedChildren.filter((child) => child.type === "token_tree")) this.tokens(tree, context);
   }
@@ -647,14 +831,14 @@ class Extractor {
     for (let i = 0; i < children.length; i++) {
       const token = children[i]!;
       if (token.type === "token_tree") this.tokens(token, context);
-      else if (token.type === "identifier" || token.type === "type_identifier") {
+      else if (token.type === "identifier" || token.type === "type_identifier" || ((token.type === "crate" || token.type === "super" || token.type === "self") && children[i + 1]?.type === "::")) {
         const segments = [token.text];
         let next = i + 1;
-        while (children[next]?.type === "::" && children[next + 1]?.type === "identifier") {
+        while (children[next]?.type === "::" && (children[next + 1]?.type === "identifier" || children[next + 1]?.type === "super")) {
           segments.push(children[next + 1]!.text);
           next += 2;
         }
-        this.reference(token.text, token, context, "reference", segments[1]);
+        if (token.type === "identifier" || token.type === "type_identifier") this.reference(token.text, token, context, "reference", segments[1]);
         this.inlinePath(segments, token.startPosition.row + 1, "reference", context);
         // The names after `::` are the path's, not uses of names of their own.
         i = next - 1;

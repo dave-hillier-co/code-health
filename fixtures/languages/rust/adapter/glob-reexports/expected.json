@@ -1,0 +1,39 @@
+{
+  "units": {
+    "src/client.rs": [["open", "function", 3, 5]],
+    "src/events/websocket.rs": [
+      ["Connected", "class", 1, 1],
+      ["Failed", "class", 3, 5],
+      ["describe", "function", 7, 9]
+    ],
+    "src/server.rs": [
+      ["fail", "function", 3, 5],
+      ["report", "function", 7, 9]
+    ]
+  },
+  "importEdges": [
+    "src/client.rs -> src/events/websocket.rs import via src/events/mod.rs",
+    "src/events/mod.rs -> src/events/websocket.rs import nominal",
+    "src/events/mod.rs -> src/events/websocket.rs reexport nominal",
+    "src/lib.rs -> src/client.rs import nominal",
+    "src/lib.rs -> src/events/mod.rs import nominal",
+    "src/lib.rs -> src/server.rs import nominal",
+    "src/server.rs -> src/events/websocket.rs import via src/events/mod.rs"
+  ],
+  "fileEdges": [
+    "src/client.rs -> src/events/websocket.rs reference call=0 reference=2",
+    "src/server.rs -> src/events/websocket.rs call call=1 reference=3"
+  ],
+  "consumers": [
+    "src/client.rs#open -> src/events/websocket.rs#Connected reference x2",
+    "src/server.rs#fail -> src/events/websocket.rs#Failed reference x2",
+    "src/server.rs#report -> src/events/websocket.rs#Failed reference x1",
+    "src/server.rs#report -> src/events/websocket.rs#describe call x1"
+  ],
+  "unresolved": [],
+  "barrels": [
+    "src/events/mod.rs",
+    "src/lib.rs"
+  ],
+  "syntaxErrors": []
+}

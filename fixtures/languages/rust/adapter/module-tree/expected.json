@@ -10,10 +10,12 @@
   },
   "importEdges": [
     "src/lib.rs -> src/shapes/circle.rs import",
-    "src/lib.rs -> src/shapes/mod.rs import",
+    "src/lib.rs -> src/shapes/mod.rs import nominal",
     "src/lib.rs -> src/util.rs import",
+    "src/lib.rs -> src/util.rs import nominal",
     "src/main.rs -> src/lib.rs import",
-    "src/shapes/mod.rs -> src/shapes/circle.rs import"
+    "src/main.rs -> src/shapes/circle.rs import via src/lib.rs",
+    "src/shapes/mod.rs -> src/shapes/circle.rs import nominal"
   ],
   "fileEdges": [
     "src/lib.rs -> src/shapes/circle.rs reference call=0 reference=1",

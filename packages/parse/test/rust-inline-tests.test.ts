@@ -12,7 +12,7 @@ afterAll(() => overrideSupportedAdapters(undefined));
 const analyse = (files: Record<string, string>) => analyseTree(treeFromTexts(files));
 const facts = async (source: string) => parseFacts("src/lib.rs", await loadGrammar("rust"), source);
 const edges = (analysis: Awaited<ReturnType<typeof analyse>>) => ({
-  imports: analysis.importEdges.map((edge) => `${edge.from} -> ${edge.to}${edge.test === true ? " test" : ""}`),
+  imports: analysis.importEdges.map((edge) => `${edge.from} -> ${edge.to}${edge.test === true ? " test" : ""}${edge.nominal === true ? " nominal" : ""}`),
   files: analysis.fileEdges.map((edge) => `${edge.from} -> ${edge.to} ${edge.kind}`),
   consumers: analysis.consumers.map((consumer) => `${consumer.fromUnit} -> ${consumer.toSymbol} ${consumer.kind}`),
 });
@@ -73,7 +73,7 @@ describe("imports and uses in test code", () => {
       "src/util.rs": "pub fn helper() {}\n",
     });
     expect(edges(analysis)).toEqual({
-      imports: ["src/lib.rs -> src/util.rs"],
+      imports: ["src/lib.rs -> src/util.rs test", "src/lib.rs -> src/util.rs nominal"],
       files: ["src/lib.rs -> src/util.rs test"],
       consumers: ["tests.check -> helper test"],
     });
@@ -94,7 +94,7 @@ describe("imports and uses in test code", () => {
       "src/util.rs": "pub fn helper() {}\n",
     });
     expect(edges(analysis)).toEqual({
-      imports: ["src/lib.rs -> src/util.rs"],
+      imports: ["src/lib.rs -> src/util.rs", "src/lib.rs -> src/util.rs nominal"],
       files: ["src/lib.rs -> src/util.rs call"],
       consumers: ["run -> helper call", "tests.check -> helper test"],
     });
@@ -102,7 +102,7 @@ describe("imports and uses in test code", () => {
 
   it("make the declaration of a test module a test edge", async () => {
     const analysis = await analyse({ "src/lib.rs": "pub fn run() {}\n#[cfg(test)]\nmod tests;\n", "src/tests.rs": "use super::run;\nfn check() { run(); }\n" });
-    expect(edges(analysis).imports).toContain("src/lib.rs -> src/tests.rs test");
+    expect(edges(analysis).imports).toContain("src/lib.rs -> src/tests.rs test nominal");
   });
 
   it("make a crate named inline in test code a test import", async () => {

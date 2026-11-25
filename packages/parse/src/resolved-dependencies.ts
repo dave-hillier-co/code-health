@@ -10,6 +10,18 @@ export interface ImportEdge {
    * no dependency of the header on the source, so a view of what depends on what (cycles, package dependencies) leaves it out.
    */
   pairing?: true;
+  /**
+   * Rust only: the statement names the other file and the code of this file does not depend on it. It is a `mod name;`
+   * declaration, which places the file in the module tree, or a `pub use` that passes a name along without using it.
+   * A view of what depends on what inside one package (cycles) leaves it out.
+   */
+  nominal?: true;
+  /**
+   * Rust only: the file of the module the statement's path names, when the edge runs on to a definition another file
+   * holds (`use facade::Name`, where the crate `facade` re-exports `Name` from another crate). A view of which package
+   * uses which reads it in place of `to`: a statement uses the package it names.
+   */
+  via?: string;
   /** Every statement behind the edge is test code inside a file that is not a test file by its name, such as a `use` in a Rust `#[cfg(test)]` module. Absent otherwise. */
   test?: true;
 }
@@ -47,6 +59,10 @@ export interface Unresolved {
   line: number;
   specifier: string | null;
   reason: UnresolvedReason;
+  /** `export-not-found` only: the name that was not found. */
+  name?: string;
+  /** `export-not-found` only: the file the specifier names, whose exports do not have the name. A consumer of that file, or of a file it re-exports, is missing. */
+  to?: string;
 }
 
 /** One name a file makes available, with re-exports, renames and star exports followed to where it is defined. */

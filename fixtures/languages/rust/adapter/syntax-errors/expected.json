@@ -6,7 +6,10 @@
     ],
     "src/lib.rs": [["run", "function", 4, 6]]
   },
-  "importEdges": ["src/lib.rs -> src/broken.rs import"],
+  "importEdges": [
+    "src/lib.rs -> src/broken.rs import",
+    "src/lib.rs -> src/broken.rs import nominal"
+  ],
   "fileEdges": ["src/lib.rs -> src/broken.rs call call=1 reference=0"],
   "consumers": ["src/lib.rs#run -> src/broken.rs#ok call x1"],
   "unresolved": [],

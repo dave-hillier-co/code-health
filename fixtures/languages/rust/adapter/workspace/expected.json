@@ -16,7 +16,7 @@
     "crates/app/src/main.rs -> crates/core/src/lib.rs import",
     "crates/app/src/main.rs -> crates/core/src/store.rs import",
     "crates/app/tests/smoke.rs -> crates/core/src/store.rs import",
-    "crates/core/src/lib.rs -> crates/core/src/store.rs import"
+    "crates/core/src/lib.rs -> crates/core/src/store.rs import nominal"
   ],
   "fileEdges": [
     "crates/app/src/main.rs -> crates/core/src/lib.rs reference call=0 reference=1",

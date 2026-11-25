@@ -8,9 +8,11 @@
     "src/main.rs": [["main", "function", 3, 5]]
   },
   "importEdges": [
-    "src/inner/mod.rs -> src/inner/deep.rs import",
-    "src/lib.rs -> src/inner/mod.rs import",
-    "src/main.rs -> src/lib.rs import"
+    "src/inner/mod.rs -> src/inner/deep.rs import nominal",
+    "src/inner/mod.rs -> src/inner/deep.rs reexport nominal",
+    "src/lib.rs -> src/inner/deep.rs reexport nominal via src/inner/mod.rs",
+    "src/lib.rs -> src/inner/mod.rs import nominal",
+    "src/main.rs -> src/inner/deep.rs import via src/lib.rs"
   ],
   "fileEdges": ["src/main.rs -> src/inner/deep.rs reference call=0 reference=1"],
   "consumers": ["src/main.rs#main -> src/inner/deep.rs#Thing reference x1"],

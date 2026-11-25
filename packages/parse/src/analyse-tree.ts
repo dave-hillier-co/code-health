@@ -132,7 +132,7 @@ export async function analyseTree(tree: SourceTree, options: AnalyseOptions = {}
     const dependencies = group[0]!.dependencies;
     resolved.push(
       dependencies.model === "import-based"
-        ? new ImportModel(groupFacts, dependencies.createResolver(sortedPaths, configs), isTest).build()
+        ? new ImportModel(groupFacts, dependencies.createResolver(sortedPaths, configs, groupFacts), isTest).build()
         : (dependencies.resolve?.(input) ?? resolveBySymbols(input)),
     );
   }
@@ -179,7 +179,9 @@ function assemble(facts: ReadonlyMap<string, FileFacts>, resolved: readonly Reso
         compareUtf8(a.from, b.from) ||
         compareUtf8(a.to, b.to) ||
         compareUtf8(a.kind, b.kind) ||
-        Number(a.typeOnly) - Number(b.typeOnly),
+        Number(a.typeOnly) - Number(b.typeOnly) ||
+        Number(a.nominal === true) - Number(b.nominal === true) ||
+        compareUtf8(a.via ?? "", b.via ?? ""),
     ),
     consumers: all("consumers").sort(
       (a, b) =>
@@ -195,7 +197,7 @@ function assemble(facts: ReadonlyMap<string, FileFacts>, resolved: readonly Reso
     externalImports: all("externalImports").sort(
       (a, b) => compareUtf8(a.from, b.from) || compareUtf8(a.packageName, b.packageName) || Number(a.typeOnly) - Number(b.typeOnly),
     ),
-    unresolved: all("unresolved").sort((a, b) => compareUtf8(a.from, b.from) || a.line - b.line || compareUtf8(a.specifier ?? "", b.specifier ?? "")),
+    unresolved: all("unresolved").sort((a, b) => compareUtf8(a.from, b.from) || a.line - b.line || compareUtf8(a.specifier ?? "", b.specifier ?? "") || compareUtf8(a.name ?? "", b.name ?? "")),
     filesWithSyntaxErrors,
     syntaxErrors,
     filesWithMacroCode,

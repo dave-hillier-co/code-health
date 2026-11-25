@@ -1,0 +1,41 @@
+{
+  "units": {
+    "crates/app/src/main.rs": [
+      ["Upper", "class", 4, 4],
+      ["Upper.run", "method", 7, 7],
+      ["Upper.step", "method", 11, 11],
+      ["main", "function", 14, 19]
+    ],
+    "crates/core/src/config.rs": [["Settings", "class", 1, 3]],
+    "crates/core/src/transform/mod.rs": [["Transform", "class", 5, 7]],
+    "crates/core/src/transform/sync.rs": [["SyncTransform", "class", 1, 3]]
+  },
+  "importEdges": [
+    "crates/app/src/main.rs -> crates/core/src/config.rs import via crates/facade/src/lib.rs",
+    "crates/app/src/main.rs -> crates/core/src/transform/mod.rs import via crates/facade/src/lib.rs",
+    "crates/app/src/main.rs -> crates/core/src/transform/sync.rs import via crates/facade/src/lib.rs",
+    "crates/core/src/lib.rs -> crates/core/src/config.rs import nominal",
+    "crates/core/src/lib.rs -> crates/core/src/transform/mod.rs import nominal",
+    "crates/core/src/transform/mod.rs -> crates/core/src/transform/sync.rs import nominal",
+    "crates/core/src/transform/mod.rs -> crates/core/src/transform/sync.rs reexport nominal",
+    "crates/facade/src/lib.rs -> crates/core/src/config.rs reexport nominal",
+    "crates/facade/src/lib.rs -> crates/core/src/lib.rs reexport nominal",
+    "crates/facade/src/lib.rs -> crates/core/src/transform/mod.rs reexport nominal via crates/core/src/lib.rs"
+  ],
+  "fileEdges": [
+    "crates/app/src/main.rs -> crates/core/src/config.rs reference call=0 reference=2",
+    "crates/app/src/main.rs -> crates/core/src/transform/mod.rs reference call=0 reference=1",
+    "crates/app/src/main.rs -> crates/core/src/transform/sync.rs reference call=0 reference=1"
+  ],
+  "consumers": [
+    "crates/app/src/main.rs -> crates/core/src/transform/mod.rs#Transform reference x1",
+    "crates/app/src/main.rs -> crates/core/src/transform/sync.rs#SyncTransform reference x1",
+    "crates/app/src/main.rs#main -> crates/core/src/config.rs#Settings reference x2"
+  ],
+  "unresolved": [],
+  "barrels": [
+    "crates/core/src/lib.rs",
+    "crates/facade/src/lib.rs"
+  ],
+  "syntaxErrors": []
+}

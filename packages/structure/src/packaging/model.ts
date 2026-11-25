@@ -158,7 +158,8 @@ export function assemblePackageModel(
   for (const imported of project.analysis.importEdges) {
     if (imported.pairing === true || excluded(imported.from) || excluded(imported.to)) continue;
     const from = index.owner(imported.from);
-    const to = index.owner(imported.to);
+    // A statement uses the package it names, whichever package holds the definition a re-export leads to.
+    const to = index.owner(imported.via ?? imported.to);
     if (from === undefined || to === undefined || from === to) continue;
     const edge = edgeFor(from, to);
     if (imported.test === true || isTestPath(imported.from) || isTestPath(imported.to)) edge.testImports++;
