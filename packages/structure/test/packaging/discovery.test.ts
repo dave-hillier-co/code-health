@@ -69,6 +69,33 @@ test("Python distributions resolve names the way pip normalises them", () => {
   expect(internal("py/app")).toEqual(["py/util:runtime"]);
 });
 
+test("a Python distribution described by setup.cfg alone takes its name, requirements and scripts from it", async () => {
+  const found = await discoverPackages(
+    treeFromTexts({
+      "svc/setup.cfg": [
+        "[metadata]",
+        "name = acme-svc",
+        "version = 2.1",
+        "",
+        "[options]",
+        "install_requires =",
+        "    acme-util>=1",
+        "    requests",
+        "",
+        "[options.entry_points]",
+        "console_scripts =",
+        "    svc = acme_svc:main",
+        "",
+      ].join("\n"),
+      "svc/setup.py": "from setuptools import setup\nsetup()\n",
+      "util/pyproject.toml": '[project]\nname = "acme_util"\n',
+    }),
+    { ignore: [], extra: [], components: [], exclude: [] },
+  );
+  expect(found.find((p) => p.id === "svc")).toMatchObject({ name: "acme-svc", manifest: "svc/setup.cfg", version: "2.1", entry: true });
+  expect(found.find((p) => p.id === "svc")!.dependencies.map((d) => [d.name, d.target])).toEqual([["acme-util", "util"], ["requests", null]]);
+});
+
 test("Rust crates resolve path dependencies and publish = false", () => {
   expect(byId("crates/a")).toMatchObject({ ecosystem: "cargo", name: "a", private: true });
   expect(internal("crates/a")).toEqual(["crates/b:runtime"]);

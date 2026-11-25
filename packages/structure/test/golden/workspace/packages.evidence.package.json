@@ -660,6 +660,7 @@
       "id": "packages/lib",
       "instability": 0,
       "kind": "published",
+      "kindSource": "default",
       "name": "@acme/lib",
       "purpose": null,
       "revisions": 6,

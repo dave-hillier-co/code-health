@@ -96,7 +96,7 @@ describe("structure's packaging scaffold", () => {
     const merge = candidates.results.find((c: { findings: string[] }) => c.findings.includes("always-together:packages/api->packages/ui"));
     expect(merge).toMatchObject({ status: "proposed", against: [] });
     const list = await json(structure, dir, "packages", "list");
-    expect(list.results.map((r: { id: string; kind: string }) => [r.id, r.kind])).toEqual([
+    expect(list.results.map((r: { id: string; kind: string }) => [r.id, r.kind]).sort()).toEqual([
       ["packages/api", "internal"],
       ["packages/app", "internal"],
       ["packages/shared", "internal"],

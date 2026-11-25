@@ -30,7 +30,17 @@ interface Candidate {
   tentative: boolean;
   step: number;
   also: string[];
+  dependants: string[] | null;
   handoff: string | null;
+}
+
+interface Withheld {
+  kind: string;
+  packages: string[];
+  reason: string;
+  assumed: string[];
+  question: string | null;
+  candidate: Candidate;
 }
 
 async function candidates(fixture: GitFixture, ...args: string[]) {
@@ -71,9 +81,23 @@ describe("merge", () => {
     // its manifest can still be corrected: that changes nothing a consumer outside could depend on
     const changesThem = rows.filter((c) => ["merge", "split", "move-unit", "narrow-interface"].includes(c.kind));
     expect(changesThem.some((c) => c.packages.includes("packages/lib") || c.packages.includes("packages/lib-extra"))).toBe(false);
-    const withheld = document.withheld as { kind: string; packages: string[]; reason: string }[];
+    const withheld = document.withheld as Withheld[];
     const tiny = withheld.find((w) => w.kind === "merge" && w.packages.join() === "packages/lib-extra,packages/ui")!;
-    expect(tiny.reason).toBe("packages/lib-extra is published: its consumers outside the repository cannot be seen, so nothing is proposed");
+    expect(tiny.reason).toBe(
+      'packages/lib-extra is treated as published because its manifest does not mark it internal ("private": true in package.json) and no config says otherwise: its consumers outside the repository cannot be seen, so nothing is proposed',
+    );
+    expect(tiny.assumed).toEqual(["packages/lib-extra"]);
+    expect(tiny.question).toBe(
+      'Does packages/lib-extra have consumers outside this repository? If not, set structure.packages.byPackage["packages/lib-extra"].published to false and run packages candidates again.',
+    );
+    expect(tiny.candidate).toMatchObject({ id: "merge:packages/lib-extra->packages/ui", kind: "merge", into: "packages/ui", findings: ["tiny:packages/lib-extra"] });
+  });
+
+  test("a package that config declares published is withheld with no question to ask", async () => {
+    const { document } = await withPackageSettings(workspace, { byPackage: { "packages/lib-extra": { published: true } } }, () => candidates(workspace));
+    const tiny = (document.withheld as Withheld[]).find((w) => w.kind === "merge" && w.packages.join() === "packages/lib-extra,packages/ui")!;
+    expect(tiny.reason).toBe("packages/lib-extra is declared published in config: its consumers outside the repository cannot be seen, so nothing is proposed");
+    expect(tiny).toMatchObject({ assumed: [], question: null });
   });
 
   test("a declared purpose that the evidence does not contradict argues against, softly", async () => {
@@ -112,9 +136,9 @@ describe("split", () => {
     const split = byId("split:packages/shared")!;
     expect(split).toMatchObject({ kind: "split", status: "proposed", step: 5, packages: ["packages/shared"] });
     expect(split.parts).toEqual([
-      { exports: ["formatDate"], consumers: ["packages/ui"] },
-      { exports: ["newId", "formatMoney"], consumers: ["packages/api", "packages/orphan"] },
-      { exports: ["log"], consumers: ["packages/app"] },
+      { exports: ["packages/shared/src/format.ts#formatDate"], consumers: ["packages/ui"] },
+      { exports: ["packages/shared/src/ids.ts#newId", "packages/shared/src/money.ts#formatMoney"], consumers: ["packages/api", "packages/orphan"] },
+      { exports: ["packages/shared/src/log.ts#log"], consumers: ["packages/app"] },
     ]);
     expect(split.findings).toEqual(["disjoint-reuse:packages/shared", "dumping-ground:packages/shared"]);
   });
@@ -187,11 +211,15 @@ describe("narrow-interface, fix-manifest and break-dependency", () => {
   });
 });
 
-test("a package in the zone of pain gives a dependency to break for each package that depends on it", async () => {
-  const { byId } = await candidates(workspace);
-  const ids = ["packages/api", "packages/app", "packages/orphan", "packages/ui"].map((from) => `break-dependency:${from}->packages/shared`);
-  for (const id of ids) expect(byId(id)!.findings).toContain("zone-of-pain:packages/shared");
-  expect(byId(ids[0]!)!.handoff).toBe('structure evidence "packages/api->packages/shared" --level package');
+test("a package in the zone of pain is one candidate that lists the packages depending on it", async () => {
+  const { rows, byId } = await candidates(workspace);
+  expect(rows.filter((c) => c.findings.includes("zone-of-pain:packages/shared")).map((c) => c.id)).toEqual(["break-dependency:packages/shared"]);
+  expect(byId("break-dependency:packages/shared")).toMatchObject({
+    packages: ["packages/shared"],
+    dependants: ["packages/api", "packages/app", "packages/orphan", "packages/ui"],
+    // the dependant that changed with it most is the first dependency to look at
+    handoff: 'structure evidence "packages/app->packages/shared" --level package',
+  });
 });
 
 describe("ranking", () => {

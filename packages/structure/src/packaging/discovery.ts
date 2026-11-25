@@ -39,6 +39,11 @@ export interface DiscoveredPackage {
   dependencies: DeclaredDependency[];
   /** The module a Go package is grouped under (the module path of its `go.mod`). Null for every other package. */
   module: string | null;
+  /**
+   * The paths under its directory that it owns, each with everything below it: its manifest and the
+   * directories and files its build system compiles and tests. Null when it owns its whole directory.
+   */
+  sources: string[] | null;
 }
 
 export interface ComponentMatcher {
@@ -71,6 +76,7 @@ interface Raw {
   aliases: string[];
   dependencies: { name: string; scope: DependencyScope; dir?: string; optional?: boolean }[];
   module?: string;
+  sources?: string[];
 }
 
 type Read = (path: string) => Promise<string | undefined>;
@@ -355,50 +361,177 @@ const normalisePython = (name: string): string => name.toLowerCase().replace(/[-
 const pythonName = (requirement: string): string | undefined => /^[A-Za-z0-9][A-Za-z0-9._-]*/.exec(requirement.trim())?.[0];
 const devExtras = new Set(["dev", "test", "tests", "testing", "lint", "docs", "typing"]);
 
+const pythonManifests = ["pyproject.toml", "setup.cfg", "setup.py"];
+
+/**
+ * The Python distributions of the repository. A directory is one when its `pyproject.toml` names a project
+ * (PEP 621 or Poetry), or, failing that, its `setup.cfg` (`[metadata] name`) or `setup.py` (`setup(name=...)`) does.
+ */
 async function pythonPackages(paths: string[], read: Read, ignored: (dir: string) => boolean): Promise<Raw[]> {
   const result: Raw[] = [];
-  for (const path of paths.filter((p) => baseOf(p) === "pyproject.toml").sort(compareIds)) {
-    const dir = dirOf(path);
+  const dirs = [...new Set(paths.filter((p) => pythonManifests.includes(baseOf(p))).map(dirOf))].sort(compareIds);
+  const fileSet = new Set(paths);
+  for (const dir of dirs) {
     if (ignored(dir)) continue;
-    const toml = parseToml((await read(path)) ?? "");
-    const project = (toml.project ?? {}) as TomlTable;
-    const poetry = ((toml.tool as TomlTable | undefined)?.poetry ?? {}) as TomlTable;
-    const name = (project.name ?? poetry.name) as TomlValue | undefined;
-    if (typeof name !== "string") continue;
-    const dependencies: Raw["dependencies"] = [];
-    for (const requirement of strings(project.dependencies)) {
-      const dependency = pythonName(requirement);
-      if (dependency !== undefined) dependencies.push({ name: dependency, scope: "runtime" });
-    }
-    for (const [extra, list] of Object.entries(record(project["optional-dependencies"]))) {
-      for (const requirement of strings(list)) {
-        const dependency = pythonName(requirement);
-        if (dependency !== undefined) dependencies.push({ name: dependency, scope: devExtras.has(extra) ? "dev" : "runtime" });
-      }
-    }
-    for (const [dependency, spec] of Object.entries(record(poetry.dependencies))) {
-      if (dependency.toLowerCase() === "python") continue;
-      const path = record(spec).path;
-      dependencies.push({ name: dependency, scope: "runtime", ...(typeof path === "string" && resolveFrom(dir, path) !== undefined ? { dir: resolveFrom(dir, path)! } : {}) });
-    }
-    for (const group of [record(poetry["dev-dependencies"]), record(record(record(poetry.group).dev).dependencies)]) {
-      for (const dependency of Object.keys(group)) dependencies.push({ name: dependency, scope: "dev" });
-    }
-    const classifiers = strings(project.classifiers);
-    result.push({
-      name,
-      ecosystem: "python",
-      dir,
-      manifest: path,
-      private: classifiers.includes("Private :: Do Not Upload") ? true : null,
-      version: typeof (project.version ?? poetry.version) === "string" ? ((project.version ?? poetry.version) as string) : null,
-      entry: Object.keys(record(project.scripts)).length > 0 || Object.keys(record(poetry.scripts)).length > 0,
-      testSupport: isTestSupport(name, dir),
-      aliases: [],
-      dependencies,
-    });
+    const raw = (await pyprojectPackage(dir, fileSet, read)) ?? (await setupPackage(dir, fileSet, read));
+    if (raw === undefined) continue;
+    raw.sources = pythonSources(dir, paths, raw.sources ?? []);
+    result.push(raw);
   }
   return result;
+}
+
+/**
+ * What a Python distribution is built and tested from: its manifests, `src`, `tests` and `test`, the
+ * import packages directly in its directory (a child directory with an `__init__.py`), its top-level
+ * modules, and the package directories its build backend names.
+ */
+function pythonSources(dir: string, paths: readonly string[], declared: readonly string[]): string[] {
+  const sources = new Set([...pythonManifests, "src", "tests", "test"].map((name) => child(dir, name)));
+  for (const path of declared) sources.add(path);
+  const prefix = dir === "." ? "" : `${dir}/`;
+  for (const path of paths) {
+    if (!path.startsWith(prefix)) continue;
+    const parts = path.slice(prefix.length).split("/");
+    if (parts.length === 1 && parts[0]!.endsWith(".py")) sources.add(path);
+    if (parts.length === 2 && parts[1] === "__init__.py") sources.add(child(dir, parts[0]!));
+  }
+  return [...sources].sort(compareIds);
+}
+
+/** Package directories a pyproject's build backend names: Hatch's wheel packages, Poetry's packages and setuptools' package-dir and find roots. */
+function declaredPythonPaths(dir: string, toml: TomlTable): string[] {
+  const tool = record(toml.tool);
+  const relative: string[] = [...strings(record(record(record(record(tool.hatch).build).targets).wheel).packages)];
+  for (const entry of Array.isArray(record(tool.poetry).packages) ? (record(tool.poetry).packages as TomlValue[]) : []) {
+    const include = record(entry).include;
+    const from = record(entry).from;
+    if (typeof include === "string") relative.push(typeof from === "string" ? `${from}/${include}` : include);
+  }
+  const setuptools = record(tool.setuptools);
+  for (const value of Object.values(record(setuptools["package-dir"]))) if (typeof value === "string") relative.push(value);
+  relative.push(...strings(record(record(setuptools.packages).find).where));
+  return relative.map((path) => resolveFrom(dir, path.replace(/\/\*.*$/, ""))).filter((path): path is string => path !== undefined && path !== dir);
+}
+
+async function pyprojectPackage(dir: string, fileSet: ReadonlySet<string>, read: Read): Promise<Raw | undefined> {
+  const path = child(dir, "pyproject.toml");
+  if (!fileSet.has(path)) return undefined;
+  const toml = parseToml((await read(path)) ?? "");
+  const project = (toml.project ?? {}) as TomlTable;
+  const poetry = ((toml.tool as TomlTable | undefined)?.poetry ?? {}) as TomlTable;
+  const name = (project.name ?? poetry.name) as TomlValue | undefined;
+  if (typeof name !== "string") return undefined;
+  const dependencies: Raw["dependencies"] = [];
+  for (const requirement of strings(project.dependencies)) {
+    const dependency = pythonName(requirement);
+    if (dependency !== undefined) dependencies.push({ name: dependency, scope: "runtime" });
+  }
+  for (const [extra, list] of Object.entries(record(project["optional-dependencies"]))) {
+    for (const requirement of strings(list)) {
+      const dependency = pythonName(requirement);
+      if (dependency !== undefined) dependencies.push({ name: dependency, scope: devExtras.has(extra) ? "dev" : "runtime" });
+    }
+  }
+  for (const [dependency, spec] of Object.entries(record(poetry.dependencies))) {
+    if (dependency.toLowerCase() === "python") continue;
+    const at = record(spec).path;
+    dependencies.push({ name: dependency, scope: "runtime", ...(typeof at === "string" && resolveFrom(dir, at) !== undefined ? { dir: resolveFrom(dir, at)! } : {}) });
+  }
+  for (const group of [record(poetry["dev-dependencies"]), record(record(record(poetry.group).dev).dependencies)]) {
+    for (const dependency of Object.keys(group)) dependencies.push({ name: dependency, scope: "dev" });
+  }
+  const classifiers = strings(project.classifiers);
+  return {
+    name,
+    ecosystem: "python",
+    dir,
+    manifest: path,
+    private: classifiers.includes("Private :: Do Not Upload") ? true : null,
+    version: typeof (project.version ?? poetry.version) === "string" ? ((project.version ?? poetry.version) as string) : null,
+    entry: Object.keys(record(project.scripts)).length > 0 || Object.keys(record(poetry.scripts)).length > 0,
+    testSupport: isTestSupport(name, dir),
+    aliases: [],
+    dependencies,
+    sources: declaredPythonPaths(dir, toml),
+  };
+}
+
+/** The sections of an INI file such as setup.cfg, each a map from key to value, with continuation lines joined by newlines. */
+function parseIni(text: string): Map<string, Map<string, string>> {
+  const sections = new Map<string, Map<string, string>>();
+  let section: Map<string, string> | undefined;
+  let key: string | undefined;
+  for (const line of text.split("\n")) {
+    if (/^\s*([#;]|$)/.test(line)) continue;
+    const header = /^\[([^\]]+)\]/.exec(line);
+    if (header) {
+      sections.set(header[1]!.trim(), (section = new Map()));
+      key = undefined;
+    } else if (/^\s/.test(line) && section && key !== undefined) {
+      section.set(key, `${section.get(key)}\n${line.trim()}`);
+    } else if (section) {
+      const pair = /^([^=:]+?)\s*[=:]\s*(.*)$/.exec(line);
+      if (pair) section.set((key = pair[1]!.trim()), pair[2]!.trim());
+    }
+  }
+  return sections;
+}
+
+const iniList = (value: string | undefined): string[] =>
+  (value ?? "").split(/[\n;]/).map((item) => item.trim()).filter((item) => item !== "" && !item.startsWith("#"));
+
+/** The string a `setup()` keyword argument is given: a literal, or a module-level name assigned a literal. */
+function setupKeyword(script: string, call: string, keyword: string): string | undefined {
+  const argument = new RegExp(`\\b${keyword}\\s*=\\s*(?:(['"])(.*?)\\1|([A-Za-z_]\\w*))`).exec(call);
+  if (argument === null) return undefined;
+  if (argument[2] !== undefined) return argument[2];
+  return new RegExp(`^${argument[3]}\\s*=\\s*(['"])(.*?)\\1`, "m").exec(script)?.[2];
+}
+
+/** The strings of the literal list a `setup()` keyword argument is given, such as `install_requires=[...]`. */
+function setupList(call: string, keyword: string): string[] {
+  const list = new RegExp(`\\b${keyword}\\s*=\\s*\\[([^\\]]*)\\]`).exec(call)?.[1] ?? "";
+  return [...list.matchAll(/(['"])(.*?)\1/g)].map((m) => m[2]!);
+}
+
+/** A distribution described by `setup.cfg` or `setup.py`, read as text: nothing is executed. */
+async function setupPackage(dir: string, fileSet: ReadonlySet<string>, read: Read): Promise<Raw | undefined> {
+  const cfgPath = child(dir, "setup.cfg");
+  const pyPath = child(dir, "setup.py");
+  const cfg = fileSet.has(cfgPath) ? parseIni((await read(cfgPath)) ?? "") : new Map<string, Map<string, string>>();
+  const script = fileSet.has(pyPath) ? ((await read(pyPath)) ?? "").replace(/#.*$/gm, "") : "";
+  const at = /(?<!def\s+)\bsetup\s*\(/.exec(script)?.index;
+  const call = at === undefined ? "" : script.slice(at);
+  const metadata = cfg.get("metadata");
+  const options = cfg.get("options");
+  const fromCfg = metadata?.get("name");
+  const name = fromCfg ?? setupKeyword(script, call, "name");
+  if (name === undefined || name === "") return undefined;
+  const dependencies: Raw["dependencies"] = [];
+  for (const requirement of [...iniList(options?.get("install_requires")), ...setupList(call, "install_requires")]) {
+    const dependency = pythonName(requirement);
+    if (dependency !== undefined) dependencies.push({ name: dependency, scope: "runtime" });
+  }
+  for (const [extra, list] of cfg.get("options.extras_require") ?? []) {
+    for (const requirement of iniList(list)) {
+      const dependency = pythonName(requirement);
+      if (dependency !== undefined) dependencies.push({ name: dependency, scope: devExtras.has(extra) ? "dev" : "runtime" });
+    }
+  }
+  return {
+    name,
+    ecosystem: "python",
+    dir,
+    manifest: fromCfg !== undefined ? cfgPath : pyPath,
+    private: `${metadata?.get("classifiers") ?? ""}\n${call}`.includes("Private :: Do Not Upload") ? true : null,
+    version: metadata?.get("version") ?? setupKeyword(script, call, "version") ?? null,
+    entry: (cfg.get("options.entry_points")?.has("console_scripts") ?? false) || /\bconsole_scripts\b|\bscripts\s*=/.test(call),
+    testSupport: isTestSupport(name, dir),
+    aliases: [],
+    dependencies,
+    sources: [],
+  };
 }
 
 // ---- Cargo ----
@@ -435,9 +568,32 @@ async function cargoPackages(paths: string[], read: Read, ignored: (dir: string)
       testSupport: isTestSupport(pkg.name, dir),
       aliases: [],
       dependencies,
+      sources: cargoSources(dir, path, toml),
     });
   }
   return result;
+}
+
+/**
+ * What Cargo builds a crate from: its manifest, the conventional target directories and build script,
+ * and the targets the manifest declares by path. A target file outside the crate's root directory brings
+ * its directory, where its modules live.
+ */
+function cargoSources(dir: string, manifest: string, toml: TomlTable): string[] {
+  const sources = new Set([manifest, ...["Cargo.lock", "build.rs", "src", "tests", "benches", "examples"].map((name) => child(dir, name))]);
+  const build = record(toml.package).build;
+  if (typeof build === "string") {
+    const at = resolveFrom(dir, build);
+    if (at !== undefined) sources.add(at);
+  }
+  const targets = [toml.lib, ...["bin", "test", "bench", "example"].flatMap((table) => (Array.isArray(toml[table]) ? (toml[table] as TomlValue[]) : []))];
+  for (const target of targets) {
+    const path = record(target).path;
+    if (typeof path !== "string") continue;
+    const at = resolveFrom(dir, path);
+    if (at !== undefined) sources.add(dirOf(at) === dir ? at : dirOf(at));
+  }
+  return [...sources].sort(compareIds);
 }
 
 // ---- Go ----
@@ -469,6 +625,13 @@ async function goPackages(paths: string[], read: Read, ignored: (dir: string) =>
 
   const dirs = new Set<string>();
   for (const path of paths) if (path.endsWith(".go")) dirs.add(dirOf(path));
+  const filesIn = new Map<string, string[]>();
+  for (const path of paths) {
+    const dir = dirOf(path);
+    if (!dirs.has(dir)) continue;
+    if (!filesIn.has(dir)) filesIn.set(dir, []);
+    filesIn.get(dir)!.push(path);
+  }
   const result: Raw[] = [];
   for (const dir of [...dirs].sort(compareIds)) {
     const moduleDir = moduleOf(dir);
@@ -489,6 +652,8 @@ async function goPackages(paths: string[], read: Read, ignored: (dir: string) =>
       aliases: [],
       dependencies: [],
       module: module.name,
+      // a Go package is one directory: its files, and the test data beside them
+      sources: [...(filesIn.get(dir) ?? []), child(dir, "testdata")].sort(compareIds),
     });
   }
   return result;
@@ -583,6 +748,7 @@ export async function discoverPackages(tree: SourceTree, options: DiscoveryOptio
       aliases: raw.aliases,
       dependencies,
       module: raw.module ?? null,
+      sources: raw.sources ?? null,
     };
   });
   markConfiguredEntries(packages, paths, options.entryPoints ?? []);
@@ -602,6 +768,7 @@ export async function discoverPackages(tree: SourceTree, options: DiscoveryOptio
         aliases: [],
         dependencies: [],
         module: null,
+        sources: null,
       }))
       .sort((a, b) => compareIds(a.id, b.id));
   }
@@ -618,27 +785,40 @@ function markConfiguredEntries(packages: DiscoveredPackage[], paths: readonly st
 }
 
 export interface PackageIndex {
-  /** The id of the package that owns a file: the deepest package directory above it, or the first component that matches. */
+  /**
+   * The id of the package that owns a file: the first component that matches, or else a package of the deepest
+   * package directory above it, when the file lies in that package's sources. Undefined for a file no package owns.
+   */
   owner(path: string): string | undefined;
 }
 
 export function indexPackages(packages: readonly DiscoveredPackage[], components: readonly ComponentMatcher[] = []): PackageIndex {
-  const owners = new Map<string, string>();
-  for (const pkg of packages) if (pkg.dir !== null && !owners.has(pkg.dir)) owners.set(pkg.dir, pkg.id);
+  const atDir = new Map<string, { id: string; sources: ReadonlySet<string> | null }[]>();
+  for (const pkg of packages) {
+    if (pkg.dir === null) continue;
+    if (!atDir.has(pkg.dir)) atDir.set(pkg.dir, []);
+    atDir.get(pkg.dir)!.push({ id: pkg.id, sources: pkg.sources === null ? null : new Set(pkg.sources) });
+  }
   const componentIds = new Set(packages.filter((p) => p.ecosystem === "component" && p.dir === null).map((p) => p.id));
   const matchers = components.filter((c) => componentIds.has(c.name));
   const cache = new Map<string, string | undefined>();
-  const ownerOfDir = (dir: string): string | undefined => {
+  const packageDirOf = (dir: string): string | undefined => {
     if (cache.has(dir)) return cache.get(dir);
-    const found = owners.get(dir) ?? (dir === "." ? undefined : ownerOfDir(dirOf(dir)));
+    const found = atDir.has(dir) ? dir : dir === "." ? undefined : packageDirOf(dirOf(dir));
     cache.set(dir, found);
     return found;
+  };
+  const within = (sources: ReadonlySet<string>, packageDir: string, path: string): boolean => {
+    for (let at = path; at !== packageDir && at !== "."; at = dirOf(at)) if (sources.has(at)) return true;
+    return false;
   };
   return {
     owner(path) {
       const matched = matchers.find((c) => c.matches(path));
       if (matched !== undefined) return matched.name;
-      return ownerOfDir(dirOf(path));
+      const dir = packageDirOf(dirOf(path));
+      if (dir === undefined) return undefined;
+      return atDir.get(dir)!.find((pkg) => pkg.sources === null || within(pkg.sources, dir, path))?.id;
     },
   };
 }

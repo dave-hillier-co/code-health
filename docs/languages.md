@@ -111,7 +111,15 @@ What `structure packages` reads as a package in each language, what it treats as
 | TypeScript/JavaScript | Workspace package (`package.json`) | Anything outside `exports` or the entry point | Interfaces and abstract classes. Type aliases are not counted, since they would make any types-heavy package look fully abstract. |
 | C# | Project (`.csproj`) | `internal`, with `InternalsVisibleTo` as the bypass | Interfaces, abstract classes |
 | C++ | Build target | Headers outside the target's public include directory | Classes with pure virtual members |
-| Python | Distribution (`pyproject.toml`) | Leading-underscore modules and names; anything outside `__all__`. Without an `__all__`, underscore names are hidden. A module offers what it imports only when it is a package `__init__.py`. | `Protocol` classes (interfaces) and `ABC` classes (abstract classes) |
+| Python | Distribution (`pyproject.toml`, or `setup.cfg` or `setup.py` where the pyproject names no project) | Leading-underscore modules and names; anything outside `__all__`. Without an `__all__`, underscore names are hidden. A module offers what it imports only when it is a package `__init__.py`. | `Protocol` classes (interfaces) and `ABC` classes (abstract classes) |
 | Java / Kotlin | Gradle or Maven module | Package-private and `internal`; non-exported packages in a module descriptor | Interfaces, abstract classes |
 | Go | Package (a directory with Go files), grouped under its module (`go.mod`) | Unexported (lower-case) identifiers, and packages under `internal/` | Interfaces |
 | Rust | Crate | Anything not `pub` at the crate root: a library's entries are its root and the modules reachable through `pub mod` | Traits |
+
+A file belongs to the package of the deepest package directory above it. A Rust crate, a Python distribution and a Go package own only the files their build system compiles and tests, so a root package does not take the documentation, website and release notes beside it:
+
+- A crate owns its `Cargo.toml`, `src`, `tests`, `benches`, `examples`, `build.rs` (or the `build` script it names), and the targets its manifest declares by path. A target file outside the crate's root directory brings its directory.
+- A Python distribution owns its manifests, `src`, `tests` and `test`, each child directory with an `__init__.py`, its top-level modules, and the package directories its build backend names (Hatch wheel `packages`, Poetry `packages`, setuptools `package-dir` and `packages.find.where`).
+- A Go package owns the files of its own directory and its `testdata`.
+
+`setup.py` is read as text and never run: the distribution's name is the literal `setup(name=...)` is given, or the string a module-level name is assigned. A package of the other ecosystems owns its whole directory. Files no package owns are counted apart (`repository.unowned` in `packages list`), and a change to them is a change to no package.

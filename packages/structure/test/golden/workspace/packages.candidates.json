@@ -114,6 +114,7 @@
       "against": [],
       "also": [],
       "changeCost": 13.458,
+      "dependants": null,
       "findings": [
         "follower:packages/app->packages/shared"
       ],
@@ -135,37 +136,20 @@
       "against": [],
       "also": [],
       "changeCost": 13.458,
-      "findings": [
-        "against-stability:packages/api->packages/shared",
-        "zone-of-pain:packages/shared"
-      ],
-      "handoff": "structure evidence \"packages/api->packages/shared\" --level package",
-      "id": "break-dependency:packages/api->packages/shared",
-      "into": null,
-      "kind": "break-dependency",
-      "packages": [
+      "dependants": [
         "packages/api",
-        "packages/shared"
+        "packages/app",
+        "packages/orphan",
+        "packages/ui"
       ],
-      "parts": null,
-      "status": "proposed",
-      "step": 3,
-      "tentative": false,
-      "unit": null
-    },
-    {
-      "against": [],
-      "also": [],
-      "changeCost": 13.458,
       "findings": [
         "zone-of-pain:packages/shared"
       ],
       "handoff": "structure evidence \"packages/app->packages/shared\" --level package",
-      "id": "break-dependency:packages/app->packages/shared",
+      "id": "break-dependency:packages/shared",
       "into": null,
       "kind": "break-dependency",
       "packages": [
-        "packages/app",
         "packages/shared"
       ],
       "parts": null,
@@ -178,50 +162,7 @@
       "against": [],
       "also": [],
       "changeCost": 13.458,
-      "findings": [
-        "against-stability:packages/orphan->packages/shared",
-        "zone-of-pain:packages/shared"
-      ],
-      "handoff": "structure evidence \"packages/orphan->packages/shared\" --level package",
-      "id": "break-dependency:packages/orphan->packages/shared",
-      "into": null,
-      "kind": "break-dependency",
-      "packages": [
-        "packages/orphan",
-        "packages/shared"
-      ],
-      "parts": null,
-      "status": "proposed",
-      "step": 3,
-      "tentative": false,
-      "unit": null
-    },
-    {
-      "against": [],
-      "also": [],
-      "changeCost": 13.458,
-      "findings": [
-        "against-stability:packages/ui->packages/shared",
-        "zone-of-pain:packages/shared"
-      ],
-      "handoff": "structure evidence \"packages/ui->packages/shared\" --level package",
-      "id": "break-dependency:packages/ui->packages/shared",
-      "into": null,
-      "kind": "break-dependency",
-      "packages": [
-        "packages/ui",
-        "packages/shared"
-      ],
-      "parts": null,
-      "status": "proposed",
-      "step": 3,
-      "tentative": false,
-      "unit": null
-    },
-    {
-      "against": [],
-      "also": [],
-      "changeCost": 13.458,
+      "dependants": null,
       "findings": [
         "disjoint-reuse:packages/shared",
         "dumping-ground:packages/shared"
@@ -239,7 +180,7 @@
             "packages/ui"
           ],
           "exports": [
-            "formatDate"
+            "packages/shared/src/format.ts#formatDate"
           ]
         },
         {
@@ -248,8 +189,8 @@
             "packages/orphan"
           ],
           "exports": [
-            "newId",
-            "formatMoney"
+            "packages/shared/src/ids.ts#newId",
+            "packages/shared/src/money.ts#formatMoney"
           ]
         },
         {
@@ -257,7 +198,7 @@
             "packages/app"
           ],
           "exports": [
-            "log"
+            "packages/shared/src/log.ts#log"
           ]
         }
       ],
@@ -270,6 +211,7 @@
       "against": [],
       "also": [],
       "changeCost": 3.575,
+      "dependants": null,
       "findings": [
         "crossing-unit:packages/helper->packages/orphan->packages/helper/src/toOrphan.ts"
       ],
@@ -291,6 +233,7 @@
       "against": [],
       "also": [],
       "changeCost": 2.839,
+      "dependants": null,
       "findings": [
         "package-cycle:packages/p1"
       ],
@@ -314,6 +257,7 @@
         "package-cycle:packages/p1"
       ],
       "changeCost": 2.839,
+      "dependants": null,
       "findings": [
         "always-together:packages/p1->packages/p2",
         "single-consumer:packages/p2"
@@ -336,6 +280,7 @@
       "against": [],
       "also": [],
       "changeCost": 0.958,
+      "dependants": null,
       "findings": [
         "tiny:packages/young"
       ],
@@ -357,6 +302,7 @@
       "against": [],
       "also": [],
       "changeCost": 0,
+      "dependants": null,
       "findings": [
         "undeclared-dependency:packages/api"
       ],
@@ -377,6 +323,7 @@
       "against": [],
       "also": [],
       "changeCost": 0,
+      "dependants": null,
       "findings": [
         "unused-dependency:packages/app"
       ],
@@ -397,6 +344,7 @@
       "against": [],
       "also": [],
       "changeCost": 0,
+      "dependants": null,
       "findings": [
         "undeclared-dependency:packages/helper"
       ],
@@ -417,6 +365,7 @@
       "against": [],
       "also": [],
       "changeCost": 0,
+      "dependants": null,
       "findings": [
         "unused-dependency:packages/lib"
       ],
@@ -437,6 +386,7 @@
       "against": [],
       "also": [],
       "changeCost": 0,
+      "dependants": null,
       "findings": [
         "undeclared-dependency:packages/orphan"
       ],
@@ -457,6 +407,7 @@
       "against": [],
       "also": [],
       "changeCost": 0,
+      "dependants": null,
       "findings": [
         "unused-dependency:packages/ui"
       ],
@@ -477,6 +428,51 @@
       "against": [],
       "also": [],
       "changeCost": 0,
+      "dependants": null,
+      "findings": [
+        "against-stability:packages/api->packages/shared"
+      ],
+      "handoff": "structure evidence \"packages/api->packages/shared\" --level package",
+      "id": "break-dependency:packages/api->packages/shared",
+      "into": null,
+      "kind": "break-dependency",
+      "packages": [
+        "packages/api",
+        "packages/shared"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 3,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0,
+      "dependants": null,
+      "findings": [
+        "against-stability:packages/orphan->packages/shared"
+      ],
+      "handoff": "structure evidence \"packages/orphan->packages/shared\" --level package",
+      "id": "break-dependency:packages/orphan->packages/shared",
+      "into": null,
+      "kind": "break-dependency",
+      "packages": [
+        "packages/orphan",
+        "packages/shared"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 3,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0,
+      "dependants": null,
       "findings": [
         "against-stability:packages/testkit->packages/lib"
       ],
@@ -498,6 +494,29 @@
       "against": [],
       "also": [],
       "changeCost": 0,
+      "dependants": null,
+      "findings": [
+        "against-stability:packages/ui->packages/shared"
+      ],
+      "handoff": "structure evidence \"packages/ui->packages/shared\" --level package",
+      "id": "break-dependency:packages/ui->packages/shared",
+      "into": null,
+      "kind": "break-dependency",
+      "packages": [
+        "packages/ui",
+        "packages/shared"
+      ],
+      "parts": null,
+      "status": "proposed",
+      "step": 3,
+      "tentative": false,
+      "unit": null
+    },
+    {
+      "against": [],
+      "also": [],
+      "changeCost": 0,
+      "dependants": null,
       "findings": [
         "against-stability:packages/wrap->packages/ui"
       ],
@@ -519,6 +538,7 @@
       "against": [],
       "also": [],
       "changeCost": 0,
+      "dependants": null,
       "findings": [
         "deep-import:packages/api->packages/helper"
       ],
@@ -539,6 +559,7 @@
       "against": [],
       "also": [],
       "changeCost": 0,
+      "dependants": null,
       "findings": [
         "single-consumer:packages/api"
       ],
@@ -560,6 +581,7 @@
       "against": [],
       "also": [],
       "changeCost": 0,
+      "dependants": null,
       "findings": [
         "single-consumer:packages/helper"
       ],
@@ -581,6 +603,7 @@
       "against": [],
       "also": [],
       "changeCost": 0,
+      "dependants": null,
       "findings": [
         "single-consumer:packages/wrap",
         "tiny:packages/wrap"
@@ -603,6 +626,7 @@
       "against": [],
       "also": [],
       "changeCost": 0,
+      "dependants": null,
       "findings": [
         "pass-through-package:packages/wrap",
         "single-consumer:packages/ui"
@@ -635,6 +659,7 @@
       ],
       "also": [],
       "changeCost": 8.484,
+      "dependants": null,
       "findings": [
         "always-together:packages/api->packages/ui"
       ],
@@ -666,17 +691,69 @@
   },
   "withheld": [
     {
+      "assumed": [
+        "packages/lib-extra",
+        "packages/lib"
+      ],
+      "candidate": {
+        "against": [],
+        "also": [],
+        "changeCost": 2.139,
+        "dependants": null,
+        "findings": [
+          "lockstep:packages/lib->packages/lib-extra"
+        ],
+        "handoff": null,
+        "id": "merge:packages/lib-extra->packages/lib",
+        "into": "packages/lib",
+        "kind": "merge",
+        "packages": [
+          "packages/lib-extra",
+          "packages/lib"
+        ],
+        "parts": null,
+        "status": "proposed",
+        "step": 4,
+        "tentative": false,
+        "unit": null
+      },
       "findings": [
         "lockstep:packages/lib->packages/lib-extra"
       ],
       "kind": "merge",
       "packages": [
-        "packages/lib",
-        "packages/lib-extra"
+        "packages/lib-extra",
+        "packages/lib"
       ],
-      "reason": "packages/lib, packages/lib-extra are published: its consumers outside the repository cannot be seen, so nothing is proposed"
+      "question": "Do packages/lib-extra and packages/lib have consumers outside this repository? If not, set structure.packages.byPackage[\"packages/lib-extra\"].published and structure.packages.byPackage[\"packages/lib\"].published to false and run packages candidates again.",
+      "reason": "packages/lib-extra is treated as published because its manifest does not mark it internal (\"private\": true in package.json) and no config says otherwise; packages/lib is treated as published because its manifest does not mark it internal (\"private\": true in package.json) and no config says otherwise: their consumers outside the repository cannot be seen, so nothing is proposed"
     },
     {
+      "assumed": [
+        "packages/lib-extra"
+      ],
+      "candidate": {
+        "against": [],
+        "also": [],
+        "changeCost": 2.139,
+        "dependants": null,
+        "findings": [
+          "tiny:packages/lib-extra"
+        ],
+        "handoff": null,
+        "id": "merge:packages/lib-extra->packages/ui",
+        "into": "packages/ui",
+        "kind": "merge",
+        "packages": [
+          "packages/lib-extra",
+          "packages/ui"
+        ],
+        "parts": null,
+        "status": "proposed",
+        "step": 4,
+        "tentative": false,
+        "unit": null
+      },
       "findings": [
         "tiny:packages/lib-extra"
       ],
@@ -685,9 +762,34 @@
         "packages/lib-extra",
         "packages/ui"
       ],
-      "reason": "packages/lib-extra is published: its consumers outside the repository cannot be seen, so nothing is proposed"
+      "question": "Does packages/lib-extra have consumers outside this repository? If not, set structure.packages.byPackage[\"packages/lib-extra\"].published to false and run packages candidates again.",
+      "reason": "packages/lib-extra is treated as published because its manifest does not mark it internal (\"private\": true in package.json) and no config says otherwise: its consumers outside the repository cannot be seen, so nothing is proposed"
     },
     {
+      "assumed": [
+        "packages/lib"
+      ],
+      "candidate": {
+        "against": [],
+        "also": [],
+        "changeCost": 0,
+        "dependants": null,
+        "findings": [
+          "overexposed:packages/lib"
+        ],
+        "handoff": null,
+        "id": "narrow-interface:packages/lib",
+        "into": null,
+        "kind": "narrow-interface",
+        "packages": [
+          "packages/lib"
+        ],
+        "parts": null,
+        "status": "proposed",
+        "step": 3,
+        "tentative": false,
+        "unit": null
+      },
       "findings": [
         "overexposed:packages/lib"
       ],
@@ -695,9 +797,55 @@
       "packages": [
         "packages/lib"
       ],
-      "reason": "packages/lib is published: its consumers outside the repository cannot be seen, so nothing is proposed"
+      "question": "Does packages/lib have consumers outside this repository? If not, set structure.packages.byPackage[\"packages/lib\"].published to false and run packages candidates again.",
+      "reason": "packages/lib is treated as published because its manifest does not mark it internal (\"private\": true in package.json) and no config says otherwise: its consumers outside the repository cannot be seen, so nothing is proposed"
     },
     {
+      "assumed": [
+        "packages/lib"
+      ],
+      "candidate": {
+        "against": [],
+        "also": [],
+        "changeCost": 2.139,
+        "dependants": null,
+        "findings": [
+          "disjoint-reuse:packages/lib",
+          "inherited-weight:packages/lib->packages/app",
+          "inherited-weight:packages/lib->packages/testkit",
+          "inherited-weight:packages/lib->packages/ui"
+        ],
+        "handoff": null,
+        "id": "split:packages/lib",
+        "into": null,
+        "kind": "split",
+        "packages": [
+          "packages/lib"
+        ],
+        "parts": [
+          {
+            "consumers": [
+              "packages/app",
+              "packages/testkit"
+            ],
+            "exports": [
+              "packages/lib/src/parse.ts#parse"
+            ]
+          },
+          {
+            "consumers": [
+              "packages/ui"
+            ],
+            "exports": [
+              "packages/lib/src/render.ts#render"
+            ]
+          }
+        ],
+        "status": "proposed",
+        "step": 5,
+        "tentative": false,
+        "unit": null
+      },
       "findings": [
         "disjoint-reuse:packages/lib",
         "inherited-weight:packages/lib->packages/app",
@@ -708,7 +856,8 @@
       "packages": [
         "packages/lib"
       ],
-      "reason": "packages/lib is published: its consumers outside the repository cannot be seen, so nothing is proposed"
+      "question": "Does packages/lib have consumers outside this repository? If not, set structure.packages.byPackage[\"packages/lib\"].published to false and run packages candidates again.",
+      "reason": "packages/lib is treated as published because its manifest does not mark it internal (\"private\": true in package.json) and no config says otherwise: its consumers outside the repository cannot be seen, so nothing is proposed"
     }
   ]
 }
