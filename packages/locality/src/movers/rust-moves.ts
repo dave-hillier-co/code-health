@@ -44,6 +44,70 @@ interface Source {
   tree: Tree;
 }
 
+/** The paths of a file a move may rewrite, as the code stands: each `use` with what it imports, and each path in code outside a `use`. */
+interface PathSites {
+  uses: { declaration: Node; leaves: Leaf[]; inline: boolean }[];
+  scoped: { node: Node; segments: string[]; inline: boolean }[];
+}
+
+/**
+ * Everything a move reads of a tree that does not depend on the move: the manifests, each Rust file parsed, the
+ * module tree as it stands, and the paths of each file. A move only reads it.
+ */
+export interface RustProject {
+  configs: ReadonlyMap<string, string>;
+  sources: ReadonlyMap<string, Source>;
+  before: ModuleTree;
+  /** The path sites of a file, found the first time a move asks for them. */
+  sitesOf(source: Source): PathSites;
+}
+
+function pathSites(source: Source): PathSites {
+  const root = source.tree.rootNode;
+  const uses = root.descendantsOfType("use_declaration").map((declaration) => {
+    const leaves: Leaf[] = [];
+    leavesOf(declaration.childForFieldName("argument"), [], leaves);
+    return { declaration, leaves, inline: insideInlineModule(declaration) };
+  });
+  const scoped: PathSites["scoped"] = [];
+  for (const node of [...root.descendantsOfType("scoped_identifier"), ...root.descendantsOfType("scoped_type_identifier")]) {
+    if (within(node, "use_declaration") || node.parent?.type === "scoped_identifier" || node.parent?.type === "scoped_type_identifier") continue;
+    const segments: string[] = [];
+    if (!pathSegments(node, segments)) continue;
+    scoped.push({ node, segments, inline: insideInlineModule(node) });
+  }
+  return { uses, scoped };
+}
+
+/** Deletes the syntax trees of a project once its source tree is gone, since nothing else frees them. */
+const parsedTrees = new FinalizationRegistry<Tree[]>((trees) => {
+  for (const tree of trees) tree.delete();
+});
+
+/** Reads and parses the Rust files and manifests of a tree. The syntax trees live as long as the source tree. */
+export async function readProject(tree: SourceTree, grammar: LoadedGrammar): Promise<RustProject> {
+  const paths = [...tree.files.keys()];
+  const configs = await tree.readMany(paths.filter(isManifestPath));
+  const sources = new Map<string, Source>();
+  const rust = paths.filter((path) => path.endsWith(".rs")).sort(compare);
+  for (const [path, text] of await tree.readMany(rust)) sources.set(path, { path, text, tree: grammar.parse(text) });
+  parsedTrees.register(tree, [...sources.values()].map((source) => source.tree));
+  const sites = new Map<Source, PathSites>();
+  return {
+    configs,
+    sources,
+    before: new ModuleTree(paths, readCrates(paths, configs)),
+    sitesOf(source) {
+      let found = sites.get(source);
+      if (found === undefined) {
+        found = pathSites(source);
+        sites.set(source, found);
+      }
+      return found;
+    },
+  };
+}
+
 interface Declaration {
   node: Node;
   name: string;
@@ -115,31 +179,30 @@ export class RustMove {
   readonly breaks: string[] = [];
   private readonly texts = new Map<string, string>();
 
-  private readonly sources = new Map<string, Source>();
+  private readonly project: RustProject;
+  private readonly sources: ReadonlyMap<string, Source>;
   private readonly destination: Map<string, string>;
   private readonly origin = new Map<string, string>();
   private readonly before: ModuleTree;
   private readonly after: ModuleTree;
   private readonly edits = new Map<string, Edit[]>();
   private readonly declarations = new Map<string, Declaration[]>();
-  private readonly grammar: LoadedGrammar;
-  private readonly tree: SourceTree;
   private readonly operations: readonly FileOperation[];
   private readonly configs: ReadonlyMap<string, string>;
   /** Whether the new `mod` line of each moved file is covered by a `#[cfg(test)]`, by its path after the move. */
   private readonly gated = new Map<string, boolean>();
 
-  constructor(tree: SourceTree, operations: readonly FileOperation[], grammar: LoadedGrammar, configs: ReadonlyMap<string, string>) {
-    this.tree = tree;
+  constructor(tree: SourceTree, operations: readonly FileOperation[], project: RustProject) {
+    this.project = project;
     this.operations = operations;
-    this.grammar = grammar;
-    this.configs = configs;
+    this.sources = project.sources;
+    this.configs = project.configs;
     this.destination = new Map(operations.map((operation) => [operation.from, operation.to]));
     for (const operation of operations) this.origin.set(operation.to, operation.from);
     const paths = [...tree.files.keys()];
     const afterPaths = [...new Set([...paths.filter((path) => !this.destination.has(path)), ...operations.map((operation) => operation.to)])];
-    this.before = new ModuleTree(paths, readCrates(paths, configs));
-    this.after = new ModuleTree(afterPaths, readCrates(afterPaths, configs));
+    this.before = project.before;
+    this.after = new ModuleTree(afterPaths, readCrates(afterPaths, this.configs));
   }
 
   /** Where a file is after the move. */
@@ -168,19 +231,13 @@ export class RustMove {
   }
 
   async run(): Promise<{ rewrites: Rewrite[]; texts: Map<string, string>; warnings: string[]; breaks: string[] }> {
-    const rust = [...this.tree.files.keys()].filter((path) => path.endsWith(".rs")).sort(compare);
-    for (const [path, text] of await this.tree.readMany(rust)) this.sources.set(path, { path, text, tree: this.grammar.parse(text) });
-    try {
-      for (const operation of this.operations) {
-        if (!this.sources.has(operation.from)) this.warnings.push(`${operation.from} could not be read as a Rust source file`);
-      }
-      for (const source of this.sources.values()) this.paths(source);
-      for (const operation of this.operations) this.moduleDeclaration(operation);
-      for (const operation of this.operations) this.devDependencies(operation);
-      this.apply();
-    } finally {
-      for (const source of this.sources.values()) source.tree.delete();
+    for (const operation of this.operations) {
+      if (!this.sources.has(operation.from)) this.warnings.push(`${operation.from} could not be read as a Rust source file`);
     }
+    for (const source of this.sources.values()) this.paths(source);
+    for (const operation of this.operations) this.moduleDeclaration(operation);
+    for (const operation of this.operations) this.devDependencies(operation);
+    this.apply();
     this.rewrites.sort((a, b) => compare(a.path, b.path) || a.line - b.line || compare(a.from, b.from));
     return { rewrites: this.rewrites, texts: this.texts, warnings: this.warnings, breaks: this.breaks };
   }
@@ -192,14 +249,11 @@ export class RustMove {
     const newPath = this.moved(source.path);
     const newPlace = this.after.placeOf(newPath);
     if (place === undefined || newPlace === undefined) return;
-    const root = source.tree.rootNode;
+    const sites = this.project.sitesOf(source);
     const mods = new Set(this.declared(source.path).map((declaration) => declaration.name));
     const context = { source, place, newPlace, newPath, mods };
 
-    for (const declaration of root.descendantsOfType("use_declaration")) {
-      const leaves: Leaf[] = [];
-      leavesOf(declaration.childForFieldName("argument"), [], leaves);
-      const inline = insideInlineModule(declaration);
+    for (const { declaration, leaves, inline } of sites.uses) {
       const rendered = leaves.map((leaf) => ({ leaf, path: this.render(context, leaf.segments, inline, leaf.line) }));
       if (rendered.every((entry) => entry.path === undefined)) continue;
       const indent = /[ \t]*$/.exec(source.text.slice(source.text.lastIndexOf("\n", declaration.startIndex - 1) + 1, declaration.startIndex))?.[0] ?? "";
@@ -214,11 +268,8 @@ export class RustMove {
       }
     }
 
-    for (const node of [...root.descendantsOfType("scoped_identifier"), ...root.descendantsOfType("scoped_type_identifier")]) {
-      if (within(node, "use_declaration") || node.parent?.type === "scoped_identifier" || node.parent?.type === "scoped_type_identifier") continue;
-      const segments: string[] = [];
-      if (!pathSegments(node, segments)) continue;
-      const path = this.render(context, segments, insideInlineModule(node), node.startPosition.row + 1);
+    for (const { node, segments, inline } of sites.scoped) {
+      const path = this.render(context, segments, inline, node.startPosition.row + 1);
       if (path === undefined) continue;
       this.edit(source.path, { start: node.startIndex, end: node.endIndex, text: path });
       this.rewrites.push({ path: newPath, line: node.startPosition.row + 1, from: segments.join("::"), to: path });
@@ -484,9 +535,4 @@ export class RustMove {
       if (text !== source.text) this.texts.set(this.moved(source.path), text);
     }
   }
-}
-
-/** The `Cargo.toml` files a move reads to find crates. */
-export async function readConfigs(tree: SourceTree): Promise<Map<string, string>> {
-  return tree.readMany([...tree.files.keys()].filter(isManifestPath));
 }

@@ -2,9 +2,9 @@ import { posix } from "node:path";
 import { Node, Project, ts, type NoSubstitutionTemplateLiteral, type SourceFile, type StringLiteral } from "ts-morph";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import type { FileOperation } from "../move-plan.ts";
-import { buildProject } from "../ts-project.ts";
+import { projectFromFiles, readProjectFiles } from "../ts-project.ts";
 import type { MoveResult, MoverBackend, Rewrite, Skeleton } from "./mover-language.ts";
-import { sourceFilesOf } from "./mover-language.ts";
+import { oncePerTree, sourceFilesOf } from "./mover-language.ts";
 
 const isSource = sourceFilesOf("typescript");
 const KNOWN_EXTENSION = /\.(?:[cm]?[jt]sx?|json)$/;
@@ -55,6 +55,9 @@ interface ModulePaths {
 function modulePaths(file: SourceFile): ModulePaths {
   const literals: PathLiteral[] = [...file.getImportStringLiterals()];
   const computed: ModulePaths["computed"] = [];
+  // A call is one of these only when its callee is written out as it is here, so a file whose text holds none has none.
+  const text = file.getFullText();
+  if (![...MODULE_PATH_CALLS].some((call) => text.includes(call))) return { literals: literals.sort((a, b) => a.getStart() - b.getStart()), computed };
   file.forEachDescendant((node) => {
     if (!Node.isCallExpression(node)) return;
     const call = node.getExpression().getText();
@@ -81,6 +84,33 @@ function resolveSpecifier(project: Project, specifier: string, from: SourceFile)
   return resolved.resolvedModule?.resolvedFileName;
 }
 
+/** A module path of a file as the code stands: what it says and the file it reaches. */
+interface PathBefore {
+  specifier: string;
+  target: string | undefined;
+}
+
+/**
+ * What every move reads of a tree's files before it moves anything, found once for the tree (see `oncePerTree`): the
+ * files a project is built from, and for each source file its text, its module paths and its computed mock paths.
+ * A move changes its project, so each move builds a project of its own from these files.
+ */
+const baselineOf = oncePerTree(async (tree) => {
+  const files = await readProjectFiles(tree);
+  const { project, relative } = projectFromFiles(files);
+  const originalText = new Map<string, string>();
+  const before = new Map<string, PathBefore[]>();
+  const computed = new Map<string, ModulePaths["computed"]>();
+  for (const file of project.getSourceFiles()) {
+    const path = relative(file.getFilePath());
+    const paths = modulePaths(file);
+    originalText.set(path, file.getFullText());
+    before.set(path, paths.literals.map((literal) => ({ specifier: literal.getLiteralValue(), target: resolveSpecifier(project, literal.getLiteralValue(), file) })));
+    computed.set(path, paths.computed);
+  }
+  return { files, originalText, before, computed };
+});
+
 /**
  * Applies file operations to a tree in memory and reports the file contents that follow. The moves and
  * the rewriting of every import that reaches across them are ts-morph's, so path mappings and package
@@ -89,15 +119,8 @@ function resolveSpecifier(project: Project, specifier: string, from: SourceFile)
  * to show it, apply it or compare it with a move somebody else made.
  */
 async function performMove(tree: SourceTree, operations: readonly FileOperation[]): Promise<Omit<MoveResult, "confirmations">> {
-  const { project, relative, absolute, warnings } = await buildProject(tree);
-  const sources = project.getSourceFiles();
-  const originalText = new Map(sources.map((file) => [relative(file.getFilePath()), file.getFullText()]));
-  const before = new Map(
-    sources.map((file) => [
-      relative(file.getFilePath()),
-      modulePaths(file).literals.map((literal) => ({ specifier: literal.getLiteralValue(), target: resolveSpecifier(project, literal.getLiteralValue(), file) })),
-    ]),
-  );
+  const { files, originalText, before, computed: computedBefore } = await baselineOf(tree);
+  const { project, relative, absolute, warnings } = projectFromFiles(files);
 
   const origin = new Map<string, string>();
   const destination = new Map<string, string>();
@@ -118,6 +141,15 @@ async function performMove(tree: SourceTree, operations: readonly FileOperation[
     const path = relative(file.getFilePath());
     const was = before.get(origin.get(path) ?? path);
     if (was === undefined) continue;
+    // A file the move neither moved nor rewrote has the module paths it had, so only whether each still reaches its file is asked.
+    const untouched = !origin.has(path) && file.getFullText() === originalText.get(path);
+    if (untouched && was.every((old) => old.target === undefined || resolveSpecifier(project, old.specifier, file) === (destination.get(old.target) ?? old.target))) {
+      for (const site of computedBefore.get(path) ?? []) {
+        const referred = [...destination.values()].find((moved) => site.text.includes(stemOf(moved)));
+        if (referred !== undefined) warnings.push(`${path}:${site.line} ${site.call}(...) takes a computed path that may refer to ${relative(referred)}: check it by hand`);
+      }
+      continue;
+    }
     const { literals, computed } = modulePaths(file);
     for (const site of computed) {
       const referred = [...destination.values()].find((moved) => site.text.includes(stemOf(moved)));

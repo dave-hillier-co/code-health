@@ -55,6 +55,19 @@ describe.each(ids)("%s: the move fixtures", (id) => {
       }).toEqual({ rewrites: expected.rewrites, texts: expected.texts, warnings: expected.warnings, breaks: expected.breaks ?? [] });
     });
 
+    it("gives the same result when other moves were planned on the same tree first", async () => {
+      // A mover reads a tree once and keeps what it read for every later plan on that tree, so a plan must leave nothing behind for the next.
+      const operations: FileOperation[] = readExpected<MovesExpected>(fixture).operations.map((operation) => ({ ...operation, role: "unit" }));
+      const decoy: FileOperation[] = operations.map((operation) => ({ ...operation, to: `zz-elsewhere/${operation.from}` }));
+      const tree = await treeFromDirectory(`${fixture.directory}before/`);
+      const first = await performMove(tree, operations, { searchPath: "" });
+      await performMove(tree, decoy, { searchPath: "" });
+      const again = await performMove(tree, operations, { searchPath: "" });
+      const shown = (result: Awaited<ReturnType<typeof performMove>>) => ({ rewrites: result.rewrites, texts: [...result.texts].sort(([a], [b]) => (a < b ? -1 : 1)), warnings: result.warnings, breaks: result.breaks ?? [] });
+      expect(shown(again)).toEqual(shown(first));
+      expect(shown(first)).toEqual(shown(await move()));
+    });
+
     it("declares what confirms references, and with no tool to hand says not confirmed", async () => {
       const result = await move();
       const tool = adapterById(id)!.mover.confirmation;
