@@ -143,6 +143,7 @@
         }
       ],
       "alongsideNotShown": 0,
+      "eligibleChanges": 5,
       "exists": true,
       "fixShare": 0,
       "fixes": 0,
@@ -150,6 +151,7 @@
       "hotspotScore": 0.465278,
       "lastChanged": "2024-04-21T09:00:00.000Z",
       "note": null,
+      "oversizedChanges": 0,
       "path": "src/app/registry.ts",
       "recentRevisions": 0,
       "recommendation": null,
@@ -187,6 +189,7 @@
         }
       ],
       "alongsideNotShown": 0,
+      "eligibleChanges": 27,
       "exists": true,
       "fixShare": 0,
       "fixes": 0,
@@ -194,6 +197,7 @@
       "hotspotScore": 0.493056,
       "lastChanged": "2024-12-19T09:00:00.000Z",
       "note": null,
+      "oversizedChanges": 1,
       "path": "src/billing/invoice.ts",
       "recentRevisions": 6,
       "recommendation": "hotspot",

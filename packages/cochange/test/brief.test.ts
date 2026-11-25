@@ -108,6 +108,19 @@ test("a briefing is never stored as a report", async () => {
   expect(existsSync(reportPath(repo.path, "brief"))).toBe(false);
 });
 
+test("each row counts the changes eligible for coupling and the ones left out as oversized", async () => {
+  const [row] = rowsOf((await brief(invoice)).stdout);
+  expect(row).toMatchObject({ frequency: 28, eligibleChanges: 27, oversizedChanges: 1 });
+});
+
+test("with no partner at the support guideline the note gives both counts and names the coupling command", async () => {
+  const [row] = rowsOf((await brief("src/bulk/file00.ts")).stdout);
+  expect(row).toMatchObject({ frequency: 2, eligibleChanges: 1, oversizedChanges: 1, alongside: [] });
+  expect(row.note).toContain("Nothing shares at least 5 changes with it");
+  expect(row.note).toContain("Of its 2 changes, 1 was eligible for coupling and 1 was left out as oversized");
+  expect(row.note).toContain("cochange coupling --file src/bulk/file00.ts --min-support N");
+});
+
 test("on a terminal it prints one row per file", async () => {
   const { stdout } = await runCochangeOnTerminal(repo.path, ["brief", invoice]);
   expect(stdout.split("\n")[0]).toContain("alongside");

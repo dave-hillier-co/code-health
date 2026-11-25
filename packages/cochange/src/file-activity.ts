@@ -12,6 +12,8 @@ export interface FileActivity {
   path: string;
   /** Logical changes in the window that touched the file, oversized ones included. */
   revisions: number;
+  /** Of those, the oversized ones, which coupling leaves out. */
+  oversizedRevisions: number;
   /** Of those, the ones in the recent window before the analysed commit. */
   recentRevisions: number;
   /** Committer date of the latest of them, unix seconds. */
@@ -24,8 +26,9 @@ export function fileActivity(history: LoadedHistory): FileActivity[] {
   const activity = new Map<string, FileActivity>();
   for (const change of history.filtered.changes) {
     for (const id of new Set(change.files.map((file) => file.fileId))) {
-      const entry = activity.get(id) ?? { path: id, revisions: 0, recentRevisions: 0, lastChanged: change.committerDate };
+      const entry = activity.get(id) ?? { path: id, revisions: 0, oversizedRevisions: 0, recentRevisions: 0, lastChanged: change.committerDate };
       entry.revisions++;
+      if (change.oversized) entry.oversizedRevisions++;
       if (change.committerDate >= recentSince) entry.recentRevisions++;
       entry.lastChanged = Math.max(entry.lastChanged, change.committerDate);
       activity.set(id, entry);
@@ -38,7 +41,7 @@ export function activityOutput(history: LoadedHistory): CommandOutput {
   return {
     inputs: { recentMonths: history.settings.recentMonths },
     results: fileActivity(history),
-    columns: ["path", "revisions", "recentRevisions", "lastChanged"],
+    columns: ["path", "revisions", "oversizedRevisions", "recentRevisions", "lastChanged"],
     // Ages are counted from the analysed commit's date, which a stated window's end does not change.
     extra: { headDate: history.view.headDate },
   };

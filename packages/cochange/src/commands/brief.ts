@@ -21,6 +21,10 @@ const DEFAULT_PARTNERS = 5;
 
 const round1 = (value: number) => Math.round(value * 10) / 10;
 
+function leftOut(eligible: number, oversized: number, total: number): string {
+  return `Of its ${total} changes, ${eligible} ${eligible === 1 ? "was" : "were"} eligible for coupling and ${oversized} ${oversized === 1 ? "was" : "were"} left out as oversized.`;
+}
+
 function partnersOption(context: CommandContext): number {
   const raw = context.values.partners;
   if (raw === undefined) return DEFAULT_PARTNERS;
@@ -96,6 +100,8 @@ function briefOutput(
 
     const activity = activityOf.get(path);
     const frequency = activity?.revisions ?? 0;
+    const oversizedChanges = activity?.oversizedRevisions ?? 0;
+    const eligibleChanges = frequency - oversizedChanges;
     const hotspot = rankedBy.get(path);
 
     const alongside = (partnersByFile.get(path) ?? [])
@@ -121,7 +127,7 @@ function briefOutput(
       : frequency === 0
         ? `No revisions in the ${settings.windowMonths} month window, so there is no co-change evidence for it.`
         : alongside.length === 0
-          ? `Nothing shares at least ${settings.minSupport} changes with it.`
+          ? `Nothing shares at least ${settings.minSupport} changes with it. ${leftOut(eligibleChanges, oversizedChanges, frequency)} \`cochange coupling --file ${path} --min-support N\` lists pairs that share fewer.`
           : !alongside.some((partner) => partner.aboveGuideline)
             ? `No partner reaches the degree guideline of ${settings.minDegree} %. The partners listed are below it.`
             : null;
@@ -131,6 +137,8 @@ function briefOutput(
       requested: asked === path ? null : asked,
       exists,
       frequency,
+      eligibleChanges,
+      oversizedChanges,
       recentRevisions: activity?.recentRevisions ?? 0,
       fixes: hotspot?.fixes ?? 0,
       fixShare: hotspot === undefined || hotspot.landedChanges === 0 ? null : Math.round((hotspot.fixes / hotspot.landedChanges) * 1000) / 1000,
@@ -155,7 +163,7 @@ function briefOutput(
     results: rows,
     extra: { window, filtersApplied, evidence, fixConvention },
     notices: fixConvention.note === null ? [] : [fixConvention.note.replace(/\.$/, "")],
-    columns: ["path", "frequency", "recentRevisions", "fixes", "lastChanged", "recommendation", "alongside", "note"],
+    columns: ["path", "frequency", "eligibleChanges", "oversizedChanges", "recentRevisions", "fixes", "lastChanged", "recommendation", "alongside", "note"],
   };
 }
 
