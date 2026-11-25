@@ -17,7 +17,7 @@ let structure: string;
 beforeAll(async () => {
   work = mkdtempSync(join(tmpdir(), "composition-"));
   // The grammars are resolved beside the bundle, as they are in an installed plugin.
-  cpSync(grammarsPath("locality"), join(work, "grammars"), { recursive: true });
+  cpSync(grammarsPath(), join(work, "grammars"), { recursive: true });
   locality = join(work, "locality.mjs");
   structure = join(work, "structure.mjs");
   writeFileSync(locality, await bundle("locality"));

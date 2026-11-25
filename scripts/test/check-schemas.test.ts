@@ -36,7 +36,7 @@ test("this repository's schemas compile and its golden outputs validate", async 
 
 test("a golden that matches its schema passes, including variants of a command", () => {
   const root = repo({
-    "plugins/p/schemas/list.schema.json": schema,
+    "plugins/code-health/schemas/p/list.schema.json": schema,
     "packages/p/test/golden/one/list.json": { command: "list", results: [] },
     "packages/p/test/golden/one/list.empty.json": { command: "list", results: [] },
   });
@@ -45,7 +45,7 @@ test("a golden that matches its schema passes, including variants of a command",
 
 test("a golden that breaks its schema is reported with the failing path", () => {
   const root = repo({
-    "plugins/p/schemas/list.schema.json": schema,
+    "plugins/code-health/schemas/p/list.schema.json": schema,
     "packages/p/test/golden/one/list.json": { command: "list", results: 3 },
   });
   const { problems } = checkSchemas(root);
@@ -55,18 +55,18 @@ test("a golden that breaks its schema is reported with the failing path", () => 
 
 test("a golden without a schema, or naming another command, is reported", () => {
   const root = repo({
-    "plugins/p/schemas/list.schema.json": schema,
+    "plugins/code-health/schemas/p/list.schema.json": schema,
     "packages/p/test/golden/one/missing.json": { command: "missing" },
     "packages/p/test/golden/one/list.json": { command: "other", results: [] },
   });
   const { problems } = checkSchemas(root);
-  expect(problems.some((p) => p.includes("no schema plugins/p/schemas/missing.schema.json"))).toBe(true);
+  expect(problems.some((p) => p.includes("no schema plugins/code-health/schemas/p/missing.schema.json"))).toBe(true);
   expect(problems.some((p) => p.includes('names command "other"'))).toBe(true);
 });
 
 test("scenarios starting with an underscore are exempt", () => {
   const root = repo({
-    "plugins/p/schemas/list.schema.json": schema,
+    "plugins/code-health/schemas/p/list.schema.json": schema,
     "packages/p/test/golden/_plumbing/probe.json": { command: "probe" },
   });
   expect(checkSchemas(root)).toEqual({ schemas: 1, goldens: 0, problems: [] });
@@ -74,8 +74,8 @@ test("scenarios starting with an underscore are exempt", () => {
 
 test("a schema that is not valid JSON Schema is reported", () => {
   const root = repo({
-    "plugins/p/schemas/bad.schema.json": { $id: "bad.schema.json", type: "nonsense" },
+    "plugins/code-health/schemas/p/bad.schema.json": { $id: "bad.schema.json", type: "nonsense" },
   });
   const { problems } = checkSchemas(root);
-  expect(problems.some((p) => p.startsWith("plugins/p/schemas/bad.schema.json"))).toBe(true);
+  expect(problems.some((p) => p.startsWith("plugins/code-health/schemas/p/bad.schema.json"))).toBe(true);
 });

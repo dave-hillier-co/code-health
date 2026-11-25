@@ -63,7 +63,7 @@ const evidenceFile = (name: string, document: unknown): string => {
 };
 
 const here = dirname(fileURLToPath(import.meta.url));
-const complexityDist = join(here, "..", "..", "..", "plugins", "complexity", "dist", "complexity.mjs");
+const complexityDist = join(here, "..", "..", "..", "plugins", "code-health", "dist", "complexity.mjs");
 
 describe("without the sibling plugins", () => {
   test("complexity-delta falls back to the rise in indentation complexity of the touched files", async () => {

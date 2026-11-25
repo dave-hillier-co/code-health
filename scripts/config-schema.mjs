@@ -62,7 +62,7 @@ export async function checkConfigSchema(root = defaultRoot, sourceRoot = root) {
   } catch {
     return [`${SCHEMA_FILE} does not exist: run npm run config-schema`];
   }
-  return actual === expected ? [] : [`${SCHEMA_FILE} is not what the plugins' config sections generate: run npm run config-schema and commit it`];
+  return actual === expected ? [] : [`${SCHEMA_FILE} is not what the tools' config sections generate: run npm run config-schema and commit it`];
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -70,7 +70,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const problems = await checkConfigSchema();
     for (const problem of problems) console.error(problem);
     if (problems.length > 0) process.exit(1);
-    console.log(`${SCHEMA_FILE} matches the plugins' config sections`);
+    console.log(`${SCHEMA_FILE} matches the tools' config sections`);
   } else {
     writeFileSync(join(defaultRoot, SCHEMA_FILE), await generateConfigSchema());
     console.log(`wrote ${SCHEMA_FILE}`);

@@ -1,27 +1,12 @@
 {
   "name": "code-health",
   "owner": { "name": "Dave Hillier" },
-  "metadata": { "description": "Plugins that find where code is expensive to change and measure whether changes made it cheaper." },
+  "metadata": { "description": "A plugin that finds where code is expensive to change and measures whether changes made it cheaper." },
   "plugins": [
     {
-      "name": "cochange",
-      "source": "./plugins/cochange",
-      "description": "Mines git history for hotspots, temporal coupling and change spread, and briefs agents before they edit."
-    },
-    {
-      "name": "complexity",
-      "source": "./plugins/complexity",
-      "description": "Finds the functions that are hard to understand, guides simplifications that avoid shallow helpers, and guards CI against regressions."
-    },
-    {
-      "name": "structure",
-      "source": "./plugins/structure",
-      "description": "Finds dependencies that make change expensive: import cycles with minimal breaking sets, and dependencies pointing from stable towards volatile code, with an evidence pack for each. A second skill judges whether the packages are the right ones."
-    },
-    {
-      "name": "locality",
-      "source": "./plugins/locality",
-      "description": "Finds code that lives far from the code that uses it and recommends moving, inlining or splitting it."
+      "name": "code-health",
+      "source": "./plugins/code-health",
+      "description": "Finds where code is expensive to change, guides an agent through fixing it, and measures whether later changes got cheaper: co-change and hotspots from git history, function complexity, dependencies and package boundaries, and how far code lives from the code that uses it."
     }
   ]
 }

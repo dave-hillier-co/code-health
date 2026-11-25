@@ -12,7 +12,7 @@ import { steadyHistory } from "./support/scenarios.ts";
 vi.setConfig({ testTimeout: 120_000, hookTimeout: 120_000 });
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
-const bundle = join(root, "plugins", "cochange", "dist", "cochange.mjs");
+const bundle = join(root, "plugins", "code-health", "dist", "cochange.mjs");
 const source = join(root, "packages", "cochange", "src", "main.ts");
 
 /** The two real entry points: the TypeScript source under Node's own type stripping, and the committed bundle. */

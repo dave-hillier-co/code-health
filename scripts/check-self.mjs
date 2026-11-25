@@ -3,19 +3,20 @@ import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { compileGlobs } from "@code-health/history/glob";
+import { distDir } from "./layout.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
 /**
- * The analysis commands every plugin runs on a repository, in an order that lets the first one
+ * The analysis commands every tool runs on a repository, in an order that lets the first one
  * build the shared history cache for the rest. They run one after another because they share it.
  */
 export const selfCommands = [
-  { plugin: "cochange", command: "hotspots" },
-  { plugin: "cochange", command: "coupling" },
-  { plugin: "complexity", command: "analyse" },
-  { plugin: "locality", command: "analyse" },
-  { plugin: "structure", command: "cycles" },
+  { tool: "cochange", command: "hotspots" },
+  { tool: "cochange", command: "coupling" },
+  { tool: "complexity", command: "analyse" },
+  { tool: "locality", command: "analyse" },
+  { tool: "structure", command: "cycles" },
 ];
 
 function run(bundle, command, cwd) {
@@ -58,13 +59,13 @@ export function excludedSource({ root }) {
  * file the parser reports syntax errors in, or an import cycle. Excluded paths never reach the
  * results, because the CLIs apply the repository's own `code-health.json`.
  */
-export async function checkSelf({ root, plugins = join(here, "..", "plugins") }) {
+export async function checkSelf({ root, dist = distDir() }) {
   const commands = [];
   const failures = excludedSource({ root }).map((path) => `excluded source ${path}`);
-  for (const { plugin, command } of selfCommands) {
-    const label = `${plugin} ${command}`;
-    const { exitCode, stdout, stderr } = await run(join(plugins, plugin, "dist", `${plugin}.mjs`), command, root);
-    commands.push({ plugin, command, exitCode });
+  for (const { tool, command } of selfCommands) {
+    const label = `${tool} ${command}`;
+    const { exitCode, stdout, stderr } = await run(join(dist, `${tool}.mjs`), command, root);
+    commands.push({ tool, command, exitCode });
     if (exitCode !== 0) {
       failures.push(`${label} exited ${exitCode}: ${(stderr.trim() || stdout.trim()).slice(0, 300)}`);
       continue;
@@ -86,7 +87,7 @@ export async function checkSelf({ root, plugins = join(here, "..", "plugins") })
 
 if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const { commands, failures } = await checkSelf({ root: resolve(here, "..") });
-  for (const { plugin, command, exitCode } of commands) console.log(`${plugin} ${command}: exit ${exitCode}`);
+  for (const { tool, command, exitCode } of commands) console.log(`${tool} ${command}: exit ${exitCode}`);
   if (failures.length > 0) {
     console.error(`\ncheck:self found ${failures.length} problem${failures.length === 1 ? "" : "s"}:`);
     for (const failure of failures) console.error(`- ${failure}`);

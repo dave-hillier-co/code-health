@@ -58,7 +58,7 @@ export function withoutMeta(stdout: string): string {
  * same commit.
  *
  * `name` is `<command>` or `<command>.<variant>`. The part before the first dot
- * names the schema in `plugins/<plugin>/schemas/<command>.schema.json`, which
+ * names the schema in `plugins/code-health/schemas/<tool>/<command>.schema.json`, which
  * `npm run check:schemas` validates the file against. A scenario directory that
  * starts with an underscore is exempt from that check.
  */

@@ -34,6 +34,6 @@ test("every command has at least one golden output, and so a schema that check:s
       goldenFiles.some((file) => file === `${name}.json` || file.startsWith(`${name}.`)),
       `no golden for ${name}`,
     ).toBe(true);
-    expect(existsSync(join(packageRoot, "..", "..", "plugins", "cochange", "schemas", `${name}.schema.json`)), `no schema for ${name}`).toBe(true);
+    expect(existsSync(join(packageRoot, "..", "..", "plugins", "code-health", "schemas", "cochange", `${name}.schema.json`)), `no schema for ${name}`).toBe(true);
   }
 });

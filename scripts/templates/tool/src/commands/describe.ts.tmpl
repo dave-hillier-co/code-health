@@ -1,0 +1,11 @@
+import type { Command } from "@code-health/cli-kit/run-cli";
+
+export const name = "describe";
+
+/** A placeholder that proves the tool's wiring end to end. Replace it with the tool's first real command. */
+export const command: Command = {
+  summary: "Name the tool and the commit it ran against",
+  run(context) {
+    return { results: { tool: "{{tool}}", head: context.repo.head } };
+  },
+};

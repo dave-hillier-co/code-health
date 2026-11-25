@@ -22,7 +22,7 @@ let mainText: string;
 
 beforeAll(async () => {
   work = mkdtempSync(join(tmpdir(), "locality-chunks-"));
-  cpSync(grammarsPath("locality"), join(work, "grammars"), { recursive: true });
+  cpSync(grammarsPath(), join(work, "grammars"), { recursive: true });
   main = join(work, "locality.mjs");
   mainText = await bundle("locality");
   writeFileSync(main, mainText);

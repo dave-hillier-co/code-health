@@ -19,13 +19,13 @@ ${transcriptLimit}
 `;
 
 /** Adapt executable paths in entrypoints and supporting references alike. */
-export function codexMarkdown(text, plugin) {
-  text = text.replaceAll(`node \${CLAUDE_PLUGIN_ROOT}/dist/${plugin}.mjs`, `node "<absolute skill directory>/scripts/${plugin}.mjs"`);
+export function codexMarkdown(text, tool) {
+  text = text.replaceAll(`node \${CLAUDE_PLUGIN_ROOT}/dist/${tool}.mjs`, `node "<absolute skill directory>/scripts/${tool}.mjs"`);
   if (text.includes("CLAUDE_PLUGIN_ROOT")) throw new Error("Unconverted Claude executable path");
   return text;
 }
 
-export function codexInstructions(text, skill = "cochange", plugin = "cochange") {
+export function codexInstructions(text, skill = "cochange", tool = "cochange") {
   text = replaceOnce(text, /^allowed-tools:.*\n/m, "");
   if (skill === "cochange") {
     text = replaceOnce(text, /`\$\{CLAUDE_PLUGIN_ROOT\}` is replaced[^\n]*?Commands refresh/, "Commands refresh");
@@ -49,14 +49,14 @@ export function codexInstructions(text, skill = "cochange", plugin = "cochange")
     text = replaceOnce(text, /`--apply` needs a clean working tree,[^\n]*/, "`--apply --no-commit` needs a clean working tree, makes the moves with `git mv`, rewrites the imports and leaves them staged. Add any mention fixes and run the project's checks. Omit `--no-commit` only when the user requests a commit; the CLI then records the rule, consumer count, red flags and `Code-Health:` trailer in its commit message.");
   }
   text = text.replace(/ \[--projects-dir (?:DIR|~\/\.claude\/projects)\]/g, "");
-  text = codexMarkdown(text, plugin);
+  text = codexMarkdown(text, tool);
   // Put host-specific scope before the playbooks, so commit instructions are conditional throughout.
   text = replaceOnce(text, /^(# [^\n]+\n)/m, `$1\n${executionScope}\n`);
   if (text.includes("allowed-tools:") || text.includes("~/.claude")) throw new Error("Unconverted Claude instructions");
   return text;
 }
 
-export function codexReference(text, skill, file, plugin) {
+export function codexReference(text, skill, file, tool) {
   if (skill === "locality" && file === "measure.md") {
     const heading = "## What one change does to import distance";
     if (!text.includes(heading)) throw new Error("Missing locality change measurement reference");
@@ -72,7 +72,7 @@ export function codexReference(text, skill, file, plugin) {
     text = text.replace(" [--projects-dir <dir>]", "");
     text = replaceOnce(text, /^\| `agentEffort`[^\n]*/m, "| `agentEffort` | Unavailable for Codex; omit --projects-dir | Report as not measured, never zero |");
   }
-  text = codexMarkdown(text, plugin);
+  text = codexMarkdown(text, tool);
   if (/transcript|agentEffort|measure baseline|measure compare/.test(text) && !text.includes(transcriptLimit)) {
     text = text.replace(/^(# [^\n]+\n)/m, `$1\n${transcriptLimit}\n`);
   }

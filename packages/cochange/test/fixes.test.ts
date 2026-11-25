@@ -138,7 +138,7 @@ test("brief gives the fix count of each file asked about", async () => {
 });
 
 test("fixes output, as printed with meta, matches its schema, and stray fields do not", async () => {
-  const dir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "plugins", "cochange", "schemas");
+  const dir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "plugins", "code-health", "schemas", "cochange");
   const ajv = new Ajv2020Module.default({ strict: true, allErrors: true });
   addFormatsModule.default(ajv);
   for (const name of ["common", "fixes"]) ajv.addSchema(JSON.parse(readFileSync(join(dir, `${name}.schema.json`), "utf8")));

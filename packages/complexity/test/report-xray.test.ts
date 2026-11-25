@@ -13,7 +13,7 @@ import { runComplexity } from "./support/run.ts";
 vi.setConfig({ testTimeout: 180_000 });
 
 const Ajv2020 = Ajv2020Module.default;
-const schema = JSON.parse(readFileSync(join(GOLDEN_DIR, "..", "..", "..", "..", "plugins", "complexity", "schemas", "report.schema.json"), "utf8"));
+const schema = JSON.parse(readFileSync(join(GOLDEN_DIR, "..", "..", "..", "..", "plugins", "code-health", "schemas", "complexity", "report.schema.json"), "utf8"));
 const validate = new Ajv2020({ strict: true, allErrors: true }).compile(schema);
 
 let repo: GitFixture;

@@ -6,31 +6,31 @@ import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { GitFixture } from "@code-health/fixtures/git-fixture";
 import { runtimeSpec, shippedGrammarSpecs } from "@code-health/parse/grammars";
-import { bundledPlugins, grammarsPath, pluginParses } from "../bundle.mjs";
+import { bundledTools, grammarsPath, toolParses } from "../bundle.mjs";
 
 vi.setConfig({ testTimeout: 120_000, hookTimeout: 120_000 });
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 /**
- * A parsing plugin ships the grammar of every supported adapter and loads only the ones the analysed
- * repository has files for. Shipping is checked on the committed `dist/grammars`, loading on a copy of a
+ * The plugin ships the grammar of every supported adapter, once for all its tools, and a tool loads only
+ * the ones the analysed repository has files for. Shipping is checked on the committed `dist/grammars`, loading on a copy of a
  * bundle that has lost the grammars the repository does not need.
  */
 const shipped = [...new Set([...shippedGrammarSpecs().map((spec) => spec.file), runtimeSpec.file])].sort();
 
-test("every parsing plugin ships the grammar of every supported adapter, with the runtime, and nothing else", async () => {
+test("the plugin has tools that parse, and ships the grammar of every supported adapter, with the runtime, and nothing else", async () => {
   const parsing: string[] = [];
-  for (const plugin of bundledPlugins(root)) if (await pluginParses(plugin, root)) parsing.push(plugin);
+  for (const tool of bundledTools(root)) if (await toolParses(tool, root)) parsing.push(tool);
   expect(parsing.length).toBeGreaterThan(0);
-  for (const plugin of parsing) expect(readdirSync(grammarsPath(plugin, root)).sort(), plugin).toEqual(shipped);
+  expect(readdirSync(grammarsPath(root)).sort()).toEqual(shipped);
 });
 
 let installed: string;
 const repos: GitFixture[] = [];
 beforeAll(() => {
   installed = mkdtempSync(join(tmpdir(), "grammar-shipping-"));
-  cpSync(join(root, "plugins", "complexity", "dist"), join(installed, "dist"), { recursive: true });
+  cpSync(join(root, "plugins", "code-health", "dist"), join(installed, "dist"), { recursive: true });
   // The repositories below have TypeScript and no JavaScript, so a bundle that loads only what it finds does not need these.
   for (const file of ["tree-sitter-javascript.wasm"]) rmSync(join(installed, "dist", "grammars", file));
 });

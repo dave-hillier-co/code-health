@@ -33,9 +33,9 @@ const valid = (name: string, model = "m-1") =>
     "",
   ].join("\n");
 
-function writeCase(plugin: string, dir: string, text: string) {
-  mkdirSync(join(root, "plugins", plugin, "evals", dir), { recursive: true });
-  writeFileSync(join(root, "plugins", plugin, "evals", dir, "case.yaml"), text);
+function writeCase(tool: string, dir: string, text: string) {
+  mkdirSync(join(root, "plugins", "code-health", "evals", tool, dir), { recursive: true });
+  writeFileSync(join(root, "plugins", "code-health", "evals", tool, dir, "case.yaml"), text);
 }
 
 test("a case in the claude plugin eval format validates", () => {
@@ -70,24 +70,32 @@ test("the model must be the pinned one, so no case runs on a default", () => {
 test("the folder must match the name, graders must be unique and prompt.md cases are refused", () => {
   writeCase("p", "folder", valid("other"));
   writeCase("p", "twice", valid("twice") + "  - type: regex\n    name: greets\n    pattern: hi\n");
-  mkdirSync(join(root, "plugins", "p", "evals", "prompt-only"));
-  writeFileSync(join(root, "plugins", "p", "evals", "prompt-only", "prompt.md"), "hi");
+  mkdirSync(join(root, "plugins", "code-health", "evals", "p", "prompt-only"));
+  writeFileSync(join(root, "plugins", "code-health", "evals", "p", "prompt-only", "prompt.md"), "hi");
   const problems = checkEvals(root).problems.join("\n");
   expect(problems).toContain('name must be "folder"');
   expect(problems).toContain('duplicate grader name "greets"');
-  expect(problems).toContain("prompt-only: case.yaml is missing");
+  expect(problems).toContain("p/prompt-only: case.yaml is missing");
 });
 
-test("results output is not a case", () => {
-  mkdirSync(join(root, "plugins", "p", "evals", "results"), { recursive: true });
+test("results output is not a case, beside the tools' folders or inside one", () => {
+  mkdirSync(join(root, "plugins", "code-health", "evals", "results"), { recursive: true });
+  mkdirSync(join(root, "plugins", "code-health", "evals", "p", "results"), { recursive: true });
   expect(checkEvals(root)).toEqual({ cases: 0, problems: [] });
 });
 
-test("the runner pins model, judge model and cost ceiling and keeps results out of the plugin", () => {
+test("a case outside a tool's folder is reported", () => {
+  mkdirSync(join(root, "plugins", "code-health", "evals", "stray"), { recursive: true });
+  writeFileSync(join(root, "plugins", "code-health", "evals", "stray", "case.yaml"), valid("stray"));
+  expect(checkEvals(root).problems).toEqual(["plugins/code-health/evals/stray: a case belongs in a tool's folder, evals/<tool>/stray"]);
+});
+
+test("the runner loads the whole plugin, runs one tool's cases, pins model, judge model and cost ceiling and keeps results out of the plugin", () => {
   const args = evalArguments("p", { root });
   const value = (flag: string) => args[args.indexOf(flag) + 1];
   expect(args.slice(0, 2)).toEqual(["plugin", "eval"]);
-  expect(args[2]).toBe(join(root, "plugins", "p"));
+  expect(args[2]).toBe(join(root, "plugins", "code-health"));
+  expect(value("--eval-dir")).toBe("evals/p");
   expect(value("--model")).toBe("m-1");
   expect(value("--judge-model")).toBe("j-1");
   expect(value("--max-cost-usd")).toBe("2");
@@ -121,26 +129,34 @@ test("the pins name a model, a judge model and a positive ceiling", () => {
   expect(pins.maxCostUsd).toBeGreaterThan(0);
 });
 
-test("a plugin with a skill needs trigger, negative and behaviour cases", () => {
-  mkdirSync(join(root, "plugins", "p", "skills", "p"), { recursive: true });
+/** A skill of the plugin whose `allowed-tools` names the CLI of `tool`. */
+function writeSkill(name: string, tool: string) {
+  mkdirSync(join(root, "plugins", "code-health", "skills", name), { recursive: true });
+  writeFileSync(join(root, "plugins", "code-health", "skills", name, "SKILL.md"), `---\nname: ${name}\nallowed-tools: Bash(node \${CLAUDE_PLUGIN_ROOT}/dist/${tool}.mjs *)\n---\n`);
+}
+
+test("the cases of a tool that a skill runs need trigger, negative and behaviour tags", () => {
+  writeSkill("briefing", "p");
   writeCase("p", "greeting", valid("greeting").replace("name: greeting", "name: greeting\ntags: [trigger]"));
   expect(checkEvals(root).problems).toEqual([
-    'plugins/p/evals: no case is tagged "negative"; a skill needs trigger, negative and behaviour cases',
-    'plugins/p/evals: no case is tagged "behaviour"; a skill needs trigger, negative and behaviour cases',
+    'plugins/code-health/evals/p: no case is tagged "negative"; a skill needs trigger, negative and behaviour cases',
+    'plugins/code-health/evals/p: no case is tagged "behaviour"; a skill needs trigger, negative and behaviour cases',
   ]);
   writeCase("p", "declines", valid("declines").replace("name: declines", "name: declines\ntags: [negative, behaviour]"));
   expect(checkEvals(root).problems).toEqual([]);
 });
 
-test("a plugin with a skill and no evals is a problem", () => {
-  mkdirSync(join(root, "plugins", "p", "skills", "p"), { recursive: true });
-  expect(checkEvals(root).problems).toEqual(["plugins/p: ships a skill but has no evals"]);
+test("a skill whose tool has no folder of cases is a problem, whatever cases another tool has", () => {
+  writeSkill("briefing", "p");
+  writeSkill("review", "q");
+  writeCase("q", "greeting", valid("greeting").replace("name: greeting", "name: greeting\ntags: [trigger, negative, behaviour]"));
+  expect(checkEvals(root).problems).toEqual(["plugins/code-health: ships a skill that runs p but has no evals/p"]);
 });
 
-test("every plugin ships a case in which the skill must decline: tagged as behaviour and negative", () => {
-  const plugins = join(repository, "plugins");
-  for (const plugin of readdirSync(plugins)) {
-    const evals = join(plugins, plugin, "evals");
+test("every tool has a case in which the skill must decline: tagged as behaviour and negative", () => {
+  const groups = join(repository, "plugins", "code-health", "evals");
+  for (const tool of readdirSync(groups)) {
+    const evals = join(groups, tool);
     const declines = readdirSync(evals, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .filter((entry) => {
@@ -148,12 +164,12 @@ test("every plugin ships a case in which the skill must decline: tagged as behav
         const tags = /^tags: \[(.*)\]/m.exec(text)?.[1]?.split(",").map((tag) => tag.trim()) ?? [];
         return tags.includes("behaviour") && tags.includes("negative");
       });
-    expect(declines.length, `${plugin} has a decline case`).toBeGreaterThan(0);
+    expect(declines.length, `${tool} has a decline case`).toBeGreaterThan(0);
   }
 });
 
-test("the structure plugin has a decline for each of its skills: the structure skill and the packaging skill", () => {
-  const evals = join(repository, "plugins", "structure", "evals");
+test("the structure tool has a decline for each of its skills: the structure skill and the packaging skill", () => {
+  const evals = join(repository, "plugins", "code-health", "evals", "structure");
   const text = (name: string) => readFileSync(join(evals, name, "case.yaml"), "utf8");
   // The structure skill declines to name a pattern; the packaging skill declines to merge on co-change alone.
   expect(text("no-named-pattern-by-default")).toMatch(/input_match: structure/);

@@ -11,15 +11,15 @@ import { cli as structure } from "../../packages/structure/src/cli.ts";
 
 vi.setConfig({ testTimeout: 120_000 });
 
-const plugins = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "plugins");
+const evals = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "plugins", "code-health", "evals");
 const made: string[] = [];
 afterAll(() => made.forEach((dir) => rmSync(dir, { recursive: true, force: true })));
 
 /** What `claude plugin eval --scaffold` does with a case's script: run it in an empty working directory. */
-function scaffold(plugin: string, script = "scaffold.sh"): string {
-  const dir = mkdtempSync(join(tmpdir(), `${plugin}-eval-`));
+function scaffold(tool: string, script = "scaffold.sh"): string {
+  const dir = mkdtempSync(join(tmpdir(), `${tool}-eval-`));
   made.push(dir);
-  execFileSync("sh", [join(plugins, plugin, "evals", script)], { cwd: dir, stdio: "pipe", env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null" } });
+  execFileSync("sh", [join(evals, tool, script)], { cwd: dir, stdio: "pipe", env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null" } });
   return dir;
 }
 
@@ -27,13 +27,13 @@ const head = (dir: string) => execFileSync("git", ["rev-parse", "HEAD"], { cwd: 
 const json = async (cli: Parameters<typeof runInProcess>[0], dir: string, ...argv: string[]) =>
   JSON.parse((await runInProcess(cli, dir, [...argv, "--json", "--limit", "all"])).stdout);
 
-describe.each(["complexity", "locality", "structure"])("the %s eval scaffold", (plugin) => {
+describe.each(["complexity", "locality", "structure"])("the %s eval scaffold", (tool) => {
   test("builds the same repository every time, from pinned dates", () => {
-    expect(head(scaffold(plugin))).toBe(head(scaffold(plugin)));
+    expect(head(scaffold(tool))).toBe(head(scaffold(tool)));
   });
 
   test("leaves a clean working tree", () => {
-    expect(execFileSync("git", ["status", "--porcelain"], { cwd: scaffold(plugin), encoding: "utf8" })).toBe("");
+    expect(execFileSync("git", ["status", "--porcelain"], { cwd: scaffold(tool), encoding: "utf8" })).toBe("");
   });
 });
 
@@ -48,14 +48,14 @@ describe("complexity", () => {
 
   test("the cases share one scaffold, not copies of it", () => {
     for (const name of ["behaviour-simplify", "trigger-hardest-functions"]) {
-      expect(existsSync(join(plugins, "complexity", "evals", name, "scaffold.sh"))).toBe(false);
+      expect(existsSync(join(evals, "complexity", name, "scaffold.sh"))).toBe(false);
     }
   });
 
   test("the flat scaffold holds a long function that is not complex", async () => {
     const dir = mkdtempSync(join(tmpdir(), "complexity-flat-"));
     made.push(dir);
-    execFileSync("sh", [join(plugins, "complexity", "evals", "flat-scaffold.sh")], { cwd: dir, stdio: "pipe", env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null" } });
+    execFileSync("sh", [join(evals, "complexity", "flat-scaffold.sh")], { cwd: dir, stdio: "pipe", env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null" } });
     const { results } = await json(complexity, dir, "analyse");
     expect(results[0]).toMatchObject({ id: "src/describe.js#describe", cognitive: 0, nesting: 0 });
     expect(results[0].length).toBeGreaterThan(30);
@@ -77,7 +77,7 @@ describe("structure's packaging scaffold", () => {
   const packagingScaffold = (): string => {
     const dir = mkdtempSync(join(tmpdir(), "packaging-eval-"));
     made.push(dir);
-    execFileSync("sh", [join(plugins, "structure", "evals", "packaging-scaffold.sh")], { cwd: dir, stdio: "pipe", env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null" } });
+    execFileSync("sh", [join(evals, "structure", "packaging-scaffold.sh")], { cwd: dir, stdio: "pipe", env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null" } });
     return dir;
   };
 
