@@ -3,10 +3,11 @@
 import { createRequire as __codeHealthCreateRequire } from "node:module"; import { fileURLToPath as __codeHealthFileURLToPath } from "node:url"; import { dirname as __codeHealthDirname } from "node:path"; var require = __codeHealthCreateRequire(import.meta.url); var __filename = __codeHealthFileURLToPath(import.meta.url); var __dirname = __codeHealthDirname(__filename);
 import {
   GrammarSet
-} from "./chunk-LYITVUNB.mjs";
+} from "./chunk-NQYRJ3FN.mjs";
 import {
+  oncePerTree,
   sourceFilesOf
-} from "./chunk-AKMBSBHY.mjs";
+} from "./chunk-VQGQVRFS.mjs";
 import {
   PackageGraph,
   defaultPackageName,
@@ -16,7 +17,7 @@ import {
   isExported,
   isGoModFile,
   isGoWorkFile
-} from "./chunk-BAXRC4U5.mjs";
+} from "./chunk-YK5VO75Q.mjs";
 import "./chunk-OQRLKAKZ.mjs";
 
 // packages/locality/src/movers/go-backend.ts
@@ -155,6 +156,22 @@ ${body}`);
 function lineOf(file, index) {
   return lineStarts(file.text).filter((start) => start <= index).length;
 }
+var projectsOf = /* @__PURE__ */ new WeakMap();
+function projectOf(grammar, tree) {
+  let read = projectsOf.get(grammar);
+  if (read === void 0) {
+    read = oncePerTree(async (source) => {
+      const paths = [...source.files.keys()].sort();
+      const texts = await source.readMany(paths.filter((path) => isSource(path) || isGoModFile(path) || isGoWorkFile(path)));
+      const parsed = /* @__PURE__ */ new Map();
+      for (const path of paths.filter(isSource)) parsed.set(path, parseFile(grammar, path, texts.get(path) ?? ""));
+      const configs = new Map([...texts].filter(([path]) => isGoModFile(path) || isGoWorkFile(path)));
+      return { parsed, graph: new PackageGraph(new Map([...parsed].map(([path, file]) => [path, file.facts])), configs) };
+    });
+    projectsOf.set(grammar, read);
+  }
+  return read(tree);
+}
 async function performMove(grammar, tree, operations) {
   const warnings = [];
   const breaks = [];
@@ -167,12 +184,7 @@ async function performMove(grammar, tree, operations) {
     moves.set(operation.from, operation.to);
   }
   if (![...moves].some(([from, to]) => posix.dirname(from) !== posix.dirname(to))) return { rewrites: [], texts: /* @__PURE__ */ new Map(), warnings, breaks };
-  const paths = [...tree.files.keys()].sort();
-  const texts = await tree.readMany(paths.filter((path) => isSource(path) || isGoModFile(path) || isGoWorkFile(path)));
-  const parsed = /* @__PURE__ */ new Map();
-  for (const path of paths.filter(isSource)) parsed.set(path, parseFile(grammar, path, texts.get(path) ?? ""));
-  const configs = new Map([...texts].filter(([path]) => isGoModFile(path) || isGoWorkFile(path)));
-  const graph = new PackageGraph(new Map([...parsed].map(([path, file]) => [path, file.facts])), configs);
+  const { parsed, graph } = await projectOf(grammar, tree);
   const dirBefore = (path) => posix.dirname(path);
   const dirAfter = (path) => posix.dirname(moves.get(path) ?? path);
   const pathAfter = (path) => moves.get(path) ?? path;
@@ -227,10 +239,10 @@ async function performMove(grammar, tree, operations) {
       if (found === void 0) continue;
       const spec = reference.head === null ? void 0 : specOf.get(reference.head);
       if (spec !== void 0) used.add(spec);
-      const where = `${pathAfter(path)}:${lineOf(file, reference.whole.start)}`;
+      const where = () => `${pathAfter(path)}:${lineOf(file, reference.whole.start)}`;
       const targets = new Set(graph.declarers(found.key, found.name).map(keyAfter));
       if (targets.size !== 1) {
-        breaks.push(`${where} ${found.name} is declared in files that end up in different packages, so its references were not rewritten`);
+        breaks.push(`${where()} ${found.name} is declared in files that end up in different packages, so its references were not rewritten`);
         if (spec !== void 0) stillUsed.add(spec);
         continue;
       }
@@ -239,7 +251,7 @@ async function performMove(grammar, tree, operations) {
       let after;
       if (target === keyAfter(path)) after = found.name;
       else if (!isExported(found.name)) {
-        breaks.push(`${where} ${found.name} is not exported and would be reached from another package`);
+        breaks.push(`${where()} ${found.name} is not exported and would be reached from another package`);
         if (spec !== void 0) stillUsed.add(spec);
         continue;
       } else {
@@ -250,7 +262,7 @@ async function performMove(grammar, tree, operations) {
         } else {
           const importPath = directoryToImportPath(graph.modules, dirOfKey(target));
           if (importPath === void 0) {
-            breaks.push(`${where} ${dirOfKey(target)} is in no module, so it has no import path`);
+            breaks.push(`${where()} ${dirOfKey(target)} is in no module, so it has no import path`);
             continue;
           }
           const name = nameOfKey(target);

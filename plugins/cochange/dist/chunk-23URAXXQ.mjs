@@ -15,7 +15,7 @@ import {
   resolveBySymbols,
   supportedAdapters,
   treeFromRef
-} from "./chunk-YFWBKARF.mjs";
+} from "./chunk-I4ZSAUBR.mjs";
 
 // packages/cochange/src/risk/signatures.ts
 import { readFileSync as readFileSync2 } from "node:fs";
@@ -4167,12 +4167,37 @@ var GrammarSet = class {
 };
 
 // packages/parse/src/file-facts.ts
+var MAX_TREE_DEPTH = 1e3;
+function nestsDeeperThan(root, limit) {
+  const cursor = root.walk();
+  try {
+    let depth = 0;
+    for (; ; ) {
+      if (cursor.gotoFirstChild()) {
+        if (++depth > limit) return true;
+        continue;
+      }
+      while (!cursor.gotoNextSibling()) {
+        if (!cursor.gotoParent()) return false;
+        depth--;
+      }
+    }
+  } finally {
+    cursor.delete();
+  }
+}
 function parseWith(adapter, grammar, source, options = {}) {
   const tree = grammar.parse(source);
   try {
-    return adapter.extract(tree.rootNode, options);
+    if (!nestsDeeperThan(tree.rootNode, MAX_TREE_DEPTH)) return adapter.extract(tree.rootNode, options);
   } finally {
     tree.delete();
+  }
+  const empty = grammar.parse("");
+  try {
+    return { ...adapter.extract(empty.rootNode, options), tooDeep: true };
+  } finally {
+    empty.delete();
   }
 }
 async function factsForBlob(language, blob, source, cache) {

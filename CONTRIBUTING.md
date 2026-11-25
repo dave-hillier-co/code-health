@@ -75,20 +75,21 @@ Bundles import only Node builtins and install without `npm install`. Do not add 
 
 ## Maintainer commands
 
-Three commands calibrate or evaluate the suite on a corpus of repositories. They are for the suite's maintainers and not for end users. They stay runnable, but are marked `hidden` in their command definition (`hidden: true` on a `SubcommandHelp`, `hiddenOptions` for options only they take), so they are left out of `--help` listings, and no skill or reference mentions them. `<command> <subcommand> --help` still describes one.
+Four commands calibrate or evaluate the suite on a corpus of repositories. They are for the suite's maintainers and not for end users. They stay runnable, but are marked `hidden` in their command definition (`hidden: true` on a `Command` or a `SubcommandHelp`, `hiddenOptions` for options only they take), so they are left out of `--help` listings, and no skill or reference mentions them. `<command> --help` or `<command> <subcommand> --help` still describes one.
 
 | Command | What it checks | Notes |
 |---|---|---|
 | `cochange risk backtest [--since DATE] [--adopted DATE]` | Whether the change-risk levels separate past changes that were later reverted or fixed | A run on a clean tree with no `--since` or `--adopted` stores its result under `.cache/code-health/reports/`. `cochange risk` shows a level only where that stored result says the levels separate |
 | `cochange abandonment backtest [--at DATE] [--horizon P] [--trials N] [--seed S] [--top N]` | At a past date, the predicted at-risk files against the files abandoned one horizon later | Needs `cochange.knowledge.enabled` set to `true` in the corpus repository's `code-health.json`, and prints precision and recall without storing them |
+| `complexity backtest [--samples N] [--months M]` | Whether a file's size and complexity at past revisions order the files by the changes, lines churned and fixes of the period that followed | Prints Spearman rank correlations for each measure (code lines, cyclomatic and cognitive complexity, the share of weighted complexity above the guideline, indentation complexity, prior changes and their product) and each again with code lines held fixed. Stores nothing |
 | `locality measure premise [--since DATE] [--until DATE] [--source main\|subagent\|all] [--effort tools\|all]` | Whether tasks that edit files further apart cost an agent more reads and tokens | Reads Claude Code session transcripts, from `--projects-dir` or `~/.claude/projects` |
 
 To run them on a corpus:
 
 1. Build first with `npm run build`, so `plugins/*/dist` is current.
-2. For each repository, use a full clone (a shallow clone has truncated history), on a clean working tree, and put `code-health.json` there when a command needs a setting such as `cochange.knowledge.enabled` or `history.windowMonths`. Do not commit the file to the repository under test.
+2. For each repository, use a full clone (a shallow clone has truncated history), on a clean working tree, and put `code-health.json` there when a command needs a setting such as `cochange.knowledge.enabled` or `history.windowMonths`. Do not commit the file to the repository under test. For `complexity backtest`, list in `exclude` the folders of fixtures, samples, examples and test inputs that the test patterns do not catch (`playground/**`, `sample/**`, `**/testdata/**`): such files are small, simple and rarely changed, and counted as production code they make complexity appear to predict change.
 3. Run `node plugins/<plugin>/dist/<plugin>.mjs <command> <subcommand> [options] --json` from inside the clone, for example `node /path/to/code-health/plugins/cochange/dist/cochange.mjs risk backtest --json`. Pipe the JSON to a file outside the clone. The first run of a large repository is slow, because it refreshes the history cache, and blame for abandonment.
-4. Read `evidence.grade` first. Read `risk backtest` by `separation`, `abandonment backtest` by `precision` and `recall` (null means a zero denominator, which is not a score), and `locality measure premise` by `verdict` with `tasks.measured`. State the sample size next to each figure.
+4. Read `evidence.grade` first. Read `risk backtest` by `separation`, `abandonment backtest` by `precision` and `recall` (null means a zero denominator, which is not a score), `locality measure premise` by `verdict` with `tasks.measured`, and `complexity backtest` by `partialOnCodeLines` with `fileSamples`: a measure that only repeats what code lines says has a partial correlation near 0. State the sample size next to each figure.
 
 The outcome commands (`cochange outcome`, `complexity outcome`, `structure packages outcome`, `locality measure baseline` and `compare`) measure what a user acted on and stay user-facing. `locality measure change` is user-facing too: it measures one change, not an outcome.
 

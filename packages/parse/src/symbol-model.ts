@@ -65,23 +65,32 @@ export function resolveBySymbols(input: ResolveInput, options: SymbolModelOption
     if (symbols === undefined) continue;
     const scopes = [...(enclosingNamespaces ? symbols.namespaces.flatMap(enclosing) : symbols.namespaces), ...symbols.uses, ""];
     const units = unitNames(facts);
-    for (const reference of symbols.references) {
-      let found: Declared[] | undefined;
+    const isTest = input.isTestPath(file);
+    // What a name resolves to depends on the file and the name alone, and a file writes the same names many times.
+    const resolved = new Map<string, Declared[] | null>();
+    const resolve = (name: string): Declared[] | null => {
+      const known = resolved.get(name);
+      if (known !== undefined) return known;
+      let found: Declared[] | null = null;
       for (const scope of scopes) {
         // A declaration with internal linkage is visible to its own file only; elsewhere it neither matches nor shadows.
-        const candidates = table.get(scope === "" ? reference.name : `${scope}.${reference.name}`)?.filter((entry) => entry.declaration.internal !== true || entry.file === file);
+        const candidates = table.get(scope === "" ? name : `${scope}.${name}`)?.filter((entry) => entry.declaration.internal !== true || entry.file === file);
         if (candidates !== undefined && candidates.length > 0) {
           found = candidates;
           break;
         }
       }
-      if (found === undefined) continue;
+      resolved.set(name, found);
+      return found;
+    };
+    for (const reference of symbols.references) {
+      const found = resolve(reference.name);
+      if (found === null) continue;
       for (const target of found) {
         if (target.file === file) continue;
         const edge = touch(file, target.file);
         if (reference.kind === "call") edge.calls++;
         else edge.references++;
-        const isTest = input.isTestPath(file);
         if (!isTest && reference.kind === "call") edge.kind = "call";
 
         let fromUnit = reference.inUnit;

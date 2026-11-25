@@ -292,7 +292,7 @@ export function analyseProject(project: Project, model: Model, settings: Localit
   const live = (file: string) => model.reachable.has(file) && !project.isTest(file);
 
   // Folder-level import cycles now: moving a unit may merge folders into one, which is a cycle that was not there.
-  const folderGraph = (place: (file: string) => string): Graph => {
+  const folderEdges = (place: (file: string) => string): Map<string, Set<string>> => {
     const graph = new Map<string, Set<string>>();
     for (const edge of model.edges) {
       if (!model.reachable.has(edge.from)) continue;
@@ -303,8 +303,9 @@ export function analyseProject(project: Project, model: Model, settings: Localit
       // A folder and its own subfolders depending on each other is how shared code is laid out, not a cycle between modules.
       if (from !== to && !under(from, to) && !under(to, from)) graph.get(from)!.add(to);
     }
-    return new Map([...graph].map(([folder, targets]) => [folder, [...targets].sort(compareIds)]));
+    return graph;
   };
+  const sorted = (graph: Map<string, Set<string>>): Graph => new Map([...graph].map(([folder, targets]) => [folder, [...targets].sort(compareIds)]));
   const cycleGroups = (graph: Graph): Map<string, number> => {
     const groups = new Map<string, number>();
     stronglyConnectedComponents(graph).forEach((component, index) => {
@@ -312,14 +313,88 @@ export function analyseProject(project: Project, model: Model, settings: Localit
     });
     return groups;
   };
-  let cyclesNow: Map<string, number> | undefined;
+  type ModelEdge = (typeof model.edges)[number];
+  const key = (from: string, to: string): string => `${from}\0${to}`;
+  /** Whether two folders are joined by an edge of the folder graph: not the same folder, and neither inside the other. */
+  const joins = (from: string, to: string): boolean => from !== to && !under(from, to) && !under(to, from);
+  /**
+   * What the cycle check needs of the code as it stands, computed once because none of it depends on the move: the
+   * folder graph, how many file edges are behind each of its edges, its cycles, and the file edges at each file.
+   */
+  let now: { edges: Map<string, Set<string>>; counts: Map<string, number>; cycles: Map<string, number>; touching: Map<string, ModelEdge[]> } | undefined;
+  /**
+   * Whether moving the unit makes folders import each other that did not before. A move changes only the edges at the
+   * moved files, and a new cycle has to pass through an edge the move adds between folders that were not already in
+   * one cycle together. So each such edge is followed from its end back to its start through the graph as it would
+   * be after the move, which is the graph as it stands with the edges the move removes left out and its new ones added.
+   */
   function movingCreatesCycle(unitFiles: readonly string[], base: string, target: string): boolean {
-    cyclesNow ??= cycleGroups(folderGraph(folderOf));
+    if (now === undefined) {
+      const edges = folderEdges(folderOf);
+      const counts = new Map<string, number>();
+      const touching = new Map<string, ModelEdge[]>();
+      for (const edge of model.edges) {
+        if (!model.reachable.has(edge.from)) continue;
+        const from = folderOf(edge.from);
+        const to = folderOf(edge.to);
+        if (joins(from, to)) counts.set(key(from, to), (counts.get(key(from, to)) ?? 0) + 1);
+        for (const file of new Set([edge.from, edge.to])) {
+          const list = touching.get(file);
+          if (list) list.push(edge);
+          else touching.set(file, [edge]);
+        }
+      }
+      now = { edges, counts, cycles: cycleGroups(sorted(edges)), touching };
+    }
+    const { edges, counts, cycles, touching } = now;
     const moved = new Set(unitFiles);
     const placeAfter = (file: string) => (moved.has(file) ? (relative(folderOf(file), base) === "" ? target : `${target}/${relative(folderOf(file), base)}`) : folderOf(file));
-    const after = stronglyConnectedComponents(folderGraph(placeAfter)).filter((component) => component.length > 1);
+
+    // How the move changes the number of file edges behind each folder edge.
+    const change = new Map<string, number>();
+    const ends = new Map<string, [string, string]>();
+    const add = (from: string, to: string, by: number): void => {
+      if (!joins(from, to)) return;
+      change.set(key(from, to), (change.get(key(from, to)) ?? 0) + by);
+      ends.set(key(from, to), [from, to]);
+    };
+    for (const edge of new Set(unitFiles.flatMap((file) => touching.get(file) ?? []))) {
+      add(folderOf(edge.from), folderOf(edge.to), -1);
+      add(placeAfter(edge.from), placeAfter(edge.to), 1);
+    }
+    const removed = new Set<string>();
+    const added = new Map<string, string[]>();
+    const fresh: [string, string][] = [];
+    for (const [edge, by] of change) {
+      const before = counts.get(edge) ?? 0;
+      const [from, to] = ends.get(edge)!;
+      if (before > 0 && before + by <= 0) removed.add(edge);
+      if (before === 0 && by > 0) {
+        added.set(from, [...(added.get(from) ?? []), to]);
+        fresh.push([from, to]);
+      }
+    }
     // A cycle is new when its folders were not already one cycle before the move.
-    return after.some((component) => new Set(component.map((folder) => cyclesNow!.get(folder))).size > 1 || cyclesNow!.get(component[0]!) === undefined);
+    const together = (a: string, b: string): boolean => cycles.get(a) !== undefined && cycles.get(a) === cycles.get(b);
+    const reaches = (start: string, goal: string): boolean => {
+      const seen = new Set([start]);
+      const pending = [start];
+      for (let folder = pending.pop(); folder !== undefined; folder = pending.pop()) {
+        if (folder === goal) return true;
+        for (const next of edges.get(folder) ?? []) {
+          if (seen.has(next) || removed.has(key(folder, next))) continue;
+          seen.add(next);
+          pending.push(next);
+        }
+        for (const next of added.get(folder) ?? []) {
+          if (seen.has(next)) continue;
+          seen.add(next);
+          pending.push(next);
+        }
+      }
+      return false;
+    };
+    return fresh.some(([from, to]) => !together(from, to) && reaches(to, from));
   }
 
   const consumersTo = new Map<string, Consumer[]>();

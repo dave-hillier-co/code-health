@@ -17,7 +17,7 @@ import {
 } from "./chunk-QOYPGNKA.mjs";
 import {
   isSourceFile
-} from "./chunk-KH2LNDQK.mjs";
+} from "./chunk-G3SPI7U4.mjs";
 import {
   BUILTIN_EXCLUDE_ENTRIES,
   GitError,
@@ -39,8 +39,8 @@ import {
 } from "./chunk-JT6DRCII.mjs";
 import {
   analyseTree
-} from "./chunk-F46LLJIS.mjs";
-import "./chunk-LYITVUNB.mjs";
+} from "./chunk-GBLPF5LG.mjs";
+import "./chunk-NQYRJ3FN.mjs";
 import {
   adapterForPath,
   discoverBoundaries,
@@ -48,7 +48,7 @@ import {
   isBoundaryManifest,
   isCppPath,
   isTestPath
-} from "./chunk-BAXRC4U5.mjs";
+} from "./chunk-YK5VO75Q.mjs";
 import {
   __export
 } from "./chunk-OQRLKAKZ.mjs";
@@ -692,7 +692,7 @@ var commonOptionHelp = [
 ];
 function helpText(cli2) {
   const commands2 = [
-    ...Object.entries(cli2.commands).map(([name9, command9]) => [name9, command9.summary]),
+    ...Object.entries(cli2.commands).filter(([, command9]) => command9.hidden !== true).map(([name9, command9]) => [name9, command9.summary]),
     ["config explain", configExplain.summary],
     ...cli2.rules ? [["explain <rule>", "Describe a recommendation rule"]] : []
   ];
@@ -1111,6 +1111,64 @@ function goPackages(edges, texts, consumers = []) {
   }
   return { uses, mainFolders: new Set([...mainFiles].map((path) => posix2.dirname(path))), mainFiles, unexportedUses, packageNames: new Map([...texts].flatMap(([path, text2]) => path.endsWith(".go") && PACKAGE_CLAUSE.test(text2) ? [[path, PACKAGE_CLAUSE.exec(text2)[1]]] : [])) };
 }
+function folderGraph(go, folderOf2) {
+  const graph = /* @__PURE__ */ new Map();
+  for (const [from, targets] of go.uses) {
+    const folder = folderOf2(from);
+    for (const target of targets) {
+      const other = folderOf2(target);
+      if (other === folder) continue;
+      if (!graph.has(folder)) graph.set(folder, /* @__PURE__ */ new Set());
+      graph.get(folder).add(other);
+      if (!graph.has(other)) graph.set(other, /* @__PURE__ */ new Set());
+    }
+  }
+  return new Map([...graph].map(([folder, targets]) => [folder, [...targets]]));
+}
+var goFolders = /* @__PURE__ */ new WeakMap();
+function goFoldersOf(go) {
+  let found = goFolders.get(go);
+  if (found === void 0) {
+    const folder = /* @__PURE__ */ new Map();
+    const usedBy = /* @__PURE__ */ new Map();
+    const note = (path) => {
+      if (!folder.has(path)) folder.set(path, posix2.dirname(path));
+    };
+    for (const [from, targets] of go.uses) {
+      note(from);
+      for (const target of targets) {
+        note(target);
+        usedBy.set(target, [...usedBy.get(target) ?? [], from]);
+      }
+    }
+    const lists = folderGraph(go, (path) => folder.get(path));
+    const counts = /* @__PURE__ */ new Map();
+    for (const [from, targets] of go.uses) {
+      for (const target of targets) {
+        if (folder.get(from) === folder.get(target)) continue;
+        const edge = `${folder.get(from)}\0${folder.get(target)}`;
+        counts.set(edge, (counts.get(edge) ?? 0) + 1);
+      }
+    }
+    const reverse2 = /* @__PURE__ */ new Map();
+    for (const [from, targets] of lists) {
+      for (const target of targets) {
+        if (!reverse2.has(target)) reverse2.set(target, /* @__PURE__ */ new Set());
+        reverse2.get(target).add(from);
+      }
+    }
+    found = {
+      folder,
+      usedBy,
+      counts,
+      reverse: reverse2,
+      graph: new Map([...lists].map(([from, targets]) => [from, new Set(targets)])),
+      cyclic: new Set(stronglyConnectedComponents(lists).filter((component) => component.length > 1).flat())
+    };
+    goFolders.set(go, found);
+  }
+  return found;
+}
 function goRefusals(operations, go) {
   const refusals = [];
   const moved = new Map(operations.filter((operation) => operation.from.endsWith(".go") && operation.role === "unit").map((operation) => [operation.from, operation.to]));
@@ -1144,28 +1202,90 @@ function goRefusals(operations, go) {
       }
     }
   }
-  const folderGraph = (mapping) => {
-    const graph = /* @__PURE__ */ new Map();
-    for (const [from, targets] of go.uses) {
-      const folder = posix2.dirname(mapping(from));
-      for (const target of targets) {
-        const other = posix2.dirname(mapping(target));
-        if (other === folder) continue;
-        if (!graph.has(folder)) graph.set(folder, /* @__PURE__ */ new Set());
-        graph.get(folder).add(other);
-        if (!graph.has(other)) graph.set(other, /* @__PURE__ */ new Set());
+  const base = goFoldersOf(go);
+  const folderOf2 = (path) => moved.has(path) ? posix2.dirname(moved.get(path)) : base.folder.get(path) ?? posix2.dirname(path);
+  const folderNow = (path) => base.folder.get(path) ?? posix2.dirname(path);
+  const key = (from, to) => `${from}\0${to}`;
+  const change3 = /* @__PURE__ */ new Map();
+  const ends = /* @__PURE__ */ new Map();
+  const add = (from, to, by) => {
+    if (from === to) return;
+    change3.set(key(from, to), (change3.get(key(from, to)) ?? 0) + by);
+    ends.set(key(from, to), [from, to]);
+  };
+  const fileEdges = /* @__PURE__ */ new Map();
+  for (const file of moved.keys()) {
+    for (const target of go.uses.get(file) ?? []) fileEdges.set(key(file, target), [file, target]);
+    for (const user of base.usedBy.get(file) ?? []) fileEdges.set(key(user, file), [user, file]);
+  }
+  for (const [from, to] of fileEdges.values()) {
+    add(folderNow(from), folderNow(to), -1);
+    add(folderOf2(from), folderOf2(to), 1);
+  }
+  const removed = /* @__PURE__ */ new Set();
+  const added = /* @__PURE__ */ new Map();
+  const fresh = [];
+  for (const [edge, by] of change3) {
+    const count3 = base.counts.get(edge) ?? 0;
+    const [from, to] = ends.get(edge);
+    if (count3 > 0 && count3 + by <= 0) removed.add(edge);
+    if (count3 === 0 && by > 0) {
+      added.set(from, [...added.get(from) ?? [], to]);
+      fresh.push([from, to]);
+    }
+  }
+  const addedBack = /* @__PURE__ */ new Map();
+  for (const [from, to] of fresh) addedBack.set(to, [...addedBack.get(to) ?? [], from]);
+  const reached = (start, forward) => {
+    const seen = /* @__PURE__ */ new Set([start]);
+    const pending = [start];
+    for (let folder = pending.pop(); folder !== void 0; folder = pending.pop()) {
+      for (const next of (forward ? base.graph : base.reverse).get(folder) ?? []) {
+        if (seen.has(next) || removed.has(forward ? key(folder, next) : key(next, folder))) continue;
+        seen.add(next);
+        pending.push(next);
+      }
+      for (const next of (forward ? added : addedBack).get(folder) ?? []) {
+        if (seen.has(next)) continue;
+        seen.add(next);
+        pending.push(next);
       }
     }
-    return new Map([...graph].map(([folder, targets]) => [folder, [...targets]]));
+    return seen;
   };
-  const cyclic = (graph) => new Set(stronglyConnectedComponents(graph).filter((component) => component.length > 1).flat());
-  const before = cyclic(folderGraph((path) => path));
-  const after = folderGraph(newPath);
-  const cycleAfter = stronglyConnectedComponents(after).filter((component) => component.length > 1);
+  const touchedFolders = new Set([...moved].flatMap(([from, to]) => [posix2.dirname(from), posix2.dirname(to)]));
+  const refusable = /* @__PURE__ */ new Map();
+  const inOne = /* @__PURE__ */ new Set();
+  for (const [from, to] of fresh) {
+    if (inOne.has(from) && inOne.has(to)) continue;
+    const behind = reached(from, false);
+    if (!behind.has(to)) continue;
+    const members = [];
+    let isNew = false;
+    let touched = false;
+    for (const folder of reached(from, true)) {
+      if (!behind.has(folder)) continue;
+      members.push(folder);
+      if (!base.cyclic.has(folder)) isNew = true;
+      if (touchedFolders.has(folder)) touched = true;
+    }
+    if (!isNew || !touched) continue;
+    members.sort();
+    refusable.set(members.join("\0"), members);
+    for (const folder of members) inOne.add(folder);
+  }
+  if (refusable.size === 0) return refusals;
+  if (refusable.size === 1) {
+    const [members] = [...refusable.values()];
+    refusals.push({ code: "import-cycle", detail: `import cycle: ${members.join(" and ")} would import each other`, label: "import cycle" });
+    return refusals;
+  }
+  const before = base.cyclic;
+  const cycleAfter = stronglyConnectedComponents(folderGraph(go, folderOf2)).filter((component) => component.length > 1);
   for (const component of cycleAfter) {
-    const fresh = component.filter((folder) => !before.has(folder));
+    const fresh2 = component.filter((folder) => !before.has(folder));
     const touched = component.some((folder) => [...moved].some(([from, to]) => posix2.dirname(from) === folder || posix2.dirname(to) === folder));
-    if (fresh.length === 0 || !touched) continue;
+    if (fresh2.length === 0 || !touched) continue;
     const members = [...component].sort();
     refusals.push({ code: "import-cycle", detail: `import cycle: ${members.join(" and ")} would import each other`, label: "import cycle" });
     break;
@@ -2846,7 +2966,7 @@ function analyseProject(project, model, settings, history) {
   const barrels = new Set(analysis.barrels);
   const lines2 = (path) => countLines(project.texts.get(path) ?? "");
   const live = (file) => model.reachable.has(file) && !project.isTest(file);
-  const folderGraph = (place2) => {
+  const folderEdges = (place2) => {
     const graph = /* @__PURE__ */ new Map();
     for (const edge of model.edges) {
       if (!model.reachable.has(edge.from)) continue;
@@ -2856,8 +2976,9 @@ function analyseProject(project, model, settings, history) {
       if (!graph.has(to)) graph.set(to, /* @__PURE__ */ new Set());
       if (from !== to && !under(from, to) && !under(to, from)) graph.get(from).add(to);
     }
-    return new Map([...graph].map(([folder, targets]) => [folder, [...targets].sort(compareIds)]));
+    return graph;
   };
+  const sorted = (graph) => new Map([...graph].map(([folder, targets]) => [folder, [...targets].sort(compareIds)]));
   const cycleGroups = (graph) => {
     const groups = /* @__PURE__ */ new Map();
     stronglyConnectedComponents(graph).forEach((component, index) => {
@@ -2865,13 +2986,73 @@ function analyseProject(project, model, settings, history) {
     });
     return groups;
   };
-  let cyclesNow;
+  const key = (from, to) => `${from}\0${to}`;
+  const joins = (from, to) => from !== to && !under(from, to) && !under(to, from);
+  let now;
   function movingCreatesCycle(unitFiles, base, target) {
-    cyclesNow ??= cycleGroups(folderGraph(folderOf));
+    if (now === void 0) {
+      const edges2 = folderEdges(folderOf);
+      const counts2 = /* @__PURE__ */ new Map();
+      const touching2 = /* @__PURE__ */ new Map();
+      for (const edge of model.edges) {
+        if (!model.reachable.has(edge.from)) continue;
+        const from = folderOf(edge.from);
+        const to = folderOf(edge.to);
+        if (joins(from, to)) counts2.set(key(from, to), (counts2.get(key(from, to)) ?? 0) + 1);
+        for (const file of /* @__PURE__ */ new Set([edge.from, edge.to])) {
+          const list = touching2.get(file);
+          if (list) list.push(edge);
+          else touching2.set(file, [edge]);
+        }
+      }
+      now = { edges: edges2, counts: counts2, cycles: cycleGroups(sorted(edges2)), touching: touching2 };
+    }
+    const { edges, counts, cycles, touching } = now;
     const moved = new Set(unitFiles);
     const placeAfter = (file) => moved.has(file) ? relative(folderOf(file), base) === "" ? target : `${target}/${relative(folderOf(file), base)}` : folderOf(file);
-    const after = stronglyConnectedComponents(folderGraph(placeAfter)).filter((component) => component.length > 1);
-    return after.some((component) => new Set(component.map((folder) => cyclesNow.get(folder))).size > 1 || cyclesNow.get(component[0]) === void 0);
+    const change3 = /* @__PURE__ */ new Map();
+    const ends = /* @__PURE__ */ new Map();
+    const add = (from, to, by) => {
+      if (!joins(from, to)) return;
+      change3.set(key(from, to), (change3.get(key(from, to)) ?? 0) + by);
+      ends.set(key(from, to), [from, to]);
+    };
+    for (const edge of new Set(unitFiles.flatMap((file) => touching.get(file) ?? []))) {
+      add(folderOf(edge.from), folderOf(edge.to), -1);
+      add(placeAfter(edge.from), placeAfter(edge.to), 1);
+    }
+    const removed = /* @__PURE__ */ new Set();
+    const added = /* @__PURE__ */ new Map();
+    const fresh = [];
+    for (const [edge, by] of change3) {
+      const before = counts.get(edge) ?? 0;
+      const [from, to] = ends.get(edge);
+      if (before > 0 && before + by <= 0) removed.add(edge);
+      if (before === 0 && by > 0) {
+        added.set(from, [...added.get(from) ?? [], to]);
+        fresh.push([from, to]);
+      }
+    }
+    const together = (a, b) => cycles.get(a) !== void 0 && cycles.get(a) === cycles.get(b);
+    const reaches = (start, goal) => {
+      const seen = /* @__PURE__ */ new Set([start]);
+      const pending = [start];
+      for (let folder = pending.pop(); folder !== void 0; folder = pending.pop()) {
+        if (folder === goal) return true;
+        for (const next of edges.get(folder) ?? []) {
+          if (seen.has(next) || removed.has(key(folder, next))) continue;
+          seen.add(next);
+          pending.push(next);
+        }
+        for (const next of added.get(folder) ?? []) {
+          if (seen.has(next)) continue;
+          seen.add(next);
+          pending.push(next);
+        }
+      }
+      return false;
+    };
+    return fresh.some(([from, to]) => !together(from, to) && reaches(to, from));
   }
   const consumersTo = /* @__PURE__ */ new Map();
   for (const consumer of analysis.consumers) {
@@ -6261,7 +6442,7 @@ var command4 = {
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-FIFNIFUE.mjs");
+    const { performMove } = await import("./chunk-3DJHTLD2.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
     for (const broken of moved?.breaks ?? []) refusals.push({ code: "does-not-compile", detail: broken });
@@ -9960,14 +10141,13 @@ function refusalLine(refusals) {
   const codes = [...counts].map(([code, n]) => n > 1 ? `${code} x${n}` : code).join(", ");
   return `${codes}; first: ${clip(refusals[0].detail, REFUSAL_DETAIL_CHARS)}`;
 }
-async function dryRun(context, candidate, settings, files, go) {
+async function dryRun(tree, candidate, settings, files, go) {
   const plan = planMove(candidate, settings, files, {}, go);
   const base = { destination: plan.destination, filesMoved: plan.operations.length, refusal: plan.refusals.length === 0 ? null : refusalLine(plan.refusals) };
   if (plan.refusals.length > 0) return { ...base, rewrites: 0, filesRewritten: 0, filesEdited: 0, failure: null, warnings: [] };
   try {
-    const { performMove } = await import("./chunk-FIFNIFUE.mjs");
-    const tree = await treeFromRef(context.repo.root, "HEAD");
-    const moved = await performMove(tree, plan.operations);
+    const { performMove } = await import("./chunk-3DJHTLD2.mjs");
+    const moved = await performMove(tree, plan.operations, { confirm: false });
     if ((moved.breaks ?? []).length > 0) {
       return { ...base, refusal: refusalLine((moved.breaks ?? []).map((detail) => ({ code: "does-not-compile", detail }))), rewrites: 0, filesRewritten: 0, filesEdited: 0, failure: null, warnings: [] };
     }
@@ -10008,10 +10188,10 @@ var gainColumns = (settings) => [
   { key: "confidence", label: "Confidence" }
 ];
 function oneMovePerEmptyFolder(moves, files) {
-  const goFolders = new Set([...files].filter((file) => file.endsWith(".go")).map((file) => posix6.dirname(file)));
+  const goFolders2 = new Set([...files].filter((file) => file.endsWith(".go")).map((file) => posix6.dirname(file)));
   const best = /* @__PURE__ */ new Map();
   for (const move of moves) {
-    if (!move.unit.files.every((file) => file.endsWith(".go")) || goFolders.has(move.target === "" ? "." : move.target)) continue;
+    if (!move.unit.files.every((file) => file.endsWith(".go")) || goFolders2.has(move.target === "" ? "." : move.target)) continue;
     const held = best.get(move.target);
     if (held === void 0 || move.gain > held.gain) best.set(move.target, move);
   }
@@ -10318,7 +10498,8 @@ var localityReport = {
     const ofKind = all.filter((c2) => KINDS.includes(c2.recommendation));
     const unblockedMoves = ofKind.filter((c2) => c2.recommendation === "move" && c2.blockers.length === 0);
     const heldMoves = ofKind.filter((c2) => c2.recommendation === "move" && c2.blockers.length > 0);
-    const files = new Set((await treeFromRef(context.repo.root, "HEAD")).files.keys());
+    const tree = await treeFromRef(context.repo.root, "HEAD");
+    const files = new Set(tree.files.keys());
     const { kept: moves, left: sharedFolder } = oneMovePerEmptyFolder(unblockedMoves, files);
     const reviews = ofKind.filter((c2) => c2.recommendation === "review" || c2.recommendation === "split" || c2.recommendation === "inline");
     const scrutinise = ofKind.filter((c2) => c2.recommendation === "scrutinise").sort((a, b) => b.fanIn - a.fanIn || (a.path < b.path ? -1 : 1));
@@ -10326,7 +10507,7 @@ var localityReport = {
     const shownCount = Math.min(moves.length, TOP5) + Math.min(reviews.length, TOP_REVIEW) + Math.min(scrutinise.length, TOP_SCRUTINISE);
     const go = goPackagesOf(await loadProject(context.repo.root, "HEAD", settings));
     const plans = [];
-    for (const candidate of planned) plans.push(await dryRun(context, candidate, settings, files, go));
+    for (const candidate of planned) plans.push(await dryRun(tree, candidate, settings, files, go));
     const byKind = extra.summary.byRecommendation;
     const blocked = [...all.filter((c2) => c2.recommendation === "blocked"), ...heldMoves];
     const omitted2 = omittedRows({ placed: extra.summary.placed, blocked: byKind.blocked ?? 0, keep: byKind.keep ?? 0, notShown: ofKind.length - shownCount - heldMoves.length - sharedFolder.length, sharedFolder: sharedFolder.length, heldMoves: heldMoves.length, byReason: extra.summary.omitted }, historyOnly2);
@@ -10421,36 +10602,11 @@ var localityReport = {
   }
 };
 
-// packages/locality/src/folder-trends.ts
+// packages/graph/src/folders.ts
 function withAncestors(folder) {
   if (folder === "") return [""];
   const parts2 = folder.split("/");
   return ["", ...parts2.map((_, i) => parts2.slice(0, i + 1).join("/"))];
-}
-function folderFigures2(production, edges) {
-  const figures = /* @__PURE__ */ new Map();
-  const at2 = (folder) => {
-    let found = figures.get(folder);
-    if (found === void 0) {
-      found = { files: 0, edges: 0, uses: 0, totalUseDistance: 0, meanDistancePerUse: null };
-      figures.set(folder, found);
-    }
-    return found;
-  };
-  at2("");
-  for (const file of production) for (const folder of withAncestors(folderOf(file))) at2(folder).files++;
-  for (const edge of edges) {
-    if (!edge.counted) continue;
-    const distance = edge.weight * treeDistance(edge.from, edge.to);
-    for (const folder of withAncestors(folderOf(edge.from))) {
-      const figure2 = at2(folder);
-      figure2.edges++;
-      figure2.uses += edge.weight;
-      figure2.totalUseDistance += distance;
-    }
-  }
-  for (const figure2 of figures.values()) figure2.meanDistancePerUse = figure2.uses === 0 ? null : figure2.totalUseDistance / figure2.uses;
-  return figures;
 }
 function commonRoot(figures) {
   const total = figures.get("")?.files ?? 0;
@@ -10467,7 +10623,7 @@ function foldersBelow(figures, root, levels) {
   return [...figures.keys()].filter((folder) => folder !== root && (root === "" || folder.startsWith(`${root}/`)) && depthOf(folder) <= base + levels).sort(compareIds);
 }
 
-// packages/locality/src/trend-samples.ts
+// packages/history/src/trend-samples.ts
 async function firstParentLine(root, ref) {
   const out = await runGit(root, ["log", "--first-parent", "--format=%H %ct", ref]);
   return out.split("\n").filter((line) => line !== "").map((line) => ({ sha: line.slice(0, line.indexOf(" ")), date: Number(line.slice(line.indexOf(" ") + 1)) })).reverse();
@@ -10493,6 +10649,33 @@ function sampleLabels(samples) {
   const minutes = samples.map((sample) => iso(sample.date).slice(0, 16).replace("T", " "));
   if (distinct(minutes)) return minutes;
   return samples.map((sample, i) => `${minutes[i]} ${sample.sha.slice(0, 7)}`);
+}
+
+// packages/locality/src/folder-trends.ts
+function folderFigures2(production, edges) {
+  const figures = /* @__PURE__ */ new Map();
+  const at2 = (folder) => {
+    let found = figures.get(folder);
+    if (found === void 0) {
+      found = { files: 0, edges: 0, uses: 0, totalUseDistance: 0, meanDistancePerUse: null };
+      figures.set(folder, found);
+    }
+    return found;
+  };
+  at2("");
+  for (const file of production) for (const folder of withAncestors(folderOf(file))) at2(folder).files++;
+  for (const edge of edges) {
+    if (!edge.counted) continue;
+    const distance = edge.weight * treeDistance(edge.from, edge.to);
+    for (const folder of withAncestors(folderOf(edge.from))) {
+      const figure2 = at2(folder);
+      figure2.edges++;
+      figure2.uses += edge.weight;
+      figure2.totalUseDistance += distance;
+    }
+  }
+  for (const figure2 of figures.values()) figure2.meanDistancePerUse = figure2.uses === 0 ? null : figure2.totalUseDistance / figure2.uses;
+  return figures;
 }
 
 // packages/locality/src/reports/trends.ts
@@ -10727,7 +10910,7 @@ var command6 = {
     let results = [];
     if (chosen.length > 0) {
       const { scrutinise } = await import("./chunk-MOK677SR.mjs");
-      const { buildProject } = await import("./chunk-DEUYKDLO.mjs");
+      const { buildProject } = await import("./chunk-OKKQ27KB.mjs");
       const loaded = await buildProject(await treeFromRef(context.repo.root, "HEAD"));
       typed = loaded;
       results = chosen.map((candidate) => scrutinise(candidate, candidate.recommendation === "scrutinise" ? "high-fan-in" : "requested", loaded, project.isTest));
@@ -10947,7 +11130,7 @@ var command8 = {
     const commitTree = await treeFromRef(root, ref);
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" }, goPackagesOf(project));
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-O7H4ID67.mjs");
+    const { verifyMove } = await import("./chunk-URXBHKDZ.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;

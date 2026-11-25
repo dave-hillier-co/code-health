@@ -33,7 +33,7 @@ import {
   restoreBuiltinOmissions,
   restoreDropped,
   runGit
-} from "./chunk-YFWBKARF.mjs";
+} from "./chunk-I4ZSAUBR.mjs";
 
 // packages/cli-kit/src/args.ts
 import { parseArgs } from "node:util";
@@ -671,7 +671,7 @@ var commonOptionHelp = [
 ];
 function helpText(cli2) {
   const commands2 = [
-    ...Object.entries(cli2.commands).map(([name19, command18]) => [name19, command18.summary]),
+    ...Object.entries(cli2.commands).filter(([, command18]) => command18.hidden !== true).map(([name19, command18]) => [name19, command18.summary]),
     ["config explain", configExplain.summary],
     ...cli2.rules ? [["explain <rule>", "Describe a recommendation rule"]] : []
   ];
@@ -14931,7 +14931,7 @@ async function assessBranch(context, history, request) {
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
   const locality = readLocalityFanIn(root, change3.head);
   const touched = change3.files.filter((file) => file.status !== "D").map((file) => file.fileId);
-  const { changedSignatures, withSignatures } = await import("./chunk-D67VOCGY.mjs");
+  const { changedSignatures, withSignatures } = await import("./chunk-23URAXXQ.mjs");
   const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change3);
   const factors = banded.map(({ m, result }) => {
     let factor = toFactor(m, result, risk);

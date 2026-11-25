@@ -124,6 +124,7 @@ It asks which functions are hard to understand. Its choices:
 - **Against a base revision, not a baseline file.** A committed file of every function's values would conflict on every merge, and the parse cache keyed by blob makes the base cheap to measure.
 - **Moved code is followed.** A function renamed or moved is matched by body similarity, and an unmatched function counts as new, so moving code never hides a regression.
 - **Interface depth is the gaming check.** A rising function count with falling interface depth after a simplification campaign shows the metric being met by splitting.
+- **The trend is size and cyclomatic complexity at sampled revisions, summed up the folder tree.** It reads the same revisions as the locality trend. Code lines and total complexity follow growth, so the total is drawn against code lines, and beside it the mean, the largest value and the percent of weighted complexity in functions above the guideline. These are the measures the SlopCodeBench paper set against the cost of an agent's next change, where code lines had the strongest link ([slopcodebench.md](slopcodebench.md)).
 
 The remedy policy is the point of the plugin: prefer simplification that deletes (guard clauses, removing impossible branches, defining errors out of existence), prefer deepening to splitting, keep any extraction local and private, and never restructure only to pass a guideline.
 

@@ -4,21 +4,46 @@ import { createRequire as __codeHealthCreateRequire } from "node:module"; import
 import {
   GrammarSet,
   cacheKeyOf
-} from "./chunk-LYITVUNB.mjs";
+} from "./chunk-NQYRJ3FN.mjs";
 import {
   isConfigPath,
   isTestPath,
   resolveBySymbols,
   supportedAdapters
-} from "./chunk-BAXRC4U5.mjs";
+} from "./chunk-YK5VO75Q.mjs";
 
 // packages/parse/src/file-facts.ts
+var MAX_TREE_DEPTH = 1e3;
+function nestsDeeperThan(root, limit) {
+  const cursor = root.walk();
+  try {
+    let depth = 0;
+    for (; ; ) {
+      if (cursor.gotoFirstChild()) {
+        if (++depth > limit) return true;
+        continue;
+      }
+      while (!cursor.gotoNextSibling()) {
+        if (!cursor.gotoParent()) return false;
+        depth--;
+      }
+    }
+  } finally {
+    cursor.delete();
+  }
+}
 function parseWith(adapter, grammar, source, options = {}) {
   const tree = grammar.parse(source);
   try {
-    return adapter.extract(tree.rootNode, options);
+    if (!nestsDeeperThan(tree.rootNode, MAX_TREE_DEPTH)) return adapter.extract(tree.rootNode, options);
   } finally {
     tree.delete();
+  }
+  const empty = grammar.parse("");
+  try {
+    return { ...adapter.extract(empty.rootNode, options), tooDeep: true };
+  } finally {
+    empty.delete();
   }
 }
 

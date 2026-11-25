@@ -4,7 +4,7 @@ import { createRequire as __codeHealthCreateRequire } from "node:module"; import
 import {
   bindingForPath,
   grammarSpecById
-} from "./chunk-BAXRC4U5.mjs";
+} from "./chunk-YK5VO75Q.mjs";
 
 // packages/parse/src/grammars.ts
 import { createHash } from "node:crypto";

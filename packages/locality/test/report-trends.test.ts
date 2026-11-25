@@ -6,8 +6,9 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
 import { GOLDEN_CONFIG_HASH } from "@code-health/fixtures/cli-testing";
 import { GitFixture, type Change, type Step } from "@code-health/fixtures/git-fixture";
-import { commonRoot, folderFigures, foldersBelow, withAncestors } from "../src/folder-trends.ts";
-import { sampleByTime, sampleLabels, type Commit } from "../src/trend-samples.ts";
+import { commonRoot, foldersBelow, withAncestors } from "@code-health/graph/folders";
+import { sampleByTime, sampleLabels, type Commit } from "@code-health/history/trend-samples";
+import { folderFigures } from "../src/folder-trends.ts";
 import { GOLDEN_DIR } from "./support/golden.ts";
 import { runLocality } from "./support/run.ts";
 

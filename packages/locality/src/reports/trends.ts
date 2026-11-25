@@ -1,7 +1,9 @@
 import { usageError } from "@code-health/cli-kit/errors";
 import type { ReportKind } from "@code-health/cli-kit/report-command";
 import type { CommandContext } from "@code-health/cli-kit/run-cli";
+import { commonRoot, foldersBelow } from "@code-health/graph/folders";
 import { monthsBefore } from "@code-health/history/evidence";
+import { firstParentLine, sampleByTime, sampleLabels } from "@code-health/history/trend-samples";
 import type { Block } from "@code-health/report/block";
 import type { Cell } from "@code-health/report/components/ranked-table";
 import { readTrend } from "@code-health/report/components/trend-grid";
@@ -11,11 +13,10 @@ import type { ReportBuild, Section } from "@code-health/report/report-model";
 import { formatNumber } from "@code-health/report/text";
 import { revisionEdges } from "../change-distance.ts";
 import { readSettings, type LocalitySettings } from "../config.ts";
-import { commonRoot, folderFigures, foldersBelow, type FolderFigures } from "../folder-trends.ts";
+import { folderFigures, type FolderFigures } from "../folder-trends.ts";
 import { buildModel } from "../model.ts";
 import { loadProject } from "../project.ts";
 import { gamingCheck, structureMetricsOf, type StructureMetrics } from "../structure-metrics.ts";
-import { firstParentLine, sampleByTime, sampleLabels } from "../trend-samples.ts";
 
 export const DEFAULT_SAMPLES = 12;
 export const MAX_SAMPLES = 60;

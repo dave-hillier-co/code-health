@@ -77,7 +77,7 @@ Ask Claude in the terms of the problem, and the matching skill runs the CLI:
 
 Each CLI can also be run directly, in a terminal or in CI, as `node <plugin folder>/dist/<plugin>.mjs <command>`. It prints a table in a terminal and JSON with `--json` or when piped. `--help` lists the commands, `explain <rule>` describes a recommendation rule, and `config explain` prints the effective config and where each value came from.
 
-`<plugin> report <kind>` renders an HTML or Markdown page for a person to read: the CLI computes and prints every number, and the agent writes only the judgement. The reports are `cochange report overview`, `hotspots`, `coupling`, `knowledge` and `change` (a pull request summary), `complexity report xray`, `structure report structure`, `locality report locality` and `locality report trends` (import distance of the repository and its folders over sampled revisions, as charts).
+`<plugin> report <kind>` renders an HTML or Markdown page for a person to read: the CLI computes and prints every number, and the agent writes only the judgement. The reports are `cochange report overview`, `hotspots`, `coupling`, `knowledge` and `change` (a pull request summary), `complexity report xray` and `complexity report trends` (code lines and cyclomatic complexity of the repository and its folders over sampled revisions, as charts), `structure report structure`, `locality report locality` and `locality report trends` (import distance of the repository and its folders over sampled revisions, as charts).
 
 ### Configuration
 
@@ -96,7 +96,7 @@ Default outputs contain no author identities. The knowledge analysis is off unti
 - `shared/` single-source files: `red-flags.md` and `reports.md`, copied into every skill at build time, and the pinned eval settings
 - `fixtures/` helpers that build deterministic git repositories for tests, and the per-language conformance fixtures
 - `scripts/` the build, the checks, the plugin scaffold and the eval runner
-- `docs/` [basis.md](docs/basis.md), why the suite is built as it is, and [languages.md](docs/languages.md), how each language is read
+- `docs/` [basis.md](docs/basis.md), why the suite is built as it is, [languages.md](docs/languages.md), how each language is read, and [slopcodebench.md](docs/slopcodebench.md), what the SlopCodeBench paper reports about static measures and the next change's cost
 
 ## Build and test
 

@@ -3,15 +3,16 @@
 import { createRequire as __codeHealthCreateRequire } from "node:module"; import { fileURLToPath as __codeHealthFileURLToPath } from "node:url"; import { dirname as __codeHealthDirname } from "node:path"; var require = __codeHealthCreateRequire(import.meta.url); var __filename = __codeHealthFileURLToPath(import.meta.url); var __dirname = __codeHealthDirname(__filename);
 import {
   GrammarSet
-} from "./chunk-LYITVUNB.mjs";
+} from "./chunk-NQYRJ3FN.mjs";
 import {
+  oncePerTree,
   sourceFilesOf
-} from "./chunk-AKMBSBHY.mjs";
+} from "./chunk-VQGQVRFS.mjs";
 import {
   adapterById,
   includePathsOf,
   locateInclude
-} from "./chunk-BAXRC4U5.mjs";
+} from "./chunk-YK5VO75Q.mjs";
 import "./chunk-OQRLKAKZ.mjs";
 
 // packages/locality/src/movers/cpp-backend.ts
@@ -47,14 +48,27 @@ function globRegExp(pattern, recursive) {
   const body = pattern.split("**").map((part) => part.split("*").map(escape).join(recursive ? ".*" : "[^/]*")).join(".*");
   return new RegExp(`^${body}$`);
 }
+var projectsOf = /* @__PURE__ */ new WeakMap();
+function projectOf(grammar, tree) {
+  let read = projectsOf.get(grammar);
+  if (read === void 0) {
+    read = oncePerTree(async (source) => {
+      const paths = [...source.files.keys()];
+      const configs = await source.readMany(paths.filter(isConfig));
+      const texts = await source.readMany(paths.filter((path) => isSource(path) || isCmake(path)));
+      const includes = /* @__PURE__ */ new Map();
+      for (const [path, text] of texts) if (isSource(path)) includes.set(path, includesOf(grammar, text));
+      return { paths, includePaths: includePathsOf(paths, configs), texts, includes };
+    });
+    projectsOf.set(grammar, read);
+  }
+  return read(tree);
+}
 async function plan(grammar, tree, operations) {
   const moves = new Map(operations.map((operation) => [operation.from, operation.to]));
-  const paths = [...tree.files.keys()];
+  const { paths, includePaths, texts, includes } = await projectOf(grammar, tree);
   const before = new Set(paths);
   const after = new Set(paths.map((path) => moves.get(path) ?? path));
-  const configs = await tree.readMany(paths.filter(isConfig));
-  const includePaths = includePathsOf(paths, configs);
-  const texts = await tree.readMany(paths.filter((path) => isSource(path) || isCmake(path)));
   const rewrites = [];
   const warnings = [];
   const changed = /* @__PURE__ */ new Map();
@@ -90,7 +104,7 @@ async function plan(grammar, tree, operations) {
     const newPath = moves.get(path) ?? path;
     const dirs = includePaths.dirsFor(path);
     const lines = text.split("\n");
-    for (const include of includesOf(grammar, text)) {
+    for (const include of includes.get(path) ?? []) {
       if (include.specifier === null) {
         if (newPath !== path) warnings.push(`${newPath}:${include.line} the include path ${include.token} is built by a macro and was not rewritten: check it still reaches its file`);
         continue;

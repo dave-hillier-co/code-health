@@ -3,11 +3,11 @@
 import { createRequire as __codeHealthCreateRequire } from "node:module"; import { fileURLToPath as __codeHealthFileURLToPath } from "node:url"; import { dirname as __codeHealthDirname } from "node:path"; var require = __codeHealthCreateRequire(import.meta.url); var __filename = __codeHealthFileURLToPath(import.meta.url); var __dirname = __codeHealthDirname(__filename);
 import {
   moverFor
-} from "./chunk-KH2LNDQK.mjs";
+} from "./chunk-G3SPI7U4.mjs";
 import {
   adapterForPath,
   supportedAdapters
-} from "./chunk-BAXRC4U5.mjs";
+} from "./chunk-YK5VO75Q.mjs";
 
 // packages/cli-kit/src/executables.ts
 import { accessSync, constants, statSync } from "node:fs";
@@ -50,6 +50,7 @@ async function performMove(tree, operations, options = {}) {
     for (const [path, text] of part.texts) result.texts.set(path, text);
     result.warnings.push(...part.warnings);
     if (part.breaks !== void 0 && part.breaks.length > 0) result.breaks = [...result.breaks ?? [], ...part.breaks];
+    if (options.confirm === false) continue;
     const byAdapter = /* @__PURE__ */ new Map();
     for (const operation of own) {
       const adapter = adapterForPath(operation.from, adapters);

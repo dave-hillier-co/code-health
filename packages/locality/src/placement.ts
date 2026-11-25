@@ -137,6 +137,86 @@ export function goPackages(edges: Iterable<{ from: string; to: string }>, texts:
   return { uses, mainFolders: new Set([...mainFiles].map((path) => posix.dirname(path))), mainFiles, unexportedUses, packageNames: new Map([...texts].flatMap(([path, text]): [string, string][] => (path.endsWith(".go") && PACKAGE_CLAUSE.test(text) ? [[path, PACKAGE_CLAUSE.exec(text)![1]!]] : []))) };
 }
 
+/** The folders of the Go files as edges: a folder points at each other folder its files use. */
+function folderGraph(go: GoPackages, folderOf: (path: string) => string): Map<string, string[]> {
+  const graph = new Map<string, Set<string>>();
+  for (const [from, targets] of go.uses) {
+    const folder = folderOf(from);
+    for (const target of targets) {
+      const other = folderOf(target);
+      if (other === folder) continue;
+      if (!graph.has(folder)) graph.set(folder, new Set());
+      graph.get(folder)!.add(other);
+      if (!graph.has(other)) graph.set(other, new Set());
+    }
+  }
+  return new Map([...graph].map(([folder, targets]): [string, string[]] => [folder, [...targets]]));
+}
+
+interface GoFolders {
+  /** The folder of each Go file that uses or is used. */
+  folder: Map<string, string>;
+  /** For each Go file, the files that use it. */
+  usedBy: Map<string, string[]>;
+  /** The folder graph as the code stands. */
+  graph: Map<string, Set<string>>;
+  /** The folder graph with its edges turned round. */
+  reverse: Map<string, Set<string>>;
+  /** How many file-to-file uses are behind each edge of the folder graph, by `from\0to`. */
+  counts: Map<string, number>;
+  /** The folders that are in an import cycle as the code stands. */
+  cyclic: Set<string>;
+}
+
+/**
+ * What every candidate target of one analysis asks of the same Go packages, computed once: the analysis tries
+ * many targets for many units, and none of this depends on the move.
+ */
+const goFolders = new WeakMap<GoPackages, GoFolders>();
+function goFoldersOf(go: GoPackages): GoFolders {
+  let found = goFolders.get(go);
+  if (found === undefined) {
+    const folder = new Map<string, string>();
+    const usedBy = new Map<string, string[]>();
+    const note = (path: string): void => {
+      if (!folder.has(path)) folder.set(path, posix.dirname(path));
+    };
+    for (const [from, targets] of go.uses) {
+      note(from);
+      for (const target of targets) {
+        note(target);
+        usedBy.set(target, [...(usedBy.get(target) ?? []), from]);
+      }
+    }
+    const lists = folderGraph(go, (path) => folder.get(path)!);
+    const counts = new Map<string, number>();
+    for (const [from, targets] of go.uses) {
+      for (const target of targets) {
+        if (folder.get(from) === folder.get(target)) continue;
+        const edge = `${folder.get(from)}\0${folder.get(target)}`;
+        counts.set(edge, (counts.get(edge) ?? 0) + 1);
+      }
+    }
+    const reverse = new Map<string, Set<string>>();
+    for (const [from, targets] of lists) {
+      for (const target of targets) {
+        if (!reverse.has(target)) reverse.set(target, new Set());
+        reverse.get(target)!.add(from);
+      }
+    }
+    found = {
+      folder,
+      usedBy,
+      counts,
+      reverse,
+      graph: new Map([...lists].map(([from, targets]): [string, Set<string>] => [from, new Set(targets)])),
+      cyclic: new Set(stronglyConnectedComponents(lists).filter((component) => component.length > 1).flat()),
+    };
+    goFolders.set(go, found);
+  }
+  return found;
+}
+
 /** The Go package rules for a set of moves: a file never joins a `package main` folder or leaves one, and a move never makes a package import itself or two packages import each other. */
 function goRefusals(operations: readonly FileOperation[], go: GoPackages): PlacementRefusal[] {
   const refusals: PlacementRefusal[] = [];
@@ -172,25 +252,94 @@ function goRefusals(operations: readonly FileOperation[], go: GoPackages): Place
       }
     }
   }
-  const folderGraph = (mapping: (path: string) => string) => {
-    const graph = new Map<string, Set<string>>();
-    for (const [from, targets] of go.uses) {
-      const folder = posix.dirname(mapping(from));
-      for (const target of targets) {
-        const other = posix.dirname(mapping(target));
-        if (other === folder) continue;
-        if (!graph.has(folder)) graph.set(folder, new Set());
-        graph.get(folder)!.add(other);
-        if (!graph.has(other)) graph.set(other, new Set());
+  // A cycle with a folder that was in none before has to pass through an edge the move adds. Only the edges at the
+  // moved files change, so each added edge is followed from its end back to its start through the graph as it would
+  // be after the move, and the search over the whole graph below runs only when one closes.
+  const base = goFoldersOf(go);
+  const folderOf = (path: string): string => (moved.has(path) ? posix.dirname(moved.get(path)!) : (base.folder.get(path) ?? posix.dirname(path)));
+  const folderNow = (path: string): string => base.folder.get(path) ?? posix.dirname(path);
+  const key = (from: string, to: string): string => `${from}\0${to}`;
+  const change = new Map<string, number>();
+  const ends = new Map<string, [string, string]>();
+  const add = (from: string, to: string, by: number): void => {
+    if (from === to) return;
+    change.set(key(from, to), (change.get(key(from, to)) ?? 0) + by);
+    ends.set(key(from, to), [from, to]);
+  };
+  const fileEdges = new Map<string, [string, string]>();
+  for (const file of moved.keys()) {
+    for (const target of go.uses.get(file) ?? []) fileEdges.set(key(file, target), [file, target]);
+    for (const user of base.usedBy.get(file) ?? []) fileEdges.set(key(user, file), [user, file]);
+  }
+  for (const [from, to] of fileEdges.values()) {
+    add(folderNow(from), folderNow(to), -1);
+    add(folderOf(from), folderOf(to), 1);
+  }
+  const removed = new Set<string>();
+  const added = new Map<string, string[]>();
+  const fresh: [string, string][] = [];
+  for (const [edge, by] of change) {
+    const count = base.counts.get(edge) ?? 0;
+    const [from, to] = ends.get(edge)!;
+    if (count > 0 && count + by <= 0) removed.add(edge);
+    if (count === 0 && by > 0) {
+      added.set(from, [...(added.get(from) ?? []), to]);
+      fresh.push([from, to]);
+    }
+  }
+  const addedBack = new Map<string, string[]>();
+  for (const [from, to] of fresh) addedBack.set(to, [...(addedBack.get(to) ?? []), from]);
+  /** The folders reached from one, along the edges of the graph after the move or against them. */
+  const reached = (start: string, forward: boolean): Set<string> => {
+    const seen = new Set([start]);
+    const pending = [start];
+    for (let folder = pending.pop(); folder !== undefined; folder = pending.pop()) {
+      for (const next of (forward ? base.graph : base.reverse).get(folder) ?? []) {
+        if (seen.has(next) || removed.has(forward ? key(folder, next) : key(next, folder))) continue;
+        seen.add(next);
+        pending.push(next);
+      }
+      for (const next of (forward ? added : addedBack).get(folder) ?? []) {
+        if (seen.has(next)) continue;
+        seen.add(next);
+        pending.push(next);
       }
     }
-    return new Map([...graph].map(([folder, targets]): [string, string[]] => [folder, [...targets]]));
+    return seen;
   };
-  const cyclic = (graph: Map<string, string[]>) =>
-    new Set(stronglyConnectedComponents(graph).filter((component) => component.length > 1).flat());
-  const before = cyclic(folderGraph((path) => path));
-  const after = folderGraph(newPath);
-  const cycleAfter = stronglyConnectedComponents(after).filter((component) => component.length > 1);
+  const touchedFolders = new Set([...moved].flatMap(([from, to]) => [posix.dirname(from), posix.dirname(to)]));
+  // The cycle an added edge is in holds the folders that both reach its start and are reached from it. It is refused
+  // below when one of them was in no cycle before and one of them is a folder the move takes from or puts into.
+  const refusable = new Map<string, string[]>();
+  const inOne = new Set<string>();
+  for (const [from, to] of fresh) {
+    // An edge inside a cycle already found adds nothing: that cycle holds both its ends.
+    if (inOne.has(from) && inOne.has(to)) continue;
+    const behind = reached(from, false);
+    if (!behind.has(to)) continue;
+    const members: string[] = [];
+    let isNew = false;
+    let touched = false;
+    for (const folder of reached(from, true)) {
+      if (!behind.has(folder)) continue;
+      members.push(folder);
+      if (!base.cyclic.has(folder)) isNew = true;
+      if (touchedFolders.has(folder)) touched = true;
+    }
+    if (!isNew || !touched) continue;
+    members.sort();
+    refusable.set(members.join("\0"), members);
+    for (const folder of members) inOne.add(folder);
+  }
+  if (refusable.size === 0) return refusals;
+  if (refusable.size === 1) {
+    const [members] = [...refusable.values()];
+    refusals.push({ code: "import-cycle", detail: `import cycle: ${members!.join(" and ")} would import each other`, label: "import cycle" });
+    return refusals;
+  }
+  // Several new cycles: the one reported is the first the search over the whole graph finds.
+  const before = base.cyclic;
+  const cycleAfter = stronglyConnectedComponents(folderGraph(go, folderOf)).filter((component) => component.length > 1);
   for (const component of cycleAfter) {
     const fresh = component.filter((folder) => !before.has(folder));
     const touched = component.some((folder) => [...moved].some(([from, to]) => posix.dirname(from) === folder || posix.dirname(to) === folder));

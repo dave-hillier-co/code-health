@@ -1,0 +1,292 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "backtest.schema.json",
+  "title": "complexity backtest --json",
+  "description": "A maintainer command. At revisions sampled over the history, each file's size and complexity set against what the landed changes of the following period did to the file, as rank correlations. It decides nothing.",
+  "allOf": [
+    {
+      "$ref": "common.schema.json#/$defs/envelope"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "command": {
+      "const": "backtest"
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "samples": {
+          "type": "integer",
+          "minimum": 3,
+          "description": "How many revisions were asked for."
+        },
+        "months": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "How many months before HEAD's commit date the samples span."
+        },
+        "revisions": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/sha"
+          },
+          "description": "The sampled revisions, oldest first. Each one but the last starts a period that ends at the next."
+        }
+      },
+      "required": [
+        "samples",
+        "months",
+        "revisions"
+      ],
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "description": "How much history the repository has, by the shared evidence grade.",
+      "properties": {
+        "grade": {
+          "enum": [
+            "strong",
+            "moderate",
+            "weak"
+          ]
+        },
+        "logicalChangesInWindow": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "usableHistoryMonths": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "grade",
+        "logicalChangesInWindow",
+        "usableHistoryMonths"
+      ],
+      "additionalProperties": false
+    },
+    "results": {
+      "type": "object",
+      "properties": {
+        "periods": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string",
+                "description": "The sample the files were measured at."
+              },
+              "to": {
+                "type": "string",
+                "description": "The next sample, where the period ends."
+              },
+              "revision": {
+                "$ref": "common.schema.json#/$defs/sha"
+              },
+              "files": {
+                "$ref": "common.schema.json#/$defs/count",
+                "description": "Production code files with a measured function at the sample."
+              },
+              "landedChanges": {
+                "$ref": "common.schema.json#/$defs/count",
+                "description": "Changes that landed on the main line in the period and were counted."
+              },
+              "oversizedSkipped": {
+                "$ref": "common.schema.json#/$defs/count",
+                "description": "Changes in the period left out for having more files than history.maxChangesetSize."
+              }
+            },
+            "required": [
+              "from",
+              "to",
+              "revision",
+              "files",
+              "landedChanges",
+              "oversizedSkipped"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "minFiles": {
+          "$ref": "common.schema.json#/$defs/count",
+          "description": "A period with fewer files than this for an outcome, or fewer than this many of them changed, is left out of that outcome."
+        },
+        "minChanges": {
+          "$ref": "common.schema.json#/$defs/count",
+          "description": "A file needs this many landed changes in a period to have a fix share (complexity.fixes.minRevisions)."
+        },
+        "measures": {
+          "type": "object",
+          "description": "What each measure of a file at a sample is.",
+          "properties": {
+            "codeLines": {
+              "type": "string"
+            },
+            "functions": {
+              "type": "string"
+            },
+            "cyclomaticSum": {
+              "type": "string"
+            },
+            "cyclomaticMean": {
+              "type": "string"
+            },
+            "cyclomaticMax": {
+              "type": "string"
+            },
+            "shareAbove": {
+              "type": "string"
+            },
+            "cognitiveSum": {
+              "type": "string"
+            },
+            "cognitiveMax": {
+              "type": "string"
+            },
+            "indentation": {
+              "type": "string"
+            },
+            "priorChanges": {
+              "type": "string"
+            },
+            "hotspot": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "codeLines",
+            "functions",
+            "cyclomaticSum",
+            "cyclomaticMean",
+            "cyclomaticMax",
+            "shareAbove",
+            "cognitiveSum",
+            "cognitiveMax",
+            "indentation",
+            "priorChanges",
+            "hotspot"
+          ],
+          "additionalProperties": false
+        },
+        "outcomes": {
+          "type": "object",
+          "description": "What each outcome of the following period is, and the files it is taken over.",
+          "properties": {
+            "changes": {
+              "type": "string"
+            },
+            "linesChurned": {
+              "type": "string"
+            },
+            "linesPerChange": {
+              "type": "string"
+            },
+            "fixShare": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "changes",
+            "linesChurned",
+            "linesPerChange",
+            "fixShare"
+          ],
+          "additionalProperties": false
+        },
+        "correlations": {
+          "type": "array",
+          "description": "One row per outcome and measure.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "outcome": {
+                "enum": [
+                  "changes",
+                  "linesChurned",
+                  "linesPerChange",
+                  "fixShare"
+                ]
+              },
+              "measure": {
+                "enum": [
+                  "codeLines",
+                  "functions",
+                  "cyclomaticSum",
+                  "cyclomaticMean",
+                  "cyclomaticMax",
+                  "shareAbove",
+                  "cognitiveSum",
+                  "cognitiveMax",
+                  "indentation",
+                  "priorChanges",
+                  "hotspot"
+                ]
+              },
+              "correlation": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": -1,
+                "maximum": 1,
+                "description": "Spearman rank correlation within each period, averaged over the periods by their number of files. Null when no period had enough files with variation on both sides."
+              },
+              "partialOnCodeLines": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": -1,
+                "maximum": 1,
+                "description": "The same with code lines held fixed. Null for code lines itself."
+              },
+              "fileSamples": {
+                "$ref": "common.schema.json#/$defs/count",
+                "description": "Files, summed over the periods, that the figures rest on."
+              },
+              "periods": {
+                "$ref": "common.schema.json#/$defs/count",
+                "description": "Periods that had enough files."
+              }
+            },
+            "required": [
+              "outcome",
+              "measure",
+              "correlation",
+              "partialOnCodeLines",
+              "fileSamples",
+              "periods"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "limits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "What the figures cannot say."
+        }
+      },
+      "required": [
+        "periods",
+        "minFiles",
+        "minChanges",
+        "measures",
+        "outcomes",
+        "correlations",
+        "limits"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "inputs",
+    "evidence",
+    "results"
+  ],
+  "unevaluatedProperties": false
+}

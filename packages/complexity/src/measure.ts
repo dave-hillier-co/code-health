@@ -1,7 +1,7 @@
 import { analyseSource, type FileAnalysis } from "@code-health/lexical/analyse-source";
 import type { LengthMetrics } from "@code-health/lexical/indentation";
 import { adapterForPath } from "@code-health/parse/languages";
-import { factsForBlob } from "@code-health/parse/file-facts";
+import { factsForBlob, MAX_TREE_DEPTH } from "@code-health/parse/file-facts";
 import { GrammarSet } from "@code-health/parse/grammars";
 import type { ParseCache } from "@code-health/parse/parse-cache";
 import { exportedUnitNames } from "@code-health/parse/exported-units";
@@ -147,7 +147,7 @@ export async function measureTree(tree: SourceTree, options: MeasureOptions): Pr
         bumpyRoad: bumpyRoadLimits(guidelinesFor(settings, path)),
       });
       const language = options.layer === "lexical" ? undefined : await grammars.forPath(path);
-      let structural: { units: UnitRecord[]; interfaces: NonNullable<FileRecord["interfaces"]>; syntaxErrors: boolean } | undefined;
+      let structural: { units: UnitRecord[]; interfaces: NonNullable<FileRecord["interfaces"]>; syntaxErrors: boolean; tooDeep: boolean } | undefined;
       if (language !== undefined) {
         const { facts, cached } = await factsForBlob(language, tree.files.get(path)!, text, options.cache);
         if (cached) stats.cached++;
@@ -156,6 +156,7 @@ export async function measureTree(tree: SourceTree, options: MeasureOptions): Pr
           units: structuralUnits(path, facts.units, settings),
           interfaces: interfaceUnits(path, facts),
           syntaxErrors: facts.hasSyntaxErrors,
+          tooDeep: facts.tooDeep === true,
         };
       }
       files.push(fileRecord(path, text, lexical, structural, options));
@@ -218,7 +219,7 @@ function fileRecord(
   path: string,
   text: string,
   lexical: FileAnalysis,
-  structural: { units: UnitRecord[]; interfaces: NonNullable<FileRecord["interfaces"]>; syntaxErrors: boolean } | undefined,
+  structural: { units: UnitRecord[]; interfaces: NonNullable<FileRecord["interfaces"]>; syntaxErrors: boolean; tooDeep: boolean } | undefined,
   options: MeasureOptions,
 ): FileRecord {
   const test = options.settings.isTest(path);
@@ -231,6 +232,7 @@ function fileRecord(
   if (structural !== undefined) {
     units = structural.units;
     source = "structural";
+    if (structural.tooDeep) skipped.push(`per-function metrics: the syntax tree of ${path} nests deeper than ${MAX_TREE_DEPTH} levels`);
   } else if (options.layer === "structural") {
     skipped.push(`per-function metrics: no structural adapter for ${path}`);
   } else if (lexical.profile === null) {

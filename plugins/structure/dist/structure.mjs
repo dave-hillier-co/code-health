@@ -691,7 +691,7 @@ var commonOptionHelp = [
 ];
 function helpText(cli2) {
   const commands3 = [
-    ...Object.entries(cli2.commands).map(([name14, command13]) => [name14, command13.summary]),
+    ...Object.entries(cli2.commands).filter(([, command13]) => command13.hidden !== true).map(([name14, command13]) => [name14, command13.summary]),
     ["config explain", configExplain.summary],
     ...cli2.rules ? [["explain <rule>", "Describe a recommendation rule"]] : []
   ];
@@ -6395,22 +6395,30 @@ function resolveBySymbols(input, options2 = {}) {
     if (symbols === void 0) continue;
     const scopes2 = [...enclosingNamespaces ? symbols.namespaces.flatMap(enclosing) : symbols.namespaces, ...symbols.uses, ""];
     const units = unitNames(facts);
-    for (const reference of symbols.references) {
-      let found;
+    const isTest = input.isTestPath(file);
+    const resolved = /* @__PURE__ */ new Map();
+    const resolve3 = (name14) => {
+      const known = resolved.get(name14);
+      if (known !== void 0) return known;
+      let found = null;
       for (const scope of scopes2) {
-        const candidates2 = table4.get(scope === "" ? reference.name : `${scope}.${reference.name}`)?.filter((entry) => entry.declaration.internal !== true || entry.file === file);
+        const candidates2 = table4.get(scope === "" ? name14 : `${scope}.${name14}`)?.filter((entry) => entry.declaration.internal !== true || entry.file === file);
         if (candidates2 !== void 0 && candidates2.length > 0) {
           found = candidates2;
           break;
         }
       }
-      if (found === void 0) continue;
+      resolved.set(name14, found);
+      return found;
+    };
+    for (const reference of symbols.references) {
+      const found = resolve3(reference.name);
+      if (found === null) continue;
       for (const target2 of found) {
         if (target2.file === file) continue;
         const edge = touch(file, target2.file);
         if (reference.kind === "call") edge.calls++;
         else edge.references++;
-        const isTest = input.isTestPath(file);
         if (!isTest && reference.kind === "call") edge.kind = "call";
         let fromUnit = reference.inUnit;
         while (fromUnit !== void 0 && !units.has(fromUnit)) {
@@ -7007,16 +7015,16 @@ var typescriptMetricRules = {
 // packages/parse/src/languages/typescript/interface-shape.ts
 function nodeCount(node, skip) {
   let count3 = 0;
-  const walk2 = (current) => {
-    if (!current.isNamed || current.type === "comment") return;
-    if (skip?.(current) === true) return;
+  const pending = [node];
+  for (let current = pending.pop(); current !== void 0; current = pending.pop()) {
+    if (!current.isNamed || current.type === "comment") continue;
+    if (skip?.(current) === true) continue;
     count3++;
     for (let i2 = 0; i2 < current.childCount; i2++) {
       const child2 = current.child(i2);
-      if (child2 !== null) walk2(child2);
+      if (child2 !== null) pending.push(child2);
     }
-  };
-  walk2(node);
+  }
   return count3;
 }
 function functionShape(fn, parameters) {
@@ -16165,12 +16173,37 @@ var GrammarSet = class {
 };
 
 // packages/parse/src/file-facts.ts
+var MAX_TREE_DEPTH = 1e3;
+function nestsDeeperThan(root, limit) {
+  const cursor = root.walk();
+  try {
+    let depth = 0;
+    for (; ; ) {
+      if (cursor.gotoFirstChild()) {
+        if (++depth > limit) return true;
+        continue;
+      }
+      while (!cursor.gotoNextSibling()) {
+        if (!cursor.gotoParent()) return false;
+        depth--;
+      }
+    }
+  } finally {
+    cursor.delete();
+  }
+}
 function parseWith(adapter9, grammar, source, options2 = {}) {
   const tree = grammar.parse(source);
   try {
-    return adapter9.extract(tree.rootNode, options2);
+    if (!nestsDeeperThan(tree.rootNode, MAX_TREE_DEPTH)) return adapter9.extract(tree.rootNode, options2);
   } finally {
     tree.delete();
+  }
+  const empty = grammar.parse("");
+  try {
+    return { ...adapter9.extract(empty.rootNode, options2), tooDeep: true };
+  } finally {
+    empty.delete();
   }
 }
 

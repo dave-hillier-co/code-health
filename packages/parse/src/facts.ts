@@ -189,4 +189,6 @@ export interface FileFacts {
   nodes: number;
   /** True when the grammar reported syntax errors, so facts may be incomplete. */
   hasSyntaxErrors: boolean;
+  /** The syntax tree nests deeper than `MAX_TREE_DEPTH`, so the file was read as empty: it has no units, imports or references. */
+  tooDeep?: true;
 }

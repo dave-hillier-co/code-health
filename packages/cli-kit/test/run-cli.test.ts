@@ -47,6 +47,7 @@ const cli: CliDefinition = {
       },
     },
     check: { summary: "Fail", run: () => ({ results: [], failed: true }) },
+    calibrate: { summary: "Maintainer command", hidden: true, run: () => ({ results: { verdict: "ok" } }) },
     summary: { summary: "Object result", run: () => ({ results: { verdict: "ok" } }) },
     usage: { summary: "Usage error", run: () => { throw usageError("bad input"); } },
     boom: { summary: "Crash", run: () => { throw new Error("kaput"); } },
@@ -287,6 +288,17 @@ test("a hidden subcommand and its own options are left out of the command's help
   expect(three.stdout).toContain("Maintainer subcommand");
   expect(three.stdout).toContain("--gamma <gamma>");
   expect((await run(["grouped", "three", "--gamma", "x"])).code).not.toBe(2);
+});
+
+test("a hidden command is left out of the tool's help, and still runs and describes itself", async () => {
+  const all = await run(["--help"]);
+  expect(all.stdout).toContain("grouped");
+  expect(all.stdout).not.toContain("calibrate");
+  expect(all.stdout).not.toContain("Maintainer command");
+  expect((await run(["calibrate", "--help"])).stdout).toContain("Maintainer command");
+  const ran = await run(["calibrate"]);
+  expect(ran.code).toBe(0);
+  expect(JSON.parse(ran.stdout).results).toEqual({ verdict: "ok" });
 });
 
 test("no command prints usage to stderr and exits 2", async () => {
