@@ -1,3 +1,4 @@
+import { progressReporter } from "@code-health/cli-kit/progress";
 import type { CommandContext } from "@code-health/cli-kit/run-cli";
 import { commitsInSnapshot, resolveOwners } from "@code-health/history/blame-owners";
 import { readBlame } from "@code-health/history/blame-read";
@@ -32,15 +33,20 @@ export function blameOptions(history: LoadedHistory, settings: KnowledgeSettings
   return { exclude: history.settings.exclude, copyDetection: settings.copyDetection };
 }
 
-/** Brings the blame cache up to date with `sha`. */
-export function refreshBlameFor(
+/** Brings the blame cache up to date with `sha`, printing progress to stderr while a long first blame runs. */
+export async function refreshBlameFor(
   context: CommandContext,
   history: LoadedHistory,
   settings: KnowledgeSettings,
   sha: string,
-  callbacks: { onProgress?: (progress: { done: number; total: number }) => void; signal?: AbortSignal } = {},
+  callbacks: { signal?: AbortSignal } = {},
 ): Promise<BlameRefreshResult> {
-  return refreshBlame(context.repo.root, { ref: sha, ...blameOptions(history, settings), ...callbacks });
+  const progress = progressReporter((done, total) => `blame: ${done} of ${total} files blamed`);
+  try {
+    return await refreshBlame(context.repo.root, { ref: sha, ...blameOptions(history, settings), ...callbacks, onProgress: ({ done, total }) => progress.update(done, total) });
+  } finally {
+    progress.end();
+  }
 }
 
 /**
