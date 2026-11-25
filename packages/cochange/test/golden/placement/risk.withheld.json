@@ -107,6 +107,7 @@
     "baseline": {
       "direct": 7,
       "mergedChanges": 7,
+      "mergedChangesInWindow": 7,
       "merges": 0,
       "population": 7,
       "since": "2023-06-02T09:00:00.000Z"
@@ -373,7 +374,8 @@
         "value": {
           "files": 0,
           "signatureChanges": 0,
-          "symbolFanIn": 0
+          "symbolFanIn": 0,
+          "symbolFanInUnresolved": 0
         }
       },
       {
@@ -455,8 +457,36 @@
         "population": 7
       },
       "events": [],
+      "families": [
+        {
+          "band": "low",
+          "factor": "spread",
+          "family": "size-and-diffusion",
+          "points": 0
+        },
+        {
+          "band": "low",
+          "factor": "hotspots-touched",
+          "family": "history",
+          "points": 0
+        },
+        {
+          "band": "low",
+          "factor": "missing-co-change",
+          "family": "completeness",
+          "points": 0
+        },
+        {
+          "band": "low",
+          "factor": "blast-radius",
+          "family": "structure-and-content",
+          "points": 0
+        }
+      ],
+      "notCounted": [],
       "score": 0,
       "scoreBand": "unavailable",
+      "summary": "Score 0: size-and-diffusion 0, history 0, completeness 0, structure-and-content 0. Too few merged changes (7) to place the score, so the band is unavailable.",
       "unavailable": [
         "defect-history",
         "size"

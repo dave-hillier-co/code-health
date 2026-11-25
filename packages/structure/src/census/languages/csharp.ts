@@ -10,6 +10,7 @@ export const language: CensusLanguage = {
   detectors: {
     eventMethods: new Set(["Invoke", "Raise", "RaiseEvent", "Publish", "Emit", "Notify", "Trigger", "OnNext", "Subscribe", "Unsubscribe", "Dispatch"]),
     eventFunctions: new Set(["RaiseEvent", "OnPropertyChanged", "RaisePropertyChanged", "NotifyPropertyChanged"]),
+    listenMethods: new Set(["Subscribe", "Unsubscribe"]),
     platformReceivers: new Set(["Console", "Environment", "AppDomain", "Task", "Thread", "Debug", "Trace"]),
     eventBaseTypes: new Set([
       "INotifyPropertyChanged",

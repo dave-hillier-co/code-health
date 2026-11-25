@@ -107,6 +107,11 @@ export function storedFiles(db: DatabaseSync, options: string): StoredFile[] {
   return rows.map((r) => ({ path: r.path, blob: r.blob, atCommit: r.at_commit, lines: r.lines }));
 }
 
+/** Stored files of every option set. */
+export function countFiles(db: DatabaseSync): number {
+  return (db.prepare("SELECT COUNT(*) AS n FROM files").get() as { n: number }).n;
+}
+
 export function storedRanges(db: DatabaseSync, options: string, path: string, blob: string): BlameRange[] {
   const rows = db
     .prepare("SELECT start, count, sha FROM ranges WHERE path = ? AND blob = ? AND options = ? ORDER BY start")

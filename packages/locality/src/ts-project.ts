@@ -34,13 +34,28 @@ export const absolutePath = (path: string): string => `/${path}`;
  * serves a dry run, a verification of an old commit and an apply.
  */
 export async function buildProject(tree: SourceTree): Promise<TreeProject> {
-  const host = new InMemoryFileSystemHost();
+  return projectFromFiles(await readProjectFiles(tree));
+}
+
+/** The files of a tree a project is built from: its sources, tsconfig and package manifests, by repo-relative path. */
+export interface ProjectFiles {
+  texts: ReadonlyMap<string, string>;
+  hasTsconfig: boolean;
+}
+
+export async function readProjectFiles(tree: SourceTree): Promise<ProjectFiles> {
   const wanted = [...tree.files.keys()].filter((path) => isSource(path) || manifestName.test(path));
-  for (const [path, text] of await tree.readMany(wanted)) host.writeFileSync(absolutePath(path), text);
+  return { texts: await tree.readMany(wanted), hasTsconfig: tree.files.has("tsconfig.json") };
+}
+
+/** A project as `buildProject` makes it, from files already read. Each call makes a new project, which a move may change. */
+export function projectFromFiles(files: ProjectFiles): TreeProject {
+  const host = new InMemoryFileSystemHost();
+  for (const [path, text] of files.texts) host.writeFileSync(absolutePath(path), text);
 
   const warnings: string[] = [];
   let project: Project | undefined;
-  if (tree.files.has("tsconfig.json")) {
+  if (files.hasTsconfig) {
     try {
       project = new Project({
         fileSystem: host,

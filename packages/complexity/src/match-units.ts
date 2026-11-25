@@ -100,6 +100,29 @@ export function matchUnits(before: readonly FileRecord[], after: readonly FileRe
   return matches.sort((a, b) => compare((a.after ?? a.before)!.id, (b.after ?? b.before)!.id));
 }
 
+/**
+ * Matches some units of an earlier revision of a file with some of a later one. The earlier units are given the later path first, so
+ * a file renamed in git keeps its functions by identity and only a function renamed inside it is matched by body. Returns, for each
+ * earlier unit, the later unit it became, or undefined when none did.
+ */
+export function followUnits(
+  earlier: FileRecord,
+  earlierUnits: readonly UnitRecord[],
+  later: FileRecord,
+  laterUnits: readonly UnitRecord[],
+  threshold: number,
+  cache: BodyCache,
+): { before: UnitRecord; after: UnitRecord | undefined }[] {
+  const original = new Map<string, UnitRecord>();
+  const moved = earlierUnits.map((unit) => {
+    const relocated = { ...unit, path: later.path, id: `${later.path}${unit.id.slice(earlier.path.length)}` };
+    original.set(relocated.id, unit);
+    return relocated;
+  });
+  const matches = matchUnits([{ ...earlier, path: later.path, units: moved }], [{ ...later, units: [...laterUnits] }], threshold, cache);
+  return matches.flatMap((match) => (match.before === undefined ? [] : [{ before: original.get(match.before.id)!, after: match.after }]));
+}
+
 function compare(a: string, b: string): number {
   return Buffer.compare(Buffer.from(a), Buffer.from(b));
 }

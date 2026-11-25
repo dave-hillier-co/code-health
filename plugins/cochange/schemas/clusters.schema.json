@@ -42,8 +42,8 @@
       "items": {
         "type": "object",
         "properties": {
-          "path": { "type": "string", "description": "The first file of the cluster in byte order, for ordering." },
-          "score": { "type": "number", "minimum": 0, "description": "Folders times spread times mean degree as a fraction: how many folders a change reaches, how far apart, and how reliably." },
+          "path": { "type": "string", "description": "The first file of the cluster in byte order. It breaks ties between equal scores." },
+          "score": { "type": "number", "minimum": 0, "description": "Folders times spread times mean degree as a fraction: how many folders a change reaches, how far apart, and how reliably. Rows are ordered with clusters that carry a finding first, then by score." },
           "size": { "type": "integer", "minimum": 2, "description": "Files in the cluster." },
           "folders": { "type": "integer", "minimum": 1, "description": "Distinct folders the files sit in, as they are now." },
           "spread": { "type": "number", "minimum": 0, "description": "Mean pairwise tree distance over the cluster's files." },

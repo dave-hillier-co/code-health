@@ -107,6 +107,7 @@
     "baseline": {
       "direct": 3,
       "mergedChanges": 3,
+      "mergedChangesInWindow": 3,
       "merges": 0,
       "population": 3,
       "since": "2023-06-03T09:00:00.000Z"
@@ -379,7 +380,8 @@
         "value": {
           "files": 0,
           "signatureChanges": 0,
-          "symbolFanIn": 0
+          "symbolFanIn": 0,
+          "symbolFanInUnresolved": 0
         }
       },
       {
@@ -520,8 +522,41 @@
       "events": [
         "structure-delta"
       ],
+      "families": [
+        {
+          "band": "low",
+          "factor": "spread",
+          "family": "size-and-diffusion",
+          "points": 0
+        },
+        {
+          "band": "low",
+          "factor": "hotspots-touched",
+          "family": "history",
+          "points": 0
+        },
+        {
+          "band": "low",
+          "factor": "missing-co-change",
+          "family": "completeness",
+          "points": 0
+        },
+        {
+          "band": "low",
+          "factor": "blast-radius",
+          "family": "structure-and-content",
+          "points": 0
+        }
+      ],
+      "notCounted": [
+        {
+          "band": "moderate",
+          "factor": "complexity-delta"
+        }
+      ],
       "score": 0,
       "scoreBand": "unavailable",
+      "summary": "Score 0: size-and-diffusion 0, history 0, completeness 0, structure-and-content 0. Too few merged changes (3) to place the score, so the band is unavailable. Not counted in the score and not events: complexity-delta (moderate).",
       "unavailable": [
         "defect-history",
         "size"

@@ -15,6 +15,7 @@
       "identity": "dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
       "kind": "bot",
       "pattern": "\\[bot\\]",
+      "signal": "identity",
       "source": "builtin"
     },
     {
@@ -23,6 +24,7 @@
       "identity": "Jenkins <jenkins@corp.com>",
       "kind": "service",
       "pattern": "jenkins",
+      "signal": "name",
       "source": "builtin"
     },
     {
@@ -31,6 +33,7 @@
       "identity": "Claude Opus 5.5 <noreply@anthropic.com>",
       "kind": "agent",
       "pattern": "\\bclaude\\b",
+      "signal": "trailer",
       "source": "trailer"
     }
   ],

@@ -29,7 +29,7 @@ import type { Hub } from "../hubs.ts";
 import type { LayerViolation } from "../layers.ts";
 import type { PackageRow } from "../packaging/list.ts";
 import type { CensusRow } from "../census/rows.ts";
-import type { UnstableDependency } from "../unstable.ts";
+import { splitAtTargetFloor, type UnstableDependency } from "../unstable.ts";
 import { excludedCounts, historyWindowText, isoDate } from "@code-health/history/report-header";
 
 /** How many rows each list shows. The rest are counted on the page, and the command prints them. */
@@ -294,8 +294,8 @@ const round3 = (value: number) => Math.round(value * 1000) / 1000;
 
 /** The dependencies the report lists, and how many it leaves out because the depended-on folder is below the evidence floor. */
 export function withEvidenceFloor(against: readonly UnstableDependency[], settings: Pick<StructureSettings, "minTargetFiles">): { listed: UnstableDependency[]; belowFloor: number } {
-  const listed = against.filter((row) => row.stability.to.change.files >= settings.minTargetFiles);
-  return { listed, belowFloor: against.length - listed.length };
+  const { listed, belowFloor } = splitAtTargetFloor(against, settings);
+  return { listed, belowFloor: belowFloor.length };
 }
 
 function stabilityBlocks(packageRows: readonly PackageRow[], allAgainst: readonly UnstableDependency[], settings: StructureSettings): { blocks: Block[]; slots: Slot[] } {
@@ -353,12 +353,28 @@ function stabilityBlocks(packageRows: readonly PackageRow[], allAgainst: readonl
       maxChars: 320,
     });
   });
-  if (belowFloor > 0) blocks.push({ type: "notice", level: "notice", text: `${plural(belowFloor, "dependency", "dependencies")} onto a folder of fewer than ${settings.minTargetFiles} files ${belowFloor === 1 ? "is" : "are"} left out, because the figures of a one-file folder are the figures of one file (evidence floor structure.minTargetFiles, a judgement call). \`structure stability\` lists them.` });
+  if (belowFloor > 0) blocks.push({ type: "notice", level: "notice", text: `${plural(belowFloor, "dependency", "dependencies")} onto a folder of fewer than ${settings.minTargetFiles} files ${belowFloor === 1 ? "is" : "are"} left out, because the figures of a one-file folder are the figures of one file (evidence floor structure.minTargetFiles, a judgement call). \`structure stability\` lists ${belowFloor === 1 ? "it" : "them"} after the others.` });
   return { blocks, slots };
+}
+
+/** A package is placed on the chart when it has instability and abstractness and exports enough types to place. */
+const isPlaced = (row: PackageRow, settings: StructureSettings): boolean =>
+  row.instability !== null && row.abstractness !== null && row.distance !== null && (row.exportedTypes ?? 0) >= settings.packages.minExportedTypes;
+
+/** The packages found, those whose code is read (abstractness is measured only where an adapter reads production code), and those placed on the chart. */
+function packagesText(rows: readonly PackageRow[], settings: StructureSettings): string {
+  const withCode = rows.filter((row) => row.abstractness !== null).length;
+  const placed = rows.filter((row) => isPlaced(row, settings)).length;
+  return `${rows.length} found from manifests: ${withCode} ${withCode === 1 ? "holds" : "hold"} production code in a supported language, and ${placed} of them ${placed === 1 ? "is" : "are"} placed on the chart`;
 }
 
 function censusBlocks(rows: readonly CensusRow[]): Block[] {
   const none = rows.filter((row) => row.count === 0).map((row) => row.mechanism);
+  const lookAlikes = rows.flatMap((row) =>
+    row.lookAlikes.length === 0
+      ? []
+      : [`${row.mechanism}: ${nameList(row.lookAlikes.map((l) => `${l.name} (${plural(l.count, "call")})`), 5)}`],
+  );
   return [
     {
       type: "ranked-table",
@@ -386,6 +402,15 @@ function censusBlocks(rows: readonly CensusRow[]): Block[] {
       level: "notice",
       text: `The census describes and does not judge. ${none.length === 0 ? "Every mechanism is in use here." : `A count of zero is a finding: ${none.join(", ")} ${none.length === 1 ? "is" : "are"} not in use here, so choosing ${none.length === 1 ? "it" : "one"} would introduce something new.`}`,
     },
+    ...(lookAlikes.length === 0
+      ? []
+      : [
+          {
+            type: "notice" as const,
+            level: "notice" as const,
+            text: `Calls left out of the counts as look-alikes, ${lookAlikes.join("; ")}. The repository defines each of these send names only on types and files that have no listen method and no event base type, so a call runs that code and notifies no listener. \`structure census\` lists them under lookAlikes.`,
+          },
+        ]),
   ];
 }
 
@@ -477,7 +502,8 @@ function limitsOf(results: Results, settings: StructureSettings): string[] {
   const { evidence } = results.extra;
   return [
     "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-    `Each list shows its top rows and says how many it leaves out: ${TOP_CYCLES} cycles, ${TOP_AGAINST} dependencies against stability, ${TOP_LAYER_VIOLATIONS} layer violations, ${TOP_HUBS} hubs and ${TOP_PACKAGES} packages in the stability table (the chart draws every package that exports types). The commands print the rest.`,
+    `Each list shows up to ${TOP_CYCLES} cycles, ${TOP_AGAINST} dependencies against stability, ${results.layerViolations === null ? "" : `${TOP_LAYER_VIOLATIONS} layer violations, `}${TOP_HUBS} hubs and ${TOP_PACKAGES} packages in the stability table, and says how many it leaves out. The chart draws every package it places. The commands print the rest.`,
+    "Packages are counted from the manifests found. `structure cycles --level package` has a module for each package that holds production code in a supported language, and the chart places only those that also export enough types and have a dependency in or out.",
     "Cycles are found at the default level for each language, so a file cycle in Go or C# that stays inside one package or folder is not shown. `structure cycles --level` shows the other levels.",
     `Abstractness is measured for packages from the exported interfaces, abstract classes, classes and enums. A package that exports fewer than ${settings.packages.minExportedTypes} types (structure.packages.minExportedTypes) has too few for the abstract-to-concrete ratio to mean anything, so it is unplaced: left out of the chart, its table and its zone counts, and counted. Folders have no abstractness, so the chart is of packages and the dependencies against stability are between folders.`,
     ...(results.packages.some((row) => row.ecosystem === "go")
@@ -522,7 +548,7 @@ export const structure: ReportKind = {
               { label: "Layer violations", value: results.layerViolations === null ? "no layers configured" : String(results.layerViolations.length) },
               { label: "Dependencies pointing towards less stable folders", value: `${listedAgainst.length}, of which ${aboveGuideline} reach a guideline` },
               { label: "Registration hubs", value: String(results.hubs.length) },
-              { label: "Packages", value: String(results.packages.length) },
+              { label: "Packages", value: packagesText(results.packages, settings) },
             ],
           },
           ...dsmBlocks(results.extra.dsm, results.layerViolations !== null, new Set(results.hubs.slice(0, TOP_HUBS).map((hub) => hub.file)), Math.min(results.cycles.length, TOP_CYCLES)),

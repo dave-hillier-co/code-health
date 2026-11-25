@@ -11,7 +11,7 @@ export interface Truncation {
 export interface ShapeOptions {
   limit: number;
   fields?: string[];
-  /** Valid field names. When given, unknown fields are rejected. */
+  /** Table columns. When given, a field that is neither a column nor a key of a row is rejected. */
   columns?: string[];
   /** The rows are already in the order the command states, so they are cut and projected without sorting. */
   presorted?: boolean;
@@ -25,9 +25,11 @@ export function shapeResults(results: unknown, options: ShapeOptions): { results
 
   const { limit, fields, columns } = options;
   if (fields && columns && columns.length > 0) {
-    const unknown = fields.filter((field) => !columns.includes(field));
+    // A field is valid when it is a table column or a key of a row, so `--fields` can project anything the JSON rows carry.
+    const valid = [...new Set([...columns, ...(results as Row[]).flatMap((row) => Object.keys(row))])];
+    const unknown = fields.filter((field) => !valid.includes(field));
     if (unknown.length > 0) {
-      throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${columns.join(", ")}`);
+      throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${valid.join(", ")}`);
     }
   }
 

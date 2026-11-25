@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "explain.schema.json",
   "title": "complexity explain --json",
-  "description": "With a unit (path#Qualified.name) the results are the increments. With a rule name the result is the rule's description.",
+  "description": "With a unit (path#Qualified.name) the results are the increments, largest amount first, then by line. With a rule name the result is the rule's description.",
   "allOf": [
     {
       "$ref": "common.schema.json#/$defs/envelope"

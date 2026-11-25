@@ -1,4 +1,4 @@
-import type { FileRecord, InterfaceUnit } from "./measure.ts";
+import type { FileRecord, InterfaceUnit, RequiredBy } from "./measure.ts";
 import { roleOfTest, type Role } from "./roles.ts";
 
 /**
@@ -20,11 +20,24 @@ export interface DepthRow {
   interface: number;
   depth: number;
   passThrough: string | null;
+  /** What fixes the unit's name and signature, so it cannot simply be removed: an interface or base type it implements or overrides, or a framework that calls it. */
+  required: RequiredBy | null;
   role: Role;
-  /** `pass-through`, then `shallow`. */
+  /** `pass-through`, `required` on a pass-through that something requires, then `shallow`. */
   labels: string[];
-  /** The sort key: pass-throughs rank above everything else, then the shallowest first. */
+  /** The reciprocal of depth, which orders the rows within each group of `byDepthRank`. */
   score: number;
+}
+
+/** The group a row ranks in: pass-throughs that could be removed, then the ones something requires, then everything else. */
+function groupOf(row: DepthRow): number {
+  if (row.passThrough === null) return 2;
+  return row.required === null ? 0 : 1;
+}
+
+/** Removable pass-throughs first, then required ones, then the rest, each group shallowest first, then by path and id. */
+export function byDepthRank(a: DepthRow, b: DepthRow): number {
+  return groupOf(a) - groupOf(b) || b.score - a.score || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)) || Buffer.compare(Buffer.from(a.id), Buffer.from(b.id));
 }
 
 const round = (value: number, places: number): number => Math.round(value * 10 ** places) / 10 ** places;
@@ -66,14 +79,18 @@ export function depthRows(file: FileRecord, shallow: number): DepthRow[] {
   const add = (row: Omit<DepthRow, "depth" | "labels" | "score" | "path" | "role"> & { shallowCandidate: boolean }) => {
     const { shallowCandidate, ...rest } = row;
     const depth = round(row.nodes / row.interface, 2);
-    const labels = [...(row.passThrough === null ? [] : ["pass-through"]), ...(shallowCandidate && row.nodes / row.interface < shallow ? ["shallow"] : [])];
+    const labels = [
+      ...(row.passThrough === null ? [] : ["pass-through"]),
+      ...(row.passThrough !== null && row.required !== null ? ["required"] : []),
+      ...(shallowCandidate && row.nodes / row.interface < shallow ? ["shallow"] : []),
+    ];
     rows.push({
       path: file.path,
       ...rest,
       depth,
       role: roleOfTest(file.test),
       labels,
-      score: round(row.interface / row.nodes, 4) + (row.passThrough === null ? 0 : 1),
+      score: round(row.interface / row.nodes, 4),
     });
   };
 
@@ -91,6 +108,7 @@ export function depthRows(file: FileRecord, shallow: number): DepthRow[] {
       nodes: unit.nodes,
       interface: unit.interfaceSize,
       passThrough: unit.passThrough ?? null,
+      required: unit.required ?? null,
       shallowCandidate: unit.parent === undefined && isExported,
     });
   }
@@ -107,6 +125,7 @@ export function depthRows(file: FileRecord, shallow: number): DepthRow[] {
       nodes: module.nodes,
       interface: module.exports,
       passThrough: null,
+      required: null,
       shallowCandidate: true,
     });
   }

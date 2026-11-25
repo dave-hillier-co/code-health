@@ -11,6 +11,22 @@
   },
   "results": [
     {
+      "amount": 3,
+      "code": "total += order.coupon ? item * 0.9 : item;",
+      "construct": "ternary",
+      "line": 7,
+      "metric": "cognitive",
+      "nesting": 2
+    },
+    {
+      "amount": 2,
+      "code": "if (item > 100 && order.vip) {",
+      "construct": "if",
+      "line": 4,
+      "metric": "cognitive",
+      "nesting": 1
+    },
+    {
       "amount": 1,
       "code": "export function price(order: { items: number[]; vip: boolean; coupon?: string }): number {",
       "construct": "function",
@@ -33,14 +49,6 @@
       "line": 3,
       "metric": "cyclomatic",
       "nesting": 0
-    },
-    {
-      "amount": 2,
-      "code": "if (item > 100 && order.vip) {",
-      "construct": "if",
-      "line": 4,
-      "metric": "cognitive",
-      "nesting": 1
     },
     {
       "amount": 1,
@@ -73,14 +81,6 @@
       "line": 6,
       "metric": "cognitive",
       "nesting": 0
-    },
-    {
-      "amount": 3,
-      "code": "total += order.coupon ? item * 0.9 : item;",
-      "construct": "ternary",
-      "line": 7,
-      "metric": "cognitive",
-      "nesting": 2
     },
     {
       "amount": 1,

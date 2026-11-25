@@ -131,6 +131,62 @@ test("a private method of an exported class that forwards has no row, in each la
   }
 });
 
+test("a pass-through an interface or a framework requires is labelled, counted by kind, and ranked after the removable ones", async () => {
+  const sources = {
+    "src/lib.rs": [
+      "pub struct Decoder;",
+      "",
+      "impl Decoder {",
+      "    pub fn new() -> Self { Decoder }",
+      "    pub fn decode(&self, input: &str) -> usize { parse(input) }",
+      "}",
+      "",
+      "impl Default for Decoder {",
+      "    fn default() -> Self { Self::new() }",
+      "}",
+      "",
+      "#[proc_macro_attribute]",
+      "pub fn component(attr: TokenStream, item: TokenStream) -> TokenStream { component_impl(attr, item) }",
+      "",
+      "pub fn helper(input: &str) -> usize { parse(input) }",
+      "",
+    ].join("\n"),
+    "src/Service.java": "public class Service {\n  @Override\n  public String toString() { return describe(); }\n  public int find(int id) { return store.find(id); }\n}\n",
+    "src/Service.kt": "class Repo {\n  override fun toString(): String = describe()\n  fun find(id: Int): Int = store.find(id)\n}\n",
+    "src/Service.cs": "public class Service {\n  public override string ToString() { return Describe(); }\n  public int Find(int id) { return store.Find(id); }\n}\n",
+    "src/service.ts": "export class Service extends Base {\n  override toString(): string { return this.describe(); }\n  find(id: number): number { return this.store.find(id); }\n}\n",
+  };
+  const polyglot = GitFixture.build([
+    { type: "commit", message: "Base", date: "2024-01-01T00:00:00+00:00", changes: Object.entries(sources).map(([path, content]) => ({ op: "add" as const, path, content })) },
+  ]);
+  try {
+    const run = JSON.parse((await runComplexity(polyglot.path, ["depth", "--json", "--limit", "all"])).stdout);
+    const forwarding = (run.results as (Row & { required: string | null })[]).filter((row) => row.passThrough !== null);
+    const required = Object.fromEntries(forwarding.map((row) => [row.id, row.required]));
+    expect(required).toEqual({
+      "src/lib.rs#Decoder.decode": null,
+      "src/lib.rs#helper": null,
+      "src/lib.rs#Decoder.default": "interface",
+      "src/lib.rs#component": "entry-point",
+      "src/Service.java#Service.find": null,
+      "src/Service.java#Service.toString": "interface",
+      "src/Service.kt#Repo.find": null,
+      "src/Service.kt#Repo.toString": "interface",
+      "src/Service.cs#Service.Find": null,
+      "src/Service.cs#Service.ToString": "interface",
+      "src/service.ts#Service.find": null,
+      "src/service.ts#Service.toString": "interface",
+    });
+    for (const row of forwarding) expect(row.labels.includes("required")).toBe(row.required !== null);
+    // Every removable pass-through comes before every required one.
+    const firstRequired = forwarding.findIndex((row) => row.required !== null);
+    expect(forwarding.slice(firstRequired).every((row) => row.required !== null)).toBe(true);
+    expect(run.summary.passThroughByKind).toEqual({ removable: 6, interface: 5, entryPoint: 1 });
+  } finally {
+    polyglot.dispose();
+  }
+});
+
 test("an exported unit is shallow below ten nodes per interface element, and a pass-through is not shallow for its size alone", async () => {
   const all = await rows();
   expect(all.filter((row) => row.labels.includes("shallow")).map((row) => row.id)).toEqual([
@@ -177,8 +233,8 @@ test("the shallow guideline is configurable", async () => {
   }
 });
 
-test("explain describes both labels", async () => {
-  for (const rule of ["shallow", "pass-through"]) {
+test("explain describes the labels", async () => {
+  for (const rule of ["shallow", "pass-through", "required"]) {
     const run = await runComplexity(repo.path, ["explain", rule, "--json"]);
     expect(run.code).toBe(ExitCode.Success);
     expect(JSON.parse(run.stdout).results).toMatchObject({ rule });

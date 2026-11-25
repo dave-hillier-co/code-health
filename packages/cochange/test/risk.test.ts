@@ -140,6 +140,23 @@ test("a sensitive path is reported and, as an event, raises the impact band once
   expect(document.results.impact.band).toBe("moderate");
 });
 
+test("the impact lists the families that made its score, so the band can be read from the output", async () => {
+  const { document } = await risk("main..bulk");
+  const impact = document.results.impact as Assessment["impact"] & {
+    families: { family: string; factor: string | null; band: string | null; points: number }[];
+    notCounted: { factor: string; band: string }[];
+    summary: string;
+    baseline: { moderate: number; high: number };
+  };
+  expect(impact.families.map((f) => f.family)).toEqual(["size-and-diffusion", "history", "completeness", "structure-and-content"]);
+  expect(impact.families.reduce((sum, f) => sum + f.points, 0)).toBe(impact.score);
+  expect(impact.families[0]).toMatchObject({ family: "size-and-diffusion", band: "high", points: 2 });
+  expect(impact.summary).toContain(`Score ${impact.score}: size-and-diffusion 2 (${impact.families[0]!.factor} high)`);
+  expect(impact.summary).toContain(`moderate above ${impact.baseline.moderate} and high above ${impact.baseline.high}`);
+  expect(impact.summary).toContain(`so ${impact.score} is ${impact.scoreBand}`);
+  for (const uncounted of impact.notCounted) expect(factor(document.results, uncounted.factor).scored).toBe(false);
+});
+
 test("a factor that cannot be computed is unavailable and has no band, never low", async () => {
   const { document } = await risk("main..complete");
   const defects = factor(document.results, "defect-history");
@@ -150,8 +167,17 @@ test("a factor that cannot be computed is unavailable and has no band, never low
 
 test("the baseline is the repository's merged changes, merges and single commits alike", async () => {
   const { document } = await risk("main..complete");
-  expect(document.inputs.baseline).toMatchObject({ mergedChanges: 16, merges: 2, direct: 14, population: 16 });
+  expect(document.inputs.baseline).toMatchObject({ mergedChanges: 16, mergedChangesInWindow: 16, merges: 2, direct: 14, population: 16 });
   expect(document.results.impact.baseline.population).toBe(16);
+});
+
+test("the baseline counts merged changes in all the history read and in the window apart, so they compare with the window's evidence", async () => {
+  writeFileSync(join(repo.path, "code-health.json"), '{"cochange":{"windowMonths":2}}\n');
+  const { document } = await risk("main..complete");
+  const { mergedChanges, mergedChangesInWindow, population } = document.inputs.baseline;
+  expect(mergedChanges).toBe(16);
+  expect(mergedChangesInWindow).toBeLessThan(16);
+  expect(population).toBe(mergedChangesInWindow);
 });
 
 test("work merged to main after the branch point does not change the branch's score", async () => {
@@ -230,9 +256,8 @@ test("explain prints the rules behind the level and the factors, without reading
   expect(results.settings).toMatchObject({ moderatePercentile: 75, highPercentile: 90, countModerate: 1, countHigh: 3 });
 });
 
-test("explain of a factor gives its definition, guidelines and the files that drove it on the branch", async () => {
-  repo.git("checkout", "--quiet", "missing");
-  const { document } = await risk("explain", "missing-co-change");
+test("explain of a factor on a range gives its definition, guidelines and the files that drove it on that change", async () => {
+  const { document } = await risk("explain", "missing-co-change", "main..missing");
   const results = document.results as unknown as { topic: string; doc: { definition: string }; branch: Factor };
   expect(results.topic).toBe("missing-co-change");
   expect(results.doc.definition).toMatch(/confidence/);
@@ -258,8 +283,7 @@ test("the rules behind the level, byte for byte", async () => {
   expectGolden("risk", "risk.explain", stdout);
 });
 
-test("one factor explained on a branch, byte for byte", async () => {
-  repo.git("checkout", "--quiet", "missing");
-  const { stdout } = await runCochange(repo.path, ["risk", "explain", "missing-co-change"]);
+test("one factor explained on a range, byte for byte", async () => {
+  const { stdout } = await runCochange(repo.path, ["risk", "explain", "missing-co-change", "main..missing"]);
   expectGolden("risk", "risk.explain-factor", stdout);
 });

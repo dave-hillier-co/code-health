@@ -113,6 +113,7 @@
       "distance": 2,
       "fanIn": 2,
       "fanInPercentile": 97,
+      "fanInUnresolved": 0,
       "gain": 4,
       "guidelines": {
         "fanIn": {
@@ -179,6 +180,7 @@
   ],
   "schemaVersion": 1,
   "summary": {
+    "blockedMoves": 0,
     "byRecommendation": {
       "blocked": 3,
       "inline": 3,
@@ -201,5 +203,6 @@
   "unreachable": [
     "src/legacy/dead.ts"
   ],
-  "unresolved": {}
+  "unresolved": {},
+  "unresolvedSample": {}
 }

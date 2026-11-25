@@ -170,93 +170,113 @@
       ],
       "nearbyMechanisms": [
         {
+          "count": 1,
           "detail": "forEachLine(visit) is called from src/orders",
           "distance": 0,
           "line": 1,
           "mechanism": "callbacks",
           "near": "both",
           "path": "src/billing/lines.ts",
+          "samePackage": true,
           "variant": "function-parameter"
         },
         {
+          "count": 1,
           "detail": "bus.on",
           "distance": 0,
           "line": 2,
           "mechanism": "events",
           "near": "to",
           "path": "src/billing/listen.ts",
+          "samePackage": true,
           "variant": "call"
         },
         {
+          "count": 1,
           "detail": "bus.emit",
           "distance": 0,
           "line": 3,
           "mechanism": "events",
           "near": "from",
           "path": "src/orders/place.ts",
+          "samePackage": true,
           "variant": "call"
         },
         {
+          "count": 1,
           "detail": "Storage is implemented in src/adapters",
           "distance": 2,
           "line": 1,
           "mechanism": "interfaces",
           "near": "both",
           "path": "src/ports/storage.ts",
+          "samePackage": true,
           "variant": "interface"
         },
         {
+          "count": 1,
           "detail": "container.register",
           "distance": 2,
           "line": 4,
           "mechanism": "dependency-injection",
           "near": "both",
           "path": "src/app/container.ts",
+          "samePackage": true,
           "variant": "container-registration"
         },
         {
+          "count": 1,
           "detail": "@Injectable",
           "distance": 2,
           "line": 3,
           "mechanism": "dependency-injection",
           "near": "both",
           "path": "src/app/service.ts",
+          "samePackage": true,
           "variant": "decorator"
         },
         {
+          "count": 1,
           "detail": "Service takes Storage from src/ports",
           "distance": 2,
           "line": 4,
           "mechanism": "dependency-injection",
           "near": "both",
           "path": "src/app/service.ts",
+          "samePackage": true,
           "variant": "constructor-injection"
         },
         {
+          "count": 1,
           "detail": "Bus extends EventEmitter",
           "distance": 2,
           "line": 2,
           "mechanism": "events",
           "near": "both",
           "path": "src/events/bus.ts",
+          "samePackage": true,
           "variant": "base-type"
         },
         {
+          "count": 1,
           "detail": "commandBus.execute",
           "distance": 2,
           "line": 3,
           "mechanism": "handlers",
           "near": "both",
           "path": "src/app/dispatch.ts",
+          "samePackage": true,
           "variant": "dispatch"
         },
         {
+          "count": 1,
           "detail": "@CommandHandler",
           "distance": 2,
           "line": 3,
           "mechanism": "handlers",
           "near": "both",
           "path": "src/handlers/place-order.ts",
+          "samePackage": true,
           "variant": "handler-decorator"
         }
       ],

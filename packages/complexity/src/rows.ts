@@ -71,9 +71,14 @@ export function topLevelUnits(units: readonly UnitRecord[]): UnitRecord[] {
 
 type Aggregate = { sum: number; max: number };
 
-/** One file of `files`: file-level metrics for every text file, and function aggregates where functions were measured. */
+/**
+ * One file of `files`: file-level metrics for every text file, and function aggregates where functions were measured.
+ * The test code inside a production file is counted apart: its lines in `testCodeLines` and its functions in
+ * `testFunctions`, and neither in the other figures.
+ */
 export function fileRow(file: FileRecord, settings: ComplexitySettings) {
-  const top = topLevelUnits(file.units);
+  const units = file.test ? file.units : file.units.filter((unit) => !unit.test);
+  const top = topLevelUnits(units);
   const aggregates: Partial<Record<MetricId, Aggregate>> = {};
   for (const metric of metricIds) {
     const values = top.flatMap((unit) => (unit.values[metric] === undefined ? [] : [unit.values[metric]!]));
@@ -90,10 +95,12 @@ export function fileRow(file: FileRecord, settings: ComplexitySettings) {
     unverified: file.unverified,
     lineCount: file.lines.lineCount,
     codeLines: file.lines.codeLines,
+    testCodeLines: file.testCodeLines,
     keywordComplexity: file.keywordComplexity ?? null,
-    functions: file.units.length,
-    aggregates: file.units.length === 0 ? null : aggregates,
-    aboveGuideline: file.units.filter((unit) => exceeded(unit.values, guidelines).length > 0).length,
+    functions: units.length,
+    testFunctions: file.units.length - units.length,
+    aggregates: units.length === 0 ? null : aggregates,
+    aboveGuideline: units.filter((unit) => exceeded(unit.values, guidelines).length > 0).length,
     interfaceDepth: meanDepth(file),
     passThroughs: passThroughCount(file),
   };

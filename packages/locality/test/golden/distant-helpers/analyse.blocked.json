@@ -76,6 +76,7 @@
       "distance": 0,
       "fanIn": 1,
       "fanInPercentile": 73,
+      "fanInUnresolved": 0,
       "gain": 0,
       "guidelines": {
         "fanIn": {
@@ -178,6 +179,7 @@
       "distance": 0,
       "fanIn": 1,
       "fanInPercentile": 73,
+      "fanInUnresolved": 0,
       "gain": 0,
       "guidelines": {
         "fanIn": {
@@ -280,6 +282,7 @@
       "distance": 0,
       "fanIn": 1,
       "fanInPercentile": 73,
+      "fanInUnresolved": 0,
       "gain": 0,
       "guidelines": {
         "fanIn": {
@@ -345,6 +348,7 @@
   ],
   "schemaVersion": 1,
   "summary": {
+    "blockedMoves": 0,
     "byRecommendation": {
       "blocked": 3,
       "inline": 3,
@@ -367,5 +371,6 @@
   "unreachable": [
     "src/legacy/dead.ts"
   ],
-  "unresolved": {}
+  "unresolved": {},
+  "unresolvedSample": {}
 }

@@ -94,7 +94,8 @@ export type DependencyModel = "import-based" | "symbol-based";
 
 /** What an import specifier reaches. */
 export type Resolution =
-  | { kind: "file"; path: string }
+  /** `via` is set when the path left the module it names through a re-export of another module: the file it left. */
+  | { kind: "file"; path: string; via?: string }
   | { kind: "builtin" }
   | { kind: "external"; packageName: string }
   | { kind: "not-found" };
@@ -122,6 +123,30 @@ export interface ModuleResolver {
    * (Rust `use super::Name`, where the parent has a private `use`). The name is followed to what it imports.
    */
   importsAreVisible?: boolean;
+  /**
+   * True when a statement depends on the file that defines the name it imports, and not on the module the path
+   * goes through (Rust, where `use crate::Name` reaches a definition the crate root only re-exports). An import
+   * edge then runs to the defining file, and the edge of a re-export nothing in the file uses is `nominal`.
+   */
+  edgesReachDefinitions?: boolean;
+  /**
+   * True when a glob import brings names into the file that its code then uses bare (Rust `use a::*`). A reference
+   * to a name the file neither declares nor imports is looked up in the modules it glob-imports.
+   */
+  globsBindNames?: boolean;
+  /**
+   * Given to the resolver once, before any path is resolved, by a model that follows re-exports: `moduleNamed`
+   * says which file a name exported by a file is, when the name is a module: the module's file, null when the name is
+   * re-exported from outside the tree, and undefined when the file has no such module. A resolver whose paths go
+   * through re-exported modules (Rust `crate::tls::Name`, where the root has `pub use other::tls`) keeps it.
+   */
+  followReexports?(moduleNamed: (file: string, name: string) => string | null | undefined): void;
+  /**
+   * A name a module makes available that its own exports do not list, as the file and exported name that define it.
+   * Rust: a `#[macro_export]` macro is a name of its crate's root whichever file defines it. Asked only when the
+   * module does not export the name.
+   */
+  exportedElsewhere?(modulePath: string, name: string): { file: string; name: string } | undefined;
 }
 
 export interface ResolveInput {
@@ -155,7 +180,7 @@ interface DependencyCommon {
  */
 export interface ImportBasedDependencies extends DependencyCommon {
   model: "import-based";
-  createResolver(paths: readonly string[], configs: ReadonlyMap<string, string>): ModuleResolver;
+  createResolver(paths: readonly string[], configs: ReadonlyMap<string, string>, facts: ReadonlyMap<string, FileFacts>): ModuleResolver;
 }
 
 /**

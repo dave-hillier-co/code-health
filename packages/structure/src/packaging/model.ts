@@ -44,6 +44,8 @@ export interface PackageModel {
   index: PackageIndex;
   /** Every file of the tree that a package owns, sorted. */
   files: ReadonlyMap<string, readonly string[]>;
+  /** Files of the tree, outside the excluded paths, that no package owns. Changes to them count for no package. */
+  unowned: number;
   project: Project;
   /** Structure's model at package level: the production graph, with manifest dependencies as edges. */
   model: Model;
@@ -67,6 +69,30 @@ export function overrideOf(model: Pick<PackageModel, "settings">, pkg: Discovere
 /** Internal when the manifest or the config says so. Where neither does, published, which is the safe mistake. */
 export function isPublished(model: Pick<PackageModel, "settings">, pkg: DiscoveredPackage): boolean {
   return overrideOf(model, pkg).published ?? pkg.private !== true;
+}
+
+/** Where `isPublished` got its answer: the config, the manifest's internal marker, or the default for a package neither marks. */
+export function publishedSource(model: Pick<PackageModel, "settings">, pkg: DiscoveredPackage): "config" | "manifest" | "default" {
+  if (overrideOf(model, pkg).published !== undefined) return "config";
+  return pkg.private === true ? "manifest" : "default";
+}
+
+/** What would mark a package of this ecosystem internal in its manifest, or null where its build system has no such marker. */
+export function internalMarker(pkg: DiscoveredPackage): string | null {
+  switch (pkg.ecosystem) {
+    case "cargo":
+      return "publish = false in Cargo.toml";
+    case "npm":
+      return '"private": true in package.json';
+    case "dotnet":
+      return "<IsPackable>false</IsPackable> in the project file";
+    case "python":
+      return "the classifier Private :: Do Not Upload";
+    case "go":
+      return "a path under internal/";
+    default:
+      return null;
+  }
 }
 
 export function purposeOf(model: Pick<PackageModel, "settings">, pkg: DiscoveredPackage): Purpose | null {
@@ -101,10 +127,12 @@ export function assemblePackageModel(
   const byId = new Map(packages.map((p) => [p.id, p]));
 
   const files = new Map<string, string[]>(packages.map((p) => [p.id, []]));
+  let unowned = 0;
   for (const path of tree.files.keys()) {
     if (excluded(path)) continue;
     const owner = index.owner(path);
-    if (owner !== undefined) files.get(owner)!.push(path);
+    if (owner === undefined) unowned++;
+    else files.get(owner)!.push(path);
   }
   const codeFiles = new Map<string, string[]>(packages.map((p) => [p.id, []]));
   for (const path of project.files) {
@@ -130,10 +158,11 @@ export function assemblePackageModel(
   for (const imported of project.analysis.importEdges) {
     if (imported.pairing === true || excluded(imported.from) || excluded(imported.to)) continue;
     const from = index.owner(imported.from);
-    const to = index.owner(imported.to);
+    // A statement uses the package it names, whichever package holds the definition a re-export leads to.
+    const to = index.owner(imported.via ?? imported.to);
     if (from === undefined || to === undefined || from === to) continue;
     const edge = edgeFor(from, to);
-    if (isTestPath(imported.from) || isTestPath(imported.to)) edge.testImports++;
+    if (imported.test === true || isTestPath(imported.from) || isTestPath(imported.to)) edge.testImports++;
     else edge.productionImports++;
   }
 
@@ -188,6 +217,7 @@ export function assemblePackageModel(
     byId,
     index,
     files,
+    unowned,
     project,
     model,
     development: normalise(development),

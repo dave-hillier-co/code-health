@@ -162,9 +162,12 @@ function repaired(parser: Parser, original: Tree, source: string, repairs: NonNu
   return best;
 }
 
+/** Bump when what `parseWith` adds to every adapter's facts changes, so cached facts of every language are read again. */
+const sharedFactsVersion = 2;
+
 /** The parse cache key of facts an adapter extracted from a tree of this grammar: changed extraction never reads old facts. */
 export function cacheKeyOf(adapter: Pick<LanguageAdapter, "id" | "extractorVersion">, grammar: Pick<LoadedGrammar, "version">): string {
-  return `${grammar.version}.${adapter.id}-extract-${adapter.extractorVersion}`;
+  return `${grammar.version}.${adapter.id}-extract-${adapter.extractorVersion}.shared-${sharedFactsVersion}`;
 }
 
 /**

@@ -2237,7 +2237,8 @@
                     "type": "array",
                     "items": {
                       "type": "string"
-                    }
+                    },
+                    "description": "Each export as path#name."
                   },
                   "consumers": {
                     "type": "array",
@@ -2315,11 +2316,26 @@
             "type": "string"
           }
         },
+        "dependants": {
+          "description": "For a package in the zone of pain, the packages that depend on it. Null for every other candidate.",
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
         "handoff": {
           "type": [
             "string",
             "null"
-          ]
+          ],
+          "description": "The structure command that gives the evidence pack for a dependency to break. For a package in the zone of pain, the pack of the dependant that shared the most changes with it."
         }
       },
       "required": [
@@ -2336,6 +2352,7 @@
         "tentative",
         "step",
         "also",
+        "dependants",
         "handoff"
       ],
       "additionalProperties": false
@@ -2367,13 +2384,34 @@
           "items": {
             "type": "string"
           }
+        },
+        "assumed": {
+          "description": "The published packages among them that are published only because nothing marks them internal.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "question": {
+          "description": "What to ask the user when a package is published only by default, and how to record the answer. Null when config declared it published.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "candidate": {
+          "description": "The proposal that would be made if none of its packages were published.",
+          "$ref": "#/$defs/candidate"
         }
       },
       "required": [
         "kind",
         "packages",
         "reason",
-        "findings"
+        "findings",
+        "assumed",
+        "question",
+        "candidate"
       ],
       "additionalProperties": false
     },
@@ -2570,12 +2608,17 @@
         },
         "eligibleChanges": {
           "$ref": "common.schema.json#/$defs/count"
+        },
+        "unowned": {
+          "description": "Files of the tree, outside the excluded paths, that no package owns. Changes to them count for no package.",
+          "$ref": "common.schema.json#/$defs/count"
         }
       },
       "required": [
         "packages",
         "ecosystems",
-        "eligibleChanges"
+        "eligibleChanges",
+        "unowned"
       ],
       "additionalProperties": false
     },
@@ -2609,6 +2652,15 @@
           "enum": [
             "internal",
             "published"
+          ],
+          "description": "published means only that nothing marks the package internal: see kindSource."
+        },
+        "kindSource": {
+          "description": "Where kind comes from: config, the manifest's internal marker (manifest), or default when neither marks the package, so it is treated as published.",
+          "enum": [
+            "config",
+            "manifest",
+            "default"
           ]
         },
         "purpose": {
@@ -2720,6 +2772,7 @@
         "name",
         "ecosystem",
         "kind",
+        "kindSource",
         "purpose",
         "entry",
         "testSupport",

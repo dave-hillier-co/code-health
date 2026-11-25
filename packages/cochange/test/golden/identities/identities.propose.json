@@ -2,7 +2,7 @@
   "command": "identities",
   "config": "0000000000000000",
   "inputs": {
-    "order": "members' commits, largest first, then strength (strong, medium, chain), then suggested name",
+    "order": "strength (strong, medium, chain), then members' commits, largest first, then suggested name",
     "subcommand": "propose"
   },
   "repo": {
@@ -60,114 +60,6 @@
       "kind": "cluster",
       "links": [
         {
-          "a": "Maria Lopez <maria@corp.com>",
-          "b": "María López <mlopez@gmail.com>",
-          "counterEvidence": false,
-          "signals": [
-            {
-              "detail": "mlopez",
-              "signal": "name-from-email",
-              "strength": "medium"
-            },
-            {
-              "detail": "maria lopez",
-              "signal": "same-name",
-              "strength": "medium"
-            },
-            {
-              "detail": "maria@corp.com stops 2024-03-25, mlopez@gmail.com starts 2024-04-01, 1 shared files",
-              "signal": "handover",
-              "strength": "supporting"
-            }
-          ],
-          "strength": "medium"
-        }
-      ],
-      "members": [
-        {
-          "aliases": [],
-          "commits": 13,
-          "firstSeen": "2024-01-01",
-          "identity": "Maria Lopez <maria@corp.com>",
-          "lastSeen": "2024-03-25",
-          "topAreas": [
-            "src/billing"
-          ]
-        },
-        {
-          "aliases": [],
-          "commits": 8,
-          "firstSeen": "2024-04-01",
-          "identity": "María López <mlopez@gmail.com>",
-          "lastSeen": "2024-05-20",
-          "topAreas": [
-            "src/billing"
-          ]
-        }
-      ],
-      "strength": "medium",
-      "suggestedCanonical": "María López <mlopez@gmail.com>"
-    },
-    {
-      "counterEvidence": true,
-      "id": "P3",
-      "kind": "cluster",
-      "links": [
-        {
-          "a": "Alex Kim <akim@b.com>",
-          "b": "Alex Kim <alex@a.com>",
-          "counterEvidence": true,
-          "signals": [
-            {
-              "detail": "akim",
-              "signal": "name-from-email",
-              "strength": "medium"
-            },
-            {
-              "detail": "alex kim",
-              "signal": "same-name",
-              "strength": "medium"
-            },
-            {
-              "detail": "both active in 9 of the same weeks, never in the same area",
-              "signal": "simultaneous-disjoint-areas",
-              "strength": "counter"
-            }
-          ],
-          "strength": "medium"
-        }
-      ],
-      "members": [
-        {
-          "aliases": [],
-          "commits": 9,
-          "firstSeen": "2024-01-15",
-          "identity": "Alex Kim <akim@b.com>",
-          "lastSeen": "2024-03-11",
-          "topAreas": [
-            "infra/db"
-          ]
-        },
-        {
-          "aliases": [],
-          "commits": 9,
-          "firstSeen": "2024-01-15",
-          "identity": "Alex Kim <alex@a.com>",
-          "lastSeen": "2024-03-11",
-          "topAreas": [
-            "app/web"
-          ]
-        }
-      ],
-      "strength": "medium",
-      "suggestedCanonical": "Alex Kim <akim@b.com>"
-    },
-    {
-      "counterEvidence": false,
-      "id": "P4",
-      "kind": "cluster",
-      "links": [
-        {
           "a": "John Smith <jsmith@users.noreply.github.com>",
           "b": "jsmith <1234+jsmith@users.noreply.github.com>",
           "counterEvidence": false,
@@ -213,7 +105,7 @@
     },
     {
       "counterEvidence": false,
-      "id": "P5",
+      "id": "P3",
       "kind": "cluster",
       "links": [
         {
@@ -264,6 +156,114 @@
       ],
       "strength": "strong",
       "suggestedCanonical": "Sam Ro <sam@corp.com>"
+    },
+    {
+      "counterEvidence": false,
+      "id": "P4",
+      "kind": "cluster",
+      "links": [
+        {
+          "a": "Maria Lopez <maria@corp.com>",
+          "b": "María López <mlopez@gmail.com>",
+          "counterEvidence": false,
+          "signals": [
+            {
+              "detail": "mlopez",
+              "signal": "name-from-email",
+              "strength": "medium"
+            },
+            {
+              "detail": "maria lopez",
+              "signal": "same-name",
+              "strength": "medium"
+            },
+            {
+              "detail": "maria@corp.com stops 2024-03-25, mlopez@gmail.com starts 2024-04-01, 1 shared files",
+              "signal": "handover",
+              "strength": "supporting"
+            }
+          ],
+          "strength": "medium"
+        }
+      ],
+      "members": [
+        {
+          "aliases": [],
+          "commits": 13,
+          "firstSeen": "2024-01-01",
+          "identity": "Maria Lopez <maria@corp.com>",
+          "lastSeen": "2024-03-25",
+          "topAreas": [
+            "src/billing"
+          ]
+        },
+        {
+          "aliases": [],
+          "commits": 8,
+          "firstSeen": "2024-04-01",
+          "identity": "María López <mlopez@gmail.com>",
+          "lastSeen": "2024-05-20",
+          "topAreas": [
+            "src/billing"
+          ]
+        }
+      ],
+      "strength": "medium",
+      "suggestedCanonical": "María López <mlopez@gmail.com>"
+    },
+    {
+      "counterEvidence": true,
+      "id": "P5",
+      "kind": "cluster",
+      "links": [
+        {
+          "a": "Alex Kim <akim@b.com>",
+          "b": "Alex Kim <alex@a.com>",
+          "counterEvidence": true,
+          "signals": [
+            {
+              "detail": "akim",
+              "signal": "name-from-email",
+              "strength": "medium"
+            },
+            {
+              "detail": "alex kim",
+              "signal": "same-name",
+              "strength": "medium"
+            },
+            {
+              "detail": "both active in 9 of the same weeks, never in the same area",
+              "signal": "simultaneous-disjoint-areas",
+              "strength": "counter"
+            }
+          ],
+          "strength": "medium"
+        }
+      ],
+      "members": [
+        {
+          "aliases": [],
+          "commits": 9,
+          "firstSeen": "2024-01-15",
+          "identity": "Alex Kim <akim@b.com>",
+          "lastSeen": "2024-03-11",
+          "topAreas": [
+            "infra/db"
+          ]
+        },
+        {
+          "aliases": [],
+          "commits": 9,
+          "firstSeen": "2024-01-15",
+          "identity": "Alex Kim <alex@a.com>",
+          "lastSeen": "2024-03-11",
+          "topAreas": [
+            "app/web"
+          ]
+        }
+      ],
+      "strength": "medium",
+      "suggestedCanonical": "Alex Kim <akim@b.com>"
     }
   ],
   "schemaVersion": 1,

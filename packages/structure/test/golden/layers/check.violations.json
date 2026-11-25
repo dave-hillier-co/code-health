@@ -28,7 +28,7 @@
           "to": "src/ui/view.ts"
         }
       ],
-      "id": "cycle:default:src/domain/order.ts",
+      "id": "cycle:file:src/domain/order.ts",
       "kind": "cycle",
       "level": "default",
       "nodes": [

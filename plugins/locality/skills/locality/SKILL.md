@@ -20,7 +20,7 @@ Run it from the repository root. It analyses `HEAD` and never edits code. Useful
 
 - `--limit <n|all>` and `--fields path,recommendation,rule,target,gain,fanIn` keep the output small. The default is 20 rows.
 - `--recommendation inline|move|split|blocked|keep|scrutinise|review` lists one kind.
-- Path arguments (`analyse src/shared`) limit the run to units under those paths.
+- Path arguments (`analyse src/shared`) limit the rows to units under those paths, relative to the repository root or absolute under it. A path that matches no file, including an absolute path outside the repository, exits 2. The `summary` still counts the whole repository.
 - `--source history` analyses co-change alone, for languages with no structural adapter: moves and reviews only, on moderate or strong evidence. `historyOnly.omitted` counts what was left out by reason, and a candidate lists in `supersedes` the opposite-direction candidates it replaced. `--source both` adds `hiddenCoupling`, units the import graph places well whose co-change partners are all elsewhere.
 - Units with no proposed move are not ranked. `summary.omitted` counts them by reason and `omitted` lists each with `reason`, `detail`, the `target` their neighbours pull them towards and its `gain`. The reasons are `folder-sized unit` (more files than `locality.maxMoveFiles`), `target is a root folder` (a unit of several files whose target is shallower than `locality.minTargetDepth`) and `no usable target: <rule>` (a language placement rule, or `target is a grouping folder`: for Go units a folder named in `locality.groupingFolders`, by default `internal`, `pkg` and `cmd`, is never a target; `locality.groupingLanguages` lists the languages the rule applies to) and `no single target: N folders tie` (N folders at the same depth, none containing another, are equally close, so no move is proposed; `detail` lists them). Each candidate has a `reason` sentence. A candidate has `unusableTarget` (`target`, `gain`, `reason`) when a folder with a larger gain exists but the language placement rules refuse it; `target` and `gain` are then for the best folder that can be used.
 - `explain <rule>` describes any rule named in a result, and `config explain` shows the effective settings.
@@ -31,7 +31,7 @@ Read the envelope before the rows:
 
 - `inputs.entrySource` is `config` when the repository's `code-health.json` lists `entryPoints`, and `detected` when the CLI treated every file nothing imports as an entry. Detected entries are a guess. If the repository has dynamic entry points (a DI container, a plugin registry, framework file conventions), ask the user for them and add them to `entryPoints` before trusting the results.
 - `unreachable` lists files no entry point reaches. They are dead code or a missing entry point, and they take no part in the analysis.
-- `filesWithSyntaxErrors` and `unresolved` say where the graph may be incomplete. Say so when a recommendation rests on one of those files.
+- `filesWithSyntaxErrors` and `unresolved` say where the graph may be incomplete. Say so when a recommendation rests on one of those files. `unresolved` counts the imports that were not followed, by reason, and `unresolvedSample` lists the most frequent for each reason with the name that was not found (`name`) and the file it was looked for in (`to`). A row's `fanInUnresolved` counts the production files with such an import that names one of the unit's files. `fanIn` does not count them, so a `fanIn` of 0 beside a `fanInUnresolved` above 0 is unresolved, not unused: read the importing files before acting on "no production consumers".
 - In a C or C++ repository, `includeResolution` says which `compile_commands.json` the include directories came from (and whether git tracks it), the `includeRoots` configured or inferred, and what share of includes found no file. Above the `unresolvedIncludePercent` guideline the CLI warns on stderr: consumers are missing, so "no production consumers" and the moves are lower bounds. Ask for the build directory's `compile_commands.json` (`CMAKE_EXPORT_COMPILE_COMMANDS=ON`) or the include directories for `includeRoots` before trusting the rows. A row with `confidence: { level: "low" }` rests on an include that found no file; say so beside its recommendation.
 
 ## Read a candidate
@@ -64,6 +64,18 @@ Treat each recommendation as a default to confirm or override. Before acting:
 
 `scrutinise` units are not moved. Review them with `locality scrutinise` and `references/scrutinise.md`. `blocked` units need a blocker resolved first: see `references/blocked-moves.md`.
 
+A row with `recommendation: move` and a non-empty `blockers` list is a blocked unit. `analyse` counts it under `summary.byRecommendation.move` and also in `summary.blockedMoves`, and `report locality` lists it in the blocked table with its gain if the blockers were resolved, not among the moves. Treat it as blocked: read `references/blocked-moves.md`, resolve or accept each blocker, re-run `analyse`, and run `locality move` on it only once `blockers` is empty or you have decided to move it anyway with the blockers left behind, and say so in your report. `locality move` plans such a unit without refusing it, so a clean plan does not show the blockers are resolved.
+
+### A question about a folder
+
+For "is this folder worth keeping", "is `utils` earning its place", or any question about a folder and not a unit:
+
+1. Run `analyse <folder>` (a path under the repository root, relative or absolute). A path that matches no file is a usage error. The folder comes back as one unit with `unit.kind` `sibling-set`, among the units under it. The CLI gives no verdict on a folder, so the answer is yours, from the rows.
+2. Read the folder's own row. `fanIn` counts the files that use anything in it, and `gain` is the distance a move would save. A high `fanIn` with `gain` 0 means many files use the folder and no other folder has a lower net distance for it: moving it saves nothing. It does not say the folder is well designed.
+3. Run `scrutinise <folder>`. For the folder it prints `consumers` and `consumerFolders` (how many folders use it), and for each unit under it that the analyser sent to scrutinise, its own pack. Read `references/scrutinise.md` for `findings`, `hints` and `exports`, which are empty when the language gives nothing to read them from.
+4. Look at the other rows under the folder: `move`, `inline`, `split` and `review` units are the parts of it that may not belong, and `omitted` lists those with no proposed move.
+5. Answer from those counts: many consumer folders mean the folder is shared and stays, with its units scrutinised. Consumers in one or two folders mean its parts belong near them. Name the red flag you judge present (a vague name such as `utils` is `vague-name`), and say what the counts do not show.
+
 ## Apply one unit per commit
 
 Every commit is a single, revertible step with the tests green before and after. A reviewer never evaluates a move and a behaviour change together.
@@ -85,7 +97,7 @@ This is a dry run. It changes nothing and reports:
 
 - `results`: the exact file operations (`from`, `to`, and `role` `unit` or `test`).
 - `rewrites`: every import specifier it would change, with file and line. Specifiers keep the extension style the repository writes (`.ts`, `.js` or none).
-- `refusals`: why it will not move the unit. Guards (`package-entry`, `fixed-point`, `fixed-point-destination`, `package-boundary`, `import-cycle`, `package-main`, `unexported-use`, `testdata`, `does-not-compile`, `collision`, `barrel`, `no-change`, `invalid-destination`) cannot be overridden. Stop and report them.
+- `refusals`: why it will not move the unit. Guards (`package-entry`, `fixed-point`, `fixed-point-destination`, `package-boundary`, `module-tree`, `import-cycle`, `package-main`, `unexported-use`, `testdata`, `does-not-compile`, `collision`, `barrel`, `no-change`, `invalid-destination`) cannot be overridden. Stop and report them.
 - `mentions`: files outside the source (docs, config, scripts) that name a moved path. The mover does not edit them. Update them yourself in the same commit, or say why not.
 - `warnings`: an alias that became a relative path, or another change the mover made that is not a compile error. Read each one. Whatever the mover finds would stop the result compiling (a Go unexported name reached from another package, a folder in no module, an `internal/` import from outside its parent) is a `does-not-compile` refusal, not a warning.
 - `confirmations`: for each language that moved and has a confirming tool, `confirmed` or `not confirmed` with the tool's detail. Not confirmed is not a failure, often the tool is not installed: say so to the user and check the move with the build and the tests.

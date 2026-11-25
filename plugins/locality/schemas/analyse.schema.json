@@ -10,6 +10,23 @@
   "$defs": {
     "recommendation": { "enum": ["inline", "move", "split", "blocked", "keep", "scrutinise", "review"] },
     "paths": { "type": "array", "items": { "type": "string" } },
+    "syntaxErrors": {
+      "type": "array",
+      "description": "Files whose parse reported syntax errors, so the graph may be incomplete there, each with where its first error is.",
+      "items": {
+      "type": "object",
+      "description": "The first syntax error of one file.",
+      "properties": {
+        "path": { "type": "string" },
+        "line": { "type": "integer", "minimum": 1, "description": "1-based line of the first error." },
+        "column": { "type": "integer", "minimum": 1, "description": "1-based column of the first error." },
+        "kind": { "enum": ["unexpected", "missing"], "description": "unexpected: text the grammar could not fit; missing: a token the grammar expected and did not find." },
+        "text": { "type": "string", "description": "The unexpected text, up to its first line end and at most 40 characters, or the kind of the missing token." }
+      },
+      "required": ["path", "line", "column", "kind", "text"],
+      "additionalProperties": false
+    }
+    },
     "pathCounts": {
       "type": "array",
       "items": {
@@ -66,9 +83,10 @@
             "units": { "$ref": "common.schema.json#/$defs/count", "description": "Units found, including the placed ones." },
             "placed": { "$ref": "common.schema.json#/$defs/count", "description": "Units left out of the results because they already sit beside their consumers (rule near-consumers)." },
             "omitted": { "type": "object", "additionalProperties": { "$ref": "common.schema.json#/$defs/count" }, "description": "Units left out of the results because no move of them is proposed, by reason: no usable target: <rule> (the best target is refused by a language placement rule such as a Go internal/ boundary or a package boundary, or by `target is a grouping folder`: a folder named in locality.groupingFolders for a language in locality.groupingLanguages), no single target: N folders tie (N folders at the same depth, none containing another, are equally close, so no move is proposed), folder-sized unit (more files than locality.maxMoveFiles) and target is a root folder (a unit of several files moving up to a folder shallower than locality.minTargetDepth). Each is listed in `omitted`." },
-            "byRecommendation": { "type": "object", "additionalProperties": { "$ref": "common.schema.json#/$defs/count" } }
+            "byRecommendation": { "type": "object", "additionalProperties": { "$ref": "common.schema.json#/$defs/count" } },
+            "blockedMoves": { "$ref": "common.schema.json#/$defs/count", "description": "Units counted under byRecommendation.move that have a non-empty blockers list. The report lists them in its blocked table, not as moves, and they are not ready to move until the blockers are addressed." }
           },
-          "required": ["files", "units", "placed", "omitted", "byRecommendation"],
+          "required": ["files", "units", "placed", "omitted", "byRecommendation", "blockedMoves"],
           "additionalProperties": false
         },
         "metrics": {
@@ -130,8 +148,29 @@
         },
         "unreachable": { "$ref": "#/$defs/paths", "description": "Production files the virtual root cannot reach: dead code, or an entry point missing from config." },
         "barrels": { "$ref": "#/$defs/paths" },
-        "unresolved": { "type": "object", "additionalProperties": { "$ref": "common.schema.json#/$defs/count" }, "description": "Imports the resolver could not follow, by reason." },
-        "filesWithSyntaxErrors": { "$ref": "#/$defs/paths" },
+        "unresolved": { "type": "object", "additionalProperties": { "$ref": "common.schema.json#/$defs/count" }, "description": "Imports the resolver could not follow, by reason: not-found (the module named has no file), export-not-found (the module has no such name), dynamic-import." },
+        "unresolvedSample": {
+          "type": "object",
+          "description": "For each reason in unresolved, the distinct imports that recur most: at most 10, most statements first, then by specifier and name.",
+          "additionalProperties": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "type": "object",
+              "properties": {
+                "specifier": { "type": ["string", "null"], "description": "The module the statement names, as the resolver read it. Null for an expression." },
+                "name": { "type": "string", "description": "export-not-found only: the name the module does not export." },
+                "to": { "type": "string", "description": "export-not-found only: the file the specifier names." },
+                "imports": { "$ref": "common.schema.json#/$defs/count", "description": "Statements with this specifier and name." },
+                "from": { "type": "string", "description": "The file of the first of them, by path then line." },
+                "line": { "type": "integer", "minimum": 1 }
+              },
+              "required": ["specifier", "imports", "from", "line"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "filesWithSyntaxErrors": { "$ref": "#/$defs/syntaxErrors" },
         "filesWithMacroCode": { "$ref": "#/$defs/paths", "description": "Files where a macro stands in for declarations or code, which the parser does not run the preprocessor to see. Present only when there are some." },
         "results": {
           "type": "array",
@@ -200,7 +239,8 @@
                 "required": ["owned", "external"],
                 "additionalProperties": false
               },
-              "fanIn": { "$ref": "common.schema.json#/$defs/count", "description": "Distinct production consumer files." },
+              "fanIn": { "$ref": "common.schema.json#/$defs/count", "description": "Distinct production consumer files whose use was followed to the unit. Consumers counted in fanInUnresolved are not among them." },
+              "fanInUnresolved": { "$ref": "common.schema.json#/$defs/count", "description": "Other production files with an import that names a file of the unit and a name the file's exports do not have (export-not-found in unresolved). Each is a consumer that fanIn does not count: a fanIn of 0 beside a fanInUnresolved above 0 is unresolved, not unused." },
               "size": {
                 "type": "object",
                 "properties": {
@@ -311,7 +351,7 @@
             },
             "required": [
               "path", "score", "scoreUnit", "ranking", "fanInPercentile", "guidelines", "recommendation", "rule", "reason", "source", "unit", "location", "target", "distance", "gain", "unblockedGain",
-              "netDistance", "directCalls", "otherRefs", "testRefs", "fanIn", "size", "ownDeps", "visibility", "age", "lastChanged",
+              "netDistance", "directCalls", "otherRefs", "testRefs", "fanIn", "fanInUnresolved", "size", "ownDeps", "visibility", "age", "lastChanged",
               "churn", "coChange", "signals", "strays", "blockers"
             ],
             "additionalProperties": false

@@ -1,0 +1,52 @@
+{
+  "units": {
+    "crates/app/src/main.rs": [
+      ["small", "function", 6, 9],
+      ["main", "function", 11, 13]
+    ],
+    "crates/app/src/other.rs": [["nonzero", "function", 1, 4]],
+    "crates/util/src/helpers.rs": [
+      ["ensure!", "macro", 2, 8],
+      ["twice!", "macro", 10, 14]
+    ],
+    "crates/util/src/rules/checks.rs": [["positive", "function", 1, 4]],
+    "crates/util/src/rules/report.rs": [
+      ["doubled", "function", 3, 5],
+      ["checked", "function", 7, 10]
+    ]
+  },
+  "importEdges": [
+    "crates/app/src/main.rs -> crates/app/src/other.rs import",
+    "crates/app/src/main.rs -> crates/app/src/other.rs import nominal",
+    "crates/app/src/main.rs -> crates/util/src/helpers.rs import via crates/util/src/lib.rs",
+    "crates/app/src/other.rs -> crates/util/src/helpers.rs import via crates/util/src/lib.rs",
+    "crates/util/src/lib.rs -> crates/util/src/helpers.rs import nominal",
+    "crates/util/src/lib.rs -> crates/util/src/rules/mod.rs import nominal",
+    "crates/util/src/rules/checks.rs -> crates/util/src/helpers.rs import",
+    "crates/util/src/rules/mod.rs -> crates/util/src/rules/checks.rs import nominal",
+    "crates/util/src/rules/mod.rs -> crates/util/src/rules/report.rs import nominal",
+    "crates/util/src/rules/report.rs -> crates/util/src/helpers.rs import",
+    "crates/util/src/rules/report.rs -> crates/util/src/helpers.rs import via crates/util/src/lib.rs"
+  ],
+  "fileEdges": [
+    "crates/app/src/main.rs -> crates/app/src/other.rs call call=1 reference=0",
+    "crates/app/src/main.rs -> crates/util/src/helpers.rs call call=1 reference=0",
+    "crates/app/src/other.rs -> crates/util/src/helpers.rs call call=1 reference=0",
+    "crates/util/src/rules/checks.rs -> crates/util/src/helpers.rs call call=1 reference=0",
+    "crates/util/src/rules/report.rs -> crates/util/src/helpers.rs call call=2 reference=0"
+  ],
+  "consumers": [
+    "crates/app/src/main.rs#main -> crates/app/src/other.rs#nonzero call x1",
+    "crates/app/src/main.rs#small -> crates/util/src/helpers.rs#ensure! call x1",
+    "crates/app/src/other.rs#nonzero -> crates/util/src/helpers.rs#ensure! call x1",
+    "crates/util/src/rules/checks.rs#positive -> crates/util/src/helpers.rs#ensure! call x1",
+    "crates/util/src/rules/report.rs#checked -> crates/util/src/helpers.rs#ensure! call x1",
+    "crates/util/src/rules/report.rs#doubled -> crates/util/src/helpers.rs#twice! call x1"
+  ],
+  "unresolved": [],
+  "barrels": [
+    "crates/util/src/lib.rs",
+    "crates/util/src/rules/mod.rs"
+  ],
+  "syntaxErrors": []
+}

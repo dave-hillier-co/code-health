@@ -20,14 +20,14 @@ All commands run as `node ${CLAUDE_PLUGIN_ROOT}/dist/cochange.mjs identities <co
 
 ## Workflow
 
-1. **Check.** Run `identities check`. If it exits 0 and `measurement.needsIdentityReview` is false, the mapping is settled: say so, with the mapped share, and stop. Exit 1 means conflicts: read each finding before going on.
-2. **Gather.** Run `identities propose --limit all` and `identities classify`.
-3. **Strong links: accept without asking.** A cluster whose `strength` is `strong` is joined by an identical address, a shared GitHub noreply username or id, the same name beside a matching GitHub login or the same email local part, or a shared signing key beside a medium signal. A signing key alone links no one. Add it to the decisions you prepare and list it in your summary. Never ask the user about a strong link.
+1. **Check.** Run `identities check --limit all`. If it exits 0 and `measurement.needsIdentityReview` is false, the mapping is settled: say so, with the mapped share, and stop. Exit 1 means conflicts: read each finding before going on.
+2. **Gather.** Run `identities propose --limit all` and `identities classify --limit all`.
+3. **Strong links: accept without asking.** A cluster whose `strength` is `strong` is joined by an identical address that is not a shared mailbox, a shared GitHub noreply username or id, the same name beside a matching GitHub login or the same email local part, or a shared signing key beside a medium signal. A signing key alone links no one. Add it to the decisions you prepare and list it in your summary. Never ask the user about a strong link.
 4. **Medium links: judge.** Accept a medium cluster when several independent signals agree (for example a derivable name, a shared local part and a handover in time) and `counterEvidence` is false. Otherwise ask. Read [references/evidence.md](references/evidence.md) for what each signal is worth and when it misleads.
-5. **Ask about the rest**, in batches. One question per ambiguous cluster, showing the evidence: both names and emails, active dates and areas. Offer the options "same person", "different people" and "not sure, leave separate". Never guess on a lone same-name pair, and never merge a cluster that has counter-evidence on your own judgement. A `chain` is never one cluster: ask about each link separately.
+5. **Ask about the rest**, in batches. One question per ambiguous cluster, showing the evidence: both names and emails, active dates and areas. Offer the options "same person", "different people" and "not sure, leave separate". Never guess on a lone same-name pair, and never merge a cluster that has counter-evidence on your own judgement. A `chain` is never one cluster: ask about each link separately. A shared mailbox (signal `shared-mailbox`) sets `counterEvidence`: ask about it.
 6. **Record rejections.** When the user says two identities are different people, put the pair in `rejectedMerges`, so it is not proposed again.
 7. **Record classifications** that `classify` proposes and the user agrees with. A human whose name looks like a service gets `kind: "person"`.
-8. **Apply.** Write the decisions JSON ([references/decisions-file.md](references/decisions-file.md) has the format) outside the repository, run `identities apply --from FILE` as a dry run, show the user the rows it would add, and run it again with `--apply` on their approval. Then re-run `identities check` and report the result.
+8. **Apply.** Write the decisions JSON ([references/decisions-file.md](references/decisions-file.md) has the format) outside the repository, run `identities apply --from FILE --limit all` as a dry run, show the user every row it would add, and run it again with `--apply` on their approval. Then re-run `identities check --limit all` and report the result.
 
 ## Where the mapping goes
 
@@ -40,9 +40,9 @@ After that, the choice is found from the files present. To pin it, set `cochange
 
 ## Bots, services and agents
 
-`classify` proposes three kinds, each with the pattern that matched:
+`classify` proposes three kinds, each with the pattern that matched and, in `signal`, what it was matched against: `identity` (the whole `Name <email>`), `name`, `local-part`, `subjects`, `trailer` or `decision`:
 
-- **bot**: a `[bot]` suffix or a known bot address (dependabot, renovate, github-actions), or a configured pattern.
+- **bot**: a `[bot]` suffix, a known bot address (dependabot, renovate, github-actions), `bot` or `robot` as a word of the name or of the email's local part (`Acme Bot`, `ReleaseBot`, `robot-sync@`; not `Abbott` or `Talbot`, and not a bot name run into one word such as `acmebot`), or a configured pattern.
 - **service**: a generic name such as `build`, `jenkins` or `release`, or an account whose commits are only version bumps or merges.
 - **agent**: a coding agent, by default and with no decision needed: the Anthropic, GitHub Copilot, Cursor and Devin addresses, and `Co-Authored-By` trailers that name an agent. Agents are not developers. A commit an agent authored with a trailer naming a person is attributed to that person. A decision of kind `person` overrides the default.
 
@@ -52,14 +52,18 @@ Bots, services and agents are left out of the population of people and out of ev
 
 `check` reads line ownership from the blame cache with the same options as abandonment, so the two shares agree. It reports how much of the code the mapping has settled: the share of lines at HEAD and of commits in the analysis window held by identities that no proposal still names, with bots and services counted separately. It should be close to 100 percent before any abandonment result is trusted. Report it alongside whatever you do next. When `needsIdentityReview` is true, unmapped identities hold more than the guideline `cochange.identities.unmappedShareGuideline` percent of the lines. The measured share is printed beside it. `unmappedStrong` is the part of the unmapped lines held by identities a strong proposal names: accepting those proposals, which needs no decision, settles that many lines. An identity no proposal names, such as an author with one address, counts as settled without a mailmap entry. Below the guideline the unmapped identities are still listed.
 
+Commit counts are named for what they cover. `windowCommits` in `check` counts commits as author in the analysis window. `commits` in `propose`, `list` and `classify` counts commits as author over the whole history. Neither counts merge commits.
+
+`dropped.generated` in `check` can be larger than in `propose` at the same commit. `propose` counts the generated files that commits in the history changed. `check` also blames the files at HEAD and counts the generated ones among them, so a generated file whose current path came only from a pure rename (which the history counts as a rename) is counted by `check` and not by `propose`.
+
 ## Commands
 
 | Command | Use |
 |---|---|
-| `identities check` | Conflicts, every unmapped identity (those holding lines or with many commits first, marked `aboveGuideline`), and the measurement. Exit 1 on conflicts only. |
+| `identities check` | Conflicts, the unmapped identities (those holding lines or with many commits first, marked `aboveGuideline`), and the measurement. Lists 20 rows unless given `--limit all`. Exit 1 on conflicts only. A finding about a person with no commit in the activity window omits their name, address and last-active date and gives the count in `formerContributors`; `--names` prints them. |
 | `identities list [--unmapped]` | Every identity as written, with commits, dates, top areas and current mapping. |
-| `identities propose` | Clusters and chains with each link's signals and strength. Recorded rejections are left out. |
+| `identities propose` | Clusters and chains with each link's signals and strength, strong clusters first. Each identity is in one cluster at most. Recorded rejections are left out. |
 | `identities classify` | Bot, service and agent candidates with the pattern that matched. |
-| `identities apply --from FILE [--location committed\|local] [--apply]` | Write mailmap entries and decisions. Dry run unless `--apply`. |
+| `identities apply --from FILE [--location committed\|local] [--apply]` | Write mailmap entries and decisions. Dry run unless `--apply`. Lists 20 rows unless given `--limit all`. |
 
 To write a report (`report <kind>`), the CLI renders the page and you write only the judgement slots: follow [references/reports.md](references/reports.md).

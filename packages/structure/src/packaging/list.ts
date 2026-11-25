@@ -1,7 +1,7 @@
 import { compareIds } from "@code-health/graph/graph";
 import type { Abstractness } from "./abstractness.ts";
 import { measureClosure } from "./closure.ts";
-import { consumerPackages, isPublished, isYoung, purposeOf, type PackageModel } from "./model.ts";
+import { consumerPackages, isPublished, isYoung, publishedSource, purposeOf, type PackageModel } from "./model.ts";
 import type { Purpose } from "./settings.ts";
 
 export interface PackageRow {
@@ -10,7 +10,10 @@ export interface PackageRow {
   ecosystem: string;
   /** The module a Go package is grouped under. Absent for packages of other ecosystems. */
   module?: string;
+  /** Published means only that nothing marks it internal: see `kindSource`. */
   kind: "internal" | "published";
+  /** Where `kind` comes from: `config`, the manifest's internal marker (`manifest`), or `default` when neither marks it, so it is treated as published. */
+  kindSource: "config" | "manifest" | "default";
   purpose: Purpose | null;
   /** An application or tool, which nothing is expected to depend on. */
   entry: boolean;
@@ -46,6 +49,7 @@ export interface PackageRow {
   young: boolean;
 }
 
+/** Every package, the largest share of changes first. */
 export function packageRows(model: PackageModel, abstractness: ReadonlyMap<string, Abstractness> = new Map()): PackageRow[] {
   const closure = measureClosure(model);
   return model.packages
@@ -61,6 +65,7 @@ export function packageRows(model: PackageModel, abstractness: ReadonlyMap<strin
         ecosystem: pkg.ecosystem,
         ...(pkg.module === null ? {} : { module: pkg.module }),
         kind: isPublished(model, pkg) ? "published" : "internal",
+        kindSource: publishedSource(model, pkg),
         purpose: purposeOf(model, pkg),
         entry: pkg.entry,
         testSupport: pkg.testSupport,
@@ -82,5 +87,5 @@ export function packageRows(model: PackageModel, abstractness: ReadonlyMap<strin
         young: isYoung(model, pkg.id),
       };
     })
-    .sort((a, b) => compareIds(a.id, b.id));
+    .sort((a, b) => b.share - a.share || b.revisions - a.revisions || compareIds(a.id, b.id));
 }

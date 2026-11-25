@@ -18,7 +18,11 @@
     },
     "complexitySource": {
       "const": "indentation",
-      "description": "Historical blobs are always measured with the indentation proxy: a complexity report describes one commit only."
+      "description": "Historical blobs are always measured with the indentation proxy: a complexity report describes one commit only. The last sample is the file at the analysed commit, so it matches the `hotspots` figure; earlier samples are the same measure at earlier commits."
+    },
+    "complexityMeasure": {
+      "const": "indentation-complexity",
+      "description": "What the complexity column measures, whichever source supplied it: indentation complexity, the sum of logical indentation levels over a file's code lines. The complexity plugin's file report uses the same definition."
     },
     "results": {
       "type": "object",
@@ -37,7 +41,8 @@
               "path": { "type": "string", "description": "The file's path in that revision." },
               "complexity": { "type": ["integer", "null"], "minimum": 0, "description": "Indentation complexity. Null for a binary file." },
               "lines": { "type": ["integer", "null"], "minimum": 0, "description": "Lines in the file. Null for a binary file." },
-              "bytes": { "$ref": "common.schema.json#/$defs/count" }
+              "bytes": { "$ref": "common.schema.json#/$defs/count" },
+              "atHead": { "const": true, "description": "Present on the last sample when it was added because the file at the analysed commit differs from the last sampled revision, whose changes the history filters left out." }
             },
             "required": ["commit", "date", "path", "complexity", "lines", "bytes"],
             "additionalProperties": false
@@ -67,7 +72,7 @@
       "additionalProperties": false
     }
   },
-  "required": ["complexitySource"],
+  "required": ["complexitySource", "complexityMeasure"],
   "unevaluatedProperties": false,
   "$defs": {
     "change": {

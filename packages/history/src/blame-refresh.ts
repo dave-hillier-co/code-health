@@ -3,10 +3,10 @@ import { join } from "node:path";
 import { resolveBlameOptions, type BlameSettings } from "./blame-options.ts";
 import { authoredFilesAt, parseBlameRanges, textFilesAt } from "./blame-lines.ts";
 import { reusableFiles } from "./blame-reuse.ts";
-import { fileKey, moveFilesTo, openBlameForWrite, pruneFiles, putBlamedFiles, storedFiles, type BlamedFile } from "./blame-store.ts";
+import { countFiles, fileKey, moveFilesTo, openBlameForRead, openBlameForWrite, pruneFiles, putBlamedFiles, storedFiles, type BlamedFile } from "./blame-store.ts";
 import { ensureCacheDir, locateCache } from "./cache-location.ts";
 import { runGit } from "./git.ts";
-import { withLock, type LockOptions } from "./lock.ts";
+import { lockIsHeld, withLock, type LockOptions } from "./lock.ts";
 import { resolveRef } from "./refresh.ts";
 
 export interface BlameProgress {
@@ -73,13 +73,19 @@ export async function refreshBlame(repoPath: string, options: BlameRefreshOption
   ensureCacheDir(location);
   const root = location.repoRoot;
 
+  if (lockIsHeld(location.blameLockPath, options.lock)) {
+    const done = await alreadyRight(location.blamePath, root, sha, options);
+    if (done) return done;
+  }
+
   return withLock(
     location.blameLockPath,
-    async () => {
+    async (lock) => {
       const settings = await resolveBlameOptions(root, sha, options);
       const wantedPaths = options.paths === undefined ? undefined : new Set(options.paths);
       const authored = (await authoredFilesAt(root, sha, options.exclude)).filter((f) => wantedPaths === undefined || wantedPaths.has(f.path));
       const wanted = new Map(authored.map((f) => [f.path, f.blob]));
+      lock.progress(`checking ${authored.length} files against the cache`);
 
       const { db, rebuilt } = openBlameForWrite(location.blamePath);
       try {
@@ -127,6 +133,7 @@ export async function refreshBlame(repoPath: string, options: BlameRefreshOption
               const out = await runGit(root, [...args, sha, "--", file.path]);
               finished.push({ path: file.path, blob: file.blob, ranges: parseBlameRanges(out) });
               blamed++;
+              lock.progress(`blamed ${blamed} of ${toBlame.length} files`);
               options.onProgress?.({ done: blamed, total: toBlame.length });
               if (finished.length >= batchSize) flush();
             } catch {
@@ -163,4 +170,26 @@ export async function refreshBlame(repoPath: string, options: BlameRefreshOption
     },
     options.lock,
   );
+}
+
+/**
+ * The result of a refresh that would change nothing, read without the lock: every wanted
+ * file already has a right blame and, for a whole-tree refresh, nothing is left to prune.
+ * Undefined when there is work to do. The store is in WAL mode, so this read sees the last
+ * committed state of a refresh another process is running and never blocks it.
+ */
+async function alreadyRight(blamePath: string, root: string, sha: string, options: BlameRefreshOptions): Promise<BlameRefreshResult | undefined> {
+  const db = openBlameForRead(blamePath);
+  if (!db) return undefined;
+  try {
+    const settings = await resolveBlameOptions(root, sha, options);
+    const wantedPaths = options.paths === undefined ? undefined : new Set(options.paths);
+    const authored = (await authoredFilesAt(root, sha, options.exclude)).filter((f) => wantedPaths === undefined || wantedPaths.has(f.path));
+    const reusable = await reusableFiles(root, sha, storedFiles(db, settings.id), new Map(authored.map((f) => [f.path, f.blob])));
+    if (reusable.length !== authored.length) return undefined;
+    if (wantedPaths === undefined && countFiles(db) !== reusable.length) return undefined;
+    return { headSha: sha, optionsId: settings.id, files: authored.length, blamed: 0, reused: reusable.length, noText: 0, failed: [], pruned: 0, rebuilt: false, aborted: false };
+  } finally {
+    db.close();
+  }
 }

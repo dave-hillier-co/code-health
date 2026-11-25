@@ -63,6 +63,7 @@
         "signal": {
           "enum": [
             "exact-email",
+            "same-organisation-address",
             "same-signing-key",
             "noreply-same-user",
             "noreply-matches-identity",
@@ -71,7 +72,8 @@
             "same-local-part",
             "handover",
             "exclusive-pairing",
-            "simultaneous-disjoint-areas"
+            "simultaneous-disjoint-areas",
+            "shared-mailbox"
           ]
         },
         "strength": {
@@ -109,7 +111,8 @@
           "type": "string"
         },
         "commits": {
-          "$ref": "common.schema.json#/$defs/count"
+          "$ref": "common.schema.json#/$defs/count",
+          "description": "Commits as author over the whole history, merge commits not counted."
         },
         "firstSeen": {
           "$ref": "#/$defs/day"
@@ -178,7 +181,7 @@
             "medium",
             "chain"
           ],
-          "description": "A chain is medium links in a line, shown for review and never merged as one."
+          "description": "Strong clusters are listed first. A chain is medium links in a line, or between strong clusters, shown for review and never merged as one: it holds only its medium links, and its members can also be in a strong cluster. No identity is in two clusters."
         },
         "counterEvidence": {
           "type": "boolean"
@@ -203,7 +206,8 @@
                 "description": "Other identities the mailmap already shows as this one."
               },
               "commits": {
-                "$ref": "common.schema.json#/$defs/count"
+                "$ref": "common.schema.json#/$defs/count",
+                "description": "Commits as author over the whole history, merge commits not counted."
               },
               "firstSeen": {
                 "$ref": "#/$defs/day"
@@ -303,6 +307,17 @@
             "trailer"
           ]
         },
+        "signal": {
+          "enum": [
+            "decision",
+            "identity",
+            "name",
+            "local-part",
+            "subjects",
+            "trailer"
+          ],
+          "description": "What classified it: a decision, a pattern matched against `Name <email>`, the name alone, the email's local part, the commit subjects, or a `Co-Authored-By` trailer."
+        },
         "pattern": {
           "type": "string"
         },
@@ -316,6 +331,7 @@
         "identity",
         "commits",
         "source",
+        "signal",
         "pattern",
         "decided"
       ],
@@ -364,18 +380,19 @@
           "items": {
             "$ref": "#/$defs/identity"
           },
-          "minItems": 1
+          "description": "Without --names, former contributors are left out, so the list can be empty."
         },
         "detail": {
-          "type": "string"
+          "type": "string",
+          "description": "Without --names, a finding about a former contributor says it in words that hold no name, address or date of theirs."
         },
-        "commits": {
+        "windowCommits": {
           "type": [
             "integer",
             "null"
           ],
           "minimum": 0,
-          "description": "Unmapped only: commits in the analysis window."
+          "description": "Unmapped only: commits as author in the analysis window, merge commits not counted. `propose` and `list` give `commits` over the whole history."
         },
         "lines": {
           "type": [
@@ -400,6 +417,10 @@
             "null"
           ],
           "description": "Unmapped only: the identity holds lines at HEAD or has at least the significantCommits guideline of commits in the window. Identities below it are listed after those above."
+        },
+        "formerContributors": {
+          "$ref": "common.schema.json#/$defs/count",
+          "description": "People the finding is about with no commit in cochange.knowledge.activityWindowMonths. Without --names their identities are not shown."
         }
       },
       "required": [
@@ -407,10 +428,11 @@
         "kind",
         "identities",
         "detail",
-        "commits",
+        "windowCommits",
         "lines",
         "linesShare",
-        "aboveGuideline"
+        "aboveGuideline",
+        "formerContributors"
       ],
       "additionalProperties": false
     },
@@ -449,6 +471,10 @@
         },
         "apply": {
           "type": "boolean"
+        },
+        "names": {
+          "type": "boolean",
+          "description": "`check` only. Whether former contributors are named."
         }
       },
       "required": [
@@ -617,10 +643,12 @@
           "properties": {
             "subcommand": {
               "const": "check"
-            }
+            },
+            "names": true
           },
           "required": [
-            "subcommand"
+            "subcommand",
+            "names"
           ]
         },
         "results": {

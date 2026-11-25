@@ -107,6 +107,7 @@
     "baseline": {
       "direct": 14,
       "mergedChanges": 16,
+      "mergedChangesInWindow": 16,
       "merges": 2,
       "population": 16,
       "since": "2023-06-07T09:00:00.000Z"
@@ -456,7 +457,8 @@
         "value": {
           "files": 2,
           "signatureChanges": 0,
-          "symbolFanIn": 0
+          "symbolFanIn": 0,
+          "symbolFanInUnresolved": 0
         }
       },
       {
@@ -582,8 +584,36 @@
         "population": 16
       },
       "events": [],
+      "families": [
+        {
+          "band": "low",
+          "factor": "size",
+          "family": "size-and-diffusion",
+          "points": 0
+        },
+        {
+          "band": "low",
+          "factor": "hotspots-touched",
+          "family": "history",
+          "points": 0
+        },
+        {
+          "band": "moderate",
+          "factor": "missing-co-change",
+          "family": "completeness",
+          "points": 1
+        },
+        {
+          "band": "moderate",
+          "factor": "blast-radius",
+          "family": "structure-and-content",
+          "points": 1
+        }
+      ],
+      "notCounted": [],
       "score": 2,
       "scoreBand": "moderate",
+      "summary": "Score 2: size-and-diffusion 0, history 0, completeness 1 (missing-co-change moderate), structure-and-content 1 (blast-radius moderate). A score is moderate above 0 and high above 3 (the 75th and 90th percentiles of 16 merged changes' scores), so 2 is moderate.",
       "unavailable": [
         "defect-history"
       ]

@@ -36,6 +36,7 @@ test("files are ranked by change frequency weighted by indentation complexity", 
   expect(code).toBe(ExitCode.Success);
   const document = json(stdout);
   expect(document.complexitySource).toBe("indentation");
+  expect(document.complexityMeasure).toBe("indentation-complexity");
   expect(document.inputs).toEqual({ by: "file", allFiles: false, includeTests: false, complexityReport: null });
   expect(document.results.map((r: { path: string }) => r.path)).toEqual([
     "src/core/engine.ts",
@@ -76,6 +77,7 @@ test("a complexity report stamped with the current head replaces the proxy and i
   ]);
   const document = json((await hotspots()).stdout);
   expect(document.complexitySource).toBe("complexity-report");
+  expect(document.complexityMeasure).toBe("indentation-complexity");
   expect(document.inputs.complexityReport).toEqual({ report: "complexity.files", head, config: "0".repeat(16) });
   expect(document.results.map((r: { path: string }) => r.path)).toEqual([
     "src/core/util.ts",

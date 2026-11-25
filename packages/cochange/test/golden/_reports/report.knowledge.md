@@ -158,12 +158,12 @@ _Guidelines order and label the rows and decide nothing. Held by former (%) 90 (
 | ---: | --- | ---: | --- | --- | ---: | ---: | --- |
 | 1 | src/api/auth.ts | 43 ▲ | no | yes | 1 | 0 | at-risk-hot |
 | 2 | src/api/routes.ts | 17.3 ▲ | no | yes | 2 | 0 | at-risk-hot |
-| 3 | src/ui/view.ts | 52.7 ▲ | no | no | 1 | 0 | at-risk-cold, no-successor |
+| 3 | src/ui/view.ts | 52.7 ▲ | no | no | 1 | 0 | at-risk-cold |
 | 4 | src/core/engine.ts | 100 ▲ | yes | no | 0 | 1 | abandoned, no-successor |
-| 5 | src/core/parser.ts | 100 ▲ | yes | no | 1 | 1 | abandoned, no-successor |
+| 5 | src/core/parser.ts | 100 ▲ | yes | no | 1 | 1 | abandoned |
 | 6 | src/gen/deps.ts | 100 ▲ | yes | no | 0 | 1 | abandoned, no-successor |
-| 7 | src/core/lexer.ts | 44.7 ▲ | no | no | 1 | 1 | at-risk-cold, no-successor |
-| 8 | src/util/log.ts | 44.7 ▲ | no | no | 1 | 0 | at-risk-cold, no-successor |
+| 7 | src/core/lexer.ts | 44.7 ▲ | no | no | 1 | 1 | at-risk-cold |
+| 8 | src/util/log.ts | 44.7 ▲ | no | no | 1 | 0 | at-risk-cold |
 
 _Guidelines order and label the rows and decide nothing. Probability (%) 10 (cochange.knowledge.atRiskProbability), ▲ marks a value above it._
 

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "depth.schema.json",
   "title": "complexity depth --json",
-  "description": "The interface depth signal for the shallow module and pass-through red flags: exported functions, classes and modules, and the exported pass-throughs. A whole-repository run on a clean tree is also stored as the complexity.depth report.",
+  "description": "The interface depth signal for the shallow module and pass-through red flags: exported functions, classes and modules, and the exported pass-throughs, the removable ones first, then the ones an interface or a framework requires. A whole-repository run on a clean tree is also stored as the complexity.depth report.",
   "allOf": [
     {
       "$ref": "common.schema.json#/$defs/envelope"
@@ -61,7 +61,29 @@
           "$ref": "common.schema.json#/$defs/count"
         },
         "passThrough": {
-          "$ref": "common.schema.json#/$defs/count"
+          "$ref": "common.schema.json#/$defs/count",
+          "description": "Listed pass-throughs, of every kind."
+        },
+        "passThroughByKind": {
+          "type": "object",
+          "description": "The listed pass-throughs by what keeps them: removable (nothing outside fixes them), interface (they implement or override an inherited method) and entryPoint (a framework calls them by an attribute).",
+          "properties": {
+            "removable": {
+              "$ref": "common.schema.json#/$defs/count"
+            },
+            "interface": {
+              "$ref": "common.schema.json#/$defs/count"
+            },
+            "entryPoint": {
+              "$ref": "common.schema.json#/$defs/count"
+            }
+          },
+          "required": [
+            "removable",
+            "interface",
+            "entryPoint"
+          ],
+          "additionalProperties": false
         },
         "passThroughNotExported": {
           "$ref": "common.schema.json#/$defs/count",
@@ -74,6 +96,7 @@
         "rows",
         "shallow",
         "passThrough",
+        "passThroughByKind",
         "passThroughNotExported"
       ],
       "additionalProperties": false
@@ -146,6 +169,20 @@
             ],
             "description": "The call the function's whole body forwards to."
           },
+          "required": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "enum": [
+                  "interface",
+                  "entry-point"
+                ]
+              }
+            ],
+            "description": "What fixes the unit's name and signature, where the language shows it: interface for a method that implements or overrides an inherited one (Rust trait impl, @Override, override), entry-point for a function a framework calls by an attribute (Rust procedural macro). Null otherwise."
+          },
           "role": {
             "$ref": "common.schema.json#/$defs/role"
           },
@@ -154,6 +191,7 @@
             "items": {
               "enum": [
                 "pass-through",
+                "required",
                 "shallow"
               ]
             }
@@ -161,7 +199,7 @@
           "score": {
             "type": "number",
             "minimum": 0,
-            "description": "The sort key: 1 for a pass-through plus the reciprocal of its depth."
+            "description": "The reciprocal of depth. Rows are ordered by group (pass-throughs that are not required, then required pass-throughs, then the rest), then by score, highest first, then by path."
           }
         },
         "required": [
@@ -176,6 +214,7 @@
           "interface",
           "depth",
           "passThrough",
+          "required",
           "role",
           "labels",
           "score"

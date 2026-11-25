@@ -6,10 +6,12 @@ import { fixFigures, fixHeader, fixNotices, fixOptionHelp, fixOptions, measureFi
 import { readSettings } from "../config.ts";
 import { metricIds } from "../metrics.ts";
 import { usageError } from "@code-health/cli-kit/errors";
+import { syntaxErrorAt } from "@code-health/parse/file-facts";
 import { defaultRankBy, rankByValues, rankUnits, sortKeys, sortRanked, type RankBy } from "../ranking.ts";
 import { includeTestsHelp, includeTestsOption, splitRoles, wantsTests } from "../roles.ts";
 import { ruleDescriptions } from "../rules.ts";
 import { unitRow } from "../rows.ts";
+import { withNonProductionFolders } from "@code-health/parse/non-production-folders";
 
 export const name = "analyse";
 
@@ -80,7 +82,7 @@ async function compute(context: CommandContext, paths: string[]): Promise<Comman
 
     // A file a grammar read has its interface shape; one it could not parse cleanly still has one, with syntax errors flagged.
     const parsedFiles = measurement.files.filter((file) => file.interfaces !== undefined).length;
-    const filesWithSyntaxErrors = measurement.files.filter((file) => file.hasSyntaxErrors).map((file) => file.path);
+    const filesWithSyntaxErrors = measurement.files.filter((file) => file.hasSyntaxErrors).map((file) => syntaxErrorAt(file.path, file));
     const syntaxErrorShare = parsedFiles === 0 ? 0 : filesWithSyntaxErrors.length / parsedFiles;
     const syntaxErrorNotices =
       parsedFiles > 0 && syntaxErrorShare * 100 > settings.syntaxErrorPercent
@@ -153,5 +155,6 @@ async function compute(context: CommandContext, paths: string[]): Promise<Comman
         "labels",
       ],
     };
-    return output;
+    const productionFiles = new Set(allRows.filter((row) => row.role === "production").map((row) => row.path));
+    return withNonProductionFolders(output, productionFiles);
 }

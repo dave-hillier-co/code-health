@@ -129,7 +129,7 @@ export const command = analysisCommand(name, {
           lines: delta(first.lines, last.lines),
         },
       },
-      extra: { complexitySource: "indentation" },
+      extra: { complexitySource: "indentation", complexityMeasure: "indentation-complexity" },
     };
   },
 });

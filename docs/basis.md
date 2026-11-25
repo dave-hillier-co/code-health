@@ -51,7 +51,7 @@ The suite departs from CodeScene in these ways:
 - **No single score.** CodeScene derives one 1 to 10 code health score per file from 25 or more factors whose weights it does not publish. The suite reports each measure with its evidence and gives no composite, because a number whose weights cannot be seen cannot be argued with or acted on.
 - **Guidelines annotate.** CodeScene's published defaults are used as guideline values, never as cut-offs.
 - **Coupling is tested against chance.** Structure classifies a pair as high co-change with an exact test against what independence predicts, where code-maat and CodeScene use a minimum number of shared revisions and a minimum degree.
-- **Generated and vendored code is detected.** CodeScene excludes by configured patterns. The suite also reads `.gitattributes` (`linguist-generated`, `linguist-vendored`), because it is the repository's own statement, and the header markers that generators write.
+- **Generated and vendored code is detected.** CodeScene excludes by configured patterns. The suite also reads `.gitattributes` (`linguist-generated`, `linguist-vendored`), because it is the repository's own statement, the header markers that generators write, and two path conventions that hold across ecosystems: minified files (`*.min.js`, `*.min.css`) and paths with a segment named `generated`. The config's `generatedPatterns` add paths or take them back.
 - **Fixes are counted per change that landed.** A fix made on a branch before it merged was caught in review and is not a regression, so it is listed apart as a fix during review and never counted as a fix.
 
 ### Design vocabulary: Ousterhout

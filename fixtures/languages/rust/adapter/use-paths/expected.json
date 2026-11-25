@@ -13,13 +13,15 @@
   },
   "importEdges": [
     "src/engine/mod.rs -> src/config.rs import",
+    "src/engine/mod.rs -> src/config.rs import via src/lib.rs",
     "src/engine/mod.rs -> src/engine/rules.rs import",
-    "src/engine/mod.rs -> src/lib.rs import",
+    "src/engine/mod.rs -> src/engine/rules.rs import nominal",
     "src/engine/rules.rs -> src/config.rs import",
     "src/engine/rules.rs -> src/engine/mod.rs import",
-    "src/lib.rs -> src/config.rs import",
-    "src/lib.rs -> src/engine/mod.rs import",
-    "src/lib.rs -> src/engine/mod.rs reexport"
+    "src/lib.rs -> src/config.rs import nominal",
+    "src/lib.rs -> src/config.rs reexport nominal",
+    "src/lib.rs -> src/engine/mod.rs import nominal",
+    "src/lib.rs -> src/engine/mod.rs reexport nominal"
   ],
   "fileEdges": [
     "src/engine/mod.rs -> src/config.rs call call=1 reference=2",

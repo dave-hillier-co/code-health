@@ -79,6 +79,13 @@ test("every file with a blame is labelled: a single owner, a single-owner hotspo
   expect(validate(document), JSON.stringify(validate.errors)).toBe(true);
 });
 
+test("rows come in pattern order, then by hotspot percentile, so the default listing starts with the single-owner hotspots", async () => {
+  const document = await patterns();
+  expect(document.results.map((r: { path: string }) => r.path)).toEqual([auth, view, log, deps, routes, engine, lexer, parser]);
+  const firstTwo = await runCochange(repo.path, ["abandonment", "patterns", "--limit", "2"]);
+  expect(JSON.parse(firstTwo.stdout).results.map((r: { path: string }) => r.path)).toEqual([auth, view]);
+});
+
 test("complex code by former contributors needs the file to be at the complexity guideline, and people who have left to hold the lines", async () => {
   // Every file in the fixture is equally flat, so they share the middle percentile: 50 reaches it and the default 75 does not.
   expect(patternOf(await patterns())[engine]).toBeNull();

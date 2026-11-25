@@ -201,6 +201,7 @@ var historyDefaults = {
 var sharedDefaults = {
   exclude: [],
   testPatterns: [],
+  generatedPatterns: [],
   languages: {},
   entryPoints: [],
   includeRoots: [],
@@ -208,7 +209,7 @@ var sharedDefaults = {
   vagueNames: ["utils", "helpers", "common", "misc"],
   history: historyDefaults
 };
-var stringLists = ["exclude", "testPatterns", "entryPoints", "includeRoots", "vagueNames"];
+var stringLists = ["exclude", "testPatterns", "generatedPatterns", "entryPoints", "includeRoots", "vagueNames"];
 var PLUGIN_SECTIONS = ["cochange", "complexity", "locality", "structure"];
 var documentKeys = ["$schema"];
 function rejectUnknownKeys(document2, plugin) {
@@ -356,11 +357,11 @@ function removedHint(path) {
   const moved = removedSettings[path];
   return moved === void 0 ? "" : `; it moved to ${moved}, which cochange.${moved.slice("history.".length)} may override`;
 }
-function flatten(value, path, visit2) {
+function flatten(value, path, visit3) {
   if (isPlainObject(value) && Object.keys(value).length > 0) {
-    for (const key of Object.keys(value)) flatten(value[key], path === "" ? key : `${path}.${key}`, visit2);
+    for (const key of Object.keys(value)) flatten(value[key], path === "" ? key : `${path}.${key}`, visit3);
   } else {
-    visit2(path, value);
+    visit3(path, value);
   }
 }
 function isPlainObject(value) {
@@ -439,6 +440,16 @@ function assertNodeVersion(version = process.versions.node) {
   }
 }
 
+// packages/cli-kit/src/generated-patterns.ts
+var BUILTIN_GENERATED_GLOBS = ["*.min.js", "*.min.css", "generated"];
+var configured = [];
+function useGeneratedPatterns(patterns) {
+  configured = [...patterns];
+}
+function generatedPatterns() {
+  return configured;
+}
+
 // packages/cli-kit/src/repo-state.ts
 import { execFileSync } from "node:child_process";
 function readRepoState(cwd) {
@@ -476,9 +487,10 @@ function shapeResults(results, options2) {
   if (!Array.isArray(results)) return { results, truncated: { limit: null, total: null, cut: 0 } };
   const { limit, fields, columns: columns13 } = options2;
   if (fields && columns13 && columns13.length > 0) {
-    const unknown = fields.filter((field6) => !columns13.includes(field6));
+    const valid = [.../* @__PURE__ */ new Set([...columns13, ...results.flatMap((row) => Object.keys(row))])];
+    const unknown = fields.filter((field6) => !valid.includes(field6));
     if (unknown.length > 0) {
-      throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${columns13.join(", ")}`);
+      throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${valid.join(", ")}`);
     }
   }
   const sorted = options2.presorted === true ? results : [...results].sort(byScoreThenPath);
@@ -592,6 +604,7 @@ async function execute(cli2, io) {
   resetBuiltinOmissions();
   resetRunNotes();
   resetDropped();
+  useGeneratedPatterns(config.effective.generatedPatterns);
   const output = await command13.run(context);
   if (output.text !== void 0) {
     for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}
@@ -686,7 +699,7 @@ ${rule2.explanation}
 var commonOptionHelp = [
   "  --json            JSON output (default when stdout is not a terminal)",
   "  --limit <n|all>   maximum rows (default 20)",
-  "  --fields <a,b>    project result columns",
+  "  --fields <a,b>    project result fields",
   "  --help            show help"
 ];
 function helpText(cli2) {
@@ -797,15 +810,28 @@ async function gitVersion(cwd) {
 
 // packages/history/src/lock.ts
 import { randomUUID } from "node:crypto";
-import { closeSync, openSync, readFileSync as readFileSync2, renameSync, rmSync, statSync, utimesSync, writeSync, linkSync } from "node:fs";
+import { closeSync, openSync, readFileSync as readFileSync2, renameSync, rmSync, statSync, utimesSync, writeFileSync, writeSync, linkSync } from "node:fs";
 import { hostname } from "node:os";
+import { basename } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 var LockTimeoutError = class extends Error {
-  constructor(path) {
-    super(`Timed out waiting for lock ${path}`);
+  constructor(path, holder, quietMs) {
+    super(`Timed out waiting for ${basename(path)}: ${holder} holds it and showed no progress for ${formatDuration(quietMs)}`);
     this.name = "LockTimeoutError";
   }
 };
+function formatDuration(ms) {
+  const seconds = Math.max(0, Math.floor(ms / 1e3));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ${seconds % 60}s`;
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
+function commandLine() {
+  const script = process.argv[1] === void 0 ? "node" : basename(process.argv[1]).replace(/\.[cm]?[jt]s$/, "");
+  const line = [script, ...process.argv.slice(2)].join(" ");
+  return line.length > 200 ? `${line.slice(0, 199)}…` : line;
+}
 function readRaw(path) {
   try {
     return readFileSync2(path, "utf8");
@@ -820,28 +846,40 @@ function fileAge(path) {
     return 0;
   }
 }
-function ownerIsGone(path, raw, staleMs, unreadableMs) {
-  let owner;
+function parseOwner(raw) {
   try {
-    owner = JSON.parse(raw);
-    if (typeof owner.pid !== "number" || typeof owner.host !== "string") throw new Error("not a lock");
+    const owner = JSON.parse(raw);
+    if (typeof owner.pid !== "number" || typeof owner.host !== "string") return void 0;
+    return owner;
   } catch {
-    return fileAge(path) > unreadableMs;
+    return void 0;
+  }
+}
+function describeHolder(owner) {
+  const host = owner.host === hostname() ? "" : ` on host ${owner.host}`;
+  const command13 = owner.command === void 0 ? "" : ` (${owner.command})`;
+  return `process ${owner.pid}${host}${command13}`;
+}
+function abandonment(path, raw, staleMs, unreadableMs) {
+  const owner = parseOwner(raw);
+  if (owner === void 0) {
+    const age2 = fileAge(path);
+    return age2 > unreadableMs ? `the lock file is unreadable and ${formatDuration(age2)} old` : void 0;
   }
   if (owner.host === hostname()) {
     try {
       process.kill(owner.pid, 0);
-      return false;
+      return void 0;
     } catch (error) {
-      return error.code === "ESRCH";
+      return error.code === "ESRCH" ? `${describeHolder(owner)} is no longer running` : void 0;
     }
   }
-  return fileAge(path) > staleMs;
+  const age = fileAge(path);
+  return age > staleMs ? `${describeHolder(owner)} has not updated the lock for ${formatDuration(age)}` : void 0;
 }
-function tryCreate(path, token) {
+function tryCreate(path, owner) {
   try {
     const fd = openSync(path, "wx");
-    const owner = { token, pid: process.pid, host: hostname(), time: Date.now() };
     writeSync(fd, JSON.stringify(owner));
     closeSync(fd);
     return true;
@@ -855,29 +893,85 @@ function steal(path, judged) {
   try {
     renameSync(path, aside);
   } catch {
-    return;
+    return false;
   }
-  if (readRaw(aside) !== judged) {
+  const removed = readRaw(aside) === judged;
+  if (!removed) {
     try {
       linkSync(aside, path);
     } catch {
     }
   }
   rmSync(aside, { force: true });
+  return removed;
 }
+function rewrite(path, owner) {
+  const current = readRaw(path);
+  if (current === void 0 || parseOwner(current)?.token !== owner.token) return;
+  const next = `${path}.${owner.token}.tmp`;
+  try {
+    writeFileSync(next, JSON.stringify(owner));
+    renameSync(next, path);
+  } catch {
+    rmSync(next, { force: true });
+  }
+}
+var toStderr = (line) => {
+  process.stderr.write(`${line}
+`);
+};
 async function withLock(path, fn, options2 = {}) {
-  const { timeoutMs = 12e4, staleMs = 6e5, unreadableMs = 5e3, pollMs = 25 } = options2;
-  const deadline = Date.now() + timeoutMs;
-  const token = randomUUID();
-  while (!tryCreate(path, token)) {
+  const {
+    timeoutMs = 3e5,
+    staleMs = 6e5,
+    unreadableMs = 5e3,
+    pollMs = 25,
+    noticeAfterMs = 2e3,
+    noticeEveryMs = 3e4,
+    progressEveryMs = 1e3,
+    notify = toStderr
+  } = options2;
+  const name14 = basename(path);
+  const owner = { token: randomUUID(), pid: process.pid, host: hostname(), time: Date.now(), command: commandLine() };
+  const waitStarted = Date.now();
+  let nextNotice = waitStarted + noticeAfterMs;
+  let lastSeen;
+  let quietSince = waitStarted;
+  for (; ; ) {
+    owner.time = Date.now();
+    if (tryCreate(path, owner)) break;
     const raw = readRaw(path);
-    if (raw !== void 0 && ownerIsGone(path, raw, staleMs, unreadableMs)) {
-      steal(path, raw);
+    const now = Date.now();
+    if (raw === void 0) continue;
+    if (raw !== lastSeen) {
+      lastSeen = raw;
+      quietSince = now;
+    }
+    const reason = abandonment(path, raw, staleMs, unreadableMs);
+    if (reason !== void 0) {
+      if (steal(path, raw)) notify(`${name14}: ${reason}, so this command takes the lock over`);
       continue;
     }
-    if (Date.now() > deadline) throw new LockTimeoutError(path);
+    const holder = parseOwner(raw);
+    if (now - quietSince > timeoutMs) {
+      throw new LockTimeoutError(path, holder === void 0 ? "a process that has not written its details" : describeHolder(holder), timeoutMs);
+    }
+    if (now >= nextNotice) {
+      notify(waitingLine(name14, holder, now));
+      nextNotice = now + noticeEveryMs;
+    }
     await sleep(pollMs);
   }
+  let lastProgress = 0;
+  const lock = {
+    progress(text3) {
+      const now = Date.now();
+      if (text3 === owner.progress || now - lastProgress < progressEveryMs) return;
+      owner.progress = text3;
+      lastProgress = now;
+      rewrite(path, owner);
+    }
+  };
   const heartbeat = setInterval(() => {
     try {
       const now = /* @__PURE__ */ new Date();
@@ -887,27 +981,21 @@ async function withLock(path, fn, options2 = {}) {
   }, Math.max(1e3, Math.floor(staleMs / 4)));
   heartbeat.unref();
   try {
-    return await fn();
+    return await fn(lock);
   } finally {
     clearInterval(heartbeat);
     const raw = readRaw(path);
-    if (raw !== void 0 && safeToken(raw) === token) rmSync(path, { force: true });
+    if (raw !== void 0 && parseOwner(raw)?.token === owner.token) rmSync(path, { force: true });
   }
 }
-function safeToken(raw) {
-  try {
-    return JSON.parse(raw).token;
-  } catch {
-    return void 0;
-  }
+function waitingLine(name14, holder, now) {
+  if (holder === void 0) return `waiting for ${name14}: held by a process that has not written its details yet`;
+  const progress = holder.progress === void 0 ? "" : `, ${holder.progress}`;
+  return `waiting for ${name14}: held by ${describeHolder(holder)} for ${formatDuration(now - holder.time)}${progress}`;
 }
 
 // packages/history/src/file-class.ts
 import { spawn as spawn2 } from "node:child_process";
-
-// packages/history/src/builtin-excludes.ts
-import { existsSync as existsSync2 } from "node:fs";
-import { join as join2 } from "node:path";
 
 // packages/history/src/glob.ts
 function escape(ch) {
@@ -985,6 +1073,8 @@ function compileGlobs(patterns) {
 }
 
 // packages/history/src/builtin-excludes.ts
+import { existsSync as existsSync2 } from "node:fs";
+import { join as join2 } from "node:path";
 var matchers = BUILTIN_EXCLUDE_GLOBS.map((glob) => ({ glob, matches: compileGlobs([glob]) }));
 function builtinExcluder(root, gitlinks = [], options2 = {}) {
   const record4 = options2.record ?? true;
@@ -1109,6 +1199,18 @@ function isInVendorDirectory(path) {
   const parts3 = path.split("/");
   parts3.pop();
   return parts3.some((part) => VENDOR_DIRECTORIES.includes(part));
+}
+function generatedPathClassifier(patterns = generatedPatterns()) {
+  const builtin = compileGlobs(BUILTIN_GENERATED_GLOBS);
+  const entries = patterns.map((pattern) => pattern.trim()).filter((pattern) => pattern !== "" && !pattern.startsWith("#")).map(
+    (pattern) => pattern.startsWith("!") ? { generated: false, matches: compileGlobs([pattern.slice(1)]) } : { generated: true, matches: compileGlobs([pattern]) }
+  );
+  return (path) => {
+    for (let index = entries.length - 1; index >= 0; index--) {
+      if (entries[index].matches(path)) return entries[index].generated;
+    }
+    return builtin(path) ? true : void 0;
+  };
 }
 var verdicts = /* @__PURE__ */ new Map();
 async function readBlobHeads(repoPath, blobs) {
@@ -1240,11 +1342,14 @@ async function classifyFiles(repoPath, ref, entries, treeFiles, options2 = {}) {
   const vendored = new Set(attributes.vendored);
   for (const path of paths) if (isInVendorDirectory(path) && !attributes.notVendored.has(path)) vendored.add(path);
   const generated = new Set(attributes.generated);
+  const byPath = generatedPathClassifier();
   const candidate = options2.headerCandidate ?? maybeText;
   const toRead = [];
   for (const { path, blob } of entries) {
     if (generated.has(path) || vendored.has(path) || attributes.notGenerated.has(path)) continue;
-    if (typeof blob === "string" && candidate(path)) toRead.push({ path, blob });
+    const verdict = byPath(path);
+    if (verdict === true) generated.add(path);
+    else if (verdict === void 0 && typeof blob === "string" && candidate(path)) toRead.push({ path, blob });
   }
   for (const path of await generatedByHeader(repoPath, toRead, options2.read)) generated.add(path);
   return { generated, vendored };
@@ -1529,8 +1634,8 @@ async function filterHistory(repoPath, view, options2 = {}) {
 import { existsSync as existsSync6 } from "node:fs";
 
 // packages/history/src/cache-location.ts
-import { existsSync as existsSync3, mkdirSync, writeFileSync } from "node:fs";
-import { basename, dirname, join as join3 } from "node:path";
+import { existsSync as existsSync3, mkdirSync, writeFileSync as writeFileSync2 } from "node:fs";
+import { basename as basename2, dirname, join as join3 } from "node:path";
 async function locateCache(repoPath) {
   const out2 = await runGit(repoPath, [
     "rev-parse",
@@ -1540,7 +1645,7 @@ async function locateCache(repoPath) {
   ]);
   const [repoRoot, gitDir] = out2.split("\n");
   if (!repoRoot || !gitDir) throw new Error(`Not a git working tree: ${repoPath}`);
-  const cacheRoot = basename(gitDir) === ".git" ? dirname(gitDir) : repoRoot;
+  const cacheRoot = basename2(gitDir) === ".git" ? dirname(gitDir) : repoRoot;
   const cacheDir = join3(cacheRoot, ".cache", "code-health");
   return {
     repoRoot,
@@ -1558,7 +1663,7 @@ function ensureCacheDir(location) {
 function ensureSelfIgnoring(directory) {
   mkdirSync(directory, { recursive: true });
   const ignore = join3(directory, ".gitignore");
-  if (!existsSync3(ignore)) writeFileSync(ignore, "*\n");
+  if (!existsSync3(ignore)) writeFileSync2(ignore, "*\n");
 }
 
 // packages/history/src/refresh.ts
@@ -1896,7 +2001,7 @@ async function refresh(repoPath, options2 = {}) {
   ensureCacheDir(location);
   return withLock(
     location.lockPath,
-    async () => {
+    async (lock) => {
       const shallow = await readShallowInfo(location.repoRoot);
       const version = await gitVersion(location.repoRoot);
       const { db, rebuilt } = openForWrite(location.dbPath, settings);
@@ -1912,6 +2017,7 @@ async function refresh(repoPath, options2 = {}) {
           const batch = missing.slice(i2, i2 + batchSize3);
           const out2 = await runGit(location.repoRoot, logArgs(settings), { input: batch.join("\n") + "\n" });
           insertCommits(db, parseLog(out2), boundary);
+          lock.progress(`read ${i2 + batch.length} of ${missing.length} commits`);
         }
         setMeta(db, "git_version", version);
         return { headSha, added: missing.length, reachable: reachable.length, rebuilt, shallow, gitVersion: version };
@@ -2114,7 +2220,9 @@ function mapHistoryError(error) {
   if (error instanceof RefNotFoundError) return usageError(error.message);
   if (error instanceof InvalidPatternError) return configError(error.message);
   if (error instanceof NoCacheError) return environmentError("no-cache", error.message);
-  if (error instanceof LockTimeoutError) return environmentError("lock-timeout", error.message);
+  if (error instanceof LockTimeoutError) {
+    return environmentError("lock-timeout", `${error.message}; run the command again once that process finishes, or pass --no-refresh to read the cache as it is without waiting`);
+  }
   if (error instanceof SqliteUnavailableError) return environmentError("node-too-old", error.message);
   if (error instanceof GitError) return environmentError("git-failed", error.message);
   return void 0;
@@ -6390,6 +6498,16 @@ function resolveBySymbols(input, options2 = {}) {
     return edge;
   };
   const unitNames = (facts) => new Set(facts.units.map((unit) => unit.qualifiedName));
+  const byWritten = /* @__PURE__ */ new Map();
+  const declaredAs = (written, scope, entries) => {
+    const scopes2 = byWritten.get(written);
+    if (scopes2 === void 0) byWritten.set(written, /* @__PURE__ */ new Map([[scope, entries]]));
+    else scopes2.set(scope, entries);
+  };
+  for (const [name14, entries] of table4) {
+    declaredAs(name14, "", entries);
+    for (let dot = name14.indexOf(".", 1); dot !== -1; dot = name14.indexOf(".", dot + 1)) declaredAs(name14.slice(dot + 1), name14.slice(0, dot), entries);
+  }
   for (const [file, facts] of input.facts) {
     const symbols = facts.symbols;
     if (symbols === void 0) continue;
@@ -6401,8 +6519,9 @@ function resolveBySymbols(input, options2 = {}) {
       const known = resolved.get(name14);
       if (known !== void 0) return known;
       let found = null;
-      for (const scope of scopes2) {
-        const candidates2 = table4.get(scope === "" ? name14 : `${scope}.${name14}`)?.filter((entry) => entry.declaration.internal !== true || entry.file === file);
+      const declared = byWritten.get(name14);
+      for (const scope of declared === void 0 ? [] : scopes2) {
+        const candidates2 = declared.get(scope)?.filter((entry) => entry.declaration.internal !== true || entry.file === file);
         if (candidates2 !== void 0 && candidates2.length > 0) {
           found = candidates2;
           break;
@@ -7474,11 +7593,11 @@ function lastName(node) {
 }
 function annotation(node) {
   const names2 = /* @__PURE__ */ new Set();
-  const visit2 = (current) => {
+  const visit3 = (current) => {
     if (current.type === "type_identifier") names2.add(current.text);
-    for (const child2 of current.namedChildren) visit2(child2);
+    for (const child2 of current.namedChildren) visit3(child2);
   };
-  if (node !== null) visit2(node);
+  if (node !== null) visit3(node);
   return { callback: false, names: [...names2].sort() };
 }
 function parametersOf(list3) {
@@ -7514,7 +7633,7 @@ function importOf(node) {
 }
 function extractFileCensus(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
-  const visit2 = (node, className) => {
+  const visit3 = (node, className) => {
     const line = node.startPosition.row + 1;
     let nextClass = className;
     switch (node.type) {
@@ -7587,9 +7706,9 @@ function extractFileCensus(root) {
       }
       default:
     }
-    for (const child2 of node.children) visit2(child2, nextClass);
+    for (const child2 of node.children) visit3(child2, nextClass);
   };
-  visit2(root, null);
+  visit3(root, null);
   return facts;
 }
 
@@ -7760,12 +7879,12 @@ var bindingParents = /* @__PURE__ */ new Set([
 function modifierWords(node) {
   const modifiers = node.namedChildren.find((child2) => child2.type === "modifiers");
   const words3 = /* @__PURE__ */ new Set();
-  const visit2 = (current) => {
+  const visit3 = (current) => {
     if (current.type === "annotation") return;
     if (current.childCount === 0 && !current.isNamed) words3.add(current.type);
-    for (const child2 of current.children) visit2(child2);
+    for (const child2 of current.children) visit3(child2);
   };
-  if (modifiers !== void 0) visit2(modifiers);
+  if (modifiers !== void 0) visit3(modifiers);
   return words3;
 }
 function startRow2(node) {
@@ -8071,12 +8190,12 @@ function lastName2(node) {
 function annotation2(node) {
   const names2 = /* @__PURE__ */ new Set();
   let callback = false;
-  const visit2 = (current) => {
+  const visit3 = (current) => {
     if (current.type === "user_type") for (const name14 of identifiersOf(current).slice(-1)) names2.add(name14);
     if (current.type === "function_type") callback = true;
-    for (const child2 of current.namedChildren) visit2(child2);
+    for (const child2 of current.namedChildren) visit3(child2);
   };
-  if (node !== null) visit2(node);
+  if (node !== null) visit3(node);
   return { callback, names: [...names2].sort() };
 }
 function typeOf(parameter) {
@@ -8104,7 +8223,7 @@ function heritageOf2(node) {
 }
 function extractFileCensus2(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
-  const visit2 = (node, className) => {
+  const visit3 = (node, className) => {
     const line = node.startPosition.row + 1;
     let nextClass = className;
     switch (node.type) {
@@ -8171,9 +8290,9 @@ function extractFileCensus2(root) {
       }
       default:
     }
-    for (const child2 of node.children) visit2(child2, nextClass);
+    for (const child2 of node.children) visit3(child2, nextClass);
   };
-  visit2(root, null);
+  visit3(root, null);
   return facts;
 }
 
@@ -8320,13 +8439,13 @@ function lastName3(node) {
 function annotation3(node) {
   const names2 = /* @__PURE__ */ new Set();
   let callback = false;
-  const visit2 = (current, insideObject) => {
+  const visit3 = (current, insideObject) => {
     if (current.type === "type_identifier") names2.add(current.text);
     if (current.type === "function_type" && !insideObject) callback = true;
     const nested = insideObject || current.type === "object_type";
-    for (const child2 of current.namedChildren) visit2(child2, nested);
+    for (const child2 of current.namedChildren) visit3(child2, nested);
   };
-  if (node) visit2(node, false);
+  if (node) visit3(node, false);
   return { callback, names: [...names2].sort() };
 }
 function parametersOf3(list3) {
@@ -8366,7 +8485,7 @@ function heritageOf3(node) {
 }
 function extractFileCensus3(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
-  const visit2 = (node, className) => {
+  const visit3 = (node, className) => {
     const line = node.startPosition.row + 1;
     let nextClass = className;
     switch (node.type) {
@@ -8465,9 +8584,9 @@ function extractFileCensus3(root) {
         break;
       }
     }
-    for (const child2 of node.children) visit2(child2, nextClass);
+    for (const child2 of node.children) visit3(child2, nextClass);
   };
-  visit2(root, null);
+  visit3(root, null);
   return facts;
 }
 
@@ -9207,7 +9326,7 @@ var statementWords = /* @__PURE__ */ new Set(["abstract", "as", "satisfies"]);
 var afterStatementWord = /^\s*(\+\+|--|[-+*/%&|^]?=|\*\*=|\.|\(|\[|,|;|\)|$)/;
 function typescriptRepairs(root, source) {
   const offsets = /* @__PURE__ */ new Set();
-  const visit2 = (node) => {
+  const visit3 = (node) => {
     if (!node.hasError) return;
     if (node.type === "ERROR") {
       const start2 = node.startIndex;
@@ -9219,9 +9338,9 @@ function typescriptRepairs(root, source) {
         else if (statementWords.has(word) && afterStatementWord.test(rest)) offsets.add(start2);
       }
     }
-    for (const child2 of node.children) visit2(child2);
+    for (const child2 of node.children) visit3(child2);
   };
-  visit2(root);
+  visit3(root);
   return [...offsets].sort((a, b) => a - b).map((offset) => ({ offset, character: "_" }));
 }
 
@@ -10400,7 +10519,7 @@ function extractFileCensus4(root) {
     if (declared.type === "event_declaration") events.add(declared.childForFieldName("name")?.text ?? "");
     else for (const declarator of declared.descendantsOfType("variable_declarator")) events.add(declarator.childForFieldName("name")?.text ?? "");
   }
-  const visit2 = (node, className) => {
+  const visit3 = (node, className) => {
     const line = node.startPosition.row + 1;
     let nextClass = className;
     switch (node.type) {
@@ -10466,9 +10585,9 @@ function extractFileCensus4(root) {
       }
       default:
     }
-    for (const child2 of node.namedChildren) visit2(child2, nextClass);
+    for (const child2 of node.namedChildren) visit3(child2, nextClass);
   };
-  visit2(root, null);
+  visit3(root, null);
   return facts;
 }
 function isDictionary(node, type) {
@@ -10504,7 +10623,7 @@ function callOf(node, line, events) {
 
 // packages/parse/src/languages/csharp/resolve.ts
 var compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-var basename2 = (path) => path.slice(path.lastIndexOf("/") + 1);
+var basename3 = (path) => path.slice(path.lastIndexOf("/") + 1);
 function withGlobalUsings(facts, owner) {
   const globals = /* @__PURE__ */ new Map();
   for (const [path, file] of facts) {
@@ -10536,7 +10655,7 @@ function partialTypes(facts, owner) {
   for (const [key, parts3] of declared) {
     if (parts3.length < 2) continue;
     const primary = `${nameOf(key).slice(nameOf(key).lastIndexOf(".") + 1)}.cs`;
-    partial.set(key, parts3.sort((a, b) => Number(basename2(b.file) === primary) - Number(basename2(a.file) === primary) || compare(a.file, b.file)));
+    partial.set(key, parts3.sort((a, b) => Number(basename3(b.file) === primary) - Number(basename3(a.file) === primary) || compare(a.file, b.file)));
   }
   return partial;
 }
@@ -10984,15 +11103,15 @@ function lastName4(node) {
 function typeFact(type, functionPointer) {
   const names2 = /* @__PURE__ */ new Set();
   let callback = functionPointer;
-  const visit2 = (current) => {
+  const visit3 = (current) => {
     if (current.type === "type_identifier") {
       names2.add(current.text);
       if (current.text === "function" && current.parent?.type === "template_type") callback = true;
     }
     if (current.type === "abstract_function_declarator" || current.type === "function_declarator") callback = true;
-    for (const child2 of current.namedChildren) visit2(child2);
+    for (const child2 of current.namedChildren) visit3(child2);
   };
-  if (type !== null) visit2(type);
+  if (type !== null) visit3(type);
   return { callback, names: [...names2].sort() };
 }
 function parameterFacts(list3) {
@@ -11034,7 +11153,7 @@ function isFunctionTypeAlias(type) {
 }
 function extractFileCensus5(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
-  const visit2 = (node, className, atFileLevel) => {
+  const visit3 = (node, className, atFileLevel) => {
     const line = node.startPosition.row + 1;
     let nextClass = className;
     let nextFileLevel = atFileLevel;
@@ -11155,7 +11274,7 @@ function extractFileCensus5(root) {
       default:
         nextFileLevel = false;
     }
-    for (const child2 of node.children) visit2(child2, nextClass, nextFileLevel);
+    for (const child2 of node.children) visit3(child2, nextClass, nextFileLevel);
   };
   const collectMap = (node, line) => {
     const type = field3(node, "type");
@@ -11168,7 +11287,7 @@ function extractFileCensus5(root) {
       if (current !== null && registryName5.test(current.text)) facts.keyedMaps.push({ line, name: current.text });
     }
   };
-  visit2(root, null, true);
+  visit3(root, null, true);
   return facts;
 }
 
@@ -13261,14 +13380,14 @@ function receiverName2(node) {
 function annotation4(node) {
   const names2 = /* @__PURE__ */ new Set();
   let callback = false;
-  const visit2 = (current) => {
+  const visit3 = (current) => {
     if (current.type === "identifier") {
       names2.add(current.text);
       if (current.text === "Callable") callback = true;
     }
-    for (const child2 of current.namedChildren) visit2(child2);
+    for (const child2 of current.namedChildren) visit3(child2);
   };
-  if (node !== null) visit2(node);
+  if (node !== null) visit3(node);
   return { callback, names: [...names2].sort() };
 }
 function parametersOf5(fn) {
@@ -13310,7 +13429,7 @@ function isFunctionType(value) {
 }
 function extractFileCensus6(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
-  const visit2 = (node, owner) => {
+  const visit3 = (node, owner) => {
     const line = node.startPosition.row + 1;
     let nextOwner = owner;
     switch (node.type) {
@@ -13388,9 +13507,9 @@ function extractFileCensus6(root) {
       }
       default:
     }
-    for (const child2 of node.children) visit2(child2, nextOwner);
+    for (const child2 of node.children) visit3(child2, nextOwner);
   };
-  visit2(root, null);
+  visit3(root, null);
   return facts;
 }
 
@@ -13859,13 +13978,13 @@ function lastName6(node) {
 function annotation5(node) {
   const names2 = /* @__PURE__ */ new Set();
   let callback = false;
-  const visit2 = (current, inside) => {
+  const visit3 = (current, inside) => {
     if (current.type === "type_identifier") names2.add(current.text);
     if (current.type === "function_type" && !inside) callback = true;
     const nested = inside || current.type === "struct_type" || current.type === "interface_type";
-    for (const child2 of current.namedChildren) visit2(child2, nested);
+    for (const child2 of current.namedChildren) visit3(child2, nested);
   };
-  if (node !== null) visit2(node, false);
+  if (node !== null) visit3(node, false);
   return { callback, names: [...names2].sort() };
 }
 function parametersOf6(list3) {
@@ -13915,7 +14034,7 @@ function extractFileCensus7(root) {
     const name14 = child2.childForFieldName("name")?.text ?? "";
     if (name14.startsWith("New")) constructors.set(name14, parametersOf6(child2.childForFieldName("parameters")).flatMap((parameter) => parameter.type.names));
   }
-  const visit2 = (node) => {
+  const visit3 = (node) => {
     const line = node.startPosition.row + 1;
     switch (node.type) {
       case "import_spec": {
@@ -13988,9 +14107,9 @@ function extractFileCensus7(root) {
       }
       default:
     }
-    for (const child2 of node.namedChildren) visit2(child2);
+    for (const child2 of node.namedChildren) visit3(child2);
   };
-  visit2(root);
+  visit3(root);
   return facts;
 }
 
@@ -14610,24 +14729,24 @@ var Extractor7 = class {
     const type = node.childForFieldName("type");
     if (type !== null) this.walk(type, context, node, "type");
     const keysAreValues = type !== null && ["map_type", "slice_type", "array_type", "implicit_length_array_type"].includes(type.type);
-    const visit2 = (literal) => {
+    const visit3 = (literal) => {
       for (const element2 of literal.namedChildren) {
         if (element2.type === "keyed_element") {
           const key = element2.childForFieldName("key");
           const value = element2.childForFieldName("value");
           const bareKey = key?.namedChildren.length === 1 && key.namedChildren[0]?.type === "identifier";
-          if (key !== null && (keysAreValues || !bareKey)) this.walkElement(key, context, visit2);
-          if (value !== null) this.walkElement(value, context, visit2);
-        } else this.walkElement(element2, context, visit2);
+          if (key !== null && (keysAreValues || !bareKey)) this.walkElement(key, context, visit3);
+          if (value !== null) this.walkElement(value, context, visit3);
+        } else this.walkElement(element2, context, visit3);
       }
     };
     const body2 = node.childForFieldName("body");
-    if (body2 !== null) visit2(body2);
+    if (body2 !== null) visit3(body2);
   }
-  walkElement(element2, context, visit2) {
+  walkElement(element2, context, visit3) {
     const inner2 = element2.type === "literal_element" ? element2.namedChildren : [element2];
     for (const child2 of inner2) {
-      if (child2.type === "literal_value") visit2(child2);
+      if (child2.type === "literal_value") visit3(child2);
       else this.walk(child2, context, element2, null);
     }
   }
@@ -14904,6 +15023,7 @@ var ModuleTree = class {
   tree;
   implicitRoots;
   places = /* @__PURE__ */ new Map();
+  crateOfDirectory = /* @__PURE__ */ new Map();
   constructor(paths, crates) {
     this.tree = new Set(paths);
     this.crates = crates;
@@ -14913,13 +15033,17 @@ var ModuleTree = class {
   has(path) {
     return this.tree.has(path);
   }
+  /** The crate with the deepest directory above the file. Files of one directory have one crate, so it is found once per directory. */
   crateOf(file) {
+    const directory = posix14.dirname(file);
+    if (this.crateOfDirectory.has(directory)) return this.crateOfDirectory.get(directory);
     let best;
     for (const crate of this.crates) {
       if (crate.name === null) continue;
       if (crate.dir !== "." && !file.startsWith(`${crate.dir}/`)) continue;
       if (best === void 0 || crate.dir.length > best.dir.length) best = crate;
     }
+    this.crateOfDirectory.set(directory, best);
     return best;
   }
   placeOf(file) {
@@ -14930,9 +15054,11 @@ var ModuleTree = class {
     if (roots.includes(file)) root = file;
     else {
       const rank = (candidate) => candidate === crate?.libRoot || /(^|\/)lib\.rs$/.test(candidate) ? 0 : /(^|\/)main\.rs$/.test(candidate) ? 1 : 2;
+      const libDir = crate?.libRoot === void 0 ? void 0 : posix14.dirname(crate.libRoot);
+      const insideLibrary = (candidate) => libDir !== void 0 && candidate !== crate?.libRoot && file.startsWith(`${libDir}/`) && candidate.startsWith(`${libDir}/`) && !candidate.startsWith(`${libDir}/bin/`) && posix14.basename(candidate) !== "main.rs";
       const candidates2 = roots.filter((candidate) => {
         const dir = posix14.dirname(candidate);
-        return dir === "." || file.startsWith(`${dir}/`);
+        return (dir === "." || file.startsWith(`${dir}/`)) && !insideLibrary(candidate);
       });
       candidates2.sort((a, b) => posix14.dirname(b).length - posix14.dirname(a).length || rank(a) - rank(b) || compare2(a, b));
       const shortest = candidates2[0] === void 0 ? void 0 : posix14.dirname(candidates2[0]).length;
@@ -14961,23 +15087,38 @@ var ModuleTree = class {
    * for an inline module and stepped over, so the files of modules declared inside it are still found. A
    * name that starts with a capital is an item, which ends the walk. `consumed` counts the names up to the
    * last file reached, so the rest name items of that file.
+   *
+   * `reexported`, when given, says which file a name of a module file is when the module only re-exports it
+   * (`pub use other::name`), and the walk moves into that file, which may be in another crate. It says null for
+   * a name that is re-exported from outside the tree, which ends the walk with `outside` set.
    */
-  walk(from, names2) {
+  walk(from, names2, reexported) {
     let file = from.file;
-    let directory = moduleDirectory(file, from.root);
+    let root = from.root;
+    let directory = moduleDirectory(file, root);
     let consumed = 0;
+    let via;
     for (let index = 0; index < names2.length; index++) {
       const name14 = names2[index];
       const found = this.child(directory, name14);
+      const elsewhere = found === void 0 ? reexported?.(file, name14) : void 0;
       if (found !== void 0) {
         file = found;
-        directory = moduleDirectory(found, from.root);
+        directory = moduleDirectory(found, root);
+        consumed = index + 1;
+      } else if (elsewhere === null) {
+        return { file, consumed, outside: true };
+      } else if (elsewhere !== void 0 && elsewhere !== file) {
+        via ??= file;
+        file = elsewhere;
+        root = this.placeOf(elsewhere)?.root ?? elsewhere;
+        directory = moduleDirectory(elsewhere, root);
         consumed = index + 1;
       } else if (/^[a-z_]/.test(name14)) {
         directory = posix14.join(directory, name14);
       } else break;
     }
-    return { file, consumed };
+    return { file, consumed, ...via === void 0 ? {} : { via } };
   }
 };
 
@@ -15187,13 +15328,24 @@ var rustMetricRules = {
   parameterCounts: parameterCounts7
 };
 
-// packages/parse/src/languages/rust/extract-facts.ts
-var extractorVersion4 = 3;
-function visibilityOf(node) {
-  const modifier = node.namedChildren.find((child2) => child2.type === "visibility_modifier");
-  if (modifier === void 0) return "private";
-  return modifier.namedChildren.length === 0 ? "public" : "restricted";
-}
+// packages/parse/src/languages/rust/test-code.ts
+var itemKinds = /* @__PURE__ */ new Set([
+  "function_item",
+  "function_signature_item",
+  "mod_item",
+  "impl_item",
+  "struct_item",
+  "union_item",
+  "enum_item",
+  "trait_item",
+  "type_item",
+  "const_item",
+  "static_item",
+  "use_declaration",
+  "macro_definition",
+  "macro_invocation",
+  "extern_crate_declaration"
+]);
 var isComment3 = (node) => node.type === "line_comment" || node.type === "block_comment";
 function attributesOf(node) {
   const out2 = [];
@@ -15202,11 +15354,79 @@ function attributesOf(node) {
   }
   return out2;
 }
+function isTestItem(node) {
+  return attributesOf(node).some((item) => {
+    const attribute2 = item.namedChildren.find((child2) => child2.type === "attribute");
+    const name14 = attribute2?.namedChildren[0]?.text.replace(/\s+/g, "");
+    if (attribute2 === void 0 || name14 === void 0) return false;
+    if (/^(\w+::)*test$/.test(name14)) return true;
+    if (name14 !== "cfg") return false;
+    const args2 = attribute2.childForFieldName("arguments")?.text;
+    return args2 !== void 0 && cfgRequiresTest(args2);
+  });
+}
+function itemStartLine(node) {
+  const attributes = attributesOf(node);
+  return (attributes.at(-1) ?? node).startPosition.row + 1;
+}
+function cfgRequiresTest(argumentText) {
+  const tokens2 = argumentText.match(/"(?:\\.|[^"\\])*"|[A-Za-z_][A-Za-z0-9_]*|[(),=]/g) ?? [];
+  let at2 = 0;
+  const parse2 = () => {
+    const name14 = tokens2[at2++];
+    if (name14 === void 0 || !/^[A-Za-z_]/.test(name14)) return void 0;
+    if (tokens2[at2] === "=") {
+      at2 += 2;
+      return { name: name14, args: void 0, value: true };
+    }
+    if (tokens2[at2] !== "(") return { name: name14, args: void 0, value: false };
+    at2++;
+    const args2 = [];
+    while (at2 < tokens2.length && tokens2[at2] !== ")") {
+      const arg = parse2();
+      if (arg === void 0) return void 0;
+      args2.push(arg);
+      if (tokens2[at2] === ",") at2++;
+    }
+    at2++;
+    return { name: name14, args: args2, value: false };
+  };
+  if (tokens2[at2++] !== "(") return false;
+  const predicate = parse2();
+  return predicate !== void 0 && requiresTest(predicate);
+}
+function requiresTest(predicate) {
+  if (predicate.args === void 0) return predicate.name === "test" && !predicate.value;
+  if (predicate.name === "all") return predicate.args.some(requiresTest);
+  if (predicate.name === "any") return predicate.args.length > 0 && predicate.args.every(requiresTest);
+  return false;
+}
+
+// packages/parse/src/languages/rust/extract-facts.ts
+var extractorVersion4 = 6;
+function visibilityOf(node) {
+  const modifier = node.namedChildren.find((child2) => child2.type === "visibility_modifier");
+  if (modifier === void 0) return "private";
+  return modifier.namedChildren.length === 0 ? "public" : "restricted";
+}
+var isComment4 = (node) => node.type === "line_comment" || node.type === "block_comment";
 function attributeNamed(node, name14) {
   return attributesOf(node).map((item) => item.namedChildren.find((child2) => child2.type === "attribute")).find((attribute2) => attribute2?.namedChildren[0]?.text === name14);
 }
-function isTestItem(node) {
-  return attributesOf(node).some((item) => /^#\[\s*(cfg\s*\(\s*test\s*\)|(\w+::)*test(\s*\(.*\))?)\s*\]$/s.test(item.text.trim()));
+function isProcMacro(node) {
+  return attributesOf(node).some((item) => /^#\[\s*proc_macro(_attribute|_derive)?\b/.test(item.text.trim()));
+}
+function derivedName(node) {
+  for (const item of attributesOf(node)) {
+    const found = /^#\[\s*proc_macro_derive\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)/.exec(item.text.trim());
+    if (found !== null) return found[1];
+  }
+  return void 0;
+}
+function standsForItems(node) {
+  let parent = node.parent;
+  if (parent?.type === "expression_statement") parent = parent.parent;
+  return parent?.type === "source_file" || parent?.type === "declaration_list";
 }
 function pathAttribute(node) {
   const value = attributeNamed(node, "path")?.childForFieldName("value");
@@ -15313,6 +15533,94 @@ function inlineModulesOf(scope, prefix, out2) {
 var primitives = /* @__PURE__ */ new Set(["bool", "char", "str", "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i64", "i128", "isize", "f32", "f64"]);
 var builtinCrates = /* @__PURE__ */ new Set(["std", "core", "alloc", "proc_macro", "test"]);
 var compareLines = (a, b) => a.line - b.line;
+var standardMacros = /* @__PURE__ */ new Set([
+  "addr_of",
+  "addr_of_mut",
+  "asm",
+  "assert",
+  "assert_eq",
+  "assert_ne",
+  "cfg",
+  "column",
+  "compile_error",
+  "concat",
+  "concat_idents",
+  "const_format_args",
+  "dbg",
+  "debug_assert",
+  "debug_assert_eq",
+  "debug_assert_ne",
+  "env",
+  "eprint",
+  "eprintln",
+  "file",
+  "format",
+  "format_args",
+  "global_asm",
+  "include",
+  "include_bytes",
+  "include_str",
+  "is_x86_feature_detected",
+  "line",
+  "macro_rules",
+  "matches",
+  "module_path",
+  "option_env",
+  "panic",
+  "pin",
+  "print",
+  "println",
+  "ready",
+  "stringify",
+  "thread_local",
+  "todo",
+  "try",
+  "unimplemented",
+  "unreachable",
+  "vec",
+  "write",
+  "writeln"
+]);
+var preludeNames = /* @__PURE__ */ new Set([
+  "Self",
+  "Some",
+  "None",
+  "Ok",
+  "Err",
+  "Option",
+  "Result",
+  "Vec",
+  "String",
+  "Box",
+  "Default",
+  "Clone",
+  "Copy",
+  "Send",
+  "Sync",
+  "Sized",
+  "Drop",
+  "Fn",
+  "FnMut",
+  "FnOnce",
+  "From",
+  "Into",
+  "TryFrom",
+  "TryInto",
+  "Iterator",
+  "IntoIterator",
+  "Extend",
+  "AsRef",
+  "AsMut",
+  "ToOwned",
+  "ToString",
+  "PartialEq",
+  "Eq",
+  "PartialOrd",
+  "Ord",
+  "Debug",
+  "Hash",
+  "drop"
+]);
 var Extractor8 = class {
   units = [];
   imports = [];
@@ -15323,6 +15631,12 @@ var Extractor8 = class {
   nameCounts = /* @__PURE__ */ new Map();
   inlineModules = /* @__PURE__ */ new Set();
   inlinePaths = [];
+  /** Paths in code that start at `crate`, `self` or `super`, already counted from the file's own module. */
+  relativePaths = [];
+  macroUses = [];
+  macros = /* @__PURE__ */ new Set();
+  itemMacros = false;
+  testRanges = [];
   codeRows;
   root;
   explain;
@@ -15339,10 +15653,16 @@ var Extractor8 = class {
       names2.add(inner2.exported);
       this.exports.push(inner2);
     }
+    this.ownMacros();
+    this.pathsThroughBindings();
     const locals = /* @__PURE__ */ new Set();
     for (const imported of this.imports) for (const binding of imported.bindings) locals.add(binding.local);
     this.inlineCrates(root, locals);
+    this.bareMacros(locals);
     for (const imported of this.imports) for (const binding of imported.bindings) locals.add(binding.local);
+    const globs = this.reexports.some((reexport) => reexport.exported === "*");
+    const declared = /* @__PURE__ */ new Set([...this.exports.map((exported) => exported.exported), ...this.units.map((unit) => unit.qualifiedName)]);
+    const mayBeGlobbed = (reference) => globs && !declared.has(reference.local) && !preludeNames.has(reference.local) && !primitives.has(reference.local) && (upper.test(reference.local) || reference.kind === "call" || reference.member !== void 0);
     const classes = new Set(this.units.filter((unit) => unit.kind === "class").map((unit) => unit.qualifiedName));
     for (const unit of this.units) {
       const dot = unit.qualifiedName.lastIndexOf(".");
@@ -15353,9 +15673,11 @@ var Extractor8 = class {
       imports: this.imports,
       reexports: this.reexports,
       exports: this.exports,
-      references: this.references.filter((reference) => locals.has(reference.local)),
-      nodes: nodeCount(root, (node) => isComment3(node) || node.type === "use_declaration") - 1,
-      hasSyntaxErrors: root.hasError
+      references: this.references.filter((reference) => locals.has(reference.local) || mayBeGlobbed(reference)),
+      nodes: nodeCount(root, (node) => isComment4(node) || node.type === "use_declaration") - 1,
+      hasSyntaxErrors: root.hasError,
+      ...this.itemMacros ? { itemMacros: true } : {},
+      ...this.testRanges.length === 0 ? {} : { testRanges: this.testRanges }
     };
   }
   /**
@@ -15364,26 +15686,97 @@ var Extractor8 = class {
    */
   inlineCrates(root, locals) {
     const modules = new Set(root.descendantsOfType("mod_item").map((item) => item.childForFieldName("name")?.text));
-    const known = /* @__PURE__ */ new Set();
-    for (const path of this.inlinePaths) {
+    const known = /* @__PURE__ */ new Map();
+    const outside = this.inlinePaths.filter((path) => {
       const [first] = path.segments;
-      if (locals.has(first) || modules.has(first) || primitives.has(first) || builtinCrates.has(first)) continue;
+      return !(locals.has(first) || modules.has(first) || primitives.has(first) || builtinCrates.has(first));
+    });
+    for (const path of [...outside, ...this.relativePaths]) {
       let item = path.segments.findIndex((segment3, index) => index > 0 && upper.test(segment3));
       if (item < 0) item = path.segments.length - 1;
+      if (item < 1 || isOwnModule(path.segments.slice(0, item), this.inlineModules)) continue;
       const local = path.segments.slice(0, item + 1).join("::");
-      if (!known.has(local)) {
-        known.add(local);
-        this.imports.push({ specifier: path.segments.slice(0, item).join("::"), kind: "import", typeOnly: false, line: path.line, bindings: [{ imported: path.segments[item], local, typeOnly: false }] });
-      }
+      const imported = known.get(local);
+      if (imported === void 0) {
+        const fact2 = { specifier: path.segments.slice(0, item).join("::"), kind: "import", typeOnly: false, line: path.line, bindings: [{ imported: path.segments[item], local, typeOnly: false }] };
+        if (path.test) fact2.test = true;
+        known.set(local, fact2);
+        this.imports.push(fact2);
+      } else if (!path.test) delete imported.test;
       const member = path.segments[item + 1];
       const fact = { local, kind: path.kind, line: path.line };
       if (member !== void 0) fact.member = member;
       if (path.unit !== void 0) fact.inUnit = path.unit;
+      if (path.test) fact.test = true;
       this.references.push(fact);
     }
   }
   inlinePath(segments2, line, kind, context) {
-    if (segments2.length >= 2 && /^[a-z_]/.test(segments2[0])) this.inlinePaths.push({ segments: segments2, line, kind, unit: context.unit });
+    if (segments2.length < 2) return;
+    const [first] = segments2;
+    if (first === "crate" || first === "self" || first === "super") {
+      const counted = normalise2(segments2, context);
+      if (counted !== void 0 && counted.every((segment3) => !segment3.startsWith("$"))) this.relativePaths.push({ segments: counted, line, kind, unit: context.unit, test: context.inTests === true });
+    } else if (/^[a-z_]/.test(first)) this.inlinePaths.push({ segments: segments2, line, kind, unit: context.unit, test: context.inTests === true });
+  }
+  /**
+   * `use a::b; use b::Name;`: the second path starts with a name the first binds, not with a crate, so it is
+   * written out from what that name is. One step is followed, which is what the idiom uses.
+   */
+  pathsThroughBindings() {
+    const bound = /* @__PURE__ */ new Map();
+    for (const imported of this.imports) {
+      if (imported.specifier === null || imported.declares === true || imported.specifier.startsWith("mod ")) continue;
+      for (const binding of imported.bindings) {
+        if (!/^[a-z_]/.test(binding.local) || bound.has(binding.local)) continue;
+        bound.set(binding.local, binding.imported === "*" ? imported.specifier : `${imported.specifier}::${binding.imported}`);
+      }
+    }
+    if (bound.size === 0) return;
+    const through = (specifier) => {
+      const split = specifier.indexOf("::");
+      const first = split < 0 ? specifier : specifier.slice(0, split);
+      const target2 = bound.get(first);
+      if (target2 === void 0 || target2 === specifier || target2.startsWith(`${first}::`)) return specifier;
+      return split < 0 ? target2 : `${target2}${specifier.slice(split)}`;
+    };
+    for (const imported of this.imports) {
+      if (imported.specifier === null || imported.declares === true) continue;
+      if (imported.bindings.some((binding) => bound.get(binding.local) === (binding.imported === "*" ? imported.specifier : `${imported.specifier}::${binding.imported}`))) continue;
+      imported.specifier = through(imported.specifier);
+    }
+    for (const reexport of this.reexports) reexport.specifier = through(reexport.specifier);
+  }
+  /** A `use name;` of a macro the file defines (`pub(crate) use name;` after `macro_rules! name`) exports the macro under the plain name. */
+  ownMacros() {
+    if (this.macros.size === 0) return;
+    const rebound = /* @__PURE__ */ new Set();
+    for (const imported of this.imports) {
+      const [binding] = imported.bindings;
+      if (binding === void 0 || imported.bindings.length !== 1 || binding.imported !== "*" || imported.specifier !== binding.local || !this.macros.has(binding.local)) continue;
+      rebound.add(imported);
+      for (const exported of [...this.exports, ...this.innerExports]) if (exported.local === binding.local) exported.local = `${binding.local}!`;
+    }
+    if (rebound.size > 0) this.imports.splice(0, this.imports.length, ...this.imports.filter((imported) => !rebound.has(imported)));
+  }
+  /** A bare `name!(..)` that neither a `use` nor the file itself gives a meaning is a macro of the crate, or of a crate it depends on. */
+  bareMacros(locals) {
+    const known = /* @__PURE__ */ new Map();
+    for (const use of this.macroUses) {
+      if (locals.has(use.name) || this.macros.has(use.name) || standardMacros.has(use.name)) continue;
+      const local = `${use.name}!`;
+      const imported = known.get(local);
+      if (imported === void 0) {
+        const fact2 = { specifier: `macro ${use.name}`, kind: "import", typeOnly: false, line: use.line, bindings: [{ imported: local, local, typeOnly: false }] };
+        if (use.test) fact2.test = true;
+        known.set(local, fact2);
+        this.imports.push(fact2);
+      } else if (!use.test) delete imported.test;
+      const fact = { local, kind: "call", line: use.line };
+      if (use.unit !== void 0) fact.inUnit = use.unit;
+      if (use.test) fact.test = true;
+      this.references.push(fact);
+    }
   }
   /** The modules a scope declares, so a path that starts with one is relative to the scope. */
   declaredMods(scope) {
@@ -15404,7 +15797,7 @@ var Extractor8 = class {
     for (let i2 = 0; i2 < node.childCount; i2++) {
       const child2 = node.child(i2);
       if (child2 === null || !child2.isNamed) continue;
-      if (node.fieldNameForChild(i2) === "name" && !node.type.startsWith("scoped_")) continue;
+      if (node.fieldNameForChild(i2) === "name" && !node.type.startsWith("scoped_") && node.type !== "struct_expression") continue;
       this.visit(child2, context);
     }
   }
@@ -15430,9 +15823,22 @@ var Extractor8 = class {
       if (forwarded !== void 0) unit.passThrough = forwarded;
       if (measured.recursive) unit.recursive = true;
       if (memberOf !== void 0 && context.implementsTrait === true) unit.override = true;
+      if (memberOf === void 0 && isProcMacro(node)) unit.entryPoint = true;
       if (memberOf !== void 0 && context.implementsTrait !== true && visibilityOf(node) !== "public") unit.hidden = true;
       if (measured.increments !== void 0) unit.increments = measured.increments;
     }
+    this.units.push(unit);
+    return qualifiedName;
+  }
+  /** A `macro_rules!` definition as a unit named `name!`. It has no metrics: its body is token patterns, which are not parsed. */
+  declareMacro(name14, node, context) {
+    const base = [this.prefix(context), `${name14}!`].filter((part) => part !== "").join(".");
+    const seen = this.nameCounts.get(base) ?? 0;
+    this.nameCounts.set(base, seen + 1);
+    const qualifiedName = seen === 0 ? base : `${base}~${seen + 1}`;
+    const unit = { qualifiedName, kind: "macro", startLine: node.startPosition.row + 1, endLine: node.endPosition.row + 1, source: "structural" };
+    if (context.unit !== void 0) unit.parent = context.unit;
+    if (context.inTests === true || isTestItem(node)) unit.test = true;
     this.units.push(unit);
     return qualifiedName;
   }
@@ -15445,7 +15851,12 @@ var Extractor8 = class {
     if (!exposed) fact.internal = true;
     (context.mods.length === 0 ? this.exports : this.innerExports).push(fact);
   }
-  visit(node, context) {
+  visit(node, outer) {
+    let context = outer;
+    if (outer.inTests !== true && itemKinds.has(node.type) && isTestItem(node)) {
+      context = { ...outer, inTests: true };
+      this.testRanges.push({ startLine: itemStartLine(node), endLine: node.endPosition.row + 1 });
+    }
     switch (node.type) {
       case "use_declaration":
         this.useDeclaration(node, context);
@@ -15460,6 +15871,8 @@ var Extractor8 = class {
         const kind = member === void 0 ? "function" : "method";
         const qualified = this.declareUnit(name14, kind, node, context, node, member);
         this.export(node, name14, qualified, "function", visibilityOf(node), context);
+        const derives = member === void 0 ? derivedName(node) : void 0;
+        if (derives !== void 0) this.export(node, derives, qualified, "function", "public", context);
         this.functionParts(node, { ...context, unit: qualified, owner: void 0 });
         return;
       }
@@ -15483,7 +15896,7 @@ var Extractor8 = class {
         const owner = typeName(node.childForFieldName("type")) ?? node.childForFieldName("type")?.text.replace(/\s+/g, " ") ?? "_";
         const body2 = node.childForFieldName("body");
         this.visitChildrenExcept(node, body2, { ...context, owner: void 0 });
-        if (body2 !== null) this.visitScope(body2, { ...context, owner, implementsTrait: node.childForFieldName("trait") !== null, ...isTestItem(node) ? { inTests: true } : {} });
+        if (body2 !== null) this.visitScope(body2, { ...context, owner, implementsTrait: node.childForFieldName("trait") !== null });
         return;
       }
       case "type_item":
@@ -15496,7 +15909,10 @@ var Extractor8 = class {
       }
       case "macro_definition": {
         const name14 = node.childForFieldName("name")?.text;
-        if (name14 !== void 0) this.export(node, name14, void 0, void 0, attributeNamed(node, "macro_export") === void 0 ? "private" : "public", context);
+        if (name14 === void 0) return;
+        const qualified = this.declareMacro(name14, node, context);
+        this.export(node, `${name14}!`, qualified, void 0, attributeNamed(node, "macro_export") === void 0 ? "private" : "public", { ...context, exposed: true });
+        if (context.owner === void 0 && context.unit === void 0) this.macros.add(name14);
         return;
       }
       case "let_declaration":
@@ -15579,13 +15995,13 @@ var Extractor8 = class {
     const body2 = node.childForFieldName("body");
     if (body2 !== null) {
       this.export(node, name14, void 0, "namespace", visibility, context);
-      this.visitScope(body2, { ...context, mods: [...context.mods, name14], exposed: context.exposed && visibility === "public", ...isTestItem(node) ? { inTests: true } : {} });
+      this.visitScope(body2, { ...context, mods: [...context.mods, name14], exposed: context.exposed && visibility === "public" });
       return;
     }
     const written = pathAttribute(node);
-    const specifier = `mod ${[...context.mods, name14].join("::")}${written === void 0 ? "" : `@${written}`}`;
+    const specifier = `mod ${[...context.mods, name14.replace(/^r#/, "")].join("::")}${written === void 0 ? "" : `@${written}`}`;
     const line = node.startPosition.row + 1;
-    this.imports.push({ specifier, kind: "import", typeOnly: false, line, bindings: [{ imported: "*", local: name14, typeOnly: false }] });
+    this.imports.push({ specifier, kind: "import", typeOnly: false, line, bindings: [{ imported: "*", local: name14, typeOnly: false }], declares: true, ...context.inTests === true ? { test: true } : {} });
     this.export(node, name14, name14, "namespace", visibility, context);
   }
   useDeclaration(node, context) {
@@ -15596,10 +16012,31 @@ var Extractor8 = class {
       const segments2 = normalise2(leaf.segments, context);
       if (segments2 === void 0) continue;
       if (isOwnModule(segments2, this.inlineModules)) continue;
+      const test = context.inTests === true ? { test: true } : {};
       if (leaf.glob) {
+        const last = segments2.at(-1);
+        if (segments2.length > 1 && upper.test(last)) {
+          this.imports.push({ specifier: segments2.slice(0, -1).join("::"), kind: "import", typeOnly: false, line: leaf.line, bindings: [{ imported: last, local: `${last}::*`, typeOnly: false }], ...test });
+          continue;
+        }
         const specifier2 = segments2.join("::");
-        if (visibility === "public" && context.mods.length === 0) this.reexports.push({ specifier: specifier2, typeOnly: false, line: leaf.line, imported: "*", exported: "*" });
-        else this.imports.push({ specifier: specifier2, kind: "import", typeOnly: false, line: leaf.line, bindings: [] });
+        if (context.inTests === true) {
+          this.imports.push({ specifier: specifier2, kind: "import", typeOnly: false, line: leaf.line, bindings: [], ...test });
+          continue;
+        }
+        const exposed = visibility === "public" && context.exposed;
+        this.reexports.push({ specifier: specifier2, typeOnly: false, line: leaf.line, imported: "*", exported: "*", ...exposed ? {} : { visibility: visibility === "private" ? "private" : "restricted" } });
+        continue;
+      }
+      if (segments2.length === 1) {
+        const local2 = leaf.alias ?? segments2[0];
+        if (local2 === "_") continue;
+        this.imports.push({ specifier: segments2[0], kind: "import", typeOnly: false, line: leaf.line, bindings: [{ imported: "*", local: local2, typeOnly: false }], ...test });
+        if (visibility !== "private" && context.owner === void 0 && context.unit === void 0) {
+          const fact = { exported: local2, local: local2, line: leaf.line };
+          if (visibility === "restricted" || !context.exposed) fact.internal = true;
+          (context.mods.length === 0 ? this.exports : this.innerExports).push(fact);
+        }
         continue;
       }
       let item = segments2.findIndex((segment3, index) => index > 0 && upper.test(segment3));
@@ -15610,7 +16047,7 @@ var Extractor8 = class {
       const imported = segments2[item];
       const local = leaf.alias ?? segments2.at(-1);
       const bindings = local === "_" ? [] : [{ imported, local, typeOnly: false }];
-      this.imports.push({ specifier, kind: "import", typeOnly: false, line: leaf.line, bindings });
+      this.imports.push({ specifier, kind: "import", typeOnly: false, line: leaf.line, bindings, ...context.inTests === true ? { test: true } : {} });
       if (visibility !== "private" && bindings.length > 0 && context.owner === void 0 && context.unit === void 0) {
         const fact = { exported: local, local, line: leaf.line };
         if (visibility === "restricted" || !context.exposed) fact.internal = true;
@@ -15675,6 +16112,7 @@ var Extractor8 = class {
     const fact = { local, kind, line: node.startPosition.row + 1 };
     if (member !== void 0) fact.member = member;
     if (context.unit !== void 0) fact.inUnit = context.unit;
+    if (context.inTests === true) fact.test = true;
     this.references.push(fact);
   }
   /** A path used as a value or a type: its first name is the reference, the next one its member. */
@@ -15685,7 +16123,11 @@ var Extractor8 = class {
       return;
     }
     const [first, second] = segments2;
-    if (first === "self" || first === "crate" || first === "super" || first === "Self") return;
+    if (first === "Self") return;
+    if (first === "self" || first === "crate" || first === "super") {
+      this.inlinePath(segments2, node.startPosition.row + 1, kind, context);
+      return;
+    }
     this.reference(first, node, context, kind, second);
     this.inlinePath(segments2, node.startPosition.row + 1, kind, context);
     for (const generic of node.descendantsOfType("type_arguments")) this.visitChildren(generic, context);
@@ -15704,8 +16146,11 @@ var Extractor8 = class {
   }
   macro(node, context) {
     const name14 = node.childForFieldName("macro");
-    if (name14?.type === "identifier") this.reference(name14.text, name14, context, "call");
-    else if (name14?.type === "scoped_identifier") this.path(name14, context, "call");
+    if (context.owner === void 0 && context.unit === void 0 && standsForItems(node)) this.itemMacros = true;
+    if (name14?.type === "identifier") {
+      this.reference(name14.text, name14, context, "call");
+      this.macroUses.push({ name: name14.text, line: name14.startPosition.row + 1, unit: context.unit, test: context.inTests === true });
+    } else if (name14?.type === "scoped_identifier") this.path(name14, context, "call");
     for (const tree of node.namedChildren.filter((child2) => child2.type === "token_tree")) this.tokens(tree, context);
   }
   /** Macro arguments are not parsed, so names in them are read from the tokens: `a`, or `a::b`. */
@@ -15714,14 +16159,14 @@ var Extractor8 = class {
     for (let i2 = 0; i2 < children.length; i2++) {
       const token = children[i2];
       if (token.type === "token_tree") this.tokens(token, context);
-      else if (token.type === "identifier" || token.type === "type_identifier") {
+      else if (token.type === "identifier" || token.type === "type_identifier" || (token.type === "crate" || token.type === "super" || token.type === "self") && children[i2 + 1]?.type === "::") {
         const segments2 = [token.text];
         let next = i2 + 1;
-        while (children[next]?.type === "::" && children[next + 1]?.type === "identifier") {
+        while (children[next]?.type === "::" && (children[next + 1]?.type === "identifier" || children[next + 1]?.type === "super")) {
           segments2.push(children[next + 1].text);
           next += 2;
         }
-        this.reference(token.text, token, context, "reference", segments2[1]);
+        if (token.type === "identifier" || token.type === "type_identifier") this.reference(token.text, token, context, "reference", segments2[1]);
         this.inlinePath(segments2, token.startPosition.row + 1, "reference", context);
         i2 = next - 1;
       }
@@ -15774,19 +16219,19 @@ function nameOf2(node) {
 function annotation6(node, callbackParameters) {
   const names2 = /* @__PURE__ */ new Set();
   let callback = false;
-  const visit2 = (current) => {
+  const visit3 = (current) => {
     if (current.type === "type_identifier") {
       names2.add(current.text);
       if (callbackParameters.has(current.text)) callback = true;
     }
     if (current.type === "function_type") callback = true;
-    for (const child2 of current.namedChildren) visit2(child2);
+    for (const child2 of current.namedChildren) visit3(child2);
   };
-  if (node !== null) visit2(node);
+  if (node !== null) visit3(node);
   return { callback, names: [...names2].sort() };
 }
-function callbackGenerics(fn) {
-  const names2 = /* @__PURE__ */ new Set();
+function callbackGenerics(fn, inherited = /* @__PURE__ */ new Set()) {
+  const names2 = new Set(inherited);
   for (const parameter of field5(fn, "type_parameters")?.namedChildren ?? []) {
     const bounds = field5(parameter, "bounds");
     const name14 = field5(parameter, "name")?.text;
@@ -15798,8 +16243,8 @@ function callbackGenerics(fn) {
   }
   return names2;
 }
-function parametersOf7(fn) {
-  const generics = callbackGenerics(fn);
+function parametersOf7(fn, inherited) {
+  const generics = callbackGenerics(fn, inherited);
   const out2 = [];
   for (const parameter of field5(fn, "parameters")?.namedChildren ?? []) {
     if (parameter.type !== "parameter") continue;
@@ -15814,12 +16259,19 @@ function attributeNames(attribute2) {
   if (own === "derive") return field5(attribute2, "arguments")?.namedChildren.filter((child2) => child2.type === "identifier").map((child2) => child2.text) ?? [];
   return own === null ? [] : [own];
 }
+function itemOf(attribute2) {
+  let next = attribute2.nextNamedSibling;
+  while (next !== null && (next.type === "attribute_item" || comment2(next))) next = next.nextNamedSibling;
+  return next;
+}
 function extractFileCensus8(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
   const constructors = /* @__PURE__ */ new Map();
-  const visit2 = (node, owner) => {
+  const visit3 = (node, owner, generics) => {
+    if (node.type === "attribute_item" ? isTestItem(itemOf(node) ?? node) : itemKinds.has(node.type) && isTestItem(node)) return;
     const line = node.startPosition.row + 1;
     let nextOwner = owner;
+    let nextGenerics = generics;
     switch (node.type) {
       case "use_declaration": {
         const leaves = [];
@@ -15835,6 +16287,7 @@ function extractFileCensus8(root) {
         const name14 = field5(node, "name")?.text;
         if (name14 !== void 0) facts.types.push({ name: name14, kind: "interface", line });
         nextOwner = name14 ?? owner;
+        nextGenerics = callbackGenerics(node);
         break;
       }
       case "type_item": {
@@ -15856,18 +16309,20 @@ function extractFileCensus8(root) {
       case "impl_item": {
         const type = nameOf2(field5(node, "type"));
         const trait = nameOf2(field5(node, "trait"));
+        nextGenerics = callbackGenerics(node);
         if (type !== null && trait !== null) facts.classes.push({ name: type, line, heritage: [trait], constructorTypes: [] });
         if (type !== null && trait === null) {
           const body2 = field5(node, "body");
           const constructor = body2?.namedChildren.find((member) => member.type === "function_item" && field5(member, "name")?.text === "new");
-          if (constructor !== void 0) constructors.set(type, [...constructors.get(type) ?? [], ...parametersOf7(constructor).flatMap((parameter) => parameter.type.names)]);
+          if (constructor !== void 0) constructors.set(type, [...constructors.get(type) ?? [], ...parametersOf7(constructor, nextGenerics).flatMap((parameter) => parameter.type.names)]);
         }
         nextOwner = type;
         break;
       }
       case "function_item": {
         const name14 = field5(node, "name")?.text;
-        if (name14 !== void 0) facts.functions.push({ name: owner === null ? name14 : `${owner}.${name14}`, line, parameters: parametersOf7(node) });
+        if (name14 !== void 0) facts.functions.push({ name: owner === null ? name14 : `${owner}.${name14}`, line, parameters: parametersOf7(node, generics) });
+        nextGenerics = /* @__PURE__ */ new Set();
         break;
       }
       case "attribute_item": {
@@ -15919,30 +16374,181 @@ function extractFileCensus8(root) {
       }
       default:
     }
-    for (const child2 of node.children) visit2(child2, nextOwner);
+    for (const child2 of node.children) visit3(child2, nextOwner, nextGenerics);
   };
-  visit2(root, null);
+  visit3(root, null, /* @__PURE__ */ new Set());
   for (const klass of facts.classes) {
     if (klass.heritage.length === 0) klass.constructorTypes = [...new Set(constructors.get(klass.name) ?? [])].sort();
   }
   return facts;
 }
 
+// packages/parse/src/languages/rust/grammar-repair.ts
+function rustRepairs(root, source) {
+  const edits = /* @__PURE__ */ new Map();
+  const blank = (start2, end) => {
+    for (let i2 = start2; i2 < end; i2++) if (source[i2] !== "\n" && source[i2] !== "\r" && source[i2] !== " ") edits.set(i2, " ");
+  };
+  visit2(root, source, blank);
+  return [...edits].map(([offset, character]) => ({ offset, character }));
+}
+var attributeHolders = /* @__PURE__ */ new Set(["parameters", "closure_parameters", "struct_pattern"]);
+var primitives2 = /* @__PURE__ */ new Set(["bool", "char", "str", "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i64", "i128", "isize", "f32", "f64"]);
+function visit2(node, source, blank) {
+  if (!node.hasError && !node.isMissing && node.type !== "raw") return;
+  if (node.type === "raw" && !node.isNamed) rawBorrow(node, source, blank);
+  if (node.type === "ERROR") {
+    misplacedAttribute(node, source, blank);
+    boundLifetimes(node, blank);
+    primitiveTurbofish(node, source, blank);
+  }
+  for (const child2 of node.children) visit2(child2, source, blank);
+}
+function rawBorrow(raw, source, blank) {
+  if (raw.parent?.type !== "ERROR") return;
+  const after = raw.nextSibling;
+  if (after !== null && (after.type === "const" || after.type === "mutable_specifier")) return;
+  let at2 = raw.startIndex - 1;
+  while (at2 >= 0 && /\s/.test(source[at2])) at2--;
+  if (source[at2] === "&") blank(at2, at2 + 1);
+}
+function misplacedAttribute(error, source, blank) {
+  if (!attributeHolders.has(error.parent?.type ?? "")) return;
+  const start2 = error.startIndex;
+  if (source[start2] !== "#") return;
+  let open = start2 + 1;
+  while (/\s/.test(source[open] ?? "")) open++;
+  if (source[open] !== "[") return;
+  const end = closingOf(source, open, "[", "]");
+  if (end !== void 0) blank(start2, end);
+}
+function boundLifetimes(error, blank) {
+  const children = error.children;
+  for (let i2 = 1; i2 < children.length; i2++) {
+    if (children[i2].type === "for_lifetimes" && children[i2 - 1].type === "+") blank(children[i2].startIndex, children[i2].endIndex);
+  }
+}
+function primitiveTurbofish(error, source, blank) {
+  if (error.text !== "::" || !primitives2.has(error.previousSibling?.text ?? "")) return;
+  const open = error.nextSibling;
+  if (open?.type !== "<") return;
+  const end = closingOf(source, open.startIndex, "<", ">");
+  if (end !== void 0) blank(error.startIndex, end);
+}
+function closingOf(source, open, opener, closer) {
+  let depth = 0;
+  for (let i2 = open; i2 < source.length; i2++) {
+    const c2 = source[i2];
+    if (c2 === '"') {
+      for (i2++; i2 < source.length && source[i2] !== '"'; i2++) if (source[i2] === "\\") i2++;
+      continue;
+    }
+    if (c2 === "'" && source[i2 + 2] === "'") {
+      i2 += 2;
+      continue;
+    }
+    if (c2 === "'" && source[i2 + 1] === "\\" && source[i2 + 3] === "'") {
+      i2 += 3;
+      continue;
+    }
+    if (c2 === "-" && source[i2 + 1] === ">") {
+      i2++;
+      continue;
+    }
+    if (c2 === opener) depth++;
+    else if (c2 === closer && --depth === 0) return i2 + 1;
+  }
+  return void 0;
+}
+
 // packages/parse/src/languages/rust/resolve-path.ts
 import { posix as posix15 } from "node:path";
 var isConfigPath3 = isManifestPath;
 var builtinCrates2 = /* @__PURE__ */ new Set(["std", "core", "alloc", "proc_macro", "test"]);
+var noMacros = /* @__PURE__ */ new Map();
 var PathResolver = class {
   tree;
   /** A `use` of an inline module of the file itself is no dependency. */
   dropsSelfDependencies = true;
   /** A module's own `use` declarations are visible to its child modules, so `use super::Name` finds a name the parent only imports. */
   importsAreVisible = true;
-  constructor(paths, configs) {
+  /** A `use` depends on the file that defines the item, whichever modules re-export it on the way. */
+  edgesReachDefinitions = true;
+  globsBindNames = true;
+  facts;
+  reexported;
+  /** `macro_rules!` definitions by the crate that holds them, then by name. The first file in path order defines a name. */
+  macros;
+  pathParents;
+  constructor(paths, configs, facts = /* @__PURE__ */ new Map()) {
     this.tree = new ModuleTree(paths, readCrates(paths, configs));
+    this.facts = facts;
+  }
+  followReexports(moduleNamed) {
+    this.reexported = moduleNamed;
   }
   resolve(from, specifier) {
-    return specifier.startsWith("mod ") ? this.declaredModule(from, specifier.slice(4)) : this.usedPath(from, specifier.split("::"));
+    if (specifier.startsWith("mod ")) return this.declaredModule(from, specifier.slice(4));
+    if (specifier.startsWith("macro ")) return this.bareMacro(from, specifier.slice(6));
+    return this.usedPath(from, specifier.split("::"));
+  }
+  exportedElsewhere(modulePath, name14) {
+    const place = this.tree.placeOf(modulePath);
+    if (place === void 0 || place.root !== modulePath) return void 0;
+    const bare = name14.endsWith("!");
+    const macro = bare ? name14.slice(0, -1) : name14;
+    const definition = this.macrosOf(modulePath).get(macro);
+    if (definition?.exported === true) return { file: definition.file, name: `${macro}!` };
+    if (bare && this.facts.get(modulePath)?.exports.some((exported) => exported.exported === macro && exported.local !== void 0) === true) return { file: modulePath, name: macro };
+    return void 0;
+  }
+  /** What scopes a macro: the crate of the file, or its root file when no manifest owns it. */
+  scopeOf(file) {
+    const place = this.tree.placeOf(file);
+    return place === void 0 ? void 0 : place.crate?.manifest ?? place.root;
+  }
+  macrosOf(file) {
+    if (this.macros === void 0) {
+      this.macros = /* @__PURE__ */ new Map();
+      for (const [path, facts] of this.facts) {
+        for (const exported of facts.exports) {
+          if (!exported.exported.endsWith("!")) continue;
+          const scope2 = this.scopeOf(path);
+          if (scope2 === void 0) continue;
+          let names2 = this.macros.get(scope2);
+          if (names2 === void 0) this.macros.set(scope2, names2 = /* @__PURE__ */ new Map());
+          const name14 = exported.exported.slice(0, -1);
+          if (!names2.has(name14)) names2.set(name14, { file: path, exported: exported.internal !== true });
+        }
+      }
+    }
+    const scope = this.scopeOf(file);
+    return (scope === void 0 ? void 0 : this.macros.get(scope)) ?? noMacros;
+  }
+  /** The file whose `#[path = ".."] mod name;` names the file, when one does and the declaration is not inside an inline module. */
+  declaringFile(file) {
+    if (this.pathParents === void 0) {
+      this.pathParents = /* @__PURE__ */ new Map();
+      for (const [path, facts] of this.facts) {
+        for (const imported of facts.imports) {
+          const at2 = imported.specifier?.indexOf("@") ?? -1;
+          if (imported.declares !== true || imported.specifier === null || at2 < 0 || imported.specifier.slice(4, at2).includes("::")) continue;
+          const target2 = posix15.normalize(posix15.join(posix15.dirname(path), imported.specifier.slice(at2 + 1)));
+          if (target2 !== path && !this.pathParents.has(target2)) this.pathParents.set(target2, path);
+        }
+      }
+    }
+    return this.pathParents.get(file);
+  }
+  bareMacro(from, name14) {
+    const own = this.macrosOf(from).get(name14);
+    if (own !== void 0) return { kind: "file", path: own.file };
+    const crate = this.tree.placeOf(from)?.crate;
+    for (const [, dir] of [...crate?.dependencies ?? []].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
+      const root = this.tree.crates.find((candidate) => candidate.dir === dir && candidate.name !== null)?.libRoot;
+      if (root !== void 0 && this.exportedElsewhere(root, `${name14}!`) !== void 0) return { kind: "file", path: root };
+    }
+    return { kind: "builtin" };
   }
   declaredModule(from, declaration) {
     const at2 = declaration.indexOf("@");
@@ -15963,8 +16569,14 @@ var PathResolver = class {
     const place = this.tree.placeOf(from);
     if (first === "crate" || first === "self" || first === "super") {
       if (place === void 0) return { kind: "not-found" };
-      if (first === "crate") return this.fileOf(this.tree.walk({ file: place.root, root: place.root }, rest));
-      if (first === "self") return this.fileOf(this.tree.walk({ file: from, root: place.root }, rest));
+      if (first === "crate") {
+        const named2 = rest[0] === void 0 || this.tree.child(posix15.dirname(place.root), rest[0]) !== void 0 ? void 0 : this.crateNamed(place.crate, rest[0]);
+        if (named2?.libRoot !== void 0 && named2.libRoot !== place.root) return this.fileOf(this.tree.walk({ file: named2.libRoot, root: named2.libRoot }, rest.slice(1), this.reexported));
+        return this.fileOf(this.tree.walk({ file: place.root, root: place.root }, rest, this.reexported));
+      }
+      if (first === "self") return this.fileOf(this.tree.walk({ file: from, root: place.root }, rest, this.reexported));
+      const declaring = this.declaringFile(from);
+      if (declaring !== void 0) return this.usedPath(declaring, ["self", ...rest]);
       let up = 1;
       let remainder = rest;
       while (remainder[0] === "super") {
@@ -15973,16 +16585,18 @@ var PathResolver = class {
       }
       if (up > place.path.length) return { kind: "not-found" };
       const parent = this.tree.walk({ file: place.root, root: place.root }, place.path.slice(0, place.path.length - up));
-      return this.fileOf(this.tree.walk({ file: parent.file, root: place.root }, remainder));
+      return this.fileOf(this.tree.walk({ file: parent.file, root: place.root }, remainder, this.reexported));
     }
     if (builtinCrates2.has(first)) return { kind: "builtin" };
     const crate = this.crateNamed(place?.crate, first);
     if (crate === void 0) return { kind: "external", packageName: first };
     if (crate.libRoot === void 0) return { kind: "not-found" };
-    return this.fileOf(this.tree.walk({ file: crate.libRoot, root: crate.libRoot }, rest));
+    return this.fileOf(this.tree.walk({ file: crate.libRoot, root: crate.libRoot }, rest, this.reexported));
   }
+  /** The file a walk ended in. A walk that left the tree through a re-export names nothing in it. */
   fileOf(walked) {
-    return { kind: "file", path: walked.file };
+    if (walked.outside === true) return { kind: "builtin" };
+    return { kind: "file", path: walked.file, ...walked.via === void 0 ? {} : { via: walked.via } };
   }
   /** The crate a name in a `use` path stands for: the importing crate's own library, one of its path dependencies, or a crate of the tree by that name. */
   crateNamed(importer, name14) {
@@ -16000,7 +16614,7 @@ var adapter8 = {
   tier: 2,
   support: "supported",
   lexerProfile: "rust",
-  grammars: [{ spec: { id: "rust", packageName: "tree-sitter-rust", file: "tree-sitter-rust.wasm" }, extensions: [".rs"] }],
+  grammars: [{ spec: { id: "rust", packageName: "tree-sitter-rust", file: "tree-sitter-rust.wasm", repairs: rustRepairs }, extensions: [".rs"] }],
   extractorVersion: extractorVersion4,
   extract: extractFacts8,
   isTestPath: (path) => /(^|\/)tests\//.test(path) || /(^|\/)tests?\.rs$/.test(path) || /_tests?\.rs$/.test(path),
@@ -16008,7 +16622,7 @@ var adapter8 = {
   dependencies: {
     model: "import-based",
     isConfigPath: isConfigPath3,
-    createResolver: (paths, configs) => new PathResolver(paths, configs)
+    createResolver: (paths, configs, facts) => new PathResolver(paths, configs, facts)
   },
   boundaries: rustBoundaries,
   census: { extract: extractFileCensus8 },
@@ -16143,8 +16757,9 @@ function repaired(parser, original, source, repairs) {
   if (best !== original) original.delete();
   return best;
 }
+var sharedFactsVersion = 2;
 function cacheKeyOf(adapter9, grammar) {
-  return `${grammar.version}.${adapter9.id}-extract-${adapter9.extractorVersion}`;
+  return `${grammar.version}.${adapter9.id}-extract-${adapter9.extractorVersion}.shared-${sharedFactsVersion}`;
 }
 var GrammarSet = class {
   options;
@@ -16192,10 +16807,33 @@ function nestsDeeperThan(root, limit) {
     cursor.delete();
   }
 }
+function firstSyntaxError(root) {
+  if (!root.hasError) return void 0;
+  let node = root;
+  for (; ; ) {
+    if (node.isMissing || node.type === "ERROR") break;
+    const child2 = node.children.find((candidate) => candidate.hasError || candidate.isMissing);
+    if (child2 === void 0) break;
+    node = child2;
+  }
+  const at2 = { line: node.startPosition.row + 1, column: node.startPosition.column + 1 };
+  if (node.type === "ERROR") return { ...at2, kind: "unexpected", text: node.text.split(/\r?\n/, 1)[0].slice(0, 40) };
+  return { ...at2, kind: "missing", text: node.type };
+}
+function syntaxErrorAt(path, facts) {
+  return { path, ...facts.syntaxError ?? { line: 1, column: 1, kind: "unexpected", text: "" } };
+}
 function parseWith(adapter9, grammar, source, options2 = {}) {
   const tree = grammar.parse(source);
   try {
-    if (!nestsDeeperThan(tree.rootNode, MAX_TREE_DEPTH)) return adapter9.extract(tree.rootNode, options2);
+    if (!nestsDeeperThan(tree.rootNode, MAX_TREE_DEPTH)) {
+      const facts = adapter9.extract(tree.rootNode, options2);
+      if (facts.hasSyntaxErrors && facts.syntaxError === void 0) {
+        const first = firstSyntaxError(tree.rootNode);
+        if (first !== void 0) facts.syntaxError = first;
+      }
+      return facts;
+    }
   } finally {
     tree.delete();
   }
@@ -16208,6 +16846,8 @@ function parseWith(adapter9, grammar, source, options2 = {}) {
 }
 
 // packages/parse/src/import-model.ts
+var MAX_CHAIN = 64;
+var MAX_NESTED_RESOLUTIONS = 32;
 var ImportModel = class {
   facts;
   resolver;
@@ -16218,10 +16858,20 @@ var ImportModel = class {
   fileEdges = /* @__PURE__ */ new Map();
   unresolved = /* @__PURE__ */ new Map();
   externals = /* @__PURE__ */ new Map();
+  resolving = /* @__PURE__ */ new Set();
+  exportResults = /* @__PURE__ */ new Map();
+  exportsInProgress = /* @__PURE__ */ new Set();
   constructor(facts, resolver, isTest) {
     this.facts = facts;
     this.resolver = resolver;
     this.isTest = isTest;
+    resolver.followReexports?.((file, name14) => {
+      const result = this.exportOf(file, name14);
+      if (result.status === "namespace") return result.file;
+      if (result.status === "external") return null;
+      if (result.status === "defined" && this.facts.get(result.file)?.exports.some((exported) => exported.exported === result.exportName && exported.kind === "namespace") === true) return result.file;
+      return void 0;
+    });
   }
   build() {
     const barrels = [];
@@ -16239,28 +16889,47 @@ var ImportModel = class {
       unresolved: [...this.unresolved.values()]
     };
   }
-  /** A file that defines nothing of its own and only passes other modules' exports along. */
+  /**
+   * A file that defines nothing of its own and only passes other modules' exports along. A namespace written out in the
+   * file (a Rust inline module) is not something of its own: what it holds is listed among the file's exports.
+   */
   isBarrel(file) {
     if (file.units.length > 0) return false;
     const imported = new Set(file.imports.flatMap((fact) => fact.bindings.map((binding) => binding.local)));
-    const passThrough = file.exports.filter((exported) => exported.local !== void 0 && imported.has(exported.local));
-    return file.reexports.length + passThrough.length > 0 && passThrough.length === file.exports.length;
+    const own = file.exports.filter((exported) => !(exported.kind === "namespace" && exported.local === void 0));
+    const passThrough = own.filter((exported) => exported.local !== void 0 && imported.has(exported.local));
+    return file.reexports.length + passThrough.length > 0 && passThrough.length === own.length;
   }
   resolve(from, specifier) {
     const key = `${from}\0${specifier}`;
     let resolution = this.resolutions.get(key);
     if (!resolution) {
-      resolution = this.resolver.resolve(from, specifier);
+      if (this.resolving.has(key) || this.resolving.size >= MAX_NESTED_RESOLUTIONS) return { kind: "not-found" };
+      this.resolving.add(key);
+      try {
+        resolution = this.resolver.resolve(from, specifier);
+      } finally {
+        this.resolving.delete(key);
+      }
       this.resolutions.set(key, resolution);
     }
     return resolution;
   }
-  addUnresolved(from, line, specifier, reason) {
-    this.unresolved.set(`${from}\0${line}\0${specifier}\0${reason}`, { from, line, specifier, reason });
+  /** `name` and `to` are given for a name a module does not export: the name, and the module's file. */
+  addUnresolved(from, line, specifier, reason, name14, to) {
+    this.unresolved.set(`${from}\0${line}\0${specifier}\0${reason}\0${name14 ?? ""}`, { from, line, specifier, reason, ...name14 === void 0 ? {} : { name: name14 }, ...to === void 0 ? {} : { to } });
   }
-  addImportEdge(from, to, kind, typeOnly) {
+  /** Records an import edge. It is `test` while every statement behind it is test code. */
+  addImportEdge(from, to, kind, typeOnly, test = false, nominal = false, named2) {
     if (from === to && this.resolver.dropsSelfDependencies === true) return;
-    this.importEdges.set(`${from}\0${to}\0${kind}\0${typeOnly}`, { from, to, kind, typeOnly });
+    const via = named2 === to || named2 === from ? void 0 : named2;
+    const key = `${from}\0${to}\0${kind}\0${typeOnly}\0${nominal}\0${via ?? ""}`;
+    const existing = this.importEdges.get(key);
+    if (existing !== void 0) {
+      if (!test) delete existing.test;
+      return;
+    }
+    this.importEdges.set(key, { from, to, kind, typeOnly, ...nominal ? { nominal: true } : {}, ...via === void 0 ? {} : { via }, ...test ? { test: true } : {} });
   }
   addExternal(from, packageName, typeOnly) {
     this.externals.set(`${from}\0${packageName}\0${typeOnly}`, { from, packageName, typeOnly });
@@ -16273,7 +16942,7 @@ var ImportModel = class {
       for (const name14 of this.namesExportedBy(path, /* @__PURE__ */ new Set())) {
         if (seen.has(name14)) continue;
         seen.add(name14);
-        const result = this.resolveExport(path, name14, /* @__PURE__ */ new Set());
+        const result = this.exportOf(path, name14);
         if (result.status !== "defined") continue;
         const definition = this.facts.get(result.file)?.exports.find((exported) => exported.exported === result.exportName);
         if (definition?.internal === true) continue;
@@ -16299,6 +16968,7 @@ var ImportModel = class {
     visiting.add(path);
     const names2 = file.exports.map((exported) => exported.exported);
     for (const reexport of file.reexports) {
+      if (reexport.visibility !== void 0) continue;
       if (reexport.exported !== "*") {
         names2.push(reexport.exported);
         continue;
@@ -16309,11 +16979,19 @@ var ImportModel = class {
     return names2;
   }
   fileDependencies(path, file) {
+    const reach = this.resolver.edgesReachDefinitions === true;
+    const globs = [];
     for (const reexport of file.reexports) {
       const target2 = this.resolve(path, reexport.specifier);
       if (target2.kind === "external") this.addExternal(path, target2.packageName, reexport.typeOnly);
-      if (target2.kind === "file") this.addImportEdge(path, target2.path, "reexport", reexport.typeOnly);
-      else if (target2.kind === "not-found") this.addUnresolved(path, reexport.line, reexport.specifier, "not-found");
+      if (target2.kind === "not-found") this.addUnresolved(path, reexport.line, reexport.specifier, "not-found");
+      if (target2.kind !== "file") continue;
+      if (!reach) this.addImportEdge(path, target2.path, "reexport", reexport.typeOnly);
+      else if (reexport.exported === "*") globs.push({ target: target2.path, named: target2.via ?? target2.path, reexport });
+      else {
+        const result = this.exportOf(target2.path, reexport.imported);
+        this.addImportEdge(path, result.status === "defined" || result.status === "namespace" ? result.file : target2.path, "reexport", reexport.typeOnly, false, true, target2.via ?? target2.path);
+      }
     }
     const unitNames = new Set(file.units.map((unit) => unit.qualifiedName));
     const implicitIsReexport = this.resolver.reexportsImplicitly?.(path) === true;
@@ -16328,69 +17006,141 @@ var ImportModel = class {
       if (target2.kind === "external") this.addExternal(path, target2.packageName, imported.typeOnly);
       if (target2.kind === "not-found") this.addUnresolved(path, imported.line, imported.specifier, "not-found");
       if (target2.kind !== "file") continue;
-      this.addImportEdge(path, target2.path, imported.kind === "require" ? "require" : "import", imported.typeOnly);
-      if (imported.bindings.length === 0) this.touch(path, target2.path);
+      const test = imported.test === true;
+      const kind = imported.kind === "require" ? "require" : "import";
+      const declares = imported.declares === true;
+      const named2 = target2.via ?? target2.path;
+      let testUse = test;
+      const land = (to) => {
+        if (reach) this.addImportEdge(path, to, kind, imported.typeOnly, testUse, false, named2);
+      };
+      if (declares) this.addImportEdge(path, target2.path, kind, imported.typeOnly, test, true);
+      else if (!reach) this.addImportEdge(path, target2.path, kind, imported.typeOnly, test);
+      if (imported.bindings.length === 0) {
+        this.touch(path, target2.path, test);
+        land(target2.path);
+      }
       for (const binding of imported.bindings) {
         const uses = file.references.filter((reference) => reference.local === binding.local);
+        if (declares && uses.length === 0) continue;
+        const onlyTests = uses.length > 0 && uses.every((use) => use.test === true);
+        testUse = test || onlyTests;
         const passThrough = uses.length === 0 && exportedLocals.has(binding.local);
-        if (passThrough) {
-          const exposed = binding.imported === "*" ? void 0 : this.resolveExport(target2.path, binding.imported, /* @__PURE__ */ new Set());
-          if (exposed?.status === "namespace" && exposed.submodule === true) this.addImportEdge(path, exposed.file, "import", imported.typeOnly);
-          continue;
+        if (passThrough || reach && onlyTests && !test && exportedLocals.has(binding.local)) {
+          const exposed = binding.imported === "*" ? void 0 : this.exportOf(target2.path, binding.imported);
+          if (exposed?.status === "namespace" && exposed.submodule === true) this.addImportEdge(path, exposed.file, "import", imported.typeOnly, test);
+          if (reach) {
+            if (exposed === void 0) this.addImportEdge(path, target2.path, "reexport", imported.typeOnly, test, true, named2);
+            else if (exposed.status === "missing" && passThrough) this.addUnresolved(path, imported.line, imported.specifier, "export-not-found", binding.imported, target2.path);
+            else if (exposed.status !== "external" && exposed.status !== "missing") this.addImportEdge(path, exposed.file, "reexport", imported.typeOnly, test, true, named2);
+          }
+          if (passThrough) continue;
         }
         if (binding.imported === "*") {
-          this.useNamespace(path, target2.path, uses, unitNames);
+          this.useNamespace(path, target2.path, uses, unitNames, testUse, land);
           continue;
         }
-        const result = this.resolveExport(target2.path, binding.imported, /* @__PURE__ */ new Set());
+        const result = this.exportOf(target2.path, binding.imported);
         switch (result.status) {
           case "defined":
-            this.touch(path, result.file);
+            this.touch(path, result.file, testUse);
+            land(result.file);
             for (const use of uses) {
               this.consume(path, use, unitNames, result.file, result.exportName, result.symbol, false);
             }
+            if (reach && uses.length === 0) {
+              this.consume(path, { local: binding.local, kind: "reference", line: imported.line, ...test ? { test: true } : {} }, unitNames, result.file, result.exportName, result.symbol, false);
+            }
             break;
           case "namespace":
-            if (result.submodule === true) this.addImportEdge(path, result.file, "import", imported.typeOnly);
-            this.useNamespace(path, result.file, uses, unitNames);
+            if (result.submodule === true) this.addImportEdge(path, result.file, "import", imported.typeOnly, test);
+            this.useNamespace(path, result.file, uses, unitNames, testUse, land);
             break;
           case "opaque":
-            this.touch(path, result.file);
+            this.touch(path, result.file, testUse);
+            land(result.file);
             for (const use of uses) this.consume(path, use, unitNames, result.file, binding.imported, void 0, false);
             break;
           case "missing":
-            this.addUnresolved(path, imported.line, imported.specifier, "export-not-found");
+            this.addUnresolved(path, imported.line, imported.specifier, "export-not-found", binding.imported, target2.path);
             break;
           case "external":
             break;
         }
       }
     }
+    if (globs.length > 0) this.globDependencies(path, file, globs, unitNames);
   }
-  /** Records that a file depends on another, even when nothing in it is referenced. */
-  touch(from, to) {
+  /**
+   * The glob imports of a file whose edges run to definitions. A name the file uses and neither declares nor imports
+   * is looked up in each glob's module, in order, and is a use of the file that defines it. A glob that is `pub` in
+   * any form passes names along, which is a nominal edge. A private one through which no use was found is still an
+   * import of its module: what it brings in may be used in a way no name shows, as a trait's methods are.
+   */
+  globDependencies(path, file, globs, unitNames) {
+    const used = /* @__PURE__ */ new Set();
+    if (this.resolver.globsBindNames === true) {
+      const bound = new Set(file.imports.flatMap((imported) => imported.bindings.map((binding) => binding.local)));
+      for (const use of file.references) {
+        if (bound.has(use.local)) continue;
+        const test = use.test === true;
+        for (const [index, glob] of globs.entries()) {
+          const land = (to) => this.addImportEdge(path, to, "import", false, test, false, glob.named);
+          const result = this.exportOf(glob.target, use.local);
+          if (result.status === "defined") {
+            this.consume(path, use, unitNames, result.file, result.exportName, result.symbol, false);
+            land(result.file);
+          } else if (result.status === "namespace") this.useNamespace(path, result.file, [use], unitNames, test, land);
+          else continue;
+          used.add(index);
+          break;
+        }
+      }
+    }
+    for (const [index, glob] of globs.entries()) {
+      if (glob.reexport.visibility !== "private") this.addImportEdge(path, glob.target, "reexport", glob.reexport.typeOnly, false, true, glob.named);
+      else if (!used.has(index)) {
+        this.touch(path, glob.target);
+        this.addImportEdge(path, glob.target, "import", glob.reexport.typeOnly, false, false, glob.named);
+      }
+    }
+  }
+  /**
+   * Records that a file depends on another, even when nothing in it is referenced. The edge is `test` when the file is
+   * a test, or while only its test code depends on the other.
+   */
+  touch(from, to, test = false) {
     if (from === to && this.resolver.dropsSelfDependencies === true) return { from, to, kind: "reference", calls: 0, references: 0 };
     const key = `${from}\0${to}`;
+    const testUse = test || this.isTest(from);
     let edge = this.fileEdges.get(key);
     if (!edge) {
-      edge = { from, to, kind: this.isTest(from) ? "test" : "reference", calls: 0, references: 0 };
+      edge = { from, to, kind: testUse ? "test" : "reference", calls: 0, references: 0 };
       this.fileEdges.set(key, edge);
-    }
+    } else if (!testUse && edge.kind === "test") edge.kind = "reference";
     return edge;
   }
-  useNamespace(from, namespace, uses, unitNames) {
-    if (uses.length === 0) this.touch(from, namespace);
+  /** Counts the uses of a module imported whole. `land` is told each file a use reaches. */
+  useNamespace(from, namespace, uses, unitNames, test, land = () => {
+  }) {
+    if (uses.length === 0) {
+      this.touch(from, namespace, test);
+      land(namespace);
+    }
     for (const use of uses) {
       if (use.member === void 0) {
         this.consume(from, use, unitNames, namespace, "*", void 0, false);
+        land(namespace);
         continue;
       }
-      const result = this.resolveExport(namespace, use.member, /* @__PURE__ */ new Set());
+      const result = this.exportOf(namespace, use.member);
       if (result.status === "defined") {
         this.consume(from, use, unitNames, result.file, result.exportName, result.symbol, true);
+        land(result.file);
       } else {
         const file = result.status === "namespace" || result.status === "opaque" ? result.file : namespace;
         this.consume(from, use, unitNames, file, use.member, void 0, true);
+        land(file);
       }
     }
   }
@@ -16403,16 +17153,17 @@ var ImportModel = class {
     if (from === to && this.resolver.dropsSelfDependencies === true) return;
     const direct = use.member === void 0 || memberOfNamespace;
     const kind = direct ? use.kind : "reference";
-    const edge = this.touch(from, to);
+    const testUse = this.isTest(from) || use.test === true;
+    const edge = this.touch(from, to, testUse);
     if (kind === "call") edge.calls++;
     else edge.references++;
-    if (!this.isTest(from) && kind === "call") edge.kind = "call";
+    if (!testUse && kind === "call") edge.kind = "call";
     let fromUnit = use.inUnit;
     while (fromUnit !== void 0 && !unitNames.has(fromUnit)) {
       const dot = fromUnit.lastIndexOf(".");
       fromUnit = dot < 0 ? void 0 : fromUnit.slice(0, dot);
     }
-    const consumerKind = this.isTest(from) ? "test" : kind;
+    const consumerKind = testUse ? "test" : kind;
     const key = `${from}\0${fromUnit ?? ""}\0${to}\0${toSymbol ?? toExport}\0${consumerKind}`;
     const existing = this.consumers.get(key);
     if (existing) {
@@ -16424,21 +17175,35 @@ var ImportModel = class {
     if (toSymbol !== void 0) consumer.toSymbol = toSymbol;
     this.consumers.set(key, consumer);
   }
+  /** What a name exported by a file is, followed to its definition. Each answer is worked out once. */
+  exportOf(path, name14) {
+    const key = `${path}\0${name14}`;
+    const known = this.exportResults.get(key);
+    if (known !== void 0) return known;
+    if (this.exportsInProgress.has(key)) return { status: "missing" };
+    this.exportsInProgress.add(key);
+    try {
+      const result = this.resolveExport(path, name14, /* @__PURE__ */ new Set());
+      this.exportResults.set(key, result);
+      return result;
+    } finally {
+      this.exportsInProgress.delete(key);
+    }
+  }
   /** Follows an exported name through re-exports and barrels to the file that defines it. */
   resolveExport(path, name14, visiting) {
     const file = this.facts.get(path);
     if (!file) return { status: "opaque", file: path };
     const key = `${path}\0${name14}`;
-    if (visiting.has(key)) return { status: "missing" };
+    if (visiting.has(key) || visiting.size >= MAX_CHAIN) return { status: "missing" };
     visiting.add(key);
     for (const exported of file.exports) {
       if (exported.exported !== name14) continue;
       if (exported.local === void 0) return { status: "defined", file: path, exportName: name14 };
+      const unit = file.units.find((candidate) => candidate.qualifiedName === exported.local && !candidate.parent);
+      if (unit) return { status: "defined", file: path, exportName: name14, symbol: unit.qualifiedName };
       const binding = this.importBinding(file, exported.local);
-      if (!binding) {
-        const unit = file.units.find((candidate) => candidate.qualifiedName === exported.local && !candidate.parent);
-        return unit ? { status: "defined", file: path, exportName: name14, symbol: unit.qualifiedName } : { status: "defined", file: path, exportName: name14 };
-      }
+      if (!binding) return { status: "defined", file: path, exportName: name14 };
       const target2 = this.resolve(path, binding.specifier);
       if (target2.kind === "file" && target2.path === path && binding.imported === name14) continue;
       return this.followBinding(path, binding.specifier, binding.imported, visiting);
@@ -16446,19 +17211,26 @@ var ImportModel = class {
     for (const reexport of file.reexports) {
       if (reexport.exported === name14) return this.followBinding(path, reexport.specifier, reexport.imported, visiting);
     }
+    let unlisted;
     if (name14 !== "default") {
       for (const reexport of file.reexports) {
         if (reexport.exported !== "*") continue;
         const result = this.followBinding(path, reexport.specifier, name14, visiting);
-        if (result.status !== "missing") return result;
+        if (result.status === "missing") continue;
+        if (result.status === "external" || result.status === "opaque" && result.guessed === true) unlisted ??= result;
+        else return result;
       }
     }
     if (this.resolver.importsAreVisible === true) {
       const binding = this.importBinding(file, name14);
       if (binding) return this.followBinding(path, binding.specifier, binding.imported, visiting);
     }
+    const elsewhere = this.resolver.exportedElsewhere?.(path, name14);
+    if (elsewhere !== void 0) return this.resolveExport(elsewhere.file, elsewhere.name, visiting);
     const submodule = this.resolver.submodule?.(path, name14);
     if (submodule !== void 0) return { status: "namespace", file: submodule, submodule: true };
+    if (file.itemMacros === true) return { status: "opaque", file: path, guessed: true };
+    if (unlisted !== void 0) return unlisted;
     return file.exports.length === 0 && file.reexports.length === 0 ? { status: "opaque", file: path } : { status: "missing" };
   }
   followBinding(from, specifier, imported, visiting) {
@@ -16540,7 +17312,7 @@ async function analyseTree(tree, options2 = {}) {
     const input = { facts: groupFacts, paths: sortedPaths, configs, isTestPath: isTest, untrackedConfigs, includeRoots: options2.includeRoots ?? [] };
     const dependencies = group[0].dependencies;
     resolved.push(
-      dependencies.model === "import-based" ? new ImportModel(groupFacts, dependencies.createResolver(sortedPaths, configs), isTest).build() : dependencies.resolve?.(input) ?? resolveBySymbols(input)
+      dependencies.model === "import-based" ? new ImportModel(groupFacts, dependencies.createResolver(sortedPaths, configs, groupFacts), isTest).build() : dependencies.resolve?.(input) ?? resolveBySymbols(input)
     );
   }
   return { ...assemble(facts, resolved), stats };
@@ -16548,11 +17320,15 @@ async function analyseTree(tree, options2 = {}) {
 function assemble(facts, resolved) {
   const units = [];
   const filesWithSyntaxErrors = [];
+  const syntaxErrors = [];
   const filesWithMacroCode = [];
   const generatedFiles = [];
   for (const [path, fileFacts] of facts) {
     if (fileFacts.generated === true) generatedFiles.push(path);
-    if (fileFacts.hasSyntaxErrors) filesWithSyntaxErrors.push(path);
+    if (fileFacts.hasSyntaxErrors) {
+      filesWithSyntaxErrors.push(path);
+      syntaxErrors.push(syntaxErrorAt(path, fileFacts));
+    }
     if (fileFacts.macroGenerated !== void 0) filesWithMacroCode.push(path);
     const exportedLocals = exportedUnitNames(fileFacts);
     for (const unit of fileFacts.units) {
@@ -16576,7 +17352,7 @@ function assemble(facts, resolved) {
   return {
     units,
     importEdges: all("importEdges").sort(
-      (a, b) => compareUtf8(a.from, b.from) || compareUtf8(a.to, b.to) || compareUtf8(a.kind, b.kind) || Number(a.typeOnly) - Number(b.typeOnly)
+      (a, b) => compareUtf8(a.from, b.from) || compareUtf8(a.to, b.to) || compareUtf8(a.kind, b.kind) || Number(a.typeOnly) - Number(b.typeOnly) || Number(a.nominal === true) - Number(b.nominal === true) || compareUtf8(a.via ?? "", b.via ?? "")
     ),
     consumers: all("consumers").sort(
       (a, b) => compareUtf8(a.from, b.from) || compareUtf8(a.fromUnit ?? "", b.fromUnit ?? "") || compareUtf8(a.to, b.to) || compareUtf8(a.toSymbol ?? a.toExport, b.toSymbol ?? b.toExport) || compareUtf8(a.kind, b.kind)
@@ -16587,8 +17363,9 @@ function assemble(facts, resolved) {
     externalImports: all("externalImports").sort(
       (a, b) => compareUtf8(a.from, b.from) || compareUtf8(a.packageName, b.packageName) || Number(a.typeOnly) - Number(b.typeOnly)
     ),
-    unresolved: all("unresolved").sort((a, b) => compareUtf8(a.from, b.from) || a.line - b.line || compareUtf8(a.specifier ?? "", b.specifier ?? "")),
+    unresolved: all("unresolved").sort((a, b) => compareUtf8(a.from, b.from) || a.line - b.line || compareUtf8(a.specifier ?? "", b.specifier ?? "") || compareUtf8(a.name ?? "", b.name ?? "")),
     filesWithSyntaxErrors,
+    syntaxErrors,
     filesWithMacroCode,
     generatedFiles,
     ...resolved.some((group) => group.includeResolution !== void 0) ? { includeResolution: resolved.find((group) => group.includeResolution !== void 0).includeResolution } : {}
@@ -16626,6 +17403,7 @@ var language = {
   detectors: {
     eventMethods: /* @__PURE__ */ new Set(["publishEvent", "fireEvent", "emit", "publish", "dispatch", "subscribe", "unsubscribe", "addListener", "removeListener", "addPropertyChangeListener", "firePropertyChange", "notifyObservers", "addObserver"]),
     eventFunctions: /* @__PURE__ */ new Set(["publishEvent", "fireEvent", "notifyObservers", "setChanged"]),
+    listenMethods: /* @__PURE__ */ new Set(["subscribe", "unsubscribe", "addListener", "removeListener", "addPropertyChangeListener", "addObserver"]),
     platformReceivers: /* @__PURE__ */ new Set(["System", "Runtime", "Thread", "Platform", "Math"]),
     eventBaseTypes: /* @__PURE__ */ new Set(["Observable", "PropertyChangeSupport", "EventBus", "AsyncEventBus", "Subject", "BehaviorSubject", "PublishSubject", "ReplaySubject", "ApplicationEventMulticaster", "SimpleApplicationEventMulticaster"]),
     containerReceiver: /(container|injector|beanfactory|applicationcontext|binder|kernel|ioc)$/i,
@@ -16645,6 +17423,7 @@ var language2 = {
   detectors: {
     eventMethods: /* @__PURE__ */ new Set(["publishEvent", "emit", "tryEmit", "publish", "dispatch", "subscribe", "unsubscribe", "addListener", "removeListener"]),
     eventFunctions: /* @__PURE__ */ new Set(["publishEvent", "emit", "tryEmit"]),
+    listenMethods: /* @__PURE__ */ new Set(["subscribe", "unsubscribe", "addListener", "removeListener"]),
     platformReceivers: /* @__PURE__ */ new Set(["System", "Runtime", "Thread", "Platform", "Math"]),
     eventBaseTypes: /* @__PURE__ */ new Set(["Observable", "PropertyChangeSupport", "EventBus", "Subject", "BehaviorSubject", "PublishSubject", "ReplaySubject", "MutableSharedFlow", "MutableStateFlow", "Channel", "BroadcastChannel"]),
     containerReceiver: /(container|injector|beanfactory|applicationcontext|binder|kernel|koin|ioc)$/i,
@@ -16664,6 +17443,7 @@ var language3 = {
   detectors: {
     eventMethods: /* @__PURE__ */ new Set(["emit", "on", "once", "off", "subscribe", "unsubscribe", "publish", "dispatch", "addListener", "removeListener", "removeAllListeners", "trigger"]),
     eventFunctions: /* @__PURE__ */ new Set(["emit", "dispatch", "publish", "subscribe", "mitt", "createNanoEvents"]),
+    listenMethods: /* @__PURE__ */ new Set(["on", "once", "off", "subscribe", "unsubscribe", "addListener", "removeListener", "removeAllListeners"]),
     platformReceivers: /* @__PURE__ */ new Set(["process", "window", "document", "globalThis", "self", "stdin", "stdout", "stderr"]),
     eventBaseTypes: /* @__PURE__ */ new Set(["EventEmitter", "EventEmitter2", "Emittery", "Subject", "BehaviorSubject", "ReplaySubject", "Observable", "TypedEmitter"]),
     containerReceiver: /(container|injector|kernel|ioc)$/i,
@@ -16683,6 +17463,7 @@ var language4 = {
   detectors: {
     eventMethods: /* @__PURE__ */ new Set(["Invoke", "Raise", "RaiseEvent", "Publish", "Emit", "Notify", "Trigger", "OnNext", "Subscribe", "Unsubscribe", "Dispatch"]),
     eventFunctions: /* @__PURE__ */ new Set(["RaiseEvent", "OnPropertyChanged", "RaisePropertyChanged", "NotifyPropertyChanged"]),
+    listenMethods: /* @__PURE__ */ new Set(["Subscribe", "Unsubscribe"]),
     platformReceivers: /* @__PURE__ */ new Set(["Console", "Environment", "AppDomain", "Task", "Thread", "Debug", "Trace"]),
     eventBaseTypes: /* @__PURE__ */ new Set([
       "INotifyPropertyChanged",
@@ -16713,6 +17494,7 @@ var language5 = {
   detectors: {
     eventMethods: /* @__PURE__ */ new Set(["emit", "connect", "disconnect", "notify", "notifyAll", "subscribe", "unsubscribe", "publish", "dispatch", "fire", "trigger", "addListener", "removeListener"]),
     eventFunctions: /* @__PURE__ */ new Set(["emit", "connect", "dispatch", "publish", "subscribe", "notify"]),
+    listenMethods: /* @__PURE__ */ new Set(["connect", "disconnect", "subscribe", "unsubscribe", "addListener", "removeListener"]),
     platformReceivers: /* @__PURE__ */ new Set(["std", "boost", "this", "cin", "cout", "cerr", "clog", "stdin", "stdout", "stderr"]),
     eventBaseTypes: /* @__PURE__ */ new Set(["QObject", "QWidget", "QAbstractItemModel", "has_slots", "trackable", "Observable", "Subject", "EventEmitter"]),
     containerReceiver: /(container|injector|kernel|ioc)$/i,
@@ -16732,6 +17514,7 @@ var language6 = {
   detectors: {
     eventMethods: /* @__PURE__ */ new Set(["emit", "send", "send_robust", "asend", "on", "once", "off", "subscribe", "unsubscribe", "publish", "dispatch", "trigger", "fire", "add_listener", "remove_listener", "remove_all_listeners"]),
     eventFunctions: /* @__PURE__ */ new Set(["emit", "dispatch", "publish", "subscribe", "signal"]),
+    listenMethods: /* @__PURE__ */ new Set(["on", "once", "off", "subscribe", "unsubscribe", "add_listener", "remove_listener", "remove_all_listeners", "connect", "disconnect"]),
     platformReceivers: /* @__PURE__ */ new Set(["sys", "os", "signal", "socket", "sock", "conn", "connection", "ws", "websocket", "asyncio", "loop", "subprocess", "logging", "logger", "stdin", "stdout", "stderr", "process", "proc", "pipe", "queue", "writer", "stream"]),
     eventBaseTypes: /* @__PURE__ */ new Set(["EventEmitter", "AsyncIOEventEmitter", "ExecutorEventEmitter", "TwistedEventEmitter", "Signal", "NamedSignal", "Subject", "BehaviorSubject", "ReplaySubject", "Observable"]),
     containerReceiver: /(container|injector|binder|kernel|ioc)$/i,
@@ -16751,6 +17534,7 @@ var language7 = {
   detectors: {
     eventMethods: /* @__PURE__ */ new Set(["Emit", "emit", "Publish", "publish", "Subscribe", "subscribe", "Unsubscribe", "unsubscribe", "Dispatch", "dispatch", "Trigger", "trigger", "On", "Once", "Off", "AddListener", "RemoveListener", "Notify", "NotifyAll"]),
     eventFunctions: /* @__PURE__ */ new Set(["Emit", "Publish", "Subscribe", "Dispatch", "NewEventBus", "NewBroker"]),
+    listenMethods: /* @__PURE__ */ new Set(["Subscribe", "subscribe", "Unsubscribe", "unsubscribe", "On", "Once", "Off", "AddListener", "RemoveListener"]),
     platformReceivers: /* @__PURE__ */ new Set(["signal", "os", "runtime", "http", "log", "fmt", "testing", "flag", "context", "time", "sync", "atomic"]),
     eventBaseTypes: /* @__PURE__ */ new Set(["EventBus", "Bus", "Broker", "EventEmitter", "Emitter", "Dispatcher", "PubSub", "Observable", "Subject"]),
     containerReceiver: /^(container|injector|wire|dig|fx|app|kernel|ioc)$/i,
@@ -16770,6 +17554,7 @@ var language8 = {
   detectors: {
     eventMethods: /* @__PURE__ */ new Set(["emit", "on", "subscribe", "unsubscribe", "publish", "dispatch", "notify", "trigger", "add_listener", "remove_listener", "add_observer", "remove_observer", "broadcast"]),
     eventFunctions: /* @__PURE__ */ new Set(["emit", "dispatch", "publish", "subscribe", "notify"]),
+    listenMethods: /* @__PURE__ */ new Set(["on", "subscribe", "unsubscribe", "add_listener", "remove_listener", "add_observer", "remove_observer"]),
     platformReceivers: /* @__PURE__ */ new Set(["io", "stdin", "stdout", "stderr", "process", "env", "std", "tokio", "signal"]),
     eventBaseTypes: /* @__PURE__ */ new Set(["EventEmitter", "EventSource", "Observable", "Subject", "Publisher", "Subscriber", "EventListener", "Observer"]),
     containerReceiver: /(container|injector|ioc|provider|services|module)$/i,
@@ -17205,50 +17990,155 @@ async function mavenPackages(paths, read2, ignored) {
 var normalisePython = (name14) => name14.toLowerCase().replace(/[-_.]+/g, "-");
 var pythonName = (requirement) => /^[A-Za-z0-9][A-Za-z0-9._-]*/.exec(requirement.trim())?.[0];
 var devExtras = /* @__PURE__ */ new Set(["dev", "test", "tests", "testing", "lint", "docs", "typing"]);
+var pythonManifests = ["pyproject.toml", "setup.cfg", "setup.py"];
 async function pythonPackages(paths, read2, ignored) {
   const result = [];
-  for (const path of paths.filter((p) => baseOf(p) === "pyproject.toml").sort(compareIds)) {
-    const dir = dirOf(path);
+  const dirs = [...new Set(paths.filter((p) => pythonManifests.includes(baseOf(p))).map(dirOf))].sort(compareIds);
+  const fileSet = new Set(paths);
+  for (const dir of dirs) {
     if (ignored(dir)) continue;
-    const toml = parseToml(await read2(path) ?? "");
-    const project = toml.project ?? {};
-    const poetry = toml.tool?.poetry ?? {};
-    const name14 = project.name ?? poetry.name;
-    if (typeof name14 !== "string") continue;
-    const dependencies = [];
-    for (const requirement of strings2(project.dependencies)) {
-      const dependency = pythonName(requirement);
-      if (dependency !== void 0) dependencies.push({ name: dependency, scope: "runtime" });
-    }
-    for (const [extra, list3] of Object.entries(record(project["optional-dependencies"]))) {
-      for (const requirement of strings2(list3)) {
-        const dependency = pythonName(requirement);
-        if (dependency !== void 0) dependencies.push({ name: dependency, scope: devExtras.has(extra) ? "dev" : "runtime" });
-      }
-    }
-    for (const [dependency, spec] of Object.entries(record(poetry.dependencies))) {
-      if (dependency.toLowerCase() === "python") continue;
-      const path2 = record(spec).path;
-      dependencies.push({ name: dependency, scope: "runtime", ...typeof path2 === "string" && resolveFrom(dir, path2) !== void 0 ? { dir: resolveFrom(dir, path2) } : {} });
-    }
-    for (const group of [record(poetry["dev-dependencies"]), record(record(record(poetry.group).dev).dependencies)]) {
-      for (const dependency of Object.keys(group)) dependencies.push({ name: dependency, scope: "dev" });
-    }
-    const classifiers = strings2(project.classifiers);
-    result.push({
-      name: name14,
-      ecosystem: "python",
-      dir,
-      manifest: path,
-      private: classifiers.includes("Private :: Do Not Upload") ? true : null,
-      version: typeof (project.version ?? poetry.version) === "string" ? project.version ?? poetry.version : null,
-      entry: Object.keys(record(project.scripts)).length > 0 || Object.keys(record(poetry.scripts)).length > 0,
-      testSupport: isTestSupport(name14, dir),
-      aliases: [],
-      dependencies
-    });
+    const raw = await pyprojectPackage(dir, fileSet, read2) ?? await setupPackage(dir, fileSet, read2);
+    if (raw === void 0) continue;
+    raw.sources = pythonSources(dir, paths, raw.sources ?? []);
+    result.push(raw);
   }
   return result;
+}
+function pythonSources(dir, paths, declared) {
+  const sources = new Set([...pythonManifests, "src", "tests", "test"].map((name14) => child(dir, name14)));
+  for (const path of declared) sources.add(path);
+  const prefix = dir === "." ? "" : `${dir}/`;
+  for (const path of paths) {
+    if (!path.startsWith(prefix)) continue;
+    const parts3 = path.slice(prefix.length).split("/");
+    if (parts3.length === 1 && parts3[0].endsWith(".py")) sources.add(path);
+    if (parts3.length === 2 && parts3[1] === "__init__.py") sources.add(child(dir, parts3[0]));
+  }
+  return [...sources].sort(compareIds);
+}
+function declaredPythonPaths(dir, toml) {
+  const tool = record(toml.tool);
+  const relative = [...strings2(record(record(record(record(tool.hatch).build).targets).wheel).packages)];
+  for (const entry of Array.isArray(record(tool.poetry).packages) ? record(tool.poetry).packages : []) {
+    const include = record(entry).include;
+    const from = record(entry).from;
+    if (typeof include === "string") relative.push(typeof from === "string" ? `${from}/${include}` : include);
+  }
+  const setuptools = record(tool.setuptools);
+  for (const value of Object.values(record(setuptools["package-dir"]))) if (typeof value === "string") relative.push(value);
+  relative.push(...strings2(record(record(setuptools.packages).find).where));
+  return relative.map((path) => resolveFrom(dir, path.replace(/\/\*.*$/, ""))).filter((path) => path !== void 0 && path !== dir);
+}
+async function pyprojectPackage(dir, fileSet, read2) {
+  const path = child(dir, "pyproject.toml");
+  if (!fileSet.has(path)) return void 0;
+  const toml = parseToml(await read2(path) ?? "");
+  const project = toml.project ?? {};
+  const poetry = toml.tool?.poetry ?? {};
+  const name14 = project.name ?? poetry.name;
+  if (typeof name14 !== "string") return void 0;
+  const dependencies = [];
+  for (const requirement of strings2(project.dependencies)) {
+    const dependency = pythonName(requirement);
+    if (dependency !== void 0) dependencies.push({ name: dependency, scope: "runtime" });
+  }
+  for (const [extra, list3] of Object.entries(record(project["optional-dependencies"]))) {
+    for (const requirement of strings2(list3)) {
+      const dependency = pythonName(requirement);
+      if (dependency !== void 0) dependencies.push({ name: dependency, scope: devExtras.has(extra) ? "dev" : "runtime" });
+    }
+  }
+  for (const [dependency, spec] of Object.entries(record(poetry.dependencies))) {
+    if (dependency.toLowerCase() === "python") continue;
+    const at2 = record(spec).path;
+    dependencies.push({ name: dependency, scope: "runtime", ...typeof at2 === "string" && resolveFrom(dir, at2) !== void 0 ? { dir: resolveFrom(dir, at2) } : {} });
+  }
+  for (const group of [record(poetry["dev-dependencies"]), record(record(record(poetry.group).dev).dependencies)]) {
+    for (const dependency of Object.keys(group)) dependencies.push({ name: dependency, scope: "dev" });
+  }
+  const classifiers = strings2(project.classifiers);
+  return {
+    name: name14,
+    ecosystem: "python",
+    dir,
+    manifest: path,
+    private: classifiers.includes("Private :: Do Not Upload") ? true : null,
+    version: typeof (project.version ?? poetry.version) === "string" ? project.version ?? poetry.version : null,
+    entry: Object.keys(record(project.scripts)).length > 0 || Object.keys(record(poetry.scripts)).length > 0,
+    testSupport: isTestSupport(name14, dir),
+    aliases: [],
+    dependencies,
+    sources: declaredPythonPaths(dir, toml)
+  };
+}
+function parseIni(text3) {
+  const sections = /* @__PURE__ */ new Map();
+  let section2;
+  let key;
+  for (const line of text3.split("\n")) {
+    if (/^\s*([#;]|$)/.test(line)) continue;
+    const header2 = /^\[([^\]]+)\]/.exec(line);
+    if (header2) {
+      sections.set(header2[1].trim(), section2 = /* @__PURE__ */ new Map());
+      key = void 0;
+    } else if (/^\s/.test(line) && section2 && key !== void 0) {
+      section2.set(key, `${section2.get(key)}
+${line.trim()}`);
+    } else if (section2) {
+      const pair = /^([^=:]+?)\s*[=:]\s*(.*)$/.exec(line);
+      if (pair) section2.set(key = pair[1].trim(), pair[2].trim());
+    }
+  }
+  return sections;
+}
+var iniList = (value) => (value ?? "").split(/[\n;]/).map((item) => item.trim()).filter((item) => item !== "" && !item.startsWith("#"));
+function setupKeyword(script, call, keyword) {
+  const argument = new RegExp(`\\b${keyword}\\s*=\\s*(?:(['"])(.*?)\\1|([A-Za-z_]\\w*))`).exec(call);
+  if (argument === null) return void 0;
+  if (argument[2] !== void 0) return argument[2];
+  return new RegExp(`^${argument[3]}\\s*=\\s*(['"])(.*?)\\1`, "m").exec(script)?.[2];
+}
+function setupList(call, keyword) {
+  const list3 = new RegExp(`\\b${keyword}\\s*=\\s*\\[([^\\]]*)\\]`).exec(call)?.[1] ?? "";
+  return [...list3.matchAll(/(['"])(.*?)\1/g)].map((m) => m[2]);
+}
+async function setupPackage(dir, fileSet, read2) {
+  const cfgPath = child(dir, "setup.cfg");
+  const pyPath = child(dir, "setup.py");
+  const cfg = fileSet.has(cfgPath) ? parseIni(await read2(cfgPath) ?? "") : /* @__PURE__ */ new Map();
+  const script = fileSet.has(pyPath) ? (await read2(pyPath) ?? "").replace(/#.*$/gm, "") : "";
+  const at2 = /(?<!def\s+)\bsetup\s*\(/.exec(script)?.index;
+  const call = at2 === void 0 ? "" : script.slice(at2);
+  const metadata2 = cfg.get("metadata");
+  const options2 = cfg.get("options");
+  const fromCfg = metadata2?.get("name");
+  const name14 = fromCfg ?? setupKeyword(script, call, "name");
+  if (name14 === void 0 || name14 === "") return void 0;
+  const dependencies = [];
+  for (const requirement of [...iniList(options2?.get("install_requires")), ...setupList(call, "install_requires")]) {
+    const dependency = pythonName(requirement);
+    if (dependency !== void 0) dependencies.push({ name: dependency, scope: "runtime" });
+  }
+  for (const [extra, list3] of cfg.get("options.extras_require") ?? []) {
+    for (const requirement of iniList(list3)) {
+      const dependency = pythonName(requirement);
+      if (dependency !== void 0) dependencies.push({ name: dependency, scope: devExtras.has(extra) ? "dev" : "runtime" });
+    }
+  }
+  return {
+    name: name14,
+    ecosystem: "python",
+    dir,
+    manifest: fromCfg !== void 0 ? cfgPath : pyPath,
+    private: `${metadata2?.get("classifiers") ?? ""}
+${call}`.includes("Private :: Do Not Upload") ? true : null,
+    version: metadata2?.get("version") ?? setupKeyword(script, call, "version") ?? null,
+    entry: (cfg.get("options.entry_points")?.has("console_scripts") ?? false) || /\bconsole_scripts\b|\bscripts\s*=/.test(call),
+    testSupport: isTestSupport(name14, dir),
+    aliases: [],
+    dependencies,
+    sources: []
+  };
 }
 async function cargoPackages(paths, read2, ignored) {
   const fileSet = new Set(paths);
@@ -17281,10 +18171,27 @@ async function cargoPackages(paths, read2, ignored) {
       entry: Array.isArray(toml.bin) || fileSet.has(child(dir, "src/main.rs")),
       testSupport: isTestSupport(pkg.name, dir),
       aliases: [],
-      dependencies
+      dependencies,
+      sources: cargoSources(dir, path, toml)
     });
   }
   return result;
+}
+function cargoSources(dir, manifest, toml) {
+  const sources = /* @__PURE__ */ new Set([manifest, ...["Cargo.lock", "build.rs", "src", "tests", "benches", "examples"].map((name14) => child(dir, name14))]);
+  const build = record(toml.package).build;
+  if (typeof build === "string") {
+    const at2 = resolveFrom(dir, build);
+    if (at2 !== void 0) sources.add(at2);
+  }
+  const targets = [toml.lib, ...["bin", "test", "bench", "example"].flatMap((table4) => Array.isArray(toml[table4]) ? toml[table4] : [])];
+  for (const target2 of targets) {
+    const path = record(target2).path;
+    if (typeof path !== "string") continue;
+    const at2 = resolveFrom(dir, path);
+    if (at2 !== void 0) sources.add(dirOf(at2) === dir ? at2 : dirOf(at2));
+  }
+  return [...sources].sort(compareIds);
 }
 var isUnbuiltGoDir = (relative) => relative.split("/").some((part) => part === "testdata" || part === "vendor" || part.startsWith(".") || part.startsWith("_"));
 async function goPackages(paths, read2, ignored) {
@@ -17305,6 +18212,13 @@ async function goPackages(paths, read2, ignored) {
   };
   const dirs = /* @__PURE__ */ new Set();
   for (const path of paths) if (path.endsWith(".go")) dirs.add(dirOf(path));
+  const filesIn = /* @__PURE__ */ new Map();
+  for (const path of paths) {
+    const dir = dirOf(path);
+    if (!dirs.has(dir)) continue;
+    if (!filesIn.has(dir)) filesIn.set(dir, []);
+    filesIn.get(dir).push(path);
+  }
   const result = [];
   for (const dir of [...dirs].sort(compareIds)) {
     const moduleDir2 = moduleOf(dir);
@@ -17324,7 +18238,9 @@ async function goPackages(paths, read2, ignored) {
       testSupport: isTestSupport(name14, dir),
       aliases: [],
       dependencies: [],
-      module: module3.name
+      module: module3.name,
+      // a Go package is one directory: its files, and the test data beside them
+      sources: [...filesIn.get(dir) ?? [], child(dir, "testdata")].sort(compareIds)
     });
   }
   return result;
@@ -17400,7 +18316,8 @@ async function discoverPackages(tree, options2) {
       testSupport: raw.testSupport,
       aliases: raw.aliases,
       dependencies,
-      module: raw.module ?? null
+      module: raw.module ?? null,
+      sources: raw.sources ?? null
     };
   });
   markConfiguredEntries(packages, paths, options2.entryPoints ?? []);
@@ -17417,7 +18334,8 @@ async function discoverPackages(tree, options2) {
       testSupport: isTestSupport(component.name, ""),
       aliases: [],
       dependencies: [],
-      module: null
+      module: null,
+      sources: null
     })).sort((a, b) => compareIds(a.id, b.id));
   }
   return packages.sort((a, b) => compareIds(a.id, b.id));
@@ -17430,22 +18348,32 @@ function markConfiguredEntries(packages, paths, entryPoints) {
   for (const pkg of packages) if (owners.has(pkg.id)) pkg.entry = true;
 }
 function indexPackages(packages, components = []) {
-  const owners = /* @__PURE__ */ new Map();
-  for (const pkg of packages) if (pkg.dir !== null && !owners.has(pkg.dir)) owners.set(pkg.dir, pkg.id);
+  const atDir = /* @__PURE__ */ new Map();
+  for (const pkg of packages) {
+    if (pkg.dir === null) continue;
+    if (!atDir.has(pkg.dir)) atDir.set(pkg.dir, []);
+    atDir.get(pkg.dir).push({ id: pkg.id, sources: pkg.sources === null ? null : new Set(pkg.sources) });
+  }
   const componentIds = new Set(packages.filter((p) => p.ecosystem === "component" && p.dir === null).map((p) => p.id));
   const matchers2 = components.filter((c2) => componentIds.has(c2.name));
   const cache = /* @__PURE__ */ new Map();
-  const ownerOfDir = (dir) => {
+  const packageDirOf = (dir) => {
     if (cache.has(dir)) return cache.get(dir);
-    const found = owners.get(dir) ?? (dir === "." ? void 0 : ownerOfDir(dirOf(dir)));
+    const found = atDir.has(dir) ? dir : dir === "." ? void 0 : packageDirOf(dirOf(dir));
     cache.set(dir, found);
     return found;
+  };
+  const within = (sources, packageDir, path) => {
+    for (let at2 = path; at2 !== packageDir && at2 !== "."; at2 = dirOf(at2)) if (sources.has(at2)) return true;
+    return false;
   };
   return {
     owner(path) {
       const matched = matchers2.find((c2) => c2.matches(path));
       if (matched !== void 0) return matched.name;
-      return ownerOfDir(dirOf(path));
+      const dir = packageDirOf(dirOf(path));
+      if (dir === void 0) return void 0;
+      return atDir.get(dir).find((pkg) => pkg.sources === null || within(pkg.sources, dir, path))?.id;
     }
   };
 }
@@ -17471,20 +18399,6 @@ async function projectFromTree(tree, headSha, options2, cache) {
   const generated = new Set(analysis.generatedFiles);
   const files = [...tree.files.keys()].filter((path) => hasAdapter(path) && !isTestPath(path) && !excluded(path) && !generated.has(path)).sort(compareUtf8);
   const inProject = new Set(files);
-  const imports = /* @__PURE__ */ new Map();
-  const adjacency = new Map(files.map((path) => [path, []]));
-  for (const edge of analysis.importEdges) {
-    if (edge.pairing === true || !inProject.has(edge.from) || !inProject.has(edge.to)) continue;
-    const key = edgeKey(edge.from, edge.to);
-    imports.set(key, [...imports.get(key) ?? [], edge]);
-    adjacency.get(edge.from).push(edge.to);
-  }
-  const consumers = /* @__PURE__ */ new Map();
-  for (const consumer of analysis.consumers) {
-    if (consumer.kind === "test" || !inProject.has(consumer.from) || !inProject.has(consumer.to)) continue;
-    const key = edgeKey(consumer.from, consumer.to);
-    consumers.set(key, [...consumers.get(key) ?? [], consumer]);
-  }
   const components = readComponents(options2.components ?? {});
   const packages = await discoverPackages(tree, {
     ignore: options2.packages?.ignore ?? [],
@@ -17495,6 +18409,21 @@ async function projectFromTree(tree, headSha, options2, cache) {
   });
   const packageIndex = indexPackages(packages, components);
   const packageOf = (path) => packageIndex.owner(path) ?? ".";
+  const nominalInside = (edge) => edge.nominal === true && packageOf(edge.from) === packageOf(edge.to);
+  const imports = /* @__PURE__ */ new Map();
+  const adjacency = new Map(files.map((path) => [path, []]));
+  for (const edge of analysis.importEdges) {
+    if (edge.pairing === true || edge.test === true || !inProject.has(edge.from) || !inProject.has(edge.to) || nominalInside(edge)) continue;
+    const key = edgeKey(edge.from, edge.to);
+    imports.set(key, [...imports.get(key) ?? [], edge]);
+    adjacency.get(edge.from).push(edge.to);
+  }
+  const consumers = /* @__PURE__ */ new Map();
+  for (const consumer of analysis.consumers) {
+    if (consumer.kind === "test" || !inProject.has(consumer.from) || !inProject.has(consumer.to)) continue;
+    const key = edgeKey(consumer.from, consumer.to);
+    consumers.set(key, [...consumers.get(key) ?? [], consumer]);
+  }
   return { headSha, files, graph: normalise3(adjacency), analysis, imports, consumers, packages, packageIndex, packageOf };
 }
 
@@ -17538,6 +18467,35 @@ var Reader2 = class {
     return file !== void 0 && file.classes.length === 0 && file.functions.length === 0 && file.types.length === 0;
   }
 };
+function ownSendNames(files, adapterOf, stated) {
+  const definers = /* @__PURE__ */ new Map();
+  const listening = /* @__PURE__ */ new Set();
+  for (const [path, file] of files) {
+    const adapterId = adapterOf.get(path);
+    const detectors = censusDetectorsOf(adapterId);
+    for (const klass of file.classes) {
+      if (klass.heritage.some((name14) => detectors.eventBaseTypes.has(name14))) listening.add(`${adapterId}\0${klass.name}`);
+    }
+    for (const fn of file.functions) {
+      const dot = fn.name.lastIndexOf(".");
+      const owner = `${adapterId}\0${dot === -1 ? `file:${path}` : fn.name.slice(0, dot)}`;
+      const name14 = fn.name.slice(dot + 1);
+      if (detectors.listenMethods.has(name14)) listening.add(owner);
+      else if ((detectors.eventMethods.has(name14) || detectors.eventFunctions.has(name14)) && !stated.has(name14)) {
+        const byName2 = definers.get(adapterId) ?? /* @__PURE__ */ new Map();
+        definers.set(adapterId, byName2.set(name14, (byName2.get(name14) ?? /* @__PURE__ */ new Set()).add(owner)));
+      }
+    }
+  }
+  const out2 = /* @__PURE__ */ new Map();
+  for (const [adapterId, byName2] of definers) {
+    for (const [name14, owners] of byName2) {
+      if ([...owners].some((owner) => listening.has(owner))) continue;
+      out2.set(adapterId, (out2.get(adapterId) ?? /* @__PURE__ */ new Map()).set(name14, owners.size));
+    }
+  }
+  return out2;
+}
 async function buildCensus(tree, project, settings) {
   const files = /* @__PURE__ */ new Map();
   const adapterOf = /* @__PURE__ */ new Map();
@@ -17569,14 +18527,18 @@ async function buildCensus(tree, project, settings) {
     if (names3 === void 0) eventNamesOf.set(id, names3 = /* @__PURE__ */ new Set([...detectors.eventMethods, ...settings.eventCalls]));
     return names3;
   };
+  const ownSends = ownSendNames(files, adapterOf, new Set(settings.eventCalls));
+  const lookAlikeCalls = /* @__PURE__ */ new Map();
   const implementers = /* @__PURE__ */ new Map();
   const projectFiles = new Set(project.files);
   const callers = /* @__PURE__ */ new Map();
+  const typeUsers = /* @__PURE__ */ new Map();
   for (const consumer of project.analysis.consumers) {
-    if (consumer.kind !== "call" || consumer.toSymbol === void 0 || !projectFiles.has(consumer.from)) continue;
+    if (consumer.toSymbol === void 0 || !projectFiles.has(consumer.from)) continue;
     if (folderOf(consumer.from) === folderOf(consumer.to)) continue;
     const key = `${consumer.to}#${consumer.toSymbol}`;
-    callers.set(key, (callers.get(key) ?? /* @__PURE__ */ new Set()).add(folderOf(consumer.from)));
+    if (consumer.kind === "call") callers.set(key, (callers.get(key) ?? /* @__PURE__ */ new Set()).add(folderOf(consumer.from)));
+    if (consumer.kind === "call" || consumer.kind === "reference") typeUsers.set(key, (typeUsers.get(key) ?? /* @__PURE__ */ new Set()).add(folderOf(consumer.from)));
   }
   const symbolBased = new Set(registeredAdapters.filter((adapter9) => adapter9.dependencies.model === "symbol-based").map((adapter9) => adapter9.id));
   const callbackAliases = (path, names3, detectors) => names3.some((name14) => detectors.callbackTypeNames.has(name14) || reader.declaringFile(path, name14, ["function-type"]) !== void 0);
@@ -17629,7 +18591,10 @@ async function buildCensus(tree, project, settings) {
       } else if (call.receiver !== null && detectors.handlerReceiver.test(call.receiver) && detectors.handlerMethods.has(call.method)) {
         add({ mechanism: "handlers", variant: "dispatch", path, line: call.line, detail: where });
       } else if (call.receiver !== null ? eventNames(adapterId, detectors).has(call.method) && !detectors.platformReceivers.has(call.receiver) : detectors.eventFunctions.has(call.method) || settings.eventCalls.includes(call.method)) {
-        add({ mechanism: "events", variant: "call", path, line: call.line, detail: where });
+        if (ownSends.get(adapterId)?.has(call.method)) {
+          const key = `${adapterId}\0${call.method}`;
+          lookAlikeCalls.set(key, (lookAlikeCalls.get(key) ?? 0) + 1);
+        } else add({ mechanism: "events", variant: "call", path, line: call.line, detail: where });
       } else if (registers) {
         add({ mechanism: "registries", variant: "register-call", path, line: call.line, detail: where });
       }
@@ -17638,16 +18603,19 @@ async function buildCensus(tree, project, settings) {
     for (const fn of file.functions) {
       const parameter = fn.parameters.find((p) => p.type.callback || callbackAliases(path, p.type.names, detectors));
       if (!parameter) continue;
-      const owner = symbolBased.has(adapterId) && fn.name.includes(".") ? fn.name.slice(0, fn.name.lastIndexOf(".")) : void 0;
-      const callerFolders = [...callers.get(`${path}#${fn.name}`) ?? (owner === void 0 ? void 0 : callers.get(`${path}#${owner}`)) ?? []].sort(compareUtf8);
+      const owner = fn.name.includes(".") ? fn.name.slice(0, fn.name.lastIndexOf(".")) : void 0;
+      const throughType = owner === void 0 ? void 0 : (symbolBased.has(adapterId) ? callers : typeUsers).get(`${path}#${owner}`);
+      const direct = callers.get(`${path}#${fn.name}`);
+      const callerFolders = [...direct ?? throughType ?? []].sort(compareUtf8);
       if (callerFolders.length === 0) continue;
+      const reach = direct === void 0 && !symbolBased.has(adapterId) ? `is a method of ${owner}, which is used from` : "is called from";
       add({
         mechanism: "callbacks",
         variant: "function-parameter",
         path,
         line: fn.line,
         folders: callerFolders,
-        detail: `${fn.name}(${parameter.name}) is called from ${callerFolders.join(", ")}`
+        detail: `${fn.name}(${parameter.name}) ${reach} ${callerFolders.join(", ")}`
       });
     }
   }
@@ -17674,7 +18642,20 @@ async function buildCensus(tree, project, settings) {
   occurrences.sort(
     (a, b) => MECHANISMS.indexOf(a.mechanism) - MECHANISMS.indexOf(b.mechanism) || compareUtf8(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || compareUtf8(a.variant, b.variant) || compareUtf8(a.detail, b.detail)
   );
-  return { files: files.size, occurrences };
+  const byName2 = /* @__PURE__ */ new Map();
+  for (const [key, count3] of lookAlikeCalls) {
+    const [adapterId, name14] = key.split("\0");
+    const entry = byName2.get(name14) ?? { count: 0, definitions: 0 };
+    byName2.set(name14, { count: entry.count + count3, definitions: entry.definitions + ownSends.get(adapterId).get(name14) });
+  }
+  const lookAlikes = [...byName2].map(([name14, { count: count3, definitions }]) => ({
+    mechanism: "events",
+    name: name14,
+    count: count3,
+    definitions,
+    detail: `${name14} is defined in this repository on ${definitions === 1 ? "1 type or file, which has no listen method and no event base type" : `${definitions} types or files, and none of them has a listen method or an event base type`}, so a call runs that code and notifies no listener`
+  })).sort((a, b) => b.count - a.count || compareUtf8(a.name, b.name));
+  return { files: files.size, occurrences, lookAlikes };
 }
 
 // packages/structure/src/census/rows.ts
@@ -17708,7 +18689,8 @@ function censusRows(census) {
       files: new Set(found.filter((o) => o.line !== null).map((o) => o.path)).size,
       variants: tally(found.map((o) => o.variant)).map(([variant, count3]) => ({ variant, count: count3 })),
       folders,
-      examples: examplesOf(found, folders).map(({ variant, path, line, detail }) => ({ variant, path, line, detail }))
+      examples: examplesOf(found, folders).map(({ variant, path, line, detail }) => ({ variant, path, line, detail })),
+      lookAlikes: census.lookAlikes.filter((l) => l.mechanism === mechanism).map(({ name: name14, count: count3, definitions, detail }) => ({ name: name14, count: count3, definitions, detail }))
     };
   });
 }
@@ -18290,7 +19272,7 @@ var structureConfig = {
     minVolatilityRatio: 2,
     /** Guideline (a judgement call): a dependency is above the guideline for structural stability when the depended-on side's instability exceeds the dependant's by at least this many percentage points. It orders and annotates rows and hides none. */
     minInstabilityGap: 20,
-    /** Evidence floor (a judgement call): the report lists a dependency against stability only when the depended-on folder has at least this many files, because a one-file folder's revisions per file and instability are the figures of one file. `stability` still lists every dependency, and the report counts the ones it leaves out. */
+    /** Evidence floor (a judgement call): the report lists a dependency against stability only when the depended-on folder has at least this many files, because a one-file folder's revisions per file and instability are the figures of one file. `stability` lists those after all the others and counts them, and the report counts the ones it leaves out. */
     minTargetFiles: 2,
     /**
      * The mechanism census. Every list adds to what is built in. Names are matched exactly:
@@ -18439,7 +19421,7 @@ function withVagueNames(packages, vagueNames) {
 
 // packages/history/src/reports.ts
 import { createHash as createHash4, randomUUID as randomUUID3 } from "node:crypto";
-import { mkdirSync as mkdirSync2, renameSync as renameSync2, rmSync as rmSync3, writeFileSync as writeFileSync2 } from "node:fs";
+import { mkdirSync as mkdirSync2, renameSync as renameSync2, rmSync as rmSync3, writeFileSync as writeFileSync3 } from "node:fs";
 import { join as join11 } from "node:path";
 function reportPath(root, tool, command13, variant) {
   return join11(root, ".cache", "code-health", "reports", `${tool}.${command13}${variant === void 0 ? "" : `.${variant}`}.json`);
@@ -18490,7 +19472,7 @@ async function writeReport(context, identity2, command13, output, analysedHead, 
   mkdirSync2(join11(file, ".."), { recursive: true });
   const temporary = `${file}.${process.pid}.${randomUUID3()}.tmp`;
   try {
-    writeFileSync2(temporary, serialise(document2));
+    writeFileSync3(temporary, serialise(document2));
     renameSync2(temporary, file);
   } catch (error) {
     rmSync3(temporary, { force: true });
@@ -18519,11 +19501,19 @@ var rules = {
       "introducing something new, which is the user's decision.",
       "",
       "Seven mechanisms are looked for in the production files of every supported language, found from the syntax tree:",
-      "- callbacks: a function with a function-typed parameter that is called from another folder.",
+      "- callbacks: a function with a function-typed parameter that is called from another folder. A function",
+      "  type, a generic parameter bounded by one (in the function's or its impl's list or where clause) and a",
+      "  function type alias all count. A method counts when its type is used from another folder, because",
+      "  the dependency graph does not resolve which method a call reaches.",
       "- interfaces: an interface or abstract class that a class in another folder implements or extends.",
       "- dependency-injection: injection decorators, container registration calls, and a constructor taking an",
       "  interface declared in another folder.",
-      "- events: emit, on, subscribe, publish and dispatch calls, and event-emitter base types.",
+      "- events: emit, on, subscribe, publish and dispatch calls, and event-emitter base types. A send call",
+      "  (emit, publish, notify and the like) is left out when the repository defines that name only on types",
+      "  and files that have no listen method (on, subscribe) and no event-emitter base type: the call runs the",
+      "  repository's own code and notifies no listener, as telemetry and logging `emit` do. The row's",
+      "  lookAlikes lists each such name with the calls left out. Names in structure.census.eventCalls are",
+      "  always counted.",
       "- handlers: handler decorators and types, handler registration, and dispatch on a mediator or command bus.",
       "- registries: maps and objects named like a registry or a handler table, and register* calls.",
       "- ports-and-adapters: folders named in structure.census.folderNames.",
@@ -18546,7 +19536,7 @@ var command = {
     const output = {
       inputs: { census: settings.census },
       results: censusRows(census),
-      columns: ["id", "mechanism", "count", "files", "variants", "folders", "examples"],
+      columns: ["id", "mechanism", "count", "files", "variants", "folders", "examples", "lookAlikes"],
       extra: { filesRead: census.files }
     };
     await writeReport2(context, name2, output, headSha);
@@ -18569,6 +19559,15 @@ function isNestedFolderCycle(level, nodes) {
   return nodes.every((a) => nodes.every((b) => a === b || isAncestorFolder(a, b) || isAncestorFolder(b, a)));
 }
 var cycleId = (level, firstNode) => `cycle:${level}:${firstNode}`;
+function idLevel(graph, nodes) {
+  if (graph.level !== "default") return graph.level;
+  const isFile = (node) => {
+    const files = graph.filesOf.get(node);
+    return files !== void 0 && files.length === 1 && files[0] === node;
+  };
+  return nodes.every(isFile) ? "file" : "default";
+}
+var namesCycle = (id, cycle) => id === cycle.id || id === cycleId(cycle.level, cycle.nodes[0]);
 function unblocksOf(model, from, to) {
   if (!model.locality) return [];
   const members2 = model.graph.members.get(edgeKey(from, to)) ?? [];
@@ -18607,7 +19606,7 @@ function findCycles(model, settings) {
     }
     const breakingSet = cycle.edges.map((edge) => breakingEdge(model, edge.from, edge.to));
     return {
-      id: cycleId(model.graph.level, cycle.nodes[0]),
+      id: cycleId(idLevel(model.graph, cycle.nodes), cycle.nodes[0]),
       level: model.graph.level,
       size: cycle.nodes.length,
       nodes: [...cycle.nodes],
@@ -18674,7 +19673,7 @@ function cyclesOf(project, level, settings) {
   const graph = buildModuleGraph(level, project, settings.components);
   const judged = (nodes) => level !== "folder" || settings.csharpFolderCycles || csharpProjectOfFolders(project, graph, nodes) === void 0;
   return breakingSets(importGraph(graph), { exactLimit: settings.exactLimit }).filter((cycle) => judged(cycle.nodes)).map((cycle) => ({
-    id: `cycle:${level}:${cycle.nodes[0]}`,
+    id: cycleId(idLevel(graph, cycle.nodes), cycle.nodes[0]),
     level,
     nodes: [...cycle.nodes],
     breakingSet: cycle.edges.map((e) => ({ from: e.from, to: e.to }))
@@ -18832,6 +19831,10 @@ var BUILTIN_BOT_PATTERNS = [
   "^pre-commit-ci",
   "<bot@renovateapp\\.com>"
 ];
+var BOT_WORD = /(?<![\p{L}\p{N}])(?:ro)?bot(?![\p{L}\p{N}])/iu;
+var CAPITALISED_BOT_WORD = new RegExp("(?<=\\p{Ll})(?:Robot|Bot)(?!\\p{Ll})", "u");
+var BOT_WORD_IN_NAME = "bot or robot as a word in the name";
+var BOT_WORD_IN_LOCAL_PART = "bot or robot as a word in the email's local part";
 var BUILTIN_SERVICE_NAMES = [
   "build",
   "builds",
@@ -18878,6 +19881,11 @@ function compilePattern(pattern) {
     throw new InvalidPatternError(pattern, error instanceof Error ? error.message : String(error));
   }
 }
+var wordBot = (text3) => BOT_WORD.test(text3) || CAPITALISED_BOT_WORD.test(text3);
+var localPartOf = (email) => {
+  const at2 = email.lastIndexOf("@");
+  return at2 === -1 ? email : email.slice(0, at2);
+};
 var addressOf = (identity2) => {
   const open = identity2.lastIndexOf("<");
   return (open === -1 ? identity2 : identity2.slice(open + 1, identity2.lastIndexOf(">"))).trim().toLowerCase();
@@ -18895,17 +19903,19 @@ function createNonPersonMatcher(rules11) {
   const classify = (name14, email) => {
     const decision = decisions.get(email.trim().toLowerCase());
     if (decision) {
-      return decision.kind === "person" ? null : { kind: decision.kind, source: "decision", pattern: decision.identity };
+      return decision.kind === "person" ? null : { kind: decision.kind, source: "decision", pattern: decision.identity, signal: "decision" };
     }
     const text3 = `${name14} <${email}>`;
     const fromConfig = config.find((c2) => c2.re.test(text3));
-    if (fromConfig) return { kind: fromConfig.kind, source: "config", pattern: fromConfig.pattern };
+    if (fromConfig) return { kind: fromConfig.kind, source: "config", pattern: fromConfig.pattern, signal: "identity" };
     const agent = builtinAgents.find((c2) => c2.re.test(text3));
-    if (agent) return { kind: "agent", source: "builtin", pattern: agent.pattern };
+    if (agent) return { kind: "agent", source: "builtin", pattern: agent.pattern, signal: "identity" };
     const bot = builtin.find((c2) => c2.re.test(text3));
-    if (bot) return { kind: "bot", source: "builtin", pattern: bot.pattern };
+    if (bot) return { kind: "bot", source: "builtin", pattern: bot.pattern, signal: "identity" };
+    if (wordBot(name14)) return { kind: "bot", source: "builtin", pattern: BOT_WORD_IN_NAME, signal: "name" };
+    if (wordBot(localPartOf(email))) return { kind: "bot", source: "builtin", pattern: BOT_WORD_IN_LOCAL_PART, signal: "local-part" };
     const normalised = normaliseName(name14);
-    if (serviceNames.has(normalised)) return { kind: "service", source: "builtin", pattern: normalised };
+    if (serviceNames.has(normalised)) return { kind: "service", source: "builtin", pattern: normalised, signal: "name" };
     return null;
   };
   return {
@@ -18936,7 +19946,7 @@ function createNonPersonMatcher(rules11) {
 }
 
 // packages/history/src/identity-decisions.ts
-import { existsSync as existsSync9, mkdirSync as mkdirSync3, readFileSync as readFileSync7, renameSync as renameSync3, writeFileSync as writeFileSync3 } from "node:fs";
+import { existsSync as existsSync9, mkdirSync as mkdirSync3, readFileSync as readFileSync7, renameSync as renameSync3, writeFileSync as writeFileSync4 } from "node:fs";
 import { join as join12 } from "node:path";
 var emptyDecisions = () => ({ schemaVersion: 1, rejectedMerges: [], classifications: [] });
 function identityFiles(root) {
@@ -20994,27 +22004,43 @@ function distanceTo(folders, sideFolders) {
   for (const a of folders) for (const b of sideFolders) least = Math.min(least, folderDistance(a, b));
   return least;
 }
-function nearbyMechanisms(census, from, to, limit = NEARBY_LIMIT) {
-  return rankNearby(census, from, to).slice(0, limit);
+var folderOf3 = (path) => {
+  const slash = path.lastIndexOf("/");
+  return slash === -1 ? "." : path.slice(0, slash);
+};
+function nearbyMechanisms(census, sides, limit = NEARBY_LIMIT) {
+  const listed = rankNearby(census, sides).slice(0, limit);
+  return { listed, omitted: census.occurrences.length - listed.reduce((sum, entry) => sum + entry.count, 0) };
 }
-function nearbyOmitted(census, limit = NEARBY_LIMIT) {
-  return Math.max(0, census.occurrences.length - limit);
-}
-function rankNearby(census, from, to) {
-  return census.occurrences.map((o) => {
+function rankNearby(census, sides) {
+  const from = sides.from.map(folderOf3);
+  const to = sides.to.map(folderOf3);
+  const sidePackages = new Set([...sides.from, ...sides.to].map((path) => sides.packageOf(path)));
+  const byKey = /* @__PURE__ */ new Map();
+  for (const o of census.occurrences) {
+    const key = [o.mechanism, o.variant, o.detail, ...o.folders].join("\0");
+    const seen = byKey.get(key);
+    if (seen !== void 0) {
+      seen.count++;
+      continue;
+    }
     const toFrom = distanceTo(o.folders, from);
     const toTo = distanceTo(o.folders, to);
-    return {
+    const owner = sides.packageOf(o.line === null ? `${o.path}/-` : o.path);
+    byKey.set(key, {
       mechanism: o.mechanism,
       variant: o.variant,
       path: o.path,
       line: o.line,
       detail: o.detail,
+      count: 1,
+      samePackage: sidePackages.has(owner),
       distance: Math.min(toFrom, toTo),
       near: toFrom === toTo ? "both" : toFrom < toTo ? "from" : "to"
-    };
-  }).sort(
-    (a, b) => a.distance - b.distance || MECHANISMS.indexOf(a.mechanism) - MECHANISMS.indexOf(b.mechanism) || compareUtf8(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0)
+    });
+  }
+  return [...byKey.values()].sort(
+    (a, b) => Number(b.samePackage) - Number(a.samePackage) || a.distance - b.distance || MECHANISMS.indexOf(a.mechanism) - MECHANISMS.indexOf(b.mechanism) || compareUtf8(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0)
   );
 }
 
@@ -21047,6 +22073,12 @@ function rankDependencies(model, settings) {
   return rows11.sort(
     (a, b) => Number(b.aboveGuideline) - Number(a.aboveGuideline) || Number(b.basis === "change") - Number(a.basis === "change") || margin(b) - margin(a) || b.fileEdges - a.fileEdges || compareIds(a.from, b.from) || compareIds(a.to, b.to)
   );
+}
+function splitAtTargetFloor(rows11, settings) {
+  const listed = [];
+  const belowFloor = [];
+  for (const row of rows11) (row.stability.to.change.files >= settings.minTargetFiles ? listed : belowFloor).push(row);
+  return { listed, belowFloor };
 }
 function unitStabilities(model) {
   return [...model.graph.filesOf.keys()].map((id) => ({ id, ...stabilityOf(model.structural, model.change, id) })).sort((a, b) => b.change.revisionsPerFile - a.change.revisionsPerFile || compareIds(a.id, b.id));
@@ -21104,6 +22136,7 @@ function misplacement(model, from, to, symbols) {
 }
 function evidencePack(model, from, to, settings, census) {
   const level = model.graph.level;
+  const label = idLevel(model.graph, [from, to]);
   const detail = describeEdge(model.project, model.graph, from, to);
   const judged = judgeEdge(model, from, to, settings);
   const { stability, id: _id, level: _l, from: _f, to: _t, fileEdges: _e, ...verdict } = judged;
@@ -21122,16 +22155,16 @@ function evidencePack(model, from, to, settings, census) {
   }
   if (verdict.aboveGuideline) {
     kinds2.push("unstable-dependency");
-    findings.push(unstableId(level, from, to));
+    findings.push(unstableId(label, from, to));
   }
   const quadrant = judgePair(model.project, model.graph, model.activity, from, to, settings);
   if (quadrant.name === "incidental" || quadrant.name === "hidden") {
     kinds2.push(quadrant.name === "incidental" ? "incidental-coupling" : "hidden-coupling");
     const [a, b] = orientPair(model.project, model.graph, from, to);
-    findings.push(couplingId(level, a, b));
+    findings.push(couplingId(label, a, b));
   }
   return {
-    id: `edge:${level}:${from}->${to}`,
+    id: `edge:${label}:${from}->${to}`,
     kind: kinds2[0] ?? null,
     kinds: kinds2,
     findings,
@@ -21152,15 +22185,11 @@ function evidencePack(model, from, to, settings, census) {
     coChange: coChangeFigures(model, from, to),
     misplacement: misplacement(model, from, to, detail.symbols),
     unblocks: unblocksOf(model, from, to).sort((a, b) => b.unblockedGain - a.unblockedGain || compareIds(a.unit, b.unit)),
-    nearbyMechanisms: nearbyMechanisms(
-      census,
-      (model.graph.filesOf.get(from) ?? []).map(folderOf),
-      (model.graph.filesOf.get(to) ?? []).map(folderOf)
-    ),
-    nearbyMechanismsOmitted: nearbyOmitted(census),
+    ...nearbyFields(nearbyMechanisms(census, { from: model.graph.filesOf.get(from) ?? [], to: model.graph.filesOf.get(to) ?? [], packageOf: model.project.packageOf })),
     layerRule: rule2
   };
 }
+var nearbyFields = ({ listed, omitted: omitted3 }) => ({ nearbyMechanisms: listed, nearbyMechanismsOmitted: omitted3 });
 function hubEvidencePack(model, hub, census) {
   const features = hub.features.map((feature) => {
     const imported = model.graph.graph.get(hub.module)?.includes(feature.module) === true;
@@ -21184,12 +22213,9 @@ function hubEvidencePack(model, hub, census) {
     signals: hub.signals,
     stability: stabilityOfModule(model, hub.module) ?? null,
     unblocks,
-    nearbyMechanisms: nearbyMechanisms(
-      census,
-      [folderOf(hub.file)],
-      hub.features.flatMap((feature) => (model.graph.filesOf.get(feature.module) ?? []).map(folderOf))
-    ),
-    nearbyMechanismsOmitted: nearbyOmitted(census)
+    ...nearbyFields(
+      nearbyMechanisms(census, { from: [hub.file], to: hub.features.flatMap((feature) => model.graph.filesOf.get(feature.module) ?? []), packageOf: model.project.packageOf })
+    )
   };
 }
 
@@ -21487,13 +22513,13 @@ var usage2 = "usage: evidence <from>-><to> [--level file|folder|package|componen
 function parseTarget(text3, requested) {
   const hub = /^hub:(.+)$/.exec(text3);
   if (hub) return { kind: "hub", level: requested, id: text3 };
-  const pair = /^coupling:(file|folder|component):(.+)$/.exec(text3);
+  const pair = /^coupling:(file|folder|component|default):(.+)$/.exec(text3);
   if (pair) return { ...parseEdge(pair[2]), level: pair[1] };
   const cycle = /^cycle:(default|file|folder|package):(.+)$/.exec(text3);
   if (cycle) return { kind: "cycle", level: cycle[1], id: text3 };
   const layer = /^layer:(.+)$/.exec(text3);
   if (layer) return { ...parseEdge(layer[1]), level: "file" };
-  const unstable = /^unstable:(folder|component):(.+)$/.exec(text3);
+  const unstable = /^unstable:(file|folder|component|default):(.+)$/.exec(text3);
   const edge = unstable ? unstable[2] : text3;
   return { ...parseEdge(edge), level: unstable ? unstable[1] : requested };
 }
@@ -21531,7 +22557,7 @@ var command5 = analysisCommand(name6, {
     }
     if (target2.kind === "cycle") {
       model = await buildModel(context, history, target2.level);
-      const cycle = findCycles(model, settings).find((c2) => c2.id === target2.id);
+      const cycle = findCycles(model, settings).find((c2) => namesCycle(target2.id, c2));
       if (!cycle) throw usageError(`no cycle "${target2.id}" at the analysed commit`);
       edges = cycle.breakingSet.map((e) => [e.from, e.to]);
     } else {
@@ -22074,6 +23100,26 @@ function overrideOf(model, pkg) {
 function isPublished(model, pkg) {
   return overrideOf(model, pkg).published ?? pkg.private !== true;
 }
+function publishedSource(model, pkg) {
+  if (overrideOf(model, pkg).published !== void 0) return "config";
+  return pkg.private === true ? "manifest" : "default";
+}
+function internalMarker(pkg) {
+  switch (pkg.ecosystem) {
+    case "cargo":
+      return "publish = false in Cargo.toml";
+    case "npm":
+      return '"private": true in package.json';
+    case "dotnet":
+      return "<IsPackable>false</IsPackable> in the project file";
+    case "python":
+      return "the classifier Private :: Do Not Upload";
+    case "go":
+      return "a path under internal/";
+    default:
+      return null;
+  }
+}
 function purposeOf(model, pkg) {
   return overrideOf(model, pkg).purpose ?? null;
 }
@@ -22095,10 +23141,12 @@ function assemblePackageModel(headSha, history, tree, project) {
   const excluded = compileGlobs(settings.exclude);
   const byId = new Map(packages.map((p) => [p.id, p]));
   const files = new Map(packages.map((p) => [p.id, []]));
+  let unowned = 0;
   for (const path of tree.files.keys()) {
     if (excluded(path)) continue;
     const owner = index.owner(path);
-    if (owner !== void 0) files.get(owner).push(path);
+    if (owner === void 0) unowned++;
+    else files.get(owner).push(path);
   }
   const codeFiles = new Map(packages.map((p) => [p.id, []]));
   for (const path of project.files) {
@@ -22122,10 +23170,10 @@ function assemblePackageModel(headSha, history, tree, project) {
   for (const imported of project.analysis.importEdges) {
     if (imported.pairing === true || excluded(imported.from) || excluded(imported.to)) continue;
     const from = index.owner(imported.from);
-    const to = index.owner(imported.to);
+    const to = index.owner(imported.via ?? imported.to);
     if (from === void 0 || to === void 0 || from === to) continue;
     const edge = edgeFor(from, to);
-    if (isTestPath(imported.from) || isTestPath(imported.to)) edge.testImports++;
+    if (imported.test === true || isTestPath(imported.from) || isTestPath(imported.to)) edge.testImports++;
     else edge.productionImports++;
   }
   const production = new Map(packages.map((p) => [p.id, []]));
@@ -22173,6 +23221,7 @@ function assemblePackageModel(headSha, history, tree, project) {
     byId,
     index,
     files,
+    unowned,
     project,
     model,
     development: normalise3(development),
@@ -23010,17 +24059,18 @@ function deepImports(context, reuse) {
   const excluded = compileGlobs(model.settings.exclude);
   const found = /* @__PURE__ */ new Map();
   for (const edge of model.project.analysis.importEdges) {
-    if (edge.pairing === true || excluded(edge.from) || excluded(edge.to) || isTestPath(edge.to)) continue;
+    const target2 = edge.via ?? edge.to;
+    if (edge.pairing === true || excluded(edge.from) || excluded(target2) || isTestPath(target2)) continue;
     const consumer = model.index.owner(edge.from);
-    const owner = model.index.owner(edge.to);
+    const owner = model.index.owner(target2);
     if (consumer === void 0 || owner === void 0 || consumer === owner) continue;
     const entries = reuse.profiles.get(owner)?.entries;
-    if (!entries || entries.files.has(edge.to)) continue;
+    if (!entries || entries.files.has(target2)) continue;
     const key = edgeKey(consumer, owner);
     const entry = found.get(key) ?? { files: /* @__PURE__ */ new Set(), importers: /* @__PURE__ */ new Set(), tests: 0 };
-    entry.files.add(edge.to);
+    entry.files.add(target2);
     entry.importers.add(edge.from);
-    if (isTestPath(edge.from)) entry.tests++;
+    if (edge.test === true || isTestPath(edge.from)) entry.tests++;
     found.set(key, entry);
   }
   return [...found].sort(([a], [b]) => compareIds(a, b)).map(([key, imports]) => {
@@ -23751,8 +24801,8 @@ function externalNeeds(model) {
 
 // packages/structure/src/packaging/release.ts
 function deployablesOf(model, id) {
-  const configured = overrideOf(model, model.byId.get(id)).deployables;
-  if (configured !== void 0) return [...configured].sort(compareIds);
+  const configured2 = overrideOf(model, model.byId.get(id)).deployables;
+  if (configured2 !== void 0) return [...configured2].sort(compareIds);
   const reaching = [];
   for (const entry of model.packages.filter((p) => p.entry && !p.testSupport)) {
     if (entry.id === id) {
@@ -24210,30 +25260,29 @@ function buildCandidates(model, listed) {
   };
   const { reuse } = analysis;
   const found = /* @__PURE__ */ new Map();
-  const withheld = [];
+  const withheld = /* @__PURE__ */ new Map();
   const mismatched = new Set(analysis.boundaries.filter((f) => f.kind === "purpose-mismatch").map((f) => f.packages[0]));
+  const publishedAmong = (ids) => ids.filter((id) => isPublished(model, model.byId.get(id)));
   const add = (candidate) => {
-    const existing = found.get(candidate.id);
+    const published = candidate.kind === "fix-manifest" || candidate.kind === "break-dependency" ? [] : publishedAmong(candidate.packages);
+    const existing = published.length > 0 ? withheld.get(candidate.id)?.candidate : found.get(candidate.id);
     if (existing) {
       existing.findings = [.../* @__PURE__ */ new Set([...existing.findings, ...candidate.findings])].sort(compareIds);
       existing.changeCost = Math.max(existing.changeCost, candidate.changeCost);
+      if (published.length > 0) withheld.get(candidate.id).findings = existing.findings;
       return;
     }
-    found.set(candidate.id, {
+    const complete = {
       ...candidate,
       status: candidate.against.some((a) => a.hard) ? "blocked" : "proposed",
       tentative: candidate.packages.some((id) => isYoung(model, id)),
       step: STEP[candidate.kind],
       also: candidate.also ?? [],
+      dependants: candidate.dependants ?? null,
       handoff: candidate.handoff ?? null
-    });
-  };
-  const publishedAmong = (ids) => ids.filter((id) => isPublished(model, model.byId.get(id)));
-  const withhold = (kind, ids, findings) => {
-    const published = publishedAmong(ids);
-    if (published.length === 0) return false;
-    withheld.push({ kind, packages: ids, reason: `${published.join(", ")} ${published.length === 1 ? "is" : "are"} published: its consumers outside the repository cannot be seen, so nothing is proposed`, findings: findings.map((f) => f.id).sort(compareIds) });
-    return true;
+    };
+    if (published.length === 0) found.set(candidate.id, complete);
+    else withheld.set(candidate.id, withholding(model, complete, published));
   };
   const softAgainst = (ids) => {
     const against = [];
@@ -24275,7 +25324,6 @@ function buildCandidates(model, listed) {
     }
   }
   for (const { a, b, findings, keep: preferred } of [...merges.values()].sort((x2, y2) => compareIds(x2.a, y2.a) || compareIds(x2.b, y2.b))) {
-    if (withhold("merge", [a, b], findings)) continue;
     const [keep, go] = preferred !== null && !model.byId.get(preferred.id === a ? b : a).entry ? [preferred.id, preferred.id === a ? b : a] : mergeDirection(model, a, b);
     const against = softAgainst([a, b]);
     const [da, db] = [deployablesOf(model, a), deployablesOf(model, b)];
@@ -24307,7 +25355,6 @@ function buildCandidates(model, listed) {
     }
   }
   for (const [id, findings] of [...splitFindings].sort(([a], [b]) => compareIds(a, b))) {
-    if (withhold("split", [id], findings)) continue;
     const profile = reuse.profiles.get(id);
     if (!profile) continue;
     const consumed = profile.components.filter((c2) => c2.consumers.length > 0);
@@ -24329,7 +25376,7 @@ function buildCandidates(model, listed) {
       packages: [id],
       into: null,
       unit: null,
-      parts: parts3.map((p) => ({ exports: p.exports.map((e) => e.slice(e.lastIndexOf("#") + 1)), consumers: p.consumers })),
+      parts: parts3.map((p) => ({ exports: [...new Set(p.exports)].sort(compareIds), consumers: p.consumers })),
       findings: findings.map((f) => f.id).sort(compareIds),
       against,
       changeCost: Math.max(...findings.map((f) => f.changeCost))
@@ -24339,7 +25386,6 @@ function buildCandidates(model, listed) {
   for (const finding of analysis.cohesion.filter((f) => f.kind === "crossing-unit")) {
     const [from, to] = finding.packages;
     const unit = finding.unit;
-    if (withhold("move-unit", [from, to], [finding])) continue;
     const against = softAgainst([from, to]);
     const cycles = newCycles(model, unit, to);
     if (cycles.length > 0) {
@@ -24366,8 +25412,7 @@ function buildCandidates(model, listed) {
   }
   for (const finding of followers2) {
     const [from, to] = finding.packages;
-    if ([...found.values()].some((c2) => c2.kind === "move-unit" && c2.findings.includes(finding.id))) continue;
-    if (withhold("move-unit", [from, to], [finding])) continue;
+    if ([...found.values(), ...[...withheld.values()].map((w) => w.candidate)].some((c2) => c2.kind === "move-unit" && c2.findings.includes(finding.id))) continue;
     add({
       id: `move-unit:${to}->${from}`,
       kind: "move-unit",
@@ -24385,7 +25430,6 @@ function buildCandidates(model, listed) {
     narrowing.set(finding.packages[0], [...narrowing.get(finding.packages[0]) ?? [], finding]);
   }
   for (const [id, findings] of [...narrowing].sort(([a], [b]) => compareIds(a, b))) {
-    if (withhold("narrow-interface", [id], findings)) continue;
     add({
       id: `narrow-interface:${id}`,
       kind: "narrow-interface",
@@ -24422,10 +25466,10 @@ function buildCandidates(model, listed) {
     }
     if (finding.kind === "zone-of-pain") {
       const id = finding.packages[0];
-      for (const [from, targets] of model.model.graph.graph) {
-        if (!targets.includes(id)) continue;
-        add({ id: `break-dependency:${from}->${id}`, kind: "break-dependency", packages: [from, id], into: null, unit: null, parts: null, findings: [finding.id], against: [], changeCost: finding.changeCost, handoff: `structure evidence "${from}->${id}" --level package` });
-      }
+      const dependants = [...model.model.graph.graph].filter(([, targets]) => targets.includes(id)).map(([from]) => from).sort(compareIds);
+      if (dependants.length === 0) continue;
+      const first = [...dependants].sort((a, b) => model.activity.shared(b, id) - model.activity.shared(a, id) || compareIds(a, b))[0];
+      add({ id: `break-dependency:${id}`, kind: "break-dependency", packages: [id], into: null, unit: null, parts: null, findings: [finding.id], against: [], changeCost: finding.changeCost, dependants, handoff: `structure evidence "${first}->${id}" --level package` });
     }
     if (finding.kind === "package-cycle") {
       for (const edge of finding.evidence.breakingSet) {
@@ -24437,7 +25481,28 @@ function buildCandidates(model, listed) {
   const candidates2 = [...found.values()].sort(
     (a, b) => Number(a.status === "blocked") - Number(b.status === "blocked") || b.changeCost - a.changeCost || a.step - b.step || Number(a.tentative) - Number(b.tentative) || compareIds(a.id, b.id)
   );
-  return { candidates: candidates2, withheld: withheld.sort((a, b) => compareIds(a.kind, b.kind) || compareIds(a.packages.join(), b.packages.join())) };
+  return { candidates: candidates2, withheld: [...withheld.values()].sort((a, b) => compareIds(a.kind, b.kind) || compareIds(a.packages.join(), b.packages.join())) };
+}
+function withholding(model, candidate, published) {
+  const assumed = published.filter((id) => publishedSource(model, model.byId.get(id)) === "default");
+  const declared = published.filter((id) => !assumed.includes(id));
+  const reasons = [];
+  if (declared.length > 0) reasons.push(`${declared.join(", ")} ${declared.length === 1 ? "is" : "are"} declared published in config`);
+  for (const id of assumed) {
+    const pkg = model.byId.get(id);
+    const marker = internalMarker(pkg) ?? `${pkg.ecosystem} manifests have no such marker`;
+    reasons.push(`${id} is treated as published because its manifest does not mark it internal (${marker}) and no config says otherwise`);
+  }
+  const question = assumed.length === 0 ? null : `${assumed.length === 1 ? "Does" : "Do"} ${assumed.join(" and ")} have consumers outside this repository? If not, set ${assumed.map((id) => `structure.packages.byPackage[${JSON.stringify(id)}].published`).join(" and ")} to false and run packages candidates again.`;
+  return {
+    kind: candidate.kind,
+    packages: candidate.packages,
+    reason: `${reasons.join("; ")}: ${published.length === 1 ? "its" : "their"} consumers outside the repository cannot be seen, so nothing is proposed`,
+    findings: candidate.findings,
+    assumed,
+    question,
+    candidate
+  };
 }
 function mergeDirection(model, a, b) {
   const entry = [a, b].filter((id) => model.byId.get(id).entry);
@@ -24616,6 +25681,7 @@ function packageRows(model, abstractness = /* @__PURE__ */ new Map()) {
       ecosystem: pkg.ecosystem,
       ...pkg.module === null ? {} : { module: pkg.module },
       kind: isPublished(model, pkg) ? "published" : "internal",
+      kindSource: publishedSource(model, pkg),
       purpose: purposeOf(model, pkg),
       entry: pkg.entry,
       testSupport: pkg.testSupport,
@@ -24636,7 +25702,7 @@ function packageRows(model, abstractness = /* @__PURE__ */ new Map()) {
       firstSeen: first === void 0 ? null : new Date(first * 1e3).toISOString().slice(0, 10),
       young: isYoung(model, pkg.id)
     };
-  }).sort((a, b) => compareIds(a.id, b.id));
+  }).sort((a, b) => b.share - a.share || b.revisions - a.revisions || compareIds(a.id, b.id));
 }
 
 // packages/structure/src/packaging/evidence.ts
@@ -24719,8 +25785,25 @@ var evidence = {
 };
 
 // packages/structure/src/packaging/commands/list.ts
+var plural = (count3, noun2, many = `${noun2}s`) => `${count3} ${count3 === 1 ? noun2 : many}`;
+function notices(model, rows11) {
+  const out2 = [];
+  if (model.unowned > 0) out2.push(`${plural(model.unowned, "file")} ${model.unowned === 1 ? "is" : "are"} owned by no package, so changes to them count for no package.`);
+  const assumed = rows11.filter((row) => row.kindSource === "default");
+  const byMarker = /* @__PURE__ */ new Map();
+  for (const row of assumed) {
+    const marker = internalMarker(model.byId.get(row.id)) ?? `${row.ecosystem} manifests have no such marker`;
+    byMarker.set(marker, [...byMarker.get(marker) ?? [], row.id]);
+  }
+  for (const [marker, ids] of [...byMarker].sort(([a], [b]) => a < b ? -1 : 1)) {
+    out2.push(
+      `${plural(ids.length, "package")} ${ids.length === 1 ? "is" : "are"} listed as published only because ${ids.length === 1 ? "its manifest does" : "their manifests do"} not mark ${ids.length === 1 ? "it" : "them"} internal (${marker}) and no config says otherwise: ${ids.join(", ")}.`
+    );
+  }
+  return out2;
+}
 var list2 = {
-  summary: "Every package with its kind, purpose, size, consumers, stability, closure and change frequency",
+  summary: "Every package with its kind, purpose, size, consumers, stability, closure and change frequency, the largest share of changes first",
   async analyse({ model }) {
     const rows11 = packageRows(model, measureAbstractness(await analyseReuse(model), model.settings.packages.minExportedTypes));
     const ecosystems2 = {};
@@ -24728,12 +25811,15 @@ var list2 = {
     return {
       inputs: { subcommand: "list", graceDays: model.settings.packages.graceDays },
       results: rows11,
+      presorted: true,
       columns: ["id", "kind", "purpose", "files", "consumers", "ca", "ce", "instability", "abstractness", "distance", "closure", "share", "revisions"],
+      notices: notices(model, rows11),
       extra: {
         repository: {
           packages: rows11.length,
           ecosystems: ecosystems2,
-          eligibleChanges: model.activity.eligibleChanges
+          eligibleChanges: model.activity.eligibleChanges,
+          unowned: model.unowned
         }
       }
     };
@@ -25112,7 +26198,7 @@ __export(report_exports, {
 });
 
 // packages/cli-kit/src/report-command.ts
-import { mkdirSync as mkdirSync5, readFileSync as readFileSync13, writeFileSync as writeFileSync5 } from "node:fs";
+import { mkdirSync as mkdirSync5, readFileSync as readFileSync13, writeFileSync as writeFileSync6 } from "node:fs";
 import { dirname as dirname6, resolve as resolve2 } from "node:path";
 
 // packages/report/src/json.ts
@@ -25255,8 +26341,8 @@ function shortHash(content) {
 function slug(text3) {
   return text3.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "item";
 }
-function count2(n, singular, plural2 = `${singular}s`) {
-  return `${formatNumber(n)} ${n === 1 ? singular : plural2}`;
+function count2(n, singular, plural3 = `${singular}s`) {
+  return `${formatNumber(n)} ${n === 1 ? singular : plural3}`;
 }
 function clip(text3, max) {
   if (max < 1) return "";
@@ -28424,8 +29510,8 @@ function slotsDocument(report) {
 // packages/cli-kit/src/report-build-cache.ts
 import { createHash as createHash8, randomUUID as randomUUID4 } from "node:crypto";
 import { execFileSync as execFileSync2 } from "node:child_process";
-import { existsSync as existsSync15, mkdirSync as mkdirSync4, readdirSync as readdirSync5, readFileSync as readFileSync11, realpathSync, renameSync as renameSync4, rmSync as rmSync4, statSync as statSync4, writeFileSync as writeFileSync4 } from "node:fs";
-import { basename as basename3, dirname as dirname4, join as join15, resolve } from "node:path";
+import { existsSync as existsSync15, mkdirSync as mkdirSync4, readdirSync as readdirSync5, readFileSync as readFileSync11, realpathSync, renameSync as renameSync4, rmSync as rmSync4, statSync as statSync4, writeFileSync as writeFileSync5 } from "node:fs";
+import { basename as basename4, dirname as dirname4, join as join15, resolve } from "node:path";
 
 // packages/cli-kit/src/code-identity.ts
 import { createHash as createHash7 } from "node:crypto";
@@ -28512,7 +29598,7 @@ function canonical2(value) {
 }
 function real(path) {
   try {
-    return join15(realpathSync(dirname4(path)), basename3(path));
+    return join15(realpathSync(dirname4(path)), basename4(path));
   } catch {
     return path;
   }
@@ -28544,10 +29630,10 @@ function write(file, entry) {
   const dir = dirname4(file);
   mkdirSync4(dir, { recursive: true });
   const ignore = join15(dir, ".gitignore");
-  if (!existsSync15(ignore)) writeFileSync4(ignore, "*\n");
+  if (!existsSync15(ignore)) writeFileSync5(ignore, "*\n");
   const temporary = `${file}.${randomUUID4()}.tmp`;
   try {
-    writeFileSync4(temporary, JSON.stringify(entry));
+    writeFileSync5(temporary, JSON.stringify(entry));
     renameSync4(temporary, file);
   } catch {
     rmSync4(temporary, { force: true });
@@ -28569,7 +29655,7 @@ ${before.other}`)) {
       return entry.build;
     }
   }
-  const notices = context.stderrNotices?.length ?? 0;
+  const notices2 = context.stderrNotices?.length ?? 0;
   const build = await compute();
   const after = dependencyState(root);
   if (after.other !== before.other || !isClean(context)) return build;
@@ -28589,7 +29675,7 @@ ${before.other}`)) {
 --
 ${after.other}`),
     build: stored,
-    stderrNotices: (context.stderrNotices ?? []).slice(notices)
+    stderrNotices: (context.stderrNotices ?? []).slice(notices2)
   });
   return stored;
 }
@@ -28669,7 +29755,7 @@ function reportCommand(kinds2) {
         if (request.out === void 0) return { results: [], text: text3 };
         const file = resolve2(context.cwd, request.out);
         mkdirSync5(dirname6(file), { recursive: true });
-        writeFileSync5(file, text3);
+        writeFileSync6(file, text3);
         return { results: [], text: `wrote ${request.out}
 ` };
       } catch (error) {
@@ -28745,6 +29831,11 @@ var rules9 = {
       "then rows are sorted by margin. `volatilityRatio` is the measured ratio. Nothing is hidden for",
       "being under the guideline; use --limit to cap the rows.",
       "",
+      "Dependencies onto a module of fewer than structure.minTargetFiles files (default 2, an evidence floor)",
+      "are listed after all the others, in the same order among themselves, and counted in",
+      "`belowTargetFloor`: a one-file module's figures are the figures of one file. The structure report",
+      "leaves them out, so its list of folder dependencies is the first rows of this one.",
+      "",
       "`disagree` is set when the two measures point opposite ways, which is when change evidence is the",
       "one to believe. With weak evidence the grade says how far to trust either. This is a prompt for",
       "investigation, not a verdict: `structure evidence` gives the facts behind the edge."
@@ -28761,16 +29852,22 @@ var command11 = analysisCommand(name12, {
     const model = await buildModel(context, history, by);
     const { settings } = history;
     const units = unitStabilities(model);
+    const { listed, belowFloor } = splitAtTargetFloor(rankDependencies(model, settings), settings);
+    const n = belowFloor.length;
     return {
       inputs: {
         by,
         minRevisions: settings.minRevisions,
         minVolatilityRatio: settings.minVolatilityRatio,
-        minInstabilityGap: settings.minInstabilityGap
+        minInstabilityGap: settings.minInstabilityGap,
+        minTargetFiles: settings.minTargetFiles
       },
-      results: rankDependencies(model, settings),
+      results: [...listed, ...belowFloor],
       columns: ["id", "basis", "volatilityRatio", "structuralAboveGuideline", "changeAboveGuideline", "disagree", "fileEdges", "stability"],
-      extra: { units: units.slice(0, UNITS_SHOWN), unitsTotal: units.length }
+      notices: n === 0 ? [] : [
+        `${n} ${n === 1 ? "dependency" : "dependencies"} onto a ${by} of fewer than ${settings.minTargetFiles} files ${n === 1 ? "is" : "are"} listed after the others, because the figures of a one-file ${by} are the figures of one file (evidence floor structure.minTargetFiles, a judgement call).${by === "folder" ? ` The structure report leaves ${n === 1 ? "it" : "them"} out.` : ""}`.replace(/\.$/, "")
+      ],
+      extra: { belowTargetFloor: n, units: units.slice(0, UNITS_SHOWN), unitsTotal: units.length }
     };
   }
 });
@@ -28820,7 +29917,7 @@ var SYMBOLS_PER_EDGE = 3;
 var NODES_PER_CYCLE = 4;
 var TOP_PACKAGES = 15;
 var yesNo = (value) => value ? "yes" : "no";
-var plural = (n, noun2, many = `${noun2}s`) => `${n} ${n === 1 ? noun2 : many}`;
+var plural2 = (n, noun2, many = `${noun2}s`) => `${n} ${n === 1 ? noun2 : many}`;
 function nameList(names2, shown2) {
   if (names2.length <= shown2) return names2.join(", ");
   return `${names2.slice(0, shown2).join(", ")} and ${names2.length - shown2} more`;
@@ -28910,14 +30007,14 @@ function dsmBlocks(dsm, layered, hubs = /* @__PURE__ */ new Set(), cyclesShown =
     },
     {
       type: "paragraph",
-      text: `The matrix draws ${drawn === dsm.totalModules ? `all ${plural(drawn, "module")}` : `${drawn} of the ${plural(dsm.totalModules, "module")}`} of ${dsm.language}, the language with the most modules at the default level${others.length === 0 ? "" : `; the ${others.map((l) => `${l.modules} of ${l.language}`).join(" and ")} ${others.length === 1 && others[0].modules === 1 ? "is" : "are"} not drawn`}.${omitted3 > 0 ? ` It leaves out ${plural(omitted3, "module")} that ${omitted3 === 1 ? "has" : "have"} a dependency, to stay readable: the members of cycles come first, in the order of the cycles table, then the modules with the most neighbours, up to ${DSM_MODULES}.` : ""}${isolated > 0 ? ` ${plural(isolated, "module")} with no dependency on another ${isAre(isolated)} not drawn.` : ""}`
+      text: `The matrix draws ${drawn === dsm.totalModules ? `all ${plural2(drawn, "module")}` : `${drawn} of the ${plural2(dsm.totalModules, "module")}`} of ${dsm.language}, the language with the most modules at the default level${others.length === 0 ? "" : `; the ${others.map((l) => `${l.modules} of ${l.language}`).join(" and ")} ${others.length === 1 && others[0].modules === 1 ? "is" : "are"} not drawn`}.${omitted3 > 0 ? ` It leaves out ${plural2(omitted3, "module")} that ${omitted3 === 1 ? "has" : "have"} a dependency, to stay readable: the members of cycles come first, in the order of the cycles table, then the modules with the most neighbours, up to ${DSM_MODULES}.` : ""}${isolated > 0 ? ` ${plural2(isolated, "module")} with no dependency on another ${isAre(isolated)} not drawn.` : ""}`
     }
   ];
 }
 function projectFolderCyclesText(cycles) {
   if (cycles.count === 0) return "No folder cycle lies inside one C# project (structure.csharpFolderCycles is true).";
   const largest = cycles.largest.map((c2) => `${nameList(c2.nodes, NODES_PER_CYCLE)} in ${c2.project}`).join("; ");
-  return `${plural(cycles.count, "folder cycle")} lie${cycles.count === 1 ? "s" : ""} inside one C# project and ${cycles.count === 1 ? "is" : "are"} not in the table (structure.csharpFolderCycles is true). Largest: ${largest}.`;
+  return `${plural2(cycles.count, "folder cycle")} lie${cycles.count === 1 ? "s" : ""} inside one C# project and ${cycles.count === 1 ? "is" : "are"} not in the table (structure.csharpFolderCycles is true). Largest: ${largest}.`;
 }
 function cycleBlocks(rows11, projectFolderCycles) {
   const shown2 = rows11.slice(0, TOP_CYCLES);
@@ -28965,7 +30062,7 @@ function cycleBlocks(rows11, projectFolderCycles) {
     const label = `cycle ${i2 + 1} (${nameList(row.nodes, 2)})`;
     blocks.push({
       type: "ranked-table",
-      caption: `Cycle ${i2 + 1}: the breaking set of ${plural(row.breakingSet.length, "edge")} (${row.method})`,
+      caption: `Cycle ${i2 + 1}: the breaking set of ${plural2(row.breakingSet.length, "edge")} (${row.method})`,
       numbered: false,
       columns: [
         { key: "edge", label: "Edge to break" },
@@ -28979,7 +30076,7 @@ function cycleBlocks(rows11, projectFolderCycles) {
         coChange: edge.coChange,
         fileEdges: edge.fileEdges,
         typeOnly: yesNo(edge.typeOnly),
-        symbols: edge.symbols.length === 0 ? null : nameList(edge.symbols.map((s) => `${s.symbol} (${plural(s.sites, "site")})`), SYMBOLS_PER_EDGE) + (edge.symbolsTotal > edge.symbols.length ? ` of ${edge.symbolsTotal}` : "")
+        symbols: edge.symbols.length === 0 ? null : nameList(edge.symbols.map((s) => `${s.symbol} (${plural2(s.sites, "site")})`), SYMBOLS_PER_EDGE) + (edge.symbolsTotal > edge.symbols.length ? ` of ${edge.symbolsTotal}` : "")
       }))
     });
     blocks.push({ type: "judgement", slot: id });
@@ -29024,8 +30121,8 @@ function layerBlocks(rows11, settings) {
 }
 var round32 = (value) => Math.round(value * 1e3) / 1e3;
 function withEvidenceFloor(against, settings) {
-  const listed = against.filter((row) => row.stability.to.change.files >= settings.minTargetFiles);
-  return { listed, belowFloor: against.length - listed.length };
+  const { listed, belowFloor } = splitAtTargetFloor(against, settings);
+  return { listed, belowFloor: belowFloor.length };
 }
 function stabilityBlocks(packageRows2, allAgainst, settings) {
   const { listed: against, belowFloor } = withEvidenceFloor(allAgainst, settings);
@@ -29039,7 +30136,7 @@ function stabilityBlocks(packageRows2, allAgainst, settings) {
   const slots = [];
   const blocks = [
     { type: "stability-chart", title: "Packages by instability and abstractness", zoneDistance: settings.packages.zoneDistance, zoneSource: "structure.packages.zoneDistance, a judgement call", points, maxPoints: TOP_PACKAGES, total: packageRows2.length - unplaced, noun: "packages" },
-    ...unplaced === 0 ? [] : [{ type: "notice", level: "notice", text: `${plural(unplaced, "package")} ${unplaced === 1 ? "has" : "have"} too few exported types to place (fewer than ${floor}, structure.packages.minExportedTypes, a judgement call); abstractness is not measured for ${unplaced === 1 ? "it" : "them"}. ${unplaced === 1 ? "It is" : "They are"} left out of the chart, its table and its zone counts.` }],
+    ...unplaced === 0 ? [] : [{ type: "notice", level: "notice", text: `${plural2(unplaced, "package")} ${unplaced === 1 ? "has" : "have"} too few exported types to place (fewer than ${floor}, structure.packages.minExportedTypes, a judgement call); abstractness is not measured for ${unplaced === 1 ? "it" : "them"}. ${unplaced === 1 ? "It is" : "They are"} left out of the chart, its table and its zone counts.` }],
     {
       type: "paragraph",
       text: "A dependency should point towards the more stable side. Structural stability is Martin's instability I = Ce / (Ca + Ce) over distinct outside files. Change stability is revisions per file in the window, and it decides when the depended-on side has at least structure.minRevisions revisions. The table is sorted by, in order: rows at or above a guideline first; rows decided by change before rows decided by structure; the larger margin, which for change is the depended-on side's revisions per file minus the dependant's (both shown) and for structure is the instability gap; file imports; path. A row decided by change can have a negative instability gap: it is listed because the depended-on folder has more revisions per file, even when it is structurally more stable. No row is hidden for being below a guideline."
@@ -29048,7 +30145,7 @@ function stabilityBlocks(packageRows2, allAgainst, settings) {
       type: "ranked-table",
       caption: "Dependencies pointing towards less stable folders",
       noun: "dependencies",
-      emptyText: belowFloor === 0 ? "No dependency points towards a less stable folder." : `No dependency points towards a less stable folder that has at least ${settings.minTargetFiles} files; ${plural(belowFloor, "dependency", "dependencies")} onto smaller folders ${belowFloor === 1 ? "is" : "are"} left out.`,
+      emptyText: belowFloor === 0 ? "No dependency points towards a less stable folder." : `No dependency points towards a less stable folder that has at least ${settings.minTargetFiles} files; ${plural2(belowFloor, "dependency", "dependencies")} onto smaller folders ${belowFloor === 1 ? "is" : "are"} left out.`,
       total: against.length,
       columns: [
         { key: "from", label: "From (depends)" },
@@ -29080,11 +30177,20 @@ function stabilityBlocks(packageRows2, allAgainst, settings) {
       maxChars: 320
     });
   });
-  if (belowFloor > 0) blocks.push({ type: "notice", level: "notice", text: `${plural(belowFloor, "dependency", "dependencies")} onto a folder of fewer than ${settings.minTargetFiles} files ${belowFloor === 1 ? "is" : "are"} left out, because the figures of a one-file folder are the figures of one file (evidence floor structure.minTargetFiles, a judgement call). \`structure stability\` lists them.` });
+  if (belowFloor > 0) blocks.push({ type: "notice", level: "notice", text: `${plural2(belowFloor, "dependency", "dependencies")} onto a folder of fewer than ${settings.minTargetFiles} files ${belowFloor === 1 ? "is" : "are"} left out, because the figures of a one-file folder are the figures of one file (evidence floor structure.minTargetFiles, a judgement call). \`structure stability\` lists ${belowFloor === 1 ? "it" : "them"} after the others.` });
   return { blocks, slots };
+}
+var isPlaced = (row, settings) => row.instability !== null && row.abstractness !== null && row.distance !== null && (row.exportedTypes ?? 0) >= settings.packages.minExportedTypes;
+function packagesText(rows11, settings) {
+  const withCode = rows11.filter((row) => row.abstractness !== null).length;
+  const placed = rows11.filter((row) => isPlaced(row, settings)).length;
+  return `${rows11.length} found from manifests: ${withCode} ${withCode === 1 ? "holds" : "hold"} production code in a supported language, and ${placed} of them ${placed === 1 ? "is" : "are"} placed on the chart`;
 }
 function censusBlocks(rows11) {
   const none2 = rows11.filter((row) => row.count === 0).map((row) => row.mechanism);
+  const lookAlikes = rows11.flatMap(
+    (row) => row.lookAlikes.length === 0 ? [] : [`${row.mechanism}: ${nameList(row.lookAlikes.map((l) => `${l.name} (${plural2(l.count, "call")})`), 5)}`]
+  );
   return [
     {
       type: "ranked-table",
@@ -29111,7 +30217,14 @@ function censusBlocks(rows11) {
       type: "notice",
       level: "notice",
       text: `The census describes and does not judge. ${none2.length === 0 ? "Every mechanism is in use here." : `A count of zero is a finding: ${none2.join(", ")} ${none2.length === 1 ? "is" : "are"} not in use here, so choosing ${none2.length === 1 ? "it" : "one"} would introduce something new.`}`
-    }
+    },
+    ...lookAlikes.length === 0 ? [] : [
+      {
+        type: "notice",
+        level: "notice",
+        text: `Calls left out of the counts as look-alikes, ${lookAlikes.join("; ")}. The repository defines each of these send names only on types and files that have no listen method and no event base type, so a call runs that code and notifies no listener. \`structure census\` lists them under lookAlikes.`
+      }
+    ]
   ];
 }
 var SIGNALS = [
@@ -29120,14 +30233,14 @@ var SIGNALS = [
   ["appendShapedEdits", "append-shaped edits"],
   ["contention", "contention"]
 ];
-function hubBlocks(rows11, notices) {
+function hubBlocks(rows11, notices2) {
   return [
     {
       type: "ranked-table",
       caption: "Registration hubs: files every feature edits",
       noun: "hubs",
       total: rows11.length,
-      emptyText: notices.join(" "),
+      emptyText: notices2.join(" "),
       rowIds: rows11.slice(0, TOP_HUBS).map((hub) => hubId(hub.file)),
       columns: [
         { key: "file", label: "File" },
@@ -29144,7 +30257,7 @@ function hubBlocks(rows11, notices) {
         revisions: hub.revisions
       }))
     },
-    ...rows11.length === 0 ? [] : notices.map((text3) => ({ type: "notice", level: "notice", text: text3 }))
+    ...rows11.length === 0 ? [] : notices2.map((text3) => ({ type: "notice", level: "notice", text: text3 }))
   ];
 }
 function includeBlocks(include) {
@@ -29191,7 +30304,8 @@ function limitsOf(results, settings) {
   const { evidence: evidence2 } = results.extra;
   return [
     "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-    `Each list shows its top rows and says how many it leaves out: ${TOP_CYCLES} cycles, ${TOP_AGAINST} dependencies against stability, ${TOP_LAYER_VIOLATIONS} layer violations, ${TOP_HUBS} hubs and ${TOP_PACKAGES} packages in the stability table (the chart draws every package that exports types). The commands print the rest.`,
+    `Each list shows up to ${TOP_CYCLES} cycles, ${TOP_AGAINST} dependencies against stability, ${results.layerViolations === null ? "" : `${TOP_LAYER_VIOLATIONS} layer violations, `}${TOP_HUBS} hubs and ${TOP_PACKAGES} packages in the stability table, and says how many it leaves out. The chart draws every package it places. The commands print the rest.`,
+    "Packages are counted from the manifests found. `structure cycles --level package` has a module for each package that holds production code in a supported language, and the chart places only those that also export enough types and have a dependency in or out.",
     "Cycles are found at the default level for each language, so a file cycle in Go or C# that stays inside one package or folder is not shown. `structure cycles --level` shows the other levels.",
     `Abstractness is measured for packages from the exported interfaces, abstract classes, classes and enums. A package that exports fewer than ${settings.packages.minExportedTypes} types (structure.packages.minExportedTypes) has too few for the abstract-to-concrete ratio to mean anything, so it is unplaced: left out of the chart, its table and its zone counts, and counted. Folders have no abstractness, so the chart is of packages and the dependencies against stability are between folders.`,
     ...results.packages.some((row) => row.ecosystem === "go") ? ["In Go, packages offer behaviour through functions and structurally satisfied interfaces, and the measure counts only declared types, so a concrete Go package that many packages depend on is common and a position in the zone of pain says little about it. Change evidence carries the judgement."] : [],
@@ -29233,7 +30347,7 @@ var structure = {
               { label: "Layer violations", value: results.layerViolations === null ? "no layers configured" : String(results.layerViolations.length) },
               { label: "Dependencies pointing towards less stable folders", value: `${listedAgainst.length}, of which ${aboveGuideline} reach a guideline` },
               { label: "Registration hubs", value: String(results.hubs.length) },
-              { label: "Packages", value: String(results.packages.length) }
+              { label: "Packages", value: packagesText(results.packages, settings) }
             ]
           },
           ...dsmBlocks(results.extra.dsm, results.layerViolations !== null, new Set(results.hubs.slice(0, TOP_HUBS).map((hub) => hub.file)), Math.min(results.cycles.length, TOP_CYCLES)),

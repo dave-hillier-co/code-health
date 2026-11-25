@@ -100,8 +100,12 @@ export function successorsOf(path: string, index: SuccessorIndex, model: Knowled
   return successors.sort((a, b) => b.score - a.score || Buffer.compare(Buffer.from(a.developer), Buffer.from(b.developer)));
 }
 
-/** No active developer has changed any file that changes with this one. Such a file has nobody working near it. */
-export const hasNoSuccessor = (successors: readonly Successor[]): boolean => successors.every((s) => s.coupledChanges === 0);
+/**
+ * The successor model has no candidate: no active developer holds a line of the file, and none has changed a file
+ * coupled with it at the minimum support. An active developer who holds lines is a candidate, so a file shared by
+ * several active authors always has a successor, even when nothing reaches the minimum support.
+ */
+export const hasNoSuccessor = (successors: readonly Successor[]): boolean => successors.length === 0;
 
 /** A check, built once per run, for the `no-successor` finding of the files a command ranks. */
 export function noSuccessorCheck(history: LoadedHistory, model: KnowledgeModel): (path: string) => boolean {

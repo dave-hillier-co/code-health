@@ -66,6 +66,8 @@ export interface UnitFact extends UnitShape {
   test?: true;
   /** The method overrides or implements one its type inherits, so it is not a free-standing helper. Absent otherwise. */
   override?: true;
+  /** A function its framework calls by an attribute, so its name and signature are fixed: a Rust procedural macro. Absent otherwise. */
+  entryPoint?: true;
 }
 
 export interface BindingFact {
@@ -82,6 +84,10 @@ export interface ImportFact {
   typeOnly: boolean;
   line: number;
   bindings: BindingFact[];
+  /** The statement is test code inside a file that is not a test file by its name: in a Rust `#[cfg(test)]` module. Absent otherwise. */
+  test?: true;
+  /** The statement declares the module it names as a child of this one (Rust `mod name;`). It says where the file sits and is no use of it. Absent otherwise. */
+  declares?: true;
 }
 
 /** One name re-exported from another module. */
@@ -93,6 +99,11 @@ export interface ReexportFact {
   imported: string;
   /** Name exported from this module, or `*` when everything is passed through under its own names. */
   exported: string;
+  /**
+   * Set when the names are not part of the file's public surface: a Rust glob `use` that is `pub(crate)` or otherwise
+   * restricted, or private. Resolution reaches through it, and the exported names do not list what it brings in.
+   */
+  visibility?: "restricted" | "private";
 }
 
 /** What a top-level declaration declares, for the exports that name it. Type-only declarations are `interface` and `type`. */
@@ -126,6 +137,8 @@ export interface ReferenceFact {
   line: number;
   /** Qualified name of the innermost enclosing unit. */
   inUnit?: string;
+  /** The use is test code inside a file that is not a test file by its name: in a Rust `#[cfg(test)]` module. Absent otherwise. */
+  test?: true;
 }
 
 /** A name a file declares, for the symbol-based dependency model. */
@@ -173,6 +186,18 @@ export interface MacroFact {
   kind: "invocation" | "definition";
 }
 
+/** The first place in a file where the grammar could not read the text. */
+export interface SyntaxErrorFact {
+  /** 1-based. */
+  line: number;
+  /** 1-based. */
+  column: number;
+  /** `unexpected`: text the grammar could not fit. `missing`: a token the grammar expected and did not find. */
+  kind: "unexpected" | "missing";
+  /** The unexpected text, up to its first line end and at most 40 characters, or the kind of the missing token. */
+  text: string;
+}
+
 export interface FileFacts {
   /** A generated file, read as having no code: its facts are empty and the file is listed in `generatedFiles` of the analysis. */
   generated?: boolean;
@@ -189,6 +214,18 @@ export interface FileFacts {
   nodes: number;
   /** True when the grammar reported syntax errors, so facts may be incomplete. */
   hasSyntaxErrors: boolean;
+  /** Where the first syntax error is, when there are any. */
+  syntaxError?: SyntaxErrorFact;
+  /**
+   * The lines of test code inside a file that is not a test file by its name, such as a Rust `#[cfg(test)]` module,
+   * from each outermost test item's first attribute to its end, in order. Absent when there is none.
+   */
+  testRanges?: { startLine: number; endLine: number }[];
+  /**
+   * The file invokes a macro where an item belongs (Rust `cfg_if! { .. }`, `include_proto!(..)`), so it may define names
+   * its exports do not list. A name asked of the file and not found is taken to be defined by it. Absent otherwise.
+   */
+  itemMacros?: true;
   /** The syntax tree nests deeper than `MAX_TREE_DEPTH`, so the file was read as empty: it has no units, imports or references. */
   tooDeep?: true;
 }

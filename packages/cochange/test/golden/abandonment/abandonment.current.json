@@ -165,8 +165,7 @@
       "abandonedShare": 0.9,
       "activeAuthors": 1,
       "findings": [
-        "abandoned",
-        "no-successor"
+        "abandoned"
       ],
       "formerAuthors": 1,
       "hotspot": false,

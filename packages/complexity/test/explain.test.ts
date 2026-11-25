@@ -22,7 +22,7 @@ interface Increment {
   code: string;
 }
 
-test("breaks a function down line by line, and the increments add up to its metrics", async () => {
+test("breaks a function down line by line, largest amount first, and the increments add up to its metrics", async () => {
   const run = await runComplexity(repo.path, ["explain", "src/pricing.ts#price", "--json", "--limit", "all"]);
   expect(run.stderr).toBe("");
   expect(run.code).toBe(ExitCode.Success);
@@ -36,13 +36,16 @@ test("breaks a function down line by line, and the increments add up to its metr
 
   // Hand-counted: for +1, if +2 at nesting 1, && +1, else +1, ternary +3 at nesting 2.
   const cognitive = rows.filter((row) => row.metric === "cognitive").map((row) => [row.line, row.construct, row.amount, row.nesting]);
+  // Largest amount first, then by line.
   expect(cognitive).toEqual([
-    [3, "for-in", 1, 0],
+    [7, "ternary", 3, 2],
     [4, "if", 2, 1],
+    [3, "for-in", 1, 0],
     [4, "sequence of &&", 1, 0],
     [6, "else", 1, 0],
-    [7, "ternary", 3, 2],
   ]);
+  const amounts = rows.map((row) => row.amount);
+  expect(amounts).toEqual([...amounts].sort((a, b) => b - a));
   expect(rows.find((row) => row.line === 7 && row.metric === "cognitive")!.code).toBe("total += order.coupon ? item * 0.9 : item;");
 });
 

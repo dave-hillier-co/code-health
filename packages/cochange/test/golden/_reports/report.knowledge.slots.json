@@ -870,7 +870,7 @@
               {
                 "abandoned": "no",
                 "active": 1,
-                "findings": "at-risk-cold, no-successor",
+                "findings": "at-risk-cold",
                 "former": 0,
                 "hotspot": "no",
                 "path": "src/ui/view.ts",
@@ -888,7 +888,7 @@
               {
                 "abandoned": "yes",
                 "active": 1,
-                "findings": "abandoned, no-successor",
+                "findings": "abandoned",
                 "former": 1,
                 "hotspot": "no",
                 "path": "src/core/parser.ts",
@@ -906,7 +906,7 @@
               {
                 "abandoned": "no",
                 "active": 1,
-                "findings": "at-risk-cold, no-successor",
+                "findings": "at-risk-cold",
                 "former": 1,
                 "hotspot": "no",
                 "path": "src/core/lexer.ts",
@@ -915,7 +915,7 @@
               {
                 "abandoned": "no",
                 "active": 1,
-                "findings": "at-risk-cold, no-successor",
+                "findings": "at-risk-cold",
                 "former": 0,
                 "hotspot": "no",
                 "path": "src/util/log.ts",

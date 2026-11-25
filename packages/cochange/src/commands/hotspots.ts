@@ -5,6 +5,7 @@ import { contributorsOf } from "../contributors.ts";
 import { complexityReportInput } from "../complexity-source.ts";
 import type { Derived } from "../derived-results.ts";
 import { rankHotspots } from "../hotspot-ranking.ts";
+import { withNonProductionFolders } from "@code-health/parse/non-production-folders";
 import { allFilesOption, byOption, includeTestsOption, isGrouped, readBy, wantsAllFiles, wantsTests } from "../units.ts";
 
 export const name = "hotspots";
@@ -60,7 +61,8 @@ export const command = analysisCommand(name, {
 export async function rankedOutput(context: CommandContext, history: LoadedHistory): Promise<CommandOutput> {
   const by = readBy(context);
   const { rows, complexity, fixConvention } = await rankHotspots(context, history, by);
-  return {
+  const production = by === "file" ? rows.filter((row) => row.role === "production").map((row) => row.path) : [];
+  return withNonProductionFolders({
     inputs: { by, allFiles: wantsAllFiles(context), includeTests: wantsTests(context), complexityReport: complexity.input },
     results: rows,
     columns: [
@@ -80,7 +82,7 @@ export async function rankedOutput(context: CommandContext, history: LoadedHisto
       "recommendation",
       ...(by === "file" ? ["siblingTest", "findings"] : []),
     ],
-    extra: { complexitySource: complexity.source, fixConvention, contributors: contributorsOf(history) },
+    extra: { complexitySource: complexity.source, complexityMeasure: "indentation-complexity", fixConvention, contributors: contributorsOf(history) },
     notices: fixConvention.note === null ? [] : [fixConvention.note.replace(/\.$/, "")],
-  };
+  }, production);
 }

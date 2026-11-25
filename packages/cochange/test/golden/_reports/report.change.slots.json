@@ -360,7 +360,7 @@
                 "evidence": 2,
                 "factor": "blast-radius",
                 "guideline": "files: moderate above 0, high above 2",
-                "value": "files 2, signatureChanges 0, symbolFanIn 0"
+                "value": "files 2, signatureChanges 0, symbolFanIn 0, symbolFanInUnresolved 0"
               },
               {
                 "band": "low",
@@ -875,6 +875,7 @@
       "baseline": {
         "direct": 14,
         "mergedChanges": 16,
+        "mergedChangesInWindow": 16,
         "merges": 2,
         "population": 16,
         "since": "2023-06-07T09:00:00.000Z"

@@ -22,6 +22,7 @@ interface AnalyseRow {
   id: string;
   startLine: number;
   endLine: number;
+  role: "production" | "test";
   cognitive?: number;
   cyclomatic?: number;
   nesting?: number;
@@ -60,8 +61,12 @@ export const xray: ReportKind = {
     const forFile: CommandContext = { ...context, positionals: [file], values: { ...context.values, "include-tests": true } };
 
     const analysis = await analyse.run(forFile);
-    const rows = (analysis.results as AnalyseRow[]).filter((row) => row.path === file);
-    if (rows.length === 0) throw usageError(`no functions were measured in "${file}": name a source file of the current tree that a language adapter reads`);
+    const measured = (analysis.results as AnalyseRow[]).filter((row) => row.path === file);
+    if (measured.length === 0) throw usageError(`no functions were measured in "${file}": name a source file of the current tree that a language adapter reads`);
+    // The test code inside a production file, such as a Rust `#[cfg(test)]` module, is counted, not listed. A test file lists its tests.
+    const production = measured.filter((row) => row.role !== "test");
+    const rows = production.length === 0 ? measured : production;
+    const testsLeftOut = measured.length - rows.length;
 
     const current = await currentTree(context);
     let fixes: ReadonlyMap<string, UnitFixes> | undefined;
@@ -109,6 +114,7 @@ export const xray: ReportKind = {
         caption: `Measures of ${file}`,
         facts: [
           { label: "Functions measured", value: String(data.functions.length) },
+          ...(testsLeftOut === 0 ? [] : [{ label: "Test functions left out", value: String(testsLeftOut) }]),
           { label: "Functions with a code smell label", value: String(above) },
           ...(fixes === undefined ? [] : [{ label: "Functions changed in the window", value: String(touched) }]),
           ...(commits === undefined ? [] : [{ label: "Commits analysed", value: `${commits.analysed} of ${commits.inWindow} in the window` }]),
@@ -135,7 +141,8 @@ export const xray: ReportKind = {
       ],
       limits: [
         "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-        `${data.functions.length <= XRAY_ROWS ? `The table lists every function of the file` : `The table lists the ${XRAY_ROWS} most complex of the file's ${data.functions.length} functions; \`complexity analyse ${file} --with-fixes --limit all\` lists every one`}, sorted by cognitive complexity, then cyclomatic complexity, highest first. Length has no guideline: a long, linear function is often clearer than five shallow fragments.`,
+        `${data.functions.length <= XRAY_ROWS ? `The table lists every ${testsLeftOut === 0 ? "" : "production "}function of the file` : `The table lists the ${XRAY_ROWS} most complex of the file's ${data.functions.length} ${testsLeftOut === 0 ? "" : "production "}functions; \`complexity analyse ${file} --with-fixes --limit all\` lists every one`}, sorted by cognitive complexity, then cyclomatic complexity, highest first. Length has no guideline: a long, linear function is often clearer than five shallow fragments.`,
+        ...(testsLeftOut === 0 ? [] : [`The ${testsLeftOut} functions of the file's inline test code are left out of the table and the judgements.`]),
         "Revisions and fixes are counts of landed changes in the window that touched the function, and a fix is a count of commit messages, not of defects.",
         ...(header?.shallow === true ? ["The clone is shallow, so history before its boundary is missing."] : []),
         ...(commits !== undefined && commits.skipped > 0 ? [`${commits.skipped} of ${commits.inWindow} commits in the window were not analysed (see what was excluded).`] : []),

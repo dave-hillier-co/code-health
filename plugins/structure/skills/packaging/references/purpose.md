@@ -6,7 +6,7 @@ Evidence can show that a package is not reused. It cannot show that the package 
 
 For each package in the leading candidates, ask two things together:
 
-1. **Is it published?** Can consumers outside this repository depend on it? A package is internal when its manifest says so (`private: true`, `IsPackable` false, `publish = false`) or config does. Where neither settles it, the CLI treats it as published, which is the safe mistake. A published package is never changed, and every reuse measure for it is an undercount.
+1. **Is it published?** Can consumers outside this repository depend on it? A package is internal when its manifest says so (`private: true`, `IsPackable` false, `publish = false`) or config does. Where neither settles it, the CLI treats it as published, which is the safe mistake: `packages list` shows `kind: published` with `kindSource: default`, and `candidates` puts what it would propose for the package under `withheld` with a `question`. Published there means only "not marked internal", so ask. A published package is never changed, and every reuse measure for it is an undercount.
 2. **What is it for?** One of:
    - `reuse`: other packages or teams are meant to depend on it.
    - `deploy`: it ships as its own deployable.

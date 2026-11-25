@@ -114,6 +114,7 @@
       "against": [],
       "also": [],
       "changeCost": 9.516,
+      "dependants": null,
       "findings": [
         "deep-import:packages/edge->packages/core",
         "overexposed:packages/core",
@@ -136,6 +137,7 @@
       "against": [],
       "also": [],
       "changeCost": 9.516,
+      "dependants": null,
       "findings": [
         "single-consumer:packages/core"
       ],
@@ -157,6 +159,7 @@
       "against": [],
       "also": [],
       "changeCost": 5.705,
+      "dependants": null,
       "findings": [
         "crossing-unit:packages/lib2->packages/lib3->packages/lib2/src/p.ts"
       ],
@@ -178,6 +181,7 @@
       "against": [],
       "also": [],
       "changeCost": 5.705,
+      "dependants": null,
       "findings": [
         "crossing-unit:packages/lib3->packages/lib2->packages/lib3/src/q.ts"
       ],
@@ -199,6 +203,7 @@
       "against": [],
       "also": [],
       "changeCost": 5.705,
+      "dependants": null,
       "findings": [
         "volatile-interface:packages/lib2"
       ],
@@ -219,6 +224,7 @@
       "against": [],
       "also": [],
       "changeCost": 5.705,
+      "dependants": null,
       "findings": [
         "volatile-interface:packages/lib3"
       ],
@@ -239,6 +245,7 @@
       "against": [],
       "also": [],
       "changeCost": 0,
+      "dependants": null,
       "findings": [
         "volatile-interface:packages/big"
       ],
@@ -259,6 +266,7 @@
       "against": [],
       "also": [],
       "changeCost": 0,
+      "dependants": null,
       "findings": [
         "single-consumer:packages/lib2"
       ],
@@ -280,6 +288,7 @@
       "against": [],
       "also": [],
       "changeCost": 0,
+      "dependants": null,
       "findings": [
         "single-consumer:packages/lib3"
       ],
@@ -311,6 +320,7 @@
       ],
       "also": [],
       "changeCost": 5.705,
+      "dependants": null,
       "findings": [
         "always-together:packages/lib2->packages/lib3"
       ],
@@ -351,6 +361,7 @@
       ],
       "also": [],
       "changeCost": 4.765,
+      "dependants": null,
       "findings": [
         "crossing-unit:packages/core->packages/edge->packages/core/src/shared.ts"
       ],
@@ -382,6 +393,7 @@
       ],
       "also": [],
       "changeCost": 4.751,
+      "dependants": null,
       "findings": [
         "crossing-unit:packages/core->packages/edge->packages/core/src/util.ts"
       ],
@@ -412,6 +424,7 @@
       ],
       "also": [],
       "changeCost": 0,
+      "dependants": null,
       "findings": [
         "disjoint-reuse:packages/big"
       ],
@@ -428,7 +441,7 @@
             "packages/x"
           ],
           "exports": [
-            "m"
+            "packages/big/src/m.ts#m"
           ]
         },
         {
@@ -436,7 +449,7 @@
             "packages/y"
           ],
           "exports": [
-            "n"
+            "packages/big/src/n.ts#n"
           ]
         }
       ],

@@ -4,6 +4,7 @@ import { builtinOmissions, resetBuiltinOmissions } from "./builtin-excludes.ts";
 import { droppedCounts, resetDropped } from "./dropped-files.ts";
 import { buildDocument } from "./document.ts";
 import { assertNodeVersion } from "./environment.ts";
+import { useGeneratedPatterns } from "./generated-patterns.ts";
 import { CliError, ExitCode, usageError } from "./errors.ts";
 import { readRepoState, type RepoState } from "./repo-state.ts";
 import { shapeResults } from "./results.ts";
@@ -46,7 +47,7 @@ export interface CommandOutput {
   results: unknown;
   /** The rows are already in the order the command states, so the kit keeps that order instead of sorting by ranking ratio, score and path. */
   presorted?: boolean;
-  /** Table columns, and the valid values for --fields. Defaults to the keys of the first row. */
+  /** Table columns. Defaults to the keys of the first row. --fields takes a column or any key of a row. */
   columns?: string[];
   /** Lines a table run prints after the rows, such as a check that does not apply. JSON carries the same facts in the command's own fields. */
   notices?: string[];
@@ -168,6 +169,7 @@ async function execute(cli: CliDefinition, io: CliIo): Promise<number> {
   resetBuiltinOmissions();
   resetRunNotes();
   resetDropped();
+  useGeneratedPatterns(config.effective.generatedPatterns);
   const output = await command.run(context);
   if (output.text !== undefined) {
     for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}\n`);
@@ -256,7 +258,7 @@ function explain(cli: CliDefinition, positionals: string[], io: CliIo): number {
 const commonOptionHelp = [
   "  --json            JSON output (default when stdout is not a terminal)",
   "  --limit <n|all>   maximum rows (default 20)",
-  "  --fields <a,b>    project result columns",
+  "  --fields <a,b>    project result fields",
   "  --help            show help",
 ];
 

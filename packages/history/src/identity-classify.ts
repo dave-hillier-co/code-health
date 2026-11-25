@@ -24,6 +24,8 @@ export interface Classification {
   source: "builtin" | "config" | "decision";
   /** The pattern, name or decision address that matched. */
   pattern: string;
+  /** What the pattern was matched against: the decisions file, the whole `Name <email>`, the name alone or the email's local part. */
+  signal: "decision" | "identity" | "name" | "local-part";
 }
 
 /** Bot accounts known by name or address. */
@@ -40,6 +42,16 @@ export const BUILTIN_BOT_PATTERNS: readonly string[] = [
   "^pre-commit-ci",
   "<bot@renovateapp\\.com>",
 ];
+
+/**
+ * `bot` or `robot` as a word of the name or of the email's local part: between separators or at an end, or
+ * capitalised after a lower-case letter (`ReleaseBot`). Matches `Acme Bot`, `robot-sync@` and `ci_bot`, and
+ * not `Abbott`, `Talbot` or `robotics`.
+ */
+const BOT_WORD = /(?<![\p{L}\p{N}])(?:ro)?bot(?![\p{L}\p{N}])/iu;
+const CAPITALISED_BOT_WORD = /(?<=\p{Ll})(?:Robot|Bot)(?!\p{Ll})/u;
+const BOT_WORD_IN_NAME = "bot or robot as a word in the name";
+const BOT_WORD_IN_LOCAL_PART = "bot or robot as a word in the email's local part";
 
 /** Generic account names, matched against the whole normalised name. */
 export const BUILTIN_SERVICE_NAMES: readonly string[] = [
@@ -123,6 +135,13 @@ export interface NonPersonMatcher {
   applied: NonPersonRulesApplied;
 }
 
+const wordBot = (text: string): boolean => BOT_WORD.test(text) || CAPITALISED_BOT_WORD.test(text);
+
+const localPartOf = (email: string): string => {
+  const at = email.lastIndexOf("@");
+  return at === -1 ? email : email.slice(0, at);
+};
+
 const addressOf = (identity: string): string => {
   const open = identity.lastIndexOf("<");
   return (open === -1 ? identity : identity.slice(open + 1, identity.lastIndexOf(">"))).trim().toLowerCase();
@@ -147,17 +166,19 @@ export function createNonPersonMatcher(rules: NonPersonRules): NonPersonMatcher 
   const classify = (name: string, email: string): Classification | null => {
     const decision = decisions.get(email.trim().toLowerCase());
     if (decision) {
-      return decision.kind === "person" ? null : { kind: decision.kind, source: "decision", pattern: decision.identity };
+      return decision.kind === "person" ? null : { kind: decision.kind, source: "decision", pattern: decision.identity, signal: "decision" };
     }
     const text = `${name} <${email}>`;
     const fromConfig = config.find((c) => c.re.test(text));
-    if (fromConfig) return { kind: fromConfig.kind, source: "config", pattern: fromConfig.pattern };
+    if (fromConfig) return { kind: fromConfig.kind, source: "config", pattern: fromConfig.pattern, signal: "identity" };
     const agent = builtinAgents.find((c) => c.re.test(text));
-    if (agent) return { kind: "agent", source: "builtin", pattern: agent.pattern };
+    if (agent) return { kind: "agent", source: "builtin", pattern: agent.pattern, signal: "identity" };
     const bot = builtin.find((c) => c.re.test(text));
-    if (bot) return { kind: "bot", source: "builtin", pattern: bot.pattern };
+    if (bot) return { kind: "bot", source: "builtin", pattern: bot.pattern, signal: "identity" };
+    if (wordBot(name)) return { kind: "bot", source: "builtin", pattern: BOT_WORD_IN_NAME, signal: "name" };
+    if (wordBot(localPartOf(email))) return { kind: "bot", source: "builtin", pattern: BOT_WORD_IN_LOCAL_PART, signal: "local-part" };
     const normalised = normaliseName(name);
-    if (serviceNames.has(normalised)) return { kind: "service", source: "builtin", pattern: normalised };
+    if (serviceNames.has(normalised)) return { kind: "service", source: "builtin", pattern: normalised, signal: "name" };
     return null;
   };
   return {

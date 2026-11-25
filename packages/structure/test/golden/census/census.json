@@ -41,6 +41,7 @@
         }
       ],
       "id": "census:callbacks",
+      "lookAlikes": [],
       "mechanism": "callbacks",
       "variants": [
         {
@@ -71,6 +72,7 @@
         }
       ],
       "id": "census:interfaces",
+      "lookAlikes": [],
       "mechanism": "interfaces",
       "variants": [
         {
@@ -113,6 +115,7 @@
         }
       ],
       "id": "census:dependency-injection",
+      "lookAlikes": [],
       "mechanism": "dependency-injection",
       "variants": [
         {
@@ -167,6 +170,7 @@
         }
       ],
       "id": "census:events",
+      "lookAlikes": [],
       "mechanism": "events",
       "variants": [
         {
@@ -207,6 +211,7 @@
         }
       ],
       "id": "census:handlers",
+      "lookAlikes": [],
       "mechanism": "handlers",
       "variants": [
         {
@@ -243,6 +248,7 @@
         }
       ],
       "id": "census:registries",
+      "lookAlikes": [],
       "mechanism": "registries",
       "variants": [
         {
@@ -293,6 +299,7 @@
         }
       ],
       "id": "census:ports-and-adapters",
+      "lookAlikes": [],
       "mechanism": "ports-and-adapters",
       "variants": [
         {

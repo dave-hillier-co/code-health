@@ -214,12 +214,12 @@ test("the config can raise guidelines for some paths", async () => {
   const lenient = JSON.stringify({
     complexity: {
       guidelines: { cognitive: { warn: 6, high: 12 }, cyclomatic: { warn: 4, high: 8 } },
-      overrides: [{ paths: ["src/generated/**"], guidelines: { cognitive: { warn: 50, high: 60 }, cyclomatic: { warn: 50, high: 60 } } }],
+      overrides: [{ paths: ["src/lenient/**"], guidelines: { cognitive: { warn: 50, high: 60 }, cyclomatic: { warn: 50, high: 60 } } }],
     },
   });
   const repo = repoWith(
     [
-      { op: "add", path: "src/generated/risky.ts", content: riskyFunction },
+      { op: "add", path: "src/lenient/risky.ts", content: riskyFunction },
       { op: "add", path: "src/risky.ts", content: riskyFunction },
     ],
     lenient,

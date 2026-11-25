@@ -1,6 +1,7 @@
 import type { Command, CommandOutput } from "@code-health/cli-kit/run-cli";
 import { treeFromRef } from "@code-health/parse/source-tree";
 import { readSettings } from "../config.ts";
+import { pathArguments, requireMatches } from "../path-arguments.ts";
 import type { Scrutiny } from "../scrutiny.ts";
 import type { TreeProject } from "../ts-project.ts";
 import { analyseRevision } from "../unit-analysis.ts";
@@ -12,10 +13,11 @@ export const command: Command = {
   summary: "Review the widely used units: the red flags their interfaces and call sites show, with the counts behind each",
   async run(context): Promise<CommandOutput> {
     const settings = readSettings(context.config);
-    const prefixes = context.positionals.map((path) => path.replace(/\/+$/, ""));
+    const prefixes = pathArguments(context.repo.root, context.positionals);
     const under = (path: string) => prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 
     const { project, analysis } = await analyseRevision(context, settings, "HEAD");
+    requireMatches(prefixes, [...project.production, ...analysis.candidates.flatMap((candidate) => [...candidate.unit.files, ...candidate.unit.tests])]);
     // Units the analyser sent here, and any other unit the caller names: asking is reason enough to look.
     const chosen = analysis.candidates.filter((candidate) =>
       prefixes.length === 0 ? candidate.recommendation === "scrutinise" : under(candidate.path) && (candidate.recommendation === "scrutinise" || prefixes.includes(candidate.path)),

@@ -2,7 +2,7 @@ import { usageError } from "@code-health/cli-kit/errors";
 import { buildCensus } from "../census/census.ts";
 import { treeFromRef } from "@code-health/parse/source-tree";
 import { analysisCommand } from "../analysis-command.ts";
-import { findCycles } from "../cycles.ts";
+import { findCycles, namesCycle } from "../cycles.ts";
 import { findCoupling, orientPair } from "../coupling.ts";
 import { evidencePack, hubEvidencePack } from "../evidence-pack.ts";
 import { findHubs } from "../hubs.ts";
@@ -25,13 +25,13 @@ type Target =
 function parseTarget(text: string, requested: Level | undefined): Target {
   const hub = /^hub:(.+)$/.exec(text);
   if (hub) return { kind: "hub", level: requested, id: text };
-  const pair = /^coupling:(file|folder|component):(.+)$/.exec(text);
+  const pair = /^coupling:(file|folder|component|default):(.+)$/.exec(text);
   if (pair) return { ...parseEdge(pair[2]!), level: pair[1] as Level };
   const cycle = /^cycle:(default|file|folder|package):(.+)$/.exec(text);
   if (cycle) return { kind: "cycle", level: cycle[1] as Level, id: text };
   const layer = /^layer:(.+)$/.exec(text);
   if (layer) return { ...parseEdge(layer[1]!), level: "file" };
-  const unstable = /^unstable:(folder|component):(.+)$/.exec(text);
+  const unstable = /^unstable:(file|folder|component|default):(.+)$/.exec(text);
   const edge = unstable ? unstable[2]! : text;
   return { ...parseEdge(edge), level: unstable ? (unstable[1] as Level) : requested };
 }
@@ -72,7 +72,7 @@ export const command = analysisCommand(name, {
     }
     if (target.kind === "cycle") {
       model = await buildModel(context, history, target.level);
-      const cycle = findCycles(model, settings).find((c) => c.id === target.id);
+      const cycle = findCycles(model, settings).find((c) => namesCycle(target.id, c));
       if (!cycle) throw usageError(`no cycle "${target.id}" at the analysed commit`);
       edges = cycle.breakingSet.map((e) => [e.from, e.to]);
     } else {

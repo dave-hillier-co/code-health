@@ -1,0 +1,26 @@
+{
+  "units": {
+    "src/registry/builder.rs": [["build", "function", 3, 5]],
+    "src/registry/mod.rs": [
+      ["Registry", "class", 3, 5],
+      ["default_registry", "function", 7, 9]
+    ]
+  },
+  "importEdges": [
+    "src/lib.rs -> src/registry/mod.rs import nominal",
+    "src/registry/builder.rs -> src/registry/mod.rs import",
+    "src/registry/mod.rs -> src/registry/builder.rs import",
+    "src/registry/mod.rs -> src/registry/builder.rs import nominal"
+  ],
+  "fileEdges": [
+    "src/registry/builder.rs -> src/registry/mod.rs reference call=0 reference=2",
+    "src/registry/mod.rs -> src/registry/builder.rs call call=1 reference=0"
+  ],
+  "consumers": [
+    "src/registry/builder.rs#build -> src/registry/mod.rs#Registry reference x2",
+    "src/registry/mod.rs#default_registry -> src/registry/builder.rs#build call x1"
+  ],
+  "unresolved": [],
+  "barrels": ["src/lib.rs"],
+  "syntaxErrors": []
+}

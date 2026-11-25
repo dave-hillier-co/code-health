@@ -10,8 +10,9 @@ import { NO_EVIDENCE, readEvidence, type EvidenceInputs } from "./evidence-input
 import { chronologicalPass, SECONDS_PER_MONTH, type PastChange } from "./history-pass.ts";
 import type { HistoryState } from "./history-state.ts";
 import { measureHistoryLayer, type ChangeFacts, type MeasureContext, type Measurement } from "./measure.ts";
+import { withVersionBumps } from "./manifest-edit.ts";
 import { mergedChanges, type Mainline } from "./merged-changes.ts";
-import { baselineScores, impactOf, makeBander, SCORED_FACTORS, type BandResult, type ImpactResult } from "./scoring.ts";
+import { baselineScores, impactOf, makeBander, readImpact, SCORED_FACTORS, type BandResult, type ImpactReading } from "./scoring.ts";
 import { readRiskSettings, type RiskSettings } from "./settings.ts";
 
 export interface Assessed {
@@ -19,11 +20,16 @@ export interface Assessed {
   /** The measurements before banding, for findings and placement to read. */
   measurements: Measurement[];
   factors: Factor[];
-  impact: ImpactResult;
+  impact: ImpactReading;
   baseline: {
+    /** The merged changes the factors are banded against: the most recent of the window, up to `cochange.risk.baselineChanges`. */
     population: number;
     since: string;
+    /** Changes landed on the main line in all the history read, before the base, that have files left after the noise filters. */
     mergedChanges: number;
+    /** The same, since `since`: the analysis window. */
+    mergedChangesInWindow: number;
+    /** Landings on the main line before the base, by how they came in, including those the filters emptied. */
     merges: number;
     direct: number;
   };
@@ -129,18 +135,18 @@ export async function assessBranch(
   // The parse layer is loaded when a change needs it, so a run that needs no signatures never loads the grammar loader.
   const { changedSignatures, withSignatures } = await import("./signatures.ts");
   const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change);
-  const factors = banded.map(({ m, result }) => {
-    let factor = toFactor(m, result, risk);
-    if (factor.name !== "blast-radius" || factor.status === "disabled") return factor;
-    if (locality !== null) factor = withFanIn(factor, touched, locality, risk);
-    return signatures === null ? factor : withSignatures(factor, signatures, risk);
-  });
-  const impact = impactOf(
-    factors.map((f) => ({ name: f.name, family: f.family, band: f.band ?? "unavailable", disabled: f.status === "disabled" })),
-    baselineScores(baselineMeasures, risk),
-    eventsOf(factors),
-    risk,
+  const factors = await Promise.all(
+    banded.map(async ({ m, result }) => {
+      let factor = toFactor(m, result, risk);
+      // A manifest edit that only bumps versions is told apart by its content, which only the branch has at hand.
+      if (factor.name === "sensitive-paths") return withVersionBumps(factor, root, change, risk);
+      if (factor.name !== "blast-radius" || factor.status === "disabled") return factor;
+      if (locality !== null) factor = withFanIn(factor, touched, locality, risk);
+      return signatures === null ? factor : withSignatures(factor, signatures, risk);
+    }),
   );
+  const scoredInput = factors.map((f) => ({ name: f.name, family: f.family, band: f.band ?? "unavailable", disabled: f.status === "disabled", scored: f.scored }));
+  const impact = readImpact(impactOf(scoredInput, baselineScores(baselineMeasures, risk), eventsOf(factors), risk), scoredInput, risk);
   return {
     change,
     measurements,
@@ -150,6 +156,7 @@ export async function assessBranch(
       population: past.length,
       since: new Date(since * 1000).toISOString(),
       mergedChanges: total,
+      mergedChangesInWindow: mainline.changes.filter((c) => c.time >= since).length,
       merges: mainline.merges,
       direct: mainline.direct,
     },

@@ -111,8 +111,8 @@ export const FACTOR_DOCS: readonly FactorDoc[] = [
     family: "completeness",
     layer: "history",
     banding: "count",
-    signal: "Pairs of touched files at high tree distance that have never changed together",
-    definition: "Pairs of touched, existing files with history, at tree distance of at least cochange.risk.novelDistance, that were never in one eligible change before. Banded on the count of pairs.",
+    signal: "Pairs of touched files at high tree distance that did not change together before, in changes of up to cochange.maxChangesetSize files",
+    definition: "Pairs of touched, existing files with history, at tree distance of at least cochange.risk.novelDistance, that were never in one eligible change (one of at most cochange.maxChangesetSize files) in the history read. A pair that changed together only in larger changes is counted. Banded on the count of pairs.",
     why: "The change may be introducing a dependency between areas that were independent.",
   },
   {
@@ -130,7 +130,7 @@ export const FACTOR_DOCS: readonly FactorDoc[] = [
     layer: "history",
     banding: "percentile",
     signal: "Files with high co-change confidence towards the touched files",
-    definition: "Without a locality report, the number of files with confidence and support at or above the missing-co-change guidelines towards any touched file. With locality's report for this commit, the fan-in of the touched files. When a parse adapter reads any touched file, also the exported symbols of the touched files whose signature changed (kind or interface size) or that were removed, each with the number of files that used it at the base, placed against every exported symbol's fan-in. The band is the highest of these.",
+    definition: "Without a locality report, the number of files with confidence and support at or above the missing-co-change guidelines towards any touched file. With locality's report for this commit, the fan-in of the touched files. When a parse adapter reads any touched file, also the exported symbols of the touched files whose signature changed (kind or interface size) or that were removed, each with the number of files that used it at the base (fanIn), placed against every exported symbol's fan-in. fanInUnresolved counts the files that import a name equal to the symbol's which was not followed to a definition: each may be a consumer that fanIn does not count, so a fanIn of 0 beside a fanInUnresolved above 0 is unresolved, not unused. The band is the highest of these.",
     why: "A flaw in widely used code is inherited by every consumer.",
   },
   {
@@ -157,7 +157,7 @@ export const FACTOR_DOCS: readonly FactorDoc[] = [
     layer: "history",
     banding: "count",
     signal: "Touched files matching the configured sensitive globs",
-    definition: "Touched files (or their old paths) matching cochange.risk.sensitivePaths: migrations, authentication, build and CI configuration, dependency manifests. Any match is an event that raises the impact band, and it is not also counted in the score.",
+    definition: "Touched files (or their old paths) matching cochange.risk.sensitivePaths: migrations, authentication, build and CI configuration, dependency manifests. A dependency manifest (package.json, Cargo.toml, go.mod, pom.xml, build.gradle, pyproject.toml, requirements.txt, a .csproj and the like) whose edit only changes dependency versions or pinned revisions is listed in versionOnly and not counted: every removed line has an added line that is the same apart from its versions. Adding, removing or reconfiguring a dependency counts. Any counted match is an event that raises the impact band, and it is not also counted in the score.",
     why: "Some paths carry consequences that no history signal captures.",
   },
   {

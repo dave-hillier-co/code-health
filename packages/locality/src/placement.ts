@@ -1,6 +1,7 @@
 import { posix } from "node:path";
 import { stronglyConnectedComponents } from "@code-health/graph/scc";
 import { isBoundaryManifest } from "@code-health/parse/languages";
+import type { ModuleTree } from "@code-health/parse/languages/rust/crates";
 
 /** One file the move relocates. Imports are rewritten separately, so these are the only file operations. */
 export interface FileOperation {
@@ -20,6 +21,7 @@ export type RefusalCode =
   | "fixed-point-destination"
   | "import-cycle"
   | "invalid-destination"
+  | "module-tree"
   | "needs-reason"
   | "no-change"
   | "package-boundary"
@@ -166,6 +168,10 @@ interface GoFolders {
   counts: Map<string, number>;
   /** The folders that are in an import cycle as the code stands. */
   cyclic: Set<string>;
+  /** Every unexported name a file of a folder uses from another file of it, in the order of `unexportedUses`. */
+  unexported: { declared: string; name: string; by: string }[];
+  /** For each file, the positions in `unexported` of the uses it declares or makes. */
+  unexportedAt: Map<string, number[]>;
 }
 
 /**
@@ -204,6 +210,15 @@ function goFoldersOf(go: GoPackages): GoFolders {
         reverse.get(target)!.add(from);
       }
     }
+    const unexported = [...go.unexportedUses].flatMap(([declared, uses]) => uses.map(({ name, by }) => ({ declared, name, by })));
+    const unexportedAt = new Map<string, number[]>();
+    unexported.forEach(({ declared, by }, at) => {
+      for (const file of new Set([declared, by])) {
+        const list = unexportedAt.get(file);
+        if (list === undefined) unexportedAt.set(file, [at]);
+        else list.push(at);
+      }
+    });
     found = {
       folder,
       usedBy,
@@ -211,6 +226,8 @@ function goFoldersOf(go: GoPackages): GoFolders {
       reverse,
       graph: new Map([...lists].map(([from, targets]): [string, Set<string>] => [from, new Set(targets)])),
       cyclic: new Set(stronglyConnectedComponents(lists).filter((component) => component.length > 1).flat()),
+      unexported,
+      unexportedAt,
     };
     goFolders.set(go, found);
   }
@@ -218,8 +235,9 @@ function goFoldersOf(go: GoPackages): GoFolders {
 }
 
 /** The Go package rules for a set of moves: a file never joins a `package main` folder or leaves one, and a move never makes a package import itself or two packages import each other. */
-function goRefusals(operations: readonly FileOperation[], go: GoPackages): PlacementRefusal[] {
+function goRefusals(operations: readonly FileOperation[], go: GoPackages, firstOnly: boolean): PlacementRefusal[] {
   const refusals: PlacementRefusal[] = [];
+  const base = goFoldersOf(go);
   const moved = new Map(operations.filter((operation) => operation.from.endsWith(".go") && operation.role === "unit").map((operation) => [operation.from, operation.to]));
   if (moved.size === 0) return refusals;
   const movedWithTests = new Map([...moved, ...operations.filter((operation) => operation.from.endsWith(".go") && operation.role === "test").map((operation): [string, string] => [operation.from, operation.to])]);
@@ -243,19 +261,21 @@ function goRefusals(operations: readonly FileOperation[], go: GoPackages): Place
       }
     }
   }
-  // An unexported name is reached only from its own package, so its declaring file and the files that use it stay in one folder.
-  unexported: for (const [declared, uses] of go.unexportedUses) {
-    for (const { name, by } of uses) {
-      if ((movedWithTests.has(declared) || movedWithTests.has(by)) && posix.dirname(newPathWithTests(declared)) !== posix.dirname(newPathWithTests(by))) {
-        refusals.push({ code: "unexported-use", detail: `unexported symbol used in its package: ${name} used by ${by}`, label: "unexported symbol used in its package" });
-        break unexported;
-      }
+  if (firstOnly && refusals.length > 0) return refusals;
+  // An unexported name is reached only from its own package, so its declaring file and the files that use it stay in one
+  // folder. Only the uses at a moved file can be split, and the first of them in order is the one reported.
+  const touching = [...new Set([...movedWithTests.keys()].flatMap((file) => base.unexportedAt.get(file) ?? []))].sort((a, b) => a - b);
+  for (const at of touching) {
+    const { declared, name, by } = base.unexported[at]!;
+    if (posix.dirname(newPathWithTests(declared)) !== posix.dirname(newPathWithTests(by))) {
+      refusals.push({ code: "unexported-use", detail: `unexported symbol used in its package: ${name} used by ${by}`, label: "unexported symbol used in its package" });
+      break;
     }
   }
+  if (firstOnly && refusals.length > 0) return refusals;
   // A cycle with a folder that was in none before has to pass through an edge the move adds. Only the edges at the
   // moved files change, so each added edge is followed from its end back to its start through the graph as it would
   // be after the move, and the search over the whole graph below runs only when one closes.
-  const base = goFoldersOf(go);
   const folderOf = (path: string): string => (moved.has(path) ? posix.dirname(moved.get(path)!) : (base.folder.get(path) ?? posix.dirname(path)));
   const folderNow = (path: string): string => base.folder.get(path) ?? posix.dirname(path);
   const key = (from: string, to: string): string => `${from}\0${to}`;
@@ -275,13 +295,18 @@ function goRefusals(operations: readonly FileOperation[], go: GoPackages): Place
     add(folderNow(from), folderNow(to), -1);
     add(folderOf(from), folderOf(to), 1);
   }
-  const removed = new Set<string>();
+  /** The folder edges the move takes away, by the folder they leave and by the folder they reach. */
+  const removedFrom = new Map<string, Set<string>>();
+  const removedTo = new Map<string, Set<string>>();
   const added = new Map<string, string[]>();
   const fresh: [string, string][] = [];
   for (const [edge, by] of change) {
     const count = base.counts.get(edge) ?? 0;
     const [from, to] = ends.get(edge)!;
-    if (count > 0 && count + by <= 0) removed.add(edge);
+    if (count > 0 && count + by <= 0) {
+      removedFrom.set(from, (removedFrom.get(from) ?? new Set()).add(to));
+      removedTo.set(to, (removedTo.get(to) ?? new Set()).add(from));
+    }
     if (count === 0 && by > 0) {
       added.set(from, [...(added.get(from) ?? []), to]);
       fresh.push([from, to]);
@@ -293,9 +318,12 @@ function goRefusals(operations: readonly FileOperation[], go: GoPackages): Place
   const reached = (start: string, forward: boolean): Set<string> => {
     const seen = new Set([start]);
     const pending = [start];
+    const graph = forward ? base.graph : base.reverse;
+    const removed = forward ? removedFrom : removedTo;
     for (let folder = pending.pop(); folder !== undefined; folder = pending.pop()) {
-      for (const next of (forward ? base.graph : base.reverse).get(folder) ?? []) {
-        if (seen.has(next) || removed.has(forward ? key(folder, next) : key(next, folder))) continue;
+      const gone = removed.get(folder);
+      for (const next of graph.get(folder) ?? []) {
+        if (seen.has(next) || gone?.has(next) === true) continue;
         seen.add(next);
         pending.push(next);
       }
@@ -351,12 +379,90 @@ function goRefusals(operations: readonly FileOperation[], go: GoPackages): Place
   return refusals;
 }
 
+/** Paths, relative to a crate's folder, where Cargo finds a target root by layout alone: a file there is a crate root, not a module. */
+const TARGET_ROOT_LAYOUT = /^(src\/(lib|main)\.rs|build\.rs|src\/bin\/[^/]+\.rs|src\/bin\/[^/]+\/main\.rs|(tests|examples|benches)\/[^/]+\.rs|(tests|examples|benches)\/[^/]+\/main\.rs)$/;
+
+/**
+ * The Rust module tree rule: a file is a module of the target whose root file's folder holds it, so a moved file
+ * stays under that folder and belongs to the same target after the move, and does not land where Cargo would read
+ * it as a target root of its own, nor beside a file that is the same module in the other layout (`name.rs` and
+ * `name/mod.rs`). A target root itself is found by Cargo from its path, so it does not move.
+ */
+function rustRefusals(operations: readonly FileOperation[], modules: ModuleTree): PlacementRefusal[] {
+  const refusals: PlacementRefusal[] = [];
+  const label = "leaves the module tree of its crate target";
+  const leaving = new Set(operations.map((operation) => operation.from));
+  for (const operation of operations) {
+    if (!operation.from.endsWith(".rs") || operation.from === operation.to) continue;
+    const place = modules.placeOf(operation.from);
+    if (place === undefined) continue;
+    if (place.path.length === 0) {
+      refusals.push({ code: "module-tree", detail: `${operation.from} is the root file of a crate target, which Cargo finds by its path, so it does not move`, label });
+      continue;
+    }
+    const crate = modules.crateOf(operation.to);
+    const relative = crate === undefined ? posix.basename(operation.to) : crate.dir === "." ? operation.to : operation.to.slice(crate.dir.length + 1);
+    if (crate === undefined ? /^(lib|main)\.rs$/.test(relative) : TARGET_ROOT_LAYOUT.test(relative)) {
+      refusals.push({ code: "module-tree", detail: `${operation.to} is a path Cargo reads as the root of a target of its own, so ${operation.from} would no longer be a module of ${place.root}`, label });
+      continue;
+    }
+    const name = posix.basename(operation.to, ".rs");
+    const twin = name === "mod" ? `${posix.dirname(operation.to)}.rs` : posix.join(posix.dirname(operation.to), name, "mod.rs");
+    if (modules.has(twin) && !leaving.has(twin)) {
+      refusals.push({ code: "collision", detail: `${operation.to} and ${twin} would both be the module ${name === "mod" ? posix.basename(posix.dirname(operation.to)) : name}`, label: "name collision" });
+      continue;
+    }
+    const folder = posix.dirname(place.root);
+    const after = modules.placeOf(operation.to)?.root;
+    if (after === place.root) continue;
+    const inside = folder === "." || operation.to.startsWith(`${folder}/`);
+    refusals.push({
+      code: "module-tree",
+      detail: inside
+        ? `${operation.to} is under the folder of ${after}, another target's root file, so ${operation.from} would leave the module tree of ${place.root}`
+        : `${operation.to} is outside ${folder === "." ? "the repository root" : folder}, the folder of ${place.root}, whose module tree holds ${operation.from}: a Rust file is a module only under the folder of its target's root file`,
+      label,
+    });
+  }
+  return refusals;
+}
+
 /**
  * What the language placement rules refuse about where operations land: a file leaving its package, a Go file
- * crossing an `internal/` directory (which the compiler restricts to code under its parent), and a file landing
- * on one that stays. The dry-run move planner and the analysis's choice of target both read this.
+ * crossing an `internal/` directory (which the compiler restricts to code under its parent), a Rust file leaving
+ * the module tree of its crate target, and a file landing on one that stays. The dry-run move planner and the
+ * analysis's choice of target both read this.
  */
-export function placementRefusals(operations: readonly FileOperation[], manifests: ReadonlySet<string>, tree: ReadonlySet<string>, go?: GoPackages): PlacementRefusal[] {
+export function placementRefusals(operations: readonly FileOperation[], manifests: ReadonlySet<string>, tree: ReadonlySet<string>, go?: GoPackages, rust?: ModuleTree): PlacementRefusal[] {
+  return refusalsOf(operations, manifests, tree, go, rust, false);
+}
+
+/** The first of `placementRefusals`, found without working out the rules after it: the analysis asks it of every candidate target. */
+export function firstPlacementRefusal(operations: readonly FileOperation[], manifests: ReadonlySet<string>, tree: ReadonlySet<string>, go?: GoPackages, rust?: ModuleTree): PlacementRefusal | undefined {
+  return refusalsOf(operations, manifests, tree, go, rust, true)[0];
+}
+
+/**
+ * For each folder that has a `testdata` folder in it, the first path of the tree under that `testdata` folder, by
+ * the folder (`.` for the root). Read once for a tree, since a Go test that moves asks it.
+ */
+const testdataOf = new WeakMap<ReadonlySet<string>, Map<string, string>>();
+function testdataIn(tree: ReadonlySet<string>): Map<string, string> {
+  let found = testdataOf.get(tree);
+  if (found === undefined) {
+    found = new Map();
+    for (const path of tree) {
+      for (let at = path.startsWith("testdata/") ? 0 : path.indexOf("/testdata/"); at !== -1; at = path.indexOf("/testdata/", at + 1)) {
+        const dir = at === 0 && path.startsWith("testdata/") ? "." : path.slice(0, at);
+        if (!found.has(dir)) found.set(dir, path);
+      }
+    }
+    testdataOf.set(tree, found);
+  }
+  return found;
+}
+
+function refusalsOf(operations: readonly FileOperation[], manifests: ReadonlySet<string>, tree: ReadonlySet<string>, go: GoPackages | undefined, rust: ModuleTree | undefined, firstOnly: boolean): PlacementRefusal[] {
   const refusals: PlacementRefusal[] = [];
   const leaving = new Set(operations.map((operation) => operation.from));
   const landing = new Set<string>();
@@ -373,7 +479,7 @@ export function placementRefusals(operations: readonly FileOperation[], manifest
     }
     const dir = posix.dirname(operation.from);
     if (operation.from.endsWith("_test.go") && dir !== posix.dirname(operation.to)) {
-      const testdata = [...tree].find((path) => path.startsWith(dir === "." ? "testdata/" : `${dir}/testdata/`));
+      const testdata = testdataIn(tree).get(dir);
       if (testdata !== undefined) {
         refusals.push({ code: "testdata", detail: `${operation.from} would leave ${dir}/testdata behind, and Go tests read ./testdata of their own package folder (${testdata})`, label: "tests read the testdata folder they would leave" });
       }
@@ -382,6 +488,9 @@ export function placementRefusals(operations: readonly FileOperation[], manifest
     else if (tree.has(operation.to) && !leaving.has(operation.to)) refusals.push({ code: "collision", detail: `${operation.to} already exists`, label: "name collision" });
     landing.add(operation.to);
   }
-  if (go !== undefined) refusals.push(...goRefusals(operations, go));
+  if (firstOnly && refusals.length > 0) return refusals;
+  if (go !== undefined) refusals.push(...goRefusals(operations, go, firstOnly));
+  if (firstOnly && refusals.length > 0) return refusals;
+  if (rust !== undefined) refusals.push(...rustRefusals(operations, rust));
   return refusals;
 }

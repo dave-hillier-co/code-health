@@ -35,9 +35,11 @@ async function list(): Promise<{ rows: Map<string, Row>; stdout: string; documen
   return { rows: new Map((document.results as Row[]).map((r) => [r.id, r])), stdout, document };
 }
 
-test("lists every workspace package and not the workspace root", async () => {
+test("lists every workspace package and not the workspace root, the largest share of changes first", async () => {
   const { rows } = await list();
-  expect([...rows.keys()]).toEqual([
+  const shares = [...rows.values()].map((r) => r.share);
+  expect(shares).toEqual([...shares].sort((a, b) => b - a));
+  expect([...rows.keys()].sort()).toEqual([
     "packages/api", "packages/app", "packages/helper", "packages/lib", "packages/lib-extra", "packages/orphan", "packages/p1",
     "packages/p2", "packages/shared", "packages/testkit", "packages/ui", "packages/wrap", "packages/young",
   ]);

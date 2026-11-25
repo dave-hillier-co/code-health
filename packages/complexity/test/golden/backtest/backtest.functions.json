@@ -1,0 +1,459 @@
+{
+  "command": "backtest",
+  "config": "0000000000000000",
+  "evidence": {
+    "grade": "weak",
+    "logicalChangesInWindow": 12,
+    "usableHistoryMonths": 11
+  },
+  "inputs": {
+    "months": 11,
+    "revisions": [
+      "3a65c5fbe76890a032668b44e10cccea9163a8b8",
+      "6ac8907c616db1043ffa9c0e71538eeccdbf8bbd",
+      "3f8124b6b34f43d8146de3fbadc7150d8d058d8c",
+      "12ed44d6bbb32fe459a006b646b2b6cc7d27a6aa"
+    ],
+    "samples": 4,
+    "unit": "function"
+  },
+  "repo": {
+    "dirty": false,
+    "head": "12ed44d6bbb32fe459a006b646b2b6cc7d27a6aa"
+  },
+  "results": {
+    "correlations": [
+      {
+        "correlation": 0.89,
+        "functionSamples": 72,
+        "measure": "codeLines",
+        "outcome": "changes",
+        "partialOnCodeLines": null,
+        "periods": 3,
+        "pooledCorrelation": 0.89,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": 0.89,
+        "functionSamples": 72,
+        "measure": "cyclomatic",
+        "outcome": "changes",
+        "partialOnCodeLines": null,
+        "periods": 3,
+        "pooledCorrelation": 0.89,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": 0.89,
+        "functionSamples": 72,
+        "measure": "cognitive",
+        "outcome": "changes",
+        "partialOnCodeLines": null,
+        "periods": 3,
+        "pooledCorrelation": 0.89,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": 0.372,
+        "functionSamples": 72,
+        "measure": "nesting",
+        "outcome": "changes",
+        "partialOnCodeLines": 0.15,
+        "periods": 3,
+        "pooledCorrelation": 0.372,
+        "pooledPartialOnCodeLines": 0.15,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": null,
+        "functionSamples": 72,
+        "measure": "parameters",
+        "outcome": "changes",
+        "partialOnCodeLines": null,
+        "periods": 3,
+        "pooledCorrelation": null,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": 0.94,
+        "functionSamples": 72,
+        "measure": "priorChanges",
+        "outcome": "changes",
+        "partialOnCodeLines": 0.708,
+        "periods": 3,
+        "pooledCorrelation": 0.767,
+        "pooledPartialOnCodeLines": 0.364,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": 0.89,
+        "functionSamples": 72,
+        "measure": "codeLines",
+        "outcome": "linesChurned",
+        "partialOnCodeLines": null,
+        "periods": 3,
+        "pooledCorrelation": 0.89,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": 0.89,
+        "functionSamples": 72,
+        "measure": "cyclomatic",
+        "outcome": "linesChurned",
+        "partialOnCodeLines": null,
+        "periods": 3,
+        "pooledCorrelation": 0.89,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": 0.89,
+        "functionSamples": 72,
+        "measure": "cognitive",
+        "outcome": "linesChurned",
+        "partialOnCodeLines": null,
+        "periods": 3,
+        "pooledCorrelation": 0.89,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": 0.372,
+        "functionSamples": 72,
+        "measure": "nesting",
+        "outcome": "linesChurned",
+        "partialOnCodeLines": 0.15,
+        "periods": 3,
+        "pooledCorrelation": 0.372,
+        "pooledPartialOnCodeLines": 0.15,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": null,
+        "functionSamples": 72,
+        "measure": "parameters",
+        "outcome": "linesChurned",
+        "partialOnCodeLines": null,
+        "periods": 3,
+        "pooledCorrelation": null,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": 0.94,
+        "functionSamples": 72,
+        "measure": "priorChanges",
+        "outcome": "linesChurned",
+        "partialOnCodeLines": 0.708,
+        "periods": 3,
+        "pooledCorrelation": 0.767,
+        "pooledPartialOnCodeLines": 0.364,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": null,
+        "functionSamples": 66,
+        "measure": "codeLines",
+        "outcome": "linesPerChange",
+        "partialOnCodeLines": null,
+        "periods": 3,
+        "pooledCorrelation": null,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 66
+      },
+      {
+        "correlation": null,
+        "functionSamples": 66,
+        "measure": "cyclomatic",
+        "outcome": "linesPerChange",
+        "partialOnCodeLines": null,
+        "periods": 3,
+        "pooledCorrelation": null,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 66
+      },
+      {
+        "correlation": null,
+        "functionSamples": 66,
+        "measure": "cognitive",
+        "outcome": "linesPerChange",
+        "partialOnCodeLines": null,
+        "periods": 3,
+        "pooledCorrelation": null,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 66
+      },
+      {
+        "correlation": null,
+        "functionSamples": 66,
+        "measure": "nesting",
+        "outcome": "linesPerChange",
+        "partialOnCodeLines": null,
+        "periods": 3,
+        "pooledCorrelation": null,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 66
+      },
+      {
+        "correlation": null,
+        "functionSamples": 66,
+        "measure": "parameters",
+        "outcome": "linesPerChange",
+        "partialOnCodeLines": null,
+        "periods": 3,
+        "pooledCorrelation": null,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 66
+      },
+      {
+        "correlation": null,
+        "functionSamples": 66,
+        "measure": "priorChanges",
+        "outcome": "linesPerChange",
+        "partialOnCodeLines": null,
+        "periods": 3,
+        "pooledCorrelation": null,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 66
+      },
+      {
+        "correlation": null,
+        "functionSamples": 0,
+        "measure": "codeLines",
+        "outcome": "fixShare",
+        "partialOnCodeLines": null,
+        "periods": 0,
+        "pooledCorrelation": -0.083,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 47
+      },
+      {
+        "correlation": null,
+        "functionSamples": 0,
+        "measure": "cyclomatic",
+        "outcome": "fixShare",
+        "partialOnCodeLines": null,
+        "periods": 0,
+        "pooledCorrelation": -0.083,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 47
+      },
+      {
+        "correlation": null,
+        "functionSamples": 0,
+        "measure": "cognitive",
+        "outcome": "fixShare",
+        "partialOnCodeLines": null,
+        "periods": 0,
+        "pooledCorrelation": -0.083,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 47
+      },
+      {
+        "correlation": null,
+        "functionSamples": 0,
+        "measure": "nesting",
+        "outcome": "fixShare",
+        "partialOnCodeLines": null,
+        "periods": 0,
+        "pooledCorrelation": null,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 47
+      },
+      {
+        "correlation": null,
+        "functionSamples": 0,
+        "measure": "parameters",
+        "outcome": "fixShare",
+        "partialOnCodeLines": null,
+        "periods": 0,
+        "pooledCorrelation": null,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 47
+      },
+      {
+        "correlation": null,
+        "functionSamples": 0,
+        "measure": "priorChanges",
+        "outcome": "fixShare",
+        "partialOnCodeLines": null,
+        "periods": 0,
+        "pooledCorrelation": 0.005,
+        "pooledPartialOnCodeLines": 0.062,
+        "pooledPeriods": 3,
+        "pooledSamples": 47
+      },
+      {
+        "correlation": 0.092,
+        "functionSamples": 72,
+        "measure": "codeLines",
+        "outcome": "fixesPerLine",
+        "partialOnCodeLines": null,
+        "periods": 3,
+        "pooledCorrelation": 0.088,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": 0.092,
+        "functionSamples": 72,
+        "measure": "cyclomatic",
+        "outcome": "fixesPerLine",
+        "partialOnCodeLines": null,
+        "periods": 3,
+        "pooledCorrelation": 0.088,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": 0.092,
+        "functionSamples": 72,
+        "measure": "cognitive",
+        "outcome": "fixesPerLine",
+        "partialOnCodeLines": null,
+        "periods": 3,
+        "pooledCorrelation": 0.088,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": 0.274,
+        "functionSamples": 72,
+        "measure": "nesting",
+        "outcome": "fixesPerLine",
+        "partialOnCodeLines": 0.272,
+        "periods": 3,
+        "pooledCorrelation": 0.274,
+        "pooledPartialOnCodeLines": 0.261,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": null,
+        "functionSamples": 72,
+        "measure": "parameters",
+        "outcome": "fixesPerLine",
+        "partialOnCodeLines": null,
+        "periods": 3,
+        "pooledCorrelation": null,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": 0.516,
+        "functionSamples": 72,
+        "measure": "priorChanges",
+        "outcome": "fixesPerLine",
+        "partialOnCodeLines": 0.592,
+        "periods": 3,
+        "pooledCorrelation": 0.42,
+        "pooledPartialOnCodeLines": 0.525,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      }
+    ],
+    "limits": [
+      "A correlation says how well a measure orders the functions by what followed. It does not say the measure caused it, and it is not a threshold for any measure.",
+      "A larger function is touched by more changes because there is more of it. The partial correlation holds the function's code lines fixed, and is the figure that says whether a measure adds anything to size.",
+      "A landed change counts for a function when its diff against the commit before it on the first-parent line changed a line of the function, so an edit a branch made and undid before it merged is not counted.",
+      "A change that deletes a function, or changes it past recognition, is not counted for it, and the function is not followed after it. `ended` in each period counts such functions.",
+      "Changes are counted for the top-level production functions the structural layer measured at the sample. A nested function counts in the function that holds it, and a function added after the sample is not in the period.",
+      "A change with more files than `history.maxChangesetSize` is left out, as are commits made through the suite's skills.",
+      "A fix is a landed change whose text matches `history.fixPatterns`. Some matches are not defects, and a repository that does not name its fixes gives no fix share.",
+      "The pooled figures rank each sample within its own period and then take one correlation over every period, so a period with too few samples to count on its own still adds to them. Samples of the same file or function in several periods are not independent, so the pooled sample size overstates the evidence.",
+      "Every sample is read with the config of the checkout and the parsers of this version, not those of the time."
+    ],
+    "matching": "A function is followed from each revision of its file to the next on the first-parent line, as `complexity fixes` follows it: by its identity (path and qualified name), then by body similarity of at least complexity.moveSimilarity, and through the file renames git detects. A function created by a change is not counted as fixed by it.",
+    "measures": {
+      "codeLines": "Lines of code of the function, blank and comment lines excluded, a nested function's lines included",
+      "cognitive": "Cognitive complexity of the function",
+      "cyclomatic": "Cyclomatic complexity of the function",
+      "nesting": "Deepest nesting of control structures in the function",
+      "parameters": "Declared parameters of the function",
+      "priorChanges": "Landed changes that changed lines of the function in the period before the sample, as long as the period after it, the change that created it included"
+    },
+    "minChanges": 3,
+    "minFunctions": 20,
+    "outcomes": {
+      "changes": "Landed changes that changed lines of the function, over every function",
+      "fixShare": "Share of the function's landed changes that are fixes, over the functions with at least the minimum number of changes",
+      "fixesPerLine": "Landed changes that are fixes and changed lines of the function, per code line of the function at the sample, over every function",
+      "linesChurned": "Lines added inside the function plus the deleted lines of the hunks that touched it, over every function. A hunk that touched several functions shares its deleted lines between them equally",
+      "linesPerChange": "Lines churned per landed change, over the functions that changed"
+    },
+    "periods": [
+      {
+        "ended": 0,
+        "files": 2,
+        "from": "2024-01-02",
+        "functions": 24,
+        "landedChanges": 3,
+        "notFollowed": 0,
+        "oversizedSkipped": 0,
+        "revision": "3a65c5fbe76890a032668b44e10cccea9163a8b8",
+        "to": "2024-04-02"
+      },
+      {
+        "ended": 0,
+        "files": 2,
+        "from": "2024-04-02",
+        "functions": 24,
+        "landedChanges": 4,
+        "notFollowed": 0,
+        "oversizedSkipped": 0,
+        "revision": "6ac8907c616db1043ffa9c0e71538eeccdbf8bbd",
+        "to": "2024-08-02"
+      },
+      {
+        "ended": 0,
+        "files": 2,
+        "from": "2024-08-02",
+        "functions": 24,
+        "landedChanges": 4,
+        "notFollowed": 0,
+        "oversizedSkipped": 0,
+        "revision": "3f8124b6b34f43d8146de3fbadc7150d8d058d8c",
+        "to": "2024-12-02"
+      }
+    ]
+  },
+  "schemaVersion": 1,
+  "tool": "complexity",
+  "truncated": {
+    "cut": 0,
+    "limit": null,
+    "total": null
+  }
+}

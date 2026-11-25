@@ -11,7 +11,7 @@ beforeAll(() => {
     ["src/alpha.ts", "src/beta.ts", 6],
     ["src/gamma.ts", "src/delta.ts", 8],
     ["src/mu.ts", "src/mu.test.ts", 7],
-    ["testdata/one.json", "testdata/two.json", 5],
+    ["fixtures/one.json", "fixtures/two.json", 5],
   ]);
   thin = pairHistory([
     ["src/p.ts", "src/q.ts", 5],
@@ -45,7 +45,7 @@ test("only production pairs get a judgement slot; tests and fixtures are listed 
   const doc = await document(rich);
   expect(doc.slots.map((s: { id: string }) => s.id)).toEqual(["pair-1", "pair-2", "pair-3", "summary", "limits"]);
   const [, expected] = tables(doc, "pairs");
-  expect(expected!.rows.map((r) => r.file)).toEqual(["src/mu.test.ts", "testdata/one.json"]);
+  expect(expected!.rows.map((r) => r.file)).toEqual(["src/mu.test.ts", "fixtures/one.json"]);
   expect(await markdown(rich)).toContain("2 pairs are expected pairs (1 a test and the code it tests, 1 a fixture or golden file and what it checks)");
 });
 

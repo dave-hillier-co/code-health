@@ -5,7 +5,43 @@
   "description": "The output of risk and of its subcommands. `results.kind` says which.",
   "allOf": [
     {
-      "$ref": "common.schema.json#/$defs/analysisEnvelope"
+      "$ref": "common.schema.json#/$defs/envelope"
+    },
+    {
+      "description": "Every run that reads history carries the history sections. `risk explain` reads none unless it is given a change to assess.",
+      "if": {
+        "properties": {
+          "results": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "explain"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "window": {
+            "$ref": "common.schema.json#/$defs/window"
+          },
+          "filtersApplied": {
+            "$ref": "common.schema.json#/$defs/filtersApplied"
+          },
+          "evidence": {
+            "$ref": "common.schema.json#/$defs/evidence"
+          }
+        },
+        "required": [
+          "window",
+          "filtersApplied",
+          "evidence"
+        ]
+      }
     }
   ],
   "type": "object",
@@ -13,8 +49,58 @@
     "command": {
       "const": "risk"
     },
+    "window": {
+      "$ref": "common.schema.json#/$defs/window"
+    },
+    "filtersApplied": {
+      "$ref": "common.schema.json#/$defs/filtersApplied"
+    },
+    "evidence": {
+      "$ref": "common.schema.json#/$defs/evidence"
+    },
     "inputs": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "baseline": {
+          "description": "`risk`: the merged changes the change is compared with. A merged change is a landing on the main line (a merge commit with what it brought in, a squash or a single commit), unlike `evidence.logicalChangesInWindow`, which counts commits (or grouped commits) after the filters.",
+          "type": "object",
+          "properties": {
+            "population": {
+              "$ref": "#/$defs/count",
+              "description": "Merged changes in the baseline: the most recent of the window, up to cochange.risk.baselineChanges."
+            },
+            "since": {
+              "type": "string",
+              "description": "Start of the analysis window."
+            },
+            "mergedChanges": {
+              "$ref": "#/$defs/count",
+              "description": "Merged changes before the base in all the history read, with files left after the noise filters."
+            },
+            "mergedChangesInWindow": {
+              "$ref": "#/$defs/count",
+              "description": "The same, since `since`."
+            },
+            "merges": {
+              "$ref": "#/$defs/count",
+              "description": "Landings before the base that are merge commits, in all the history read, including those the filters emptied."
+            },
+            "direct": {
+              "$ref": "#/$defs/count",
+              "description": "Landings before the base that are single commits on the main line, in all the history read, including those the filters emptied."
+            }
+          },
+          "required": [
+            "population",
+            "since",
+            "mergedChanges",
+            "mergedChangesInWindow",
+            "merges",
+            "direct"
+          ],
+          "additionalProperties": false
+        }
+      }
     },
     "results": {
       "oneOf": [
@@ -229,6 +315,69 @@
                 "type": "string"
               },
               "description": "Scored factors that could not be computed or placed. They add nothing to the score."
+            },
+            "families": {
+              "description": "What the score is made of: each family with a scored factor, the factor it counts at (its highest band), and the points it adds (0 low, 1 moderate, 2 high). The points add up to `score`.",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "family": {
+                    "type": "string"
+                  },
+                  "factor": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Null when none of the family's scored factors could be banded."
+                  },
+                  "band": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/$defs/band"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "points": {
+                    "$ref": "#/$defs/count"
+                  }
+                },
+                "required": [
+                  "family",
+                  "factor",
+                  "band",
+                  "points"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "notCounted": {
+              "description": "Factors at moderate or high that neither count in the score nor are events (complexity-delta, abandoned-touched), so they do not move the band. They are findings in their own right.",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "factor": {
+                    "type": "string"
+                  },
+                  "band": {
+                    "$ref": "#/$defs/band"
+                  }
+                },
+                "required": [
+                  "factor",
+                  "band"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "summary": {
+              "type": "string",
+              "description": "How the band follows from the score, the baseline's guidelines and the events, in words."
             }
           },
           "required": [
@@ -237,7 +386,10 @@
             "band",
             "events",
             "unavailable",
-            "baseline"
+            "baseline",
+            "families",
+            "notCounted",
+            "summary"
           ],
           "additionalProperties": false
         },
@@ -383,7 +535,7 @@
       "additionalProperties": false
     },
     "explain": {
-      "description": "`risk explain`: the rules behind the level (no topic argument), or one factor's definition, guidelines and the evidence that drove it on the branch.",
+      "description": "`risk explain`: the rules behind the level (no topic argument), or one factor's definition and guidelines. `branch` is the factor as computed on a change, present only when a range (or --worktree) is given and the factor is not a placement factor; otherwise it is null and no history is read.",
       "type": "object",
       "properties": {
         "kind": {
@@ -1245,6 +1397,10 @@
               "files": {
                 "$ref": "#/$defs/count"
               },
+              "coupledFiles": {
+                "$ref": "#/$defs/count",
+                "description": "Files outside the change at the missing-co-change guidelines (cochange.risk.missingConfidence and cochange.minSupport) towards any of the area's touched files. When it is 0, coupledChanges is 0 for every candidate."
+              },
               "candidates": {
                 "$ref": "#/$defs/count",
                 "description": "Active developers who could review it, not counting the change's authors."
@@ -1267,10 +1423,13 @@
                         },
                         "authorship": {
                           "type": "number",
-                          "minimum": 0
+                          "minimum": 0,
+                          "maximum": 1,
+                          "description": "The developer's average share of the lines of the area's touched files they last wrote (blame), or of the files' changes in the window (history without blame)."
                         },
                         "coupledChanges": {
-                          "$ref": "#/$defs/count"
+                          "$ref": "#/$defs/count",
+                          "description": "The developer's changes in the window to the area's coupled files, each coupled file counted once."
                         }
                       },
                       "required": [
@@ -1288,6 +1447,7 @@
             "required": [
               "area",
               "files",
+              "coupledFiles",
               "candidates",
               "suggested"
             ],

@@ -78,7 +78,7 @@ export function exceeded(values: Values, guidelines: Guidelines): GatedMetric[] 
 }
 
 /** Labels such as `cognitive-high` or `nesting-warn`, in metric order, plus `bumpy-road` for a unit whose bumps cross the guideline. */
-export function labelsFor(values: Values, guidelines: Guidelines, bumpyRoad = false): string[] {
+export function labelsFor(values: Values, guidelines: Guidelines, bumpyRoad: boolean): string[] {
   const labels: string[] = [];
   for (const metric of gatedMetrics) {
     const value = values[metric];

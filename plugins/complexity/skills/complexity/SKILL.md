@@ -37,6 +37,7 @@ and `--limit` (default 20) and `--fields` keep it small. Never ask for a whole r
    present a lexical value as exact. The `agreement` section carries the rate that released it.
    `parseCoverage` gives the share of parsed files with syntax errors, and a notice says when it is above the
    `syntaxErrorPercent` guideline: those files' functions may be incomplete, so say so before ranking from them.
+   `filesWithSyntaxErrors` lists each such file with the line, column and text of its first error.
 
 2. The default order is cognitive complexity, highest first, then nesting, then cyclomatic complexity, then length,
    then path, so a tie is broken by a metric the row shows (`ranking.sortedBy` and a `Notice: sorted by` line in a table
@@ -54,13 +55,22 @@ and `--limit` (default 20) and `--fields` keep it small. Never ask for a whole r
    Test code is not in the rows. A file is a test by its language's naming conventions and the `testPatterns` of
    `code-health.json`, and `tests` in the JSON (and a notice in a table) says how many test functions were left out and
    lists the first ten. `--include-tests` puts them in the one list, each row with its `role`. `files`, `fixes` and
-   `depth` do the same. Say how many tests were left out when you report the top of the list.
+   `depth` do the same. Test code inside a production file (a Rust `#[cfg(test)]` module) is test code too: `files`
+   counts its lines in `testCodeLines` and its functions in `testFunctions`, apart from `codeLines` and `functions`.
+   Say how many tests were left out when you report the top of the list.
+
+   `possibleNonProductionFolders` in the JSON (and a notice in a table) names the folders such as `examples/`,
+   `samples/`, `playground/` and `benches/` whose files are ranked as production code, with their share of the
+   production files. When rows from them are near the top, say so, and that listing the folder in `exclude` leaves it out.
 
 3. For files, use `files`. A run over the whole repository on a clean tree stores the report other plugins read.
 
    ```
    node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs files --json --limit 10
    ```
+
+   It lists the files with a measured function first, by indentation complexity, then the files with none
+   (`functions` 0: declarations, headers, data), which `explain` and `report xray` cannot break down.
 
 4. To see only what a branch changed, use `diff main..HEAD`, or `diff main` for the working tree.
 
@@ -74,7 +84,10 @@ and `--limit` (default 20) and `--fields` keep it small. Never ask for a whole r
    interface), plus the exported functions and public methods whose whole body forwards to one call. A function the
    language does not export (private, internal, package-private, lower-case, underscore-prefixed) has no row, and
    `summary.passThroughNotExported` counts the pass-throughs left out. A row labelled `pass-through` names the call it
-   forwards to. A row labelled `shallow` hides little behind its interface. Both are signals to review against the
+   forwards to. A pass-through also labelled `required` implements or overrides an inherited method, or is called by a
+   framework through an attribute (`required` says which: `interface` or `entry-point`), so it cannot be inlined: those
+   rows come after the removable pass-throughs, and `summary.passThroughByKind` counts each kind. A row labelled
+   `shallow` hides little behind its interface. Both are signals to review against the
    *shallow module* and *pass-through method* red flags, never findings on their own: read the function, and the
    callers, before acting. The guideline is `interfaceDepth.shallow`, and depth needs a structural adapter, so
    other languages are counted in `summary.filesWithoutAdapter` and not listed. Details in
@@ -104,8 +117,10 @@ Run `explain` on the function, with its id from the `analyse` row:
 node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs explain src/orders.ts#Cart.total --json
 ```
 
-It lists each increment with its line, the construct, the amount and the nesting that added to it. Read it as a
-budget: the lines with the largest amounts are where to work. A deeply nested `if` costs its depth. Each
+It lists each increment with its line, the construct, the amount and the nesting that added to it, largest amount
+first and then by line. It prints the first 20 (`truncated.total` says how many there are); `--limit all` prints every
+increment, which you need to add them up or to see every line. Read it as a budget: the lines with the largest amounts
+are where to work. A deeply nested `if` costs its depth. Each
 sequence of `&&` or `||` costs one. `else` costs one, so does recursion, and a labelled `break` or `continue`.
 `node ${CLAUDE_PLUGIN_ROOT}/dist/complexity.mjs explain cognitive` (or `cyclomatic`, `nesting`, `parameters`, `bumpy-road`) describes what a label means.
 

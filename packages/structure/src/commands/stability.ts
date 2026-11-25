@@ -2,7 +2,7 @@ import type { Rule } from "@code-health/cli-kit/run-cli";
 import { analysisCommand } from "../analysis-command.ts";
 import { buildModel } from "../model.ts";
 import { readLevel, type Level } from "../modules.ts";
-import { rankDependencies, unitStabilities } from "../unstable.ts";
+import { rankDependencies, splitAtTargetFloor, unitStabilities } from "../unstable.ts";
 
 export const name = "stability";
 
@@ -30,6 +30,11 @@ export const rules: Record<string, Rule> = {
       "then rows are sorted by margin. `volatilityRatio` is the measured ratio. Nothing is hidden for",
       "being under the guideline; use --limit to cap the rows.",
       "",
+      "Dependencies onto a module of fewer than structure.minTargetFiles files (default 2, an evidence floor)",
+      "are listed after all the others, in the same order among themselves, and counted in",
+      "`belowTargetFloor`: a one-file module's figures are the figures of one file. The structure report",
+      "leaves them out, so its list of folder dependencies is the first rows of this one.",
+      "",
       "`disagree` is set when the two measures point opposite ways, which is when change evidence is the",
       "one to believe. With weak evidence the grade says how far to trust either. This is a prompt for",
       "investigation, not a verdict: `structure evidence` gives the facts behind the edge.",
@@ -47,16 +52,25 @@ export const command = analysisCommand(name, {
     const model = await buildModel(context, history, by);
     const { settings } = history;
     const units = unitStabilities(model);
+    const { listed, belowFloor } = splitAtTargetFloor(rankDependencies(model, settings), settings);
+    const n = belowFloor.length;
     return {
       inputs: {
         by,
         minRevisions: settings.minRevisions,
         minVolatilityRatio: settings.minVolatilityRatio,
         minInstabilityGap: settings.minInstabilityGap,
+        minTargetFiles: settings.minTargetFiles,
       },
-      results: rankDependencies(model, settings),
+      results: [...listed, ...belowFloor],
       columns: ["id", "basis", "volatilityRatio", "structuralAboveGuideline", "changeAboveGuideline", "disagree", "fileEdges", "stability"],
-      extra: { units: units.slice(0, UNITS_SHOWN), unitsTotal: units.length },
+      notices:
+        n === 0
+          ? []
+          : [
+              `${n} ${n === 1 ? "dependency" : "dependencies"} onto a ${by} of fewer than ${settings.minTargetFiles} files ${n === 1 ? "is" : "are"} listed after the others, because the figures of a one-file ${by} are the figures of one file (evidence floor structure.minTargetFiles, a judgement call).${by === "folder" ? ` The structure report leaves ${n === 1 ? "it" : "them"} out.` : ""}`.replace(/\.$/, ""),
+            ],
+      extra: { belowTargetFloor: n, units: units.slice(0, UNITS_SHOWN), unitsTotal: units.length },
     };
   },
 });

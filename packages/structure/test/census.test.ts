@@ -3,7 +3,7 @@ import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { expectGolden } from "./support/golden.ts";
 import { runStructure } from "./support/run.ts";
-import { conventionsRepository, directRepository, mechanismsRepository } from "./support/census-scenario.ts";
+import { conventionsRepository, directRepository, mechanismsRepository, telemetryRepository } from "./support/census-scenario.ts";
 
 let repo: GitFixture;
 let direct: GitFixture;
@@ -33,6 +33,7 @@ interface Row {
   variants: { variant: string; count: number }[];
   folders: { folder: string; count: number }[];
   examples: Example[];
+  lookAlikes: { name: string; count: number; definitions: number; detail: string }[];
 }
 
 async function census(cwd: string, ...args: string[]) {
@@ -162,6 +163,31 @@ test("names stated under structure.census add to the built-in vocabulary", async
 test("plain JavaScript is read for what needs no type annotation", async () => {
   const { row } = await census(conventions.path);
   expect(row("events").examples.map((e) => e.path)).toContain("src/legacy/emitter.js");
+});
+
+test("a send call to the repository's own method with no listen side is a look-alike, counted apart from the events", async () => {
+  const telemetry = telemetryRepository();
+  try {
+    const { row } = await census(telemetry.path);
+    const events = row("events");
+    expect(events.examples.map((e) => e.detail).sort()).toEqual(["bus.publish", "bus.subscribe"]);
+    expect(events.count).toBe(2);
+    expect(events.lookAlikes).toEqual([
+      {
+        name: "emit",
+        count: 3,
+        definitions: 2,
+        detail: "emit is defined in this repository on 2 types or files, and none of them has a listen method or an event base type, so a call runs that code and notifies no listener",
+      },
+    ]);
+  } finally {
+    telemetry.dispose();
+  }
+});
+
+test("every other row has no look-alikes", async () => {
+  const { document } = await census(repo.path);
+  for (const row of document.results) expect(row.lookAlikes).toEqual([]);
 });
 
 test("the census reads no history, so its document has no window or evidence section", async () => {

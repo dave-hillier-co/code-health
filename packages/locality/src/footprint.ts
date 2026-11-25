@@ -51,6 +51,23 @@ export function netDistance(edges: readonly BoundaryEdge[], base: string): numbe
   return sum;
 }
 
+/**
+ * The edges with the same two folders as one edge of their summed weight, in the order each pair is first seen. Every
+ * candidate folder is measured against every edge, and a unit's many consumers in one folder are one term of the sum.
+ * Whole weights are summed exactly in any order; edges with a fractional weight are kept as they are.
+ */
+function merged(edges: readonly BoundaryEdge[]): readonly BoundaryEdge[] {
+  if (!edges.every((edge) => Number.isInteger(edge.weight))) return edges;
+  const byPair = new Map<string, BoundaryEdge>();
+  for (const edge of edges) {
+    const key = `${edge.inner}\0${edge.outer}`;
+    const found = byPair.get(key);
+    if (found === undefined) byPair.set(key, { ...edge });
+    else found.weight += edge.weight;
+  }
+  return [...byPair.values()];
+}
+
 /** The folder and every ancestor of it, root included. */
 function chain(folder: string): string[] {
   if (folder === "") return [""];
@@ -69,7 +86,8 @@ function prefers(a: string, b: string): boolean {
  * with the same distance do not contain each other, so choosing one would be arbitrary: no target is proposed
  * and the tied folders are reported in `ties`.
  */
-export function bestTarget(edges: readonly BoundaryEdge[], base: string, options: TargetOptions): TargetChoice {
+export function bestTarget(boundary: readonly BoundaryEdge[], base: string, options: TargetOptions): TargetChoice {
+  const edges = merged(boundary);
   const current = netDistance(edges, base);
   const candidates = new Set<string>();
   for (const edge of edges) for (const folder of chain(edge.outer)) candidates.add(folder);

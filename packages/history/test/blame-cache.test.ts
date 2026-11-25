@@ -1,4 +1,6 @@
+import { spawn } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { hostname } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { GitFixture, type CommitOptions, type Identity, type Step } from "@code-health/fixtures/git-fixture";
@@ -7,6 +9,7 @@ import { readBlame } from "../src/blame-read.ts";
 import { refreshBlame } from "../src/blame-refresh.ts";
 import { createDatabase } from "../src/sqlite.ts";
 import { locateCache } from "../src/cache-location.ts";
+import { LockTimeoutError } from "../src/lock.ts";
 import { createNonPersonMatcher } from "../src/identity-classify.ts";
 
 vi.setConfig({ testTimeout: 180_000 });
@@ -269,6 +272,35 @@ test("concurrent refreshes take turns and no file is blamed twice", async () => 
   const results = await Promise.all([refreshBlame(f.path), refreshBlame(f.path), refreshBlame(f.path)]);
   expect(results.reduce((n, r) => n + r.blamed, 0)).toBe(5);
   expect(results.reduce((n, r) => n + r.reused, 0)).toBe(10);
+});
+
+test("while another process holds the lock, a refresh with nothing to blame returns without waiting", async () => {
+  const f = scenario();
+  await refreshBlame(f.path);
+  const { blameLockPath } = await locateCache(f.path);
+  const holder = spawn(process.execPath, ["-e", "setTimeout(() => {}, 600_000)"], { stdio: "ignore" });
+  try {
+    writeFileSync(blameLockPath, JSON.stringify({ token: "t", pid: holder.pid, host: hostname(), time: Date.now(), command: "cochange abandonment current" }));
+    const lock = { timeoutMs: 200, notify: () => {} };
+    expect(await refreshBlame(f.path, { lock })).toMatchObject({ files: 5, blamed: 0, reused: 5, pruned: 0 });
+    expect(await refreshBlame(f.path, { paths: ["src/a.ts"], lock })).toMatchObject({ files: 1, blamed: 0, reused: 1 });
+    f.commit(commit(7, carol, "change a", [{ op: "modify", path: "src/a.ts", content: "a1\n" }]));
+    await expect(refreshBlame(f.path, { lock })).rejects.toBeInstanceOf(LockTimeoutError);
+  } finally {
+    holder.kill();
+  }
+});
+
+test("a refresh writes how many files it has blamed into the lock, for anyone waiting", async () => {
+  const f = scenario();
+  const { blameLockPath } = await locateCache(f.path);
+  const seen: string[] = [];
+  await refreshBlame(f.path, {
+    concurrency: 1,
+    lock: { progressEveryMs: 0 },
+    onProgress: () => seen.push(JSON.parse(readFileSync(blameLockPath, "utf8")).progress),
+  });
+  expect(seen).toEqual(["blamed 1 of 5 files", "blamed 2 of 5 files", "blamed 3 of 5 files", "blamed 4 of 5 files", "blamed 5 of 5 files"]);
 });
 
 test("the cache lives beside the history cache, ignored by git", async () => {

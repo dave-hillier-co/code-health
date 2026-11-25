@@ -2,6 +2,7 @@ import type { Node } from "web-tree-sitter";
 import type { FileCensus, ParameterFact } from "../../census-facts.ts";
 import { leavesOf, type Leaf } from "./extract-facts.ts";
 import { typeName } from "./metric-rules.ts";
+import { isTestItem, itemKinds } from "./test-code.ts";
 
 /**
  * The syntactic facts the structure census judges, for Rust.
@@ -11,11 +12,12 @@ import { typeName } from "./metric-rules.ts";
  *   heritage is the trait, so a trait implemented in another folder shows as an interface in use. A type's
  *   constructor is the `new` function of its inherent `impl`, and its parameter types are what it is given.
  * - A function takes a callback when a parameter's type holds an `fn` or `Fn` type, or is a generic parameter
- *   bounded by one.
+ *   bounded by one, of the function or of its `impl` or trait.
  * - Calls are method calls (`bus.emit(x)`, receiver `bus`), paths (`Bus::publish(x)`, receiver `Bus`) and
  *   macros and functions called by name. `Name::new(..)` and `Name { .. }` are the news.
  * - Decorators are attributes: `#[inject]` is `inject`, and `#[derive(Injectable)]` is `Injectable`.
  * - A registry is a field, static or variable named like one that holds a map.
+ * - Test code is left out: an item that test-code.ts calls test code, with its attributes and everything inside it.
  */
 
 const registryName = /(registry|registries|handlers|plugins|strategies|factories|providers|adapters)$/i;
@@ -77,9 +79,12 @@ function annotation(node: Node | null, callbackParameters: ReadonlySet<string>):
   return { callback, names: [...names].sort() };
 }
 
-/** Generic parameters of a function that are bounded by an `fn` or `Fn` type, in the list or in a where clause. */
-function callbackGenerics(fn: Node): Set<string> {
-  const names = new Set<string>();
+/**
+ * Generic parameters of a function or an `impl` that are bounded by an `fn` or `Fn` type, in the list or in a
+ * where clause. An `impl`'s are in scope in each of its methods.
+ */
+function callbackGenerics(fn: Node, inherited: ReadonlySet<string> = new Set()): Set<string> {
+  const names = new Set<string>(inherited);
   for (const parameter of field(fn, "type_parameters")?.namedChildren ?? []) {
     const bounds = field(parameter, "bounds");
     const name = field(parameter, "name")?.text;
@@ -92,8 +97,8 @@ function callbackGenerics(fn: Node): Set<string> {
   return names;
 }
 
-function parametersOf(fn: Node): { name: string; type: ParameterFact }[] {
-  const generics = callbackGenerics(fn);
+function parametersOf(fn: Node, inherited: ReadonlySet<string>): { name: string; type: ParameterFact }[] {
+  const generics = callbackGenerics(fn, inherited);
   const out: { name: string; type: ParameterFact }[] = [];
   for (const parameter of field(fn, "parameters")?.namedChildren ?? []) {
     if (parameter.type !== "parameter") continue;
@@ -110,14 +115,24 @@ function attributeNames(attribute: Node): string[] {
   return own === null ? [] : [own];
 }
 
+/** The item an attribute is written on: the next sibling that is neither an attribute nor a comment. */
+function itemOf(attribute: Node): Node | null {
+  let next = attribute.nextNamedSibling;
+  while (next !== null && (next.type === "attribute_item" || comment(next))) next = next.nextNamedSibling;
+  return next;
+}
+
 /** Extracts a file's census facts from its syntax tree. Lines are 1-based. */
 export function extractFileCensus(root: Node): FileCensus {
   const facts: FileCensus = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
   const constructors = new Map<string, string[]>();
 
-  const visit = (node: Node, owner: string | null): void => {
+  // `generics` are the callback-bounded type parameters of the enclosing `impl` or trait.
+  const visit = (node: Node, owner: string | null, generics: ReadonlySet<string>): void => {
+    if (node.type === "attribute_item" ? isTestItem(itemOf(node) ?? node) : itemKinds.has(node.type) && isTestItem(node)) return;
     const line = node.startPosition.row + 1;
     let nextOwner = owner;
+    let nextGenerics = generics;
     switch (node.type) {
       case "use_declaration": {
         // The names a `use` binds, for finding where a trait came from.
@@ -134,6 +149,7 @@ export function extractFileCensus(root: Node): FileCensus {
         const name = field(node, "name")?.text;
         if (name !== undefined) facts.types.push({ name, kind: "interface", line });
         nextOwner = name ?? owner;
+        nextGenerics = callbackGenerics(node);
         break;
       }
       case "type_item": {
@@ -155,18 +171,21 @@ export function extractFileCensus(root: Node): FileCensus {
       case "impl_item": {
         const type = nameOf(field(node, "type"));
         const trait = nameOf(field(node, "trait"));
+        nextGenerics = callbackGenerics(node);
         if (type !== null && trait !== null) facts.classes.push({ name: type, line, heritage: [trait], constructorTypes: [] });
         if (type !== null && trait === null) {
           const body = field(node, "body");
           const constructor = body?.namedChildren.find((member) => member.type === "function_item" && field(member, "name")?.text === "new");
-          if (constructor !== undefined) constructors.set(type, [...(constructors.get(type) ?? []), ...parametersOf(constructor).flatMap((parameter) => parameter.type.names)]);
+          if (constructor !== undefined) constructors.set(type, [...(constructors.get(type) ?? []), ...parametersOf(constructor, nextGenerics).flatMap((parameter) => parameter.type.names)]);
         }
         nextOwner = type;
         break;
       }
       case "function_item": {
         const name = field(node, "name")?.text;
-        if (name !== undefined) facts.functions.push({ name: owner === null ? name : `${owner}.${name}`, line, parameters: parametersOf(node) });
+        if (name !== undefined) facts.functions.push({ name: owner === null ? name : `${owner}.${name}`, line, parameters: parametersOf(node, generics) });
+        // An item inside the body does not see the enclosing generics.
+        nextGenerics = new Set();
         break;
       }
       case "attribute_item": {
@@ -218,10 +237,10 @@ export function extractFileCensus(root: Node): FileCensus {
       }
       default:
     }
-    for (const child of node.children) visit(child, nextOwner);
+    for (const child of node.children) visit(child, nextOwner, nextGenerics);
   };
 
-  visit(root, null);
+  visit(root, null, new Set());
   for (const klass of facts.classes) {
     if (klass.heritage.length === 0) klass.constructorTypes = [...new Set(constructors.get(klass.name) ?? [])].sort();
   }

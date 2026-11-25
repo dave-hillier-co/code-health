@@ -70,7 +70,7 @@ export const command: Command = {
         after: pick(after.values, metricIds),
         delta: before === undefined ? null : delta(before.values, after.values),
         score: (after.values.cognitive ?? 0) - (before?.values.cognitive ?? 0),
-        labels: labelsFor(after.values, guidelines),
+        labels: labelsFor(after.values, guidelines, after.bumpyRoad === true),
       });
     }
 

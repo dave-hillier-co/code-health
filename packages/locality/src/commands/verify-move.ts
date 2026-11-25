@@ -3,7 +3,8 @@ import type { Command, CommandOutput } from "@code-health/cli-kit/run-cli";
 import { runGit } from "@code-health/history/git";
 import { treeFromRef } from "@code-health/parse/source-tree";
 import { readSettings } from "../config.ts";
-import { goPackagesOf } from "../project.ts";
+import { pathArguments } from "../path-arguments.ts";
+import { goPackagesOf, rustModulesOf } from "../project.ts";
 import { planMove } from "../move-plan.ts";
 import { analyseRevision } from "../unit-analysis.ts";
 
@@ -17,7 +18,7 @@ export const command: Command = {
   async run(context): Promise<CommandOutput> {
     const settings = readSettings(context.config);
     if (context.positionals.length !== 1) throw usageError("usage: verify-move <unit path> [--commit <ref>] [--to <folder>]");
-    const unitPath = (context.positionals[0] as string).replace(/\/+$/, "");
+    const unitPath = pathArguments(context.repo.root, [context.positionals[0] as string])[0] as string;
     const ref = context.values.commit ?? "HEAD";
     const to = context.values.to;
     if (typeof ref !== "string" || (to !== undefined && typeof to !== "string")) throw usageError("--commit and --to need a value");
@@ -40,7 +41,7 @@ export const command: Command = {
     const parentTree = await treeFromRef(root, parent);
     const commitTree = await treeFromRef(root, ref);
     // Whether the analyser recommends the move is not what is being verified, so a reason always stands in for it.
-    const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to: to as string | undefined, reason: "verification" }, goPackagesOf(project));
+    const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to: to as string | undefined, reason: "verification" }, goPackagesOf(project), rustModulesOf(project));
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
     const { verifyMove } = await import("../move-verify.ts");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);

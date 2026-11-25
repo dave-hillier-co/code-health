@@ -48,6 +48,23 @@ export function isNestedFolderCycle(level: string, nodes: readonly string[]): bo
 
 export const cycleId = (level: string, firstNode: string): string => `cycle:${level}:${firstNode}`;
 
+/**
+ * The level a finding or edge id names. At the default level a node is a file for every language but Go and C#,
+ * and the graph between such files is the file graph, so ids among files say `file` and match what the file
+ * level gives. A Go package or C# project node keeps `default`.
+ */
+export function idLevel(graph: Pick<ModuleGraph, "level" | "filesOf">, nodes: readonly string[]): string {
+  if (graph.level !== "default") return graph.level;
+  const isFile = (node: string): boolean => {
+    const files = graph.filesOf.get(node);
+    return files !== undefined && files.length === 1 && files[0] === node;
+  };
+  return nodes.every(isFile) ? "file" : "default";
+}
+
+/** Whether a cycle id names this cycle: its own id, or the id an earlier version gave a default-level cycle of files. */
+export const namesCycle = (id: string, cycle: Pick<CycleRow, "id" | "level" | "nodes">): boolean => id === cycle.id || id === cycleId(cycle.level, cycle.nodes[0]!);
+
 export function unblocksOf(model: Model, from: string, to: string): Unblock[] {
   if (!model.locality) return [];
   const members = model.graph.members.get(edgeKey(from, to)) ?? [];
@@ -94,7 +111,7 @@ export function findCycles(model: Model, settings: Pick<StructureSettings, "exac
     }
     const breakingSet = cycle.edges.map((edge) => breakingEdge(model, edge.from, edge.to));
     return {
-      id: cycleId(model.graph.level, cycle.nodes[0]!),
+      id: cycleId(idLevel(model.graph, cycle.nodes), cycle.nodes[0]!),
       level: model.graph.level,
       size: cycle.nodes.length,
       nodes: [...cycle.nodes],

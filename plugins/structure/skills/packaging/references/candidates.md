@@ -9,7 +9,7 @@
 | `move-unit` | `crossing-unit`, `follower` | The move would create a package cycle, or the unit has consumers on both sides |
 | `narrow-interface` | `overexposed`, `deep-import`, `volatile-interface` | Published package, where outside consumers cannot be seen |
 | `fix-manifest` | `undeclared-dependency`, `unused-dependency` | None. These are corrections |
-| `break-dependency` | `package-cycle`, `against-stability`, `zone-of-pain` | Handed to the structure skill with its evidence pack |
+| `break-dependency` | `package-cycle`, `against-stability`, `zone-of-pain` (one candidate per package, with its `dependants`) | Handed to the structure skill with its evidence pack |
 
 ## Reading a candidate
 
@@ -17,8 +17,10 @@
 - A soft `against` entry (`declared-purpose`, `different-deployables`) leaves the candidate proposed. Weigh it and say so. A declared purpose argues against only while the evidence does not contradict it: a `purpose-mismatch` finding removes it.
 - A `move-unit` with `unit: null` comes from a `follower` relation with no single file behind it. Use `evidence A->B` to find which part of B belongs in A before proposing anything.
 - `also` lists what the candidate would fix besides, such as a package cycle.
-- `withheld` lists what would change a published package. Report it and propose nothing.
-- `handoff` is the command that gives the evidence pack for a dependency to break. Hand it to the structure skill.
+- A `split` lists each part's `exports` as `path#name`, so a name defined in two files appears once for each.
+- `withheld` lists what would change a published package, each with the `candidate` that would be proposed. Propose nothing from it. When `question` is set, the package is published only because nothing marks it internal: ask the user the question, record the answer under `structure.packages.byPackage`, and run `candidates` again. When it is null, config declared the package published.
+- `handoff` is the structure command for the evidence pack of a dependency to break, such as `structure evidence "A->B" --level package`. Run it as `node ${CLAUDE_PLUGIN_ROOT}/dist/structure.mjs evidence "A->B" --level package --json` and follow the structure skill. It is not `packages evidence A->B`, which prints co-change and reuse for a pair and not the evidence pack.
+- A `zone-of-pain` candidate names the package and its `dependants`: each dependency on it is one to break or invert. Its `handoff` names the dependant that shared the most changes with it. For another dependant, run the same command with that dependant on the left of the arrow.
 
 ## Applying each step
 

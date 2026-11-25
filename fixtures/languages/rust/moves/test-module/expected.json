@@ -1,0 +1,12 @@
+{
+  "operations": [{ "from": "src/test/helpers.rs", "to": "src/store/helpers.rs" }],
+  "rewrites": [
+    { "path": "src/store/mod.rs", "line": 2, "from": "", "to": "mod helpers" },
+    { "path": "src/test/mod.rs", "line": 3, "from": "mod helpers", "to": "" }
+  ],
+  "texts": {
+    "src/store/mod.rs": "mod disk;\n#[cfg(test)]\n#[cfg(unix)]\nmod helpers;\n\npub fn open() {}\n",
+    "src/test/mod.rs": "#![cfg(unix)]\n\n"
+  },
+  "warnings": []
+}

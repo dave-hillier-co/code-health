@@ -2,10 +2,45 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "backtest.schema.json",
   "title": "complexity backtest --json",
-  "description": "A maintainer command. At revisions sampled over the history, each file's size and complexity set against what the landed changes of the following period did to the file, as rank correlations. It decides nothing.",
+  "description": "A maintainer command. At revisions sampled over the history, each file's (or with --unit function each function's) size and complexity set against what the landed changes of the following period did to it, as rank correlations. It decides nothing.",
   "allOf": [
     {
       "$ref": "common.schema.json#/$defs/envelope"
+    },
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "properties": {
+              "unit": {
+                "const": "function"
+              }
+            },
+            "required": [
+              "unit"
+            ]
+          }
+        },
+        "required": [
+          "inputs"
+        ]
+      },
+      "then": {
+        "properties": {
+          "results": {
+            "$ref": "#/$defs/functionResults"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "results": {
+            "$ref": "#/$defs/fileResults"
+          }
+        }
+      }
     }
   ],
   "type": "object",
@@ -32,14 +67,25 @@
             "$ref": "common.schema.json#/$defs/sha"
           },
           "description": "The sampled revisions, oldest first. Each one but the last starts a period that ends at the next."
+        },
+        "unit": {
+          "enum": [
+            "file",
+            "function"
+          ],
+          "description": "What each sample is: a file, or a production function followed through the history."
         }
       },
       "required": [
         "samples",
         "months",
+        "unit",
         "revisions"
       ],
       "additionalProperties": false
+    },
+    "possibleNonProductionFolders": {
+      "$ref": "common.schema.json#/$defs/possibleNonProductionFolders"
     },
     "evidence": {
       "type": "object",
@@ -68,6 +114,17 @@
       "additionalProperties": false
     },
     "results": {
+      "description": "The file results, or with --unit function the function results."
+    }
+  },
+  "required": [
+    "inputs",
+    "evidence",
+    "results"
+  ],
+  "unevaluatedProperties": false,
+  "$defs": {
+    "fileResults": {
       "type": "object",
       "properties": {
         "periods": {
@@ -112,7 +169,7 @@
         },
         "minFiles": {
           "$ref": "common.schema.json#/$defs/count",
-          "description": "A period with fewer files than this for an outcome, or fewer than this many of them changed, is left out of that outcome."
+          "description": "A period with fewer files than this for an outcome, or fewer than this many of them changed, is left out of that outcome. The pooled figures need it over the pool."
         },
         "minChanges": {
           "$ref": "common.schema.json#/$defs/count",
@@ -173,7 +230,7 @@
         },
         "outcomes": {
           "type": "object",
-          "description": "What each outcome of the following period is, and the files it is taken over.",
+          "description": "What each outcome of the following period is, and the samples it is taken over.",
           "properties": {
             "changes": {
               "type": "string"
@@ -186,13 +243,17 @@
             },
             "fixShare": {
               "type": "string"
+            },
+            "fixesPerLine": {
+              "type": "string"
             }
           },
           "required": [
             "changes",
             "linesChurned",
             "linesPerChange",
-            "fixShare"
+            "fixShare",
+            "fixesPerLine"
           ],
           "additionalProperties": false
         },
@@ -207,7 +268,8 @@
                   "changes",
                   "linesChurned",
                   "linesPerChange",
-                  "fixShare"
+                  "fixShare",
+                  "fixesPerLine"
                 ]
               },
               "measure": {
@@ -232,7 +294,7 @@
                 ],
                 "minimum": -1,
                 "maximum": 1,
-                "description": "Spearman rank correlation within each period, averaged over the periods by their number of files. Null when no period had enough files with variation on both sides."
+                "description": "Spearman rank correlation within each period, averaged over the periods by their number of samples. Null when no period had enough samples with variation on both sides."
               },
               "partialOnCodeLines": {
                 "type": [
@@ -250,6 +312,32 @@
               "periods": {
                 "$ref": "common.schema.json#/$defs/count",
                 "description": "Periods that had enough files."
+              },
+              "pooledCorrelation": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": -1,
+                "maximum": 1,
+                "description": "One correlation over the samples of every period, each value ranked within its own period and scaled to the period's size. Null when the pool has fewer samples, or fewer changed samples, than the minimum, or no variation on a side."
+              },
+              "pooledPartialOnCodeLines": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": -1,
+                "maximum": 1,
+                "description": "The same with code lines held fixed. Null for code lines itself."
+              },
+              "pooledSamples": {
+                "$ref": "common.schema.json#/$defs/count",
+                "description": "Samples, from every period, that the pooled figures rest on."
+              },
+              "pooledPeriods": {
+                "$ref": "common.schema.json#/$defs/count",
+                "description": "Periods that gave samples to the pool."
               }
             },
             "required": [
@@ -258,7 +346,11 @@
               "correlation",
               "partialOnCodeLines",
               "fileSamples",
-              "periods"
+              "periods",
+              "pooledCorrelation",
+              "pooledPartialOnCodeLines",
+              "pooledSamples",
+              "pooledPeriods"
             ],
             "additionalProperties": false
           }
@@ -281,12 +373,251 @@
         "limits"
       ],
       "additionalProperties": false
+    },
+    "functionResults": {
+      "type": "object",
+      "properties": {
+        "periods": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string",
+                "description": "The sample the files were measured at."
+              },
+              "to": {
+                "type": "string",
+                "description": "The next sample, where the period ends."
+              },
+              "revision": {
+                "$ref": "common.schema.json#/$defs/sha"
+              },
+              "files": {
+                "$ref": "common.schema.json#/$defs/count",
+                "description": "Production code files with a followed function at the sample."
+              },
+              "functions": {
+                "$ref": "common.schema.json#/$defs/count",
+                "description": "Top-level production functions at the sample that the figures count."
+              },
+              "ended": {
+                "$ref": "common.schema.json#/$defs/count",
+                "description": "Functions at the sample that a later revision of the period had no counterpart for: deleted, or changed or moved past recognition. Their changes up to then are counted."
+              },
+              "notFollowed": {
+                "$ref": "common.schema.json#/$defs/count",
+                "description": "Functions at the sample that could not be followed to it, and are left out."
+              },
+              "landedChanges": {
+                "$ref": "common.schema.json#/$defs/count",
+                "description": "Changes that landed on the main line in the period and were counted."
+              },
+              "oversizedSkipped": {
+                "$ref": "common.schema.json#/$defs/count",
+                "description": "Changes in the period left out for having more files than history.maxChangesetSize."
+              }
+            },
+            "required": [
+              "from",
+              "to",
+              "revision",
+              "files",
+              "functions",
+              "ended",
+              "notFollowed",
+              "landedChanges",
+              "oversizedSkipped"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "matching": {
+          "type": "string",
+          "description": "How a function is followed from one revision to the next."
+        },
+        "minFunctions": {
+          "$ref": "common.schema.json#/$defs/count",
+          "description": "A period with fewer functions than this for an outcome, or fewer than this many of them changed, is left out of that outcome. The pooled figures need it over the pool."
+        },
+        "minChanges": {
+          "$ref": "common.schema.json#/$defs/count",
+          "description": "A file needs this many landed changes in a period to have a fix share (complexity.fixes.minRevisions)."
+        },
+        "measures": {
+          "type": "object",
+          "description": "What each measure of a function at a sample is.",
+          "properties": {
+            "codeLines": {
+              "type": "string"
+            },
+            "cyclomatic": {
+              "type": "string"
+            },
+            "cognitive": {
+              "type": "string"
+            },
+            "nesting": {
+              "type": "string"
+            },
+            "parameters": {
+              "type": "string"
+            },
+            "priorChanges": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "codeLines",
+            "cyclomatic",
+            "cognitive",
+            "nesting",
+            "parameters",
+            "priorChanges"
+          ],
+          "additionalProperties": false
+        },
+        "outcomes": {
+          "type": "object",
+          "description": "What each outcome of the following period is, and the samples it is taken over.",
+          "properties": {
+            "changes": {
+              "type": "string"
+            },
+            "linesChurned": {
+              "type": "string"
+            },
+            "linesPerChange": {
+              "type": "string"
+            },
+            "fixShare": {
+              "type": "string"
+            },
+            "fixesPerLine": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "changes",
+            "linesChurned",
+            "linesPerChange",
+            "fixShare",
+            "fixesPerLine"
+          ],
+          "additionalProperties": false
+        },
+        "correlations": {
+          "type": "array",
+          "description": "One row per outcome and measure.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "outcome": {
+                "enum": [
+                  "changes",
+                  "linesChurned",
+                  "linesPerChange",
+                  "fixShare",
+                  "fixesPerLine"
+                ]
+              },
+              "measure": {
+                "enum": [
+                  "codeLines",
+                  "cyclomatic",
+                  "cognitive",
+                  "nesting",
+                  "parameters",
+                  "priorChanges"
+                ]
+              },
+              "correlation": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": -1,
+                "maximum": 1,
+                "description": "Spearman rank correlation within each period, averaged over the periods by their number of samples. Null when no period had enough samples with variation on both sides."
+              },
+              "partialOnCodeLines": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": -1,
+                "maximum": 1,
+                "description": "The same with code lines held fixed. Null for code lines itself."
+              },
+              "functionSamples": {
+                "$ref": "common.schema.json#/$defs/count",
+                "description": "Functions, summed over the periods, that the figures rest on."
+              },
+              "periods": {
+                "$ref": "common.schema.json#/$defs/count",
+                "description": "Periods that had enough files."
+              },
+              "pooledCorrelation": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": -1,
+                "maximum": 1,
+                "description": "One correlation over the samples of every period, each value ranked within its own period and scaled to the period's size. Null when the pool has fewer samples, or fewer changed samples, than the minimum, or no variation on a side."
+              },
+              "pooledPartialOnCodeLines": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": -1,
+                "maximum": 1,
+                "description": "The same with code lines held fixed. Null for code lines itself."
+              },
+              "pooledSamples": {
+                "$ref": "common.schema.json#/$defs/count",
+                "description": "Samples, from every period, that the pooled figures rest on."
+              },
+              "pooledPeriods": {
+                "$ref": "common.schema.json#/$defs/count",
+                "description": "Periods that gave samples to the pool."
+              }
+            },
+            "required": [
+              "outcome",
+              "measure",
+              "correlation",
+              "partialOnCodeLines",
+              "functionSamples",
+              "periods",
+              "pooledCorrelation",
+              "pooledPartialOnCodeLines",
+              "pooledSamples",
+              "pooledPeriods"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "limits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "What the figures cannot say."
+        }
+      },
+      "required": [
+        "periods",
+        "matching",
+        "minFunctions",
+        "minChanges",
+        "measures",
+        "outcomes",
+        "correlations",
+        "limits"
+      ],
+      "additionalProperties": false
     }
-  },
-  "required": [
-    "inputs",
-    "evidence",
-    "results"
-  ],
-  "unevaluatedProperties": false
+  }
 }

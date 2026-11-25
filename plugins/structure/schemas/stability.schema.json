@@ -34,15 +34,25 @@
           "minimum": 1,
           "maximum": 100,
           "description": "Percentage points."
+        },
+        "minTargetFiles": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Evidence floor: dependencies onto a module of fewer files are listed after the others."
         }
       },
       "required": [
         "by",
         "minRevisions",
         "minVolatilityRatio",
-        "minInstabilityGap"
+        "minInstabilityGap",
+        "minTargetFiles"
       ],
       "additionalProperties": false
+    },
+    "belowTargetFloor": {
+      "description": "Dependencies onto a module of fewer than minTargetFiles files. They are the last rows of results, and the structure report leaves them out.",
+      "$ref": "common.schema.json#/$defs/count"
     },
     "units": {
       "description": "Stability of each module, the most volatile first, at most fifty.",
@@ -139,6 +149,7 @@
     }
   },
   "required": [
+    "belowTargetFloor",
     "units",
     "unitsTotal"
   ],

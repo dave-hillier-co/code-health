@@ -97,15 +97,15 @@ export const RESPONSES: Record<string, { step: Step; response: string; summary: 
   "novel-coupling": {
     step: "check",
     response: "Confirm the new dependency is intended. If it is, consider whether the files belong closer together.",
-    summary: "Touched files far apart in the tree have never changed together before",
-    explanation: "The change may be introducing a dependency between areas that were independent. May be the start of information leakage.",
+    summary: "Touched files far apart in the tree did not change together before, in changes of up to cochange.maxChangesetSize files",
+    explanation: "The pairs are checked against every earlier change in the history read. A change of more than cochange.maxChangesetSize files does not count as changing them together, so a pair may have changed together in such a change. The change may be introducing a dependency between areas that were independent. May be the start of information leakage.",
     redFlag: "Information leakage",
   },
   "sensitive-paths": {
     step: "check",
     response: "Ask a reviewer who knows what these paths affect: no history signal shows their consequences.",
     summary: "The change touches paths that carry consequences: migrations, authentication, build and CI configuration, manifests",
-    explanation: "Touched files match cochange.risk.sensitivePaths. An event: it raises the impact band.",
+    explanation: "Touched files match cochange.risk.sensitivePaths. A dependency manifest whose edit only changes versions is not counted. An event: it raises the impact band.",
     redFlag: null,
   },
   "distant-placement": {
@@ -179,7 +179,12 @@ export function findingsOf(assessed: Assessed, placement: PlacementOutcome | nul
   const complexity = get("complexity-delta");
   if (atLeastModerate(complexity)) found.push(make("complexity-delta", complexity, `${count(complexity)} unit${count(complexity) === 1 ? "" : "s"} or file${count(complexity) === 1 ? "" : "s"} gained complexity`, complexity.evidence));
   const novel = get("novel-coupling");
-  if (atLeastModerate(novel)) found.push(make("novel-coupling", novel, `${count(novel)} pair${count(novel) === 1 ? "" : "s"} of distant files that have never changed together`, novel.evidence));
+  if (atLeastModerate(novel)) {
+    // The pairs are checked against every change of the history read, and a change above the size cap is no evidence of coupling.
+    const months = assessed.history.evidence.usableHistoryMonths;
+    const cap = assessed.history.settings.maxChangesetSize;
+    found.push(make("novel-coupling", novel, `${count(novel)} pair${count(novel) === 1 ? "" : "s"} of distant files that did not change together in the ${months} months of history read, in changes of up to ${cap} files`, novel.evidence));
+  }
   const structure = get("structure-delta");
   if (structure?.status === "ok" && count(structure) > 0) found.push(make("structure-delta", structure, `${count(structure)} new cycle${count(structure) === 1 ? "" : "s"} or layer violation${count(structure) === 1 ? "" : "s"}`, structure.evidence));
   const sensitive = get("sensitive-paths");

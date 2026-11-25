@@ -45,7 +45,7 @@ export interface FileEvidence {
   /** Probability of being abandoned within the horizon, 0 to 1. */
   probability: number;
   hot: boolean;
-  /** Asked only for files that are abandoned or at risk: no active developer has changed a file that changes with this one. */
+  /** Asked only for files that are abandoned or at risk: no active developer holds a line of it or has changed a file coupled with it. */
   noSuccessor: () => boolean;
 }
 
@@ -103,12 +103,15 @@ export const rules: Record<string, Rule> = {
     ].join("\n"),
   },
   "no-successor": {
-    summary: "An abandoned or at-risk file that no active developer works near",
+    summary: "An abandoned or at-risk file for which the successor model has no candidate",
     explanation: [
-      "Raised on an abandoned or at-risk file when no active developer has changed any file that changes with it",
-      "(coupling at the configured minimum support, weighted by degree, over the analysis window).",
+      "Raised on an abandoned or at-risk file when no active developer holds a line of it and none has changed a file",
+      "coupled with it at cochange.minSupport over the analysis window. It is about coupling and lines, not about",
+      "who works nearby: a file with few changes reaches the minimum support with no other file, so someone may",
+      "still know it. An active developer who holds lines is a candidate, so a file with active authors never has it.",
       "",
-      "Suggested mitigation: escalate. Nobody is near this code, so adoption has no natural owner.",
+      "Suggested mitigation: choose an owner by hand. `cochange successors PATH` shows the coupled files; an empty list",
+      "means nothing reached the minimum support.",
     ].join("\n"),
   },
 };

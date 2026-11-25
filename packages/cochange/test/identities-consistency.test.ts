@@ -109,7 +109,8 @@ test("one name beside a login cut short from the surname is one strong cluster, 
   const dmitry = containing(all, dmitryLogin, dmitryMail).find((p) => p.strength === "strong");
   expect(dmitry).toMatchObject({ strength: "strong", counterEvidence: false });
   expect(dmitry!.members).toHaveLength(2);
-  expect(containing(all, dmitryLogin, danielle).map((p) => p.strength)).toEqual(["medium"]);
+  // Joined to the strong cluster by a medium link only, so the pair is a chain for review and Dmitry is in one cluster.
+  expect(containing(all, dmitryLogin, danielle).map((p) => p.strength)).toEqual(["chain"]);
 });
 
 test("the suggested name is a personal name before a handle, then an address that is not a noreply, then the latest", async () => {
@@ -125,10 +126,17 @@ test("a one word name that is not the login or the address is a personal name, s
   expect(cluster!.suggestedCanonical).toBe(key(alvin));
 });
 
-test("propose lists the clusters holding the most commits first, says so, and numbers them in that order", async () => {
+test("propose lists strong clusters first, then those holding the most commits, says so, and numbers them in that order", async () => {
   const out = JSON.parse((await identities("propose", "--limit", "all")).stdout);
-  expect(out.inputs.order).toContain("commits");
-  expect(out.results.map((p: { id: string }) => p.id)).toEqual(out.results.map((_: unknown, i: number) => `P${i + 1}`));
-  const first = containing(out.results, kyleNoreply, kyleWork, kyleHandle).find((p) => p.members.length === 3)!;
-  expect(out.results.indexOf(first)).toBeLessThan(out.results.indexOf(containing(out.results, alvin, bluexo)[0]!));
+  expect(out.inputs.order).toMatch(/^strength .*commits/);
+  type Row = Omit<Proposal, "members"> & { id: string; members: { identity: string; commits: number }[] };
+  const rows: Row[] = out.results;
+  expect(rows.map((p) => p.id)).toEqual(rows.map((_, i) => `P${i + 1}`));
+  const order: Record<string, number> = { strong: 0, medium: 1, chain: 2 };
+  expect(rows.map((p) => order[p.strength])).toEqual(rows.map((p) => order[p.strength]).sort());
+  const held = (p: Row) => p.members.reduce((sum, m) => sum + m.commits, 0);
+  for (const strength of Object.keys(order)) {
+    const counts = rows.filter((p) => p.strength === strength).map(held);
+    expect(counts).toEqual([...counts].sort((a, b) => b - a));
+  }
 });

@@ -285,7 +285,7 @@ describe("reviewers", () => {
   test("without --names the areas are listed with counts of who could review them, and no one is named", async () => {
     const { areas, stdout, basis } = await reviewers("main..dave");
     expect(basis).toBe("blame");
-    expect(areas).toEqual([{ area: "src/ledger", files: 1, candidates: 2, suggested: null }]);
+    expect(areas).toEqual([{ area: "src/ledger", files: 1, coupledFiles: 0, candidates: 2, suggested: null }]);
     expect(stdout).not.toMatch(/Bob|Alice|@example\.com/);
   });
 

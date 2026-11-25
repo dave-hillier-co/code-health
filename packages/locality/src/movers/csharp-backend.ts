@@ -3,7 +3,7 @@ import type { SourceTree } from "@code-health/parse/source-tree";
 import type { FileOperation } from "../move-plan.ts";
 import { confirmWithRoslyn } from "./csharp-roslyn.ts";
 import type { MoveResult, MoverBackend, Rewrite, Skeleton } from "./mover-language.ts";
-import { sourceFilesOf } from "./mover-language.ts";
+import { oncePerTree, sourceFilesOf } from "./mover-language.ts";
 
 const isSource = sourceFilesOf("csharp");
 
@@ -14,19 +14,40 @@ const partialTypes = (text: string): string[] =>
 const directoryOf = (path: string): string => (posix.dirname(path) === "." ? "" : posix.dirname(path));
 
 /**
+ * The partial types each C# source of a tree declares, the sources that declare each partial type, and the
+ * project files, read once for the tree (see `oncePerTree`).
+ */
+const projectOf = oncePerTree(async (tree) => {
+  const sources = [...tree.files.keys()].filter(isSource).sort();
+  const texts = await tree.readMany(sources);
+  const partials = new Map<string, string[]>();
+  const declarers = new Map<string, string[]>();
+  for (const path of sources) {
+    const types = partialTypes(texts.get(path) ?? "");
+    partials.set(path, types);
+    for (const type of new Set(types)) {
+      const found = declarers.get(type);
+      if (found === undefined) declarers.set(type, [path]);
+      else found.push(path);
+    }
+  }
+  const projects = await tree.readMany([...tree.files.keys()].filter((path) => path.endsWith(".csproj")).sort());
+  return { partials, declarers, projects };
+});
+
+/**
  * Parts of one type that a move would separate: the type is read as one unit, so its parts are meant to move
  * together, and a part that moves alone leaves the type's files in two folders.
  */
 async function partialWarnings(tree: SourceTree, moved: readonly FileOperation[]): Promise<string[]> {
   const warnings: string[] = [];
   const destination = new Map(moved.map((operation) => [operation.from, operation.to]));
-  const sources = [...tree.files.keys()].filter(isSource).sort();
-  const texts = await tree.readMany(sources);
+  const { partials, declarers } = await projectOf(tree);
   for (const operation of moved) {
-    for (const type of new Set(partialTypes(texts.get(operation.from) ?? ""))) {
+    for (const type of new Set(partials.get(operation.from) ?? [])) {
       const folders = new Set<string>();
-      for (const path of sources) {
-        if (path === operation.from || !partialTypes(texts.get(path) ?? "").includes(type)) continue;
+      for (const path of declarers.get(type) ?? []) {
+        if (path === operation.from) continue;
         folders.add(directoryOf(destination.get(path) ?? path));
       }
       if (folders.size > 0 && !(folders.size === 1 && folders.has(directoryOf(operation.to)))) {
@@ -68,8 +89,7 @@ async function performMove(tree: SourceTree, operations: readonly FileOperation[
 
   const rewrites: Rewrite[] = [];
   const texts = new Map<string, string>();
-  const projects = [...tree.files.keys()].filter((path) => path.endsWith(".csproj")).sort();
-  for (const [path, text] of await tree.readMany(projects)) {
+  for (const [path, text] of (await projectOf(tree)).projects) {
     const result = rewriteProject(path, text, destination);
     if (result.text === text) continue;
     rewrites.push(...result.rewrites);

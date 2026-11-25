@@ -43,7 +43,7 @@ describe("blast-radius of a changed signature", () => {
     const blast = await blastRadius("main..signature");
     expect(blast.source).toBe("co-change and parse");
     expect(blast.value).toMatchObject({ signatureChanges: 1, symbolFanIn: 4 });
-    expect(blast.evidence).toContainEqual({ file: api, symbol: "f0", change: "signature", fanIn: 4, from: "parse" });
+    expect(blast.evidence).toContainEqual({ file: api, symbol: "f0", change: "signature", fanIn: 4, fanInUnresolved: 0, from: "parse" });
   });
 
   test("the fan-in of the changed symbol is placed against every exported symbol's, and raises the band", async () => {
@@ -67,6 +67,6 @@ describe("blast-radius of a changed signature", () => {
 
   test("a removed export counts as a changed signature", async () => {
     const blast = await blastRadius("main..removal");
-    expect(blast.evidence).toContainEqual({ file: api, symbol: "f0", change: "removed", fanIn: 4, from: "parse" });
+    expect(blast.evidence).toContainEqual({ file: api, symbol: "f0", change: "removed", fanIn: 4, fanInUnresolved: 0, from: "parse" });
   });
 });

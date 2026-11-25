@@ -75,6 +75,36 @@ describe("on the knowledge history", () => {
     expectGolden("abandonment", "abandonment.trend", (await run(repo, "trend", "--points", "3", "--trials", "200")).stdout);
   });
 
+  test("trend reports the measured population of every point, and blaming the past trees keeps the blame of HEAD", async () => {
+    rmSync(join(repo.path, ".cache", "code-health", "blame.sqlite"), { force: true });
+    const document = await json(repo, "trend", "--points", "3", "--trials", "200");
+    // The view is added in September 2024, so the oldest point has seven files and HEAD eight, and every file has a blame.
+    expect(document.results.points.map((p: { files: number; unknownFiles: number }) => [p.files, p.unknownFiles])).toEqual([
+      [7, 0],
+      [8, 0],
+      [8, 0],
+    ]);
+    const current = await json(repo, "current", "--no-refresh");
+    expect(current.blame.unknownFiles).toBe(0);
+  });
+
+  test("a point whose files have no blame says so, and a sharp change in the population between points is a notice", async () => {
+    rmSync(join(repo.path, ".cache", "code-health", "blame.sqlite"), { force: true });
+    await json(repo, "current");
+    const stale = await json(repo, "trend", "--points", "3", "--trials", "200", "--no-refresh");
+    const oldest = stale.results.points[0];
+    expect(oldest.unknownFiles).toBeGreaterThan(0);
+    expect(stale.notices.join("\n")).toContain(`${oldest.unknownFiles} files with no blame in the cache at ${oldest.date}`);
+    // From seven files to eight is 14 percent, over a guideline of 10.
+    configure(repo, { populationChangeGuideline: 10 });
+    const refreshed = await json(repo, "trend", "--points", "3", "--trials", "200");
+    expect(refreshed.notices.join("\n")).toMatch(/measured files went from 7 at 2024-08-30 to 8 at 2024-11-30/);
+    expect(refreshed.inputs.populationChangeGuideline).toBe(10);
+    configure(repo);
+    const quiet = await json(repo, "trend", "--points", "3", "--trials", "200");
+    expect((quiet.notices ?? []).join("\n")).not.toContain("measured files went from");
+  });
+
   test("trend with a fixed rate reports it as configured, and is repeatable", async () => {
     configure(repo, { turnoverRate: 10 });
     const first = await json(repo, "trend", "--points", "2", "--trials", "100");

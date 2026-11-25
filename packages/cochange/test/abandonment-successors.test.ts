@@ -55,14 +55,14 @@ test("without --names a successor is a rank and never an identity", async () => 
 
 test("--names shows the active developers who could pick the file up, and only them", async () => {
   const document = await json(auth, routes, engine, lexer, "--names");
-  expect(rowOf(document, auth).successors.map((s) => s.developer)).toEqual(["Ann Active <ann@example.com>", "Bob Builder <bob@example.com>"]);
+  expect(rowOf(document, auth).successors.map((s) => s.developer)).toEqual(["Ann Active", "Bob Builder"]);
   // Routes: Ann 4 x 1.0 + her half of the lines, Bob 2 x 1.0 + his.
   expect(rowOf(document, routes).successors.map((s) => [s.developer, s.score])).toEqual([
-    ["Ann Active <ann@example.com>", 4.5],
-    ["Bob Builder <bob@example.com>", 2.5],
+    ["Ann Active", 4.5],
+    ["Bob Builder", 2.5],
   ]);
   // The lexer is Di's, who has left, and Bob's two lines: only Bob can be named.
-  expect(rowOf(document, lexer).successors.map((s) => s.developer)).toEqual(["Bob Builder <bob@example.com>"]);
+  expect(rowOf(document, lexer).successors.map((s) => s.developer)).toEqual(["Bob Builder"]);
   // The engine is all Cy's: nobody active holds a line, and Cy is never listed.
   expect(rowOf(document, engine)).toMatchObject({ abandoned: true, candidates: 0, noSuccessor: true, successors: [] });
   const text = JSON.stringify(document);
@@ -70,9 +70,9 @@ test("--names shows the active developers who could pick the file up, and only t
   expect(document.inputs.names).toBe(true);
 });
 
-test("a file with no coupled files has nobody working near it, however many lines its holders have", async () => {
+test("a file with no coupled files still has a successor in the active developer who holds its lines", async () => {
   const row = rowOf(await json(log), log);
-  expect(row).toMatchObject({ coupledFiles: [], noSuccessor: true, candidates: 1 });
+  expect(row).toMatchObject({ coupledFiles: [], noSuccessor: false, candidates: 1 });
   expect(row.successors).toEqual([{ rank: 1, score: 1, coupledChanges: 0, ownShare: 1, evidence: [] }]);
 });
 
@@ -81,8 +81,8 @@ test("an override that returns someone to the active makes them a candidate, and
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, "knowledge-overrides.json"), JSON.stringify({ schemaVersion: 1, active: ["Cy Gone <cy@example.com>"], inactive: ["Bob Builder <bob@example.com>"] }));
   const document = await json(engine, auth, "--names");
-  expect(rowOf(document, engine).successors.map((s) => s.developer)).toEqual(["Cy Gone <cy@example.com>"]);
-  expect(rowOf(document, auth).successors.map((s) => s.developer)).toEqual(["Ann Active <ann@example.com>"]);
+  expect(rowOf(document, engine).successors.map((s) => s.developer)).toEqual(["Cy Gone"]);
+  expect(rowOf(document, auth).successors.map((s) => s.developer)).toEqual(["Ann Active"]);
 });
 
 test("--top limits the successors per file, and candidates counts them all", async () => {

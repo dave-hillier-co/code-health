@@ -1,0 +1,10 @@
+{
+  "operations": [{ "from": "src/a/x.rs", "to": "x.rs" }],
+  "rewrites": [],
+  "texts": {},
+  "warnings": [],
+  "breaks": [
+    "src/lib.rs:3 \"a::x::f\" names src/a/x.rs, which is in no module tree after the move, so the path cannot be rewritten",
+    "x.rs is in no module tree after the move: a Rust file is a module only under the folder of its target's root file (src/lib.rs)"
+  ]
+}

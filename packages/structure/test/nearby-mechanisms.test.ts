@@ -3,7 +3,7 @@ import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { expectGolden } from "./support/golden.ts";
 import { runStructure } from "./support/run.ts";
-import { directRepository, mechanismsRepository } from "./support/census-scenario.ts";
+import { directRepository, mechanismsRepository, workspaceRepository } from "./support/census-scenario.ts";
 
 let repo: GitFixture;
 let direct: GitFixture;
@@ -22,6 +22,8 @@ interface Nearby {
   path: string;
   line: number | null;
   detail: string;
+  count: number;
+  samePackage: boolean;
   distance: number;
   near: "from" | "to" | "both";
 }
@@ -52,6 +54,24 @@ test("then mechanisms in neighbouring folders, nearest first, at most ten", asyn
   expect(distances).toEqual([...distances].sort((a, b) => a - b));
   // src/events is a sibling of src/orders and src/billing: up one, down one.
   expect(pack.nearbyMechanisms.find((m) => m.path === "src/events/bus.ts")).toMatchObject({ distance: 2, near: "both" });
+});
+
+test("entries of the modules' own package come first, and repeats of one entry in one folder are listed once with a count", async () => {
+  const workspace = workspaceRepository();
+  try {
+    const run = await runStructure(workspace.path, ["evidence", "--json", "packages/app/src/orders/place.ts->packages/app/src/billing/lines.ts"]);
+    expect(run.stderr).toBe("");
+    const pack = (JSON.parse(run.stdout) as { results: { nearbyMechanisms: Nearby[]; nearbyMechanismsOmitted: number }[] }).results[0]!;
+    expect(pack.nearbyMechanisms).toEqual([
+      { mechanism: "events", variant: "call", path: "packages/app/src/events/announce.ts", line: 3, detail: "bus.emit", count: 3, samePackage: true, distance: 2, near: "both" },
+      { mechanism: "events", variant: "base-type", path: "packages/app/src/events/bus.ts", line: 2, detail: "new EventEmitter", count: 1, samePackage: true, distance: 2, near: "both" },
+      { mechanism: "events", variant: "base-type", path: "packages/app/src/orders/plugin/hook.ts", line: 2, detail: "new EventEmitter", count: 1, samePackage: false, distance: 1, near: "from" },
+      { mechanism: "events", variant: "call", path: "packages/app/src/orders/plugin/hook.ts", line: 3, detail: "hooks.on", count: 1, samePackage: false, distance: 1, near: "from" },
+    ]);
+    expect(pack.nearbyMechanismsOmitted).toBe(0);
+  } finally {
+    workspace.dispose();
+  }
 });
 
 test("a codebase using no mechanism has none nearby", async () => {

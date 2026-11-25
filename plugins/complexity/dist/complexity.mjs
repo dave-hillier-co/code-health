@@ -209,6 +209,7 @@ var historyDefaults = {
 var sharedDefaults = {
   exclude: [],
   testPatterns: [],
+  generatedPatterns: [],
   languages: {},
   entryPoints: [],
   includeRoots: [],
@@ -216,7 +217,7 @@ var sharedDefaults = {
   vagueNames: ["utils", "helpers", "common", "misc"],
   history: historyDefaults
 };
-var stringLists = ["exclude", "testPatterns", "entryPoints", "includeRoots", "vagueNames"];
+var stringLists = ["exclude", "testPatterns", "generatedPatterns", "entryPoints", "includeRoots", "vagueNames"];
 var PLUGIN_SECTIONS = ["cochange", "complexity", "locality", "structure"];
 var documentKeys = ["$schema"];
 function rejectUnknownKeys(document2, plugin) {
@@ -364,11 +365,11 @@ function removedHint(path) {
   const moved = removedSettings[path];
   return moved === void 0 ? "" : `; it moved to ${moved}, which cochange.${moved.slice("history.".length)} may override`;
 }
-function flatten(value, path, visit2) {
+function flatten(value, path, visit3) {
   if (isPlainObject(value) && Object.keys(value).length > 0) {
-    for (const key of Object.keys(value)) flatten(value[key], path === "" ? key : `${path}.${key}`, visit2);
+    for (const key of Object.keys(value)) flatten(value[key], path === "" ? key : `${path}.${key}`, visit3);
   } else {
-    visit2(path, value);
+    visit3(path, value);
   }
 }
 function isPlainObject(value) {
@@ -455,6 +456,16 @@ function assertNodeVersion(version = process.versions.node) {
   }
 }
 
+// packages/cli-kit/src/generated-patterns.ts
+var BUILTIN_GENERATED_GLOBS = ["*.min.js", "*.min.css", "generated"];
+var configured = [];
+function useGeneratedPatterns(patterns) {
+  configured = [...patterns];
+}
+function generatedPatterns() {
+  return configured;
+}
+
 // packages/cli-kit/src/repo-state.ts
 import { execFileSync } from "node:child_process";
 function readRepoState(cwd) {
@@ -492,9 +503,10 @@ function shapeResults(results, options) {
   if (!Array.isArray(results)) return { results, truncated: { limit: null, total: null, cut: 0 } };
   const { limit, fields, columns: columns13 } = options;
   if (fields && columns13 && columns13.length > 0) {
-    const unknown = fields.filter((field6) => !columns13.includes(field6));
+    const valid = [.../* @__PURE__ */ new Set([...columns13, ...results.flatMap((row) => Object.keys(row))])];
+    const unknown = fields.filter((field6) => !valid.includes(field6));
     if (unknown.length > 0) {
-      throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${columns13.join(", ")}`);
+      throw usageError(`unknown field ${unknown.join(", ")}; valid fields: ${valid.join(", ")}`);
     }
   }
   const sorted = options.presorted === true ? results : [...results].sort(byScoreThenPath);
@@ -605,6 +617,7 @@ async function execute(cli2, io) {
   resetBuiltinOmissions();
   resetRunNotes();
   resetDropped();
+  useGeneratedPatterns(config.effective.generatedPatterns);
   const output = await command11.run(context);
   if (output.text !== void 0) {
     for (const line of context.stderrNotices ?? []) io.stderr.write(`${line}
@@ -699,7 +712,7 @@ ${rule.explanation}
 var commonOptionHelp = [
   "  --json            JSON output (default when stdout is not a terminal)",
   "  --limit <n|all>   maximum rows (default 20)",
-  "  --fields <a,b>    project result columns",
+  "  --fields <a,b>    project result fields",
   "  --help            show help"
 ];
 function helpText(cli2) {
@@ -783,10 +796,6 @@ function midRankPercentiles(values) {
 // packages/history/src/file-class.ts
 import { spawn as spawn2 } from "node:child_process";
 
-// packages/history/src/builtin-excludes.ts
-import { existsSync as existsSync2 } from "node:fs";
-import { join as join2 } from "node:path";
-
 // packages/history/src/glob.ts
 function escape(ch) {
   return /[.+^${}()|[\]\\]/.test(ch) ? `\\${ch}` : ch;
@@ -863,6 +872,8 @@ function compileGlobs(patterns) {
 }
 
 // packages/history/src/builtin-excludes.ts
+import { existsSync as existsSync2 } from "node:fs";
+import { join as join2 } from "node:path";
 var matchers = BUILTIN_EXCLUDE_GLOBS.map((glob) => ({ glob, matches: compileGlobs([glob]) }));
 function builtinExcluder(root, gitlinks = [], options = {}) {
   const record = options.record ?? true;
@@ -1036,6 +1047,18 @@ function isInVendorDirectory(path) {
   parts3.pop();
   return parts3.some((part) => VENDOR_DIRECTORIES.includes(part));
 }
+function generatedPathClassifier(patterns = generatedPatterns()) {
+  const builtin = compileGlobs(BUILTIN_GENERATED_GLOBS);
+  const entries = patterns.map((pattern) => pattern.trim()).filter((pattern) => pattern !== "" && !pattern.startsWith("#")).map(
+    (pattern) => pattern.startsWith("!") ? { generated: false, matches: compileGlobs([pattern.slice(1)]) } : { generated: true, matches: compileGlobs([pattern]) }
+  );
+  return (path) => {
+    for (let index = entries.length - 1; index >= 0; index--) {
+      if (entries[index].matches(path)) return entries[index].generated;
+    }
+    return builtin(path) ? true : void 0;
+  };
+}
 var verdicts = /* @__PURE__ */ new Map();
 async function readBlobHeads(repoPath, blobs) {
   const heads = /* @__PURE__ */ new Map();
@@ -1166,11 +1189,14 @@ async function classifyFiles(repoPath, ref, entries, treeFiles, options = {}) {
   const vendored = new Set(attributes.vendored);
   for (const path of paths) if (isInVendorDirectory(path) && !attributes.notVendored.has(path)) vendored.add(path);
   const generated = new Set(attributes.generated);
+  const byPath = generatedPathClassifier();
   const candidate = options.headerCandidate ?? maybeText;
   const toRead = [];
   for (const { path, blob } of entries) {
     if (generated.has(path) || vendored.has(path) || attributes.notGenerated.has(path)) continue;
-    if (typeof blob === "string" && candidate(path)) toRead.push({ path, blob });
+    const verdict = byPath(path);
+    if (verdict === true) generated.add(path);
+    else if (verdict === void 0 && typeof blob === "string" && candidate(path)) toRead.push({ path, blob });
   }
   for (const path of await generatedByHeader(repoPath, toRead, options.read)) generated.add(path);
   return { generated, vendored };
@@ -1493,15 +1519,28 @@ import { join as join4 } from "node:path";
 
 // packages/history/src/lock.ts
 import { randomUUID } from "node:crypto";
-import { closeSync, openSync, readFileSync as readFileSync2, renameSync, rmSync, statSync, utimesSync, writeSync, linkSync } from "node:fs";
+import { closeSync, openSync, readFileSync as readFileSync2, renameSync, rmSync, statSync, utimesSync, writeFileSync as writeFileSync2, writeSync, linkSync } from "node:fs";
 import { hostname } from "node:os";
+import { basename as basename2 } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 var LockTimeoutError = class extends Error {
-  constructor(path) {
-    super(`Timed out waiting for lock ${path}`);
+  constructor(path, holder, quietMs) {
+    super(`Timed out waiting for ${basename2(path)}: ${holder} holds it and showed no progress for ${formatDuration(quietMs)}`);
     this.name = "LockTimeoutError";
   }
 };
+function formatDuration(ms) {
+  const seconds = Math.max(0, Math.floor(ms / 1e3));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ${seconds % 60}s`;
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
+function commandLine() {
+  const script = process.argv[1] === void 0 ? "node" : basename2(process.argv[1]).replace(/\.[cm]?[jt]s$/, "");
+  const line = [script, ...process.argv.slice(2)].join(" ");
+  return line.length > 200 ? `${line.slice(0, 199)}…` : line;
+}
 function readRaw(path) {
   try {
     return readFileSync2(path, "utf8");
@@ -1516,28 +1555,40 @@ function fileAge(path) {
     return 0;
   }
 }
-function ownerIsGone(path, raw, staleMs, unreadableMs) {
-  let owner;
+function parseOwner(raw) {
   try {
-    owner = JSON.parse(raw);
-    if (typeof owner.pid !== "number" || typeof owner.host !== "string") throw new Error("not a lock");
+    const owner = JSON.parse(raw);
+    if (typeof owner.pid !== "number" || typeof owner.host !== "string") return void 0;
+    return owner;
   } catch {
-    return fileAge(path) > unreadableMs;
+    return void 0;
+  }
+}
+function describeHolder(owner) {
+  const host = owner.host === hostname() ? "" : ` on host ${owner.host}`;
+  const command11 = owner.command === void 0 ? "" : ` (${owner.command})`;
+  return `process ${owner.pid}${host}${command11}`;
+}
+function abandonment(path, raw, staleMs, unreadableMs) {
+  const owner = parseOwner(raw);
+  if (owner === void 0) {
+    const age2 = fileAge(path);
+    return age2 > unreadableMs ? `the lock file is unreadable and ${formatDuration(age2)} old` : void 0;
   }
   if (owner.host === hostname()) {
     try {
       process.kill(owner.pid, 0);
-      return false;
+      return void 0;
     } catch (error) {
-      return error.code === "ESRCH";
+      return error.code === "ESRCH" ? `${describeHolder(owner)} is no longer running` : void 0;
     }
   }
-  return fileAge(path) > staleMs;
+  const age = fileAge(path);
+  return age > staleMs ? `${describeHolder(owner)} has not updated the lock for ${formatDuration(age)}` : void 0;
 }
-function tryCreate(path, token) {
+function tryCreate(path, owner) {
   try {
     const fd = openSync(path, "wx");
-    const owner = { token, pid: process.pid, host: hostname(), time: Date.now() };
     writeSync(fd, JSON.stringify(owner));
     closeSync(fd);
     return true;
@@ -1551,29 +1602,85 @@ function steal(path, judged) {
   try {
     renameSync(path, aside);
   } catch {
-    return;
+    return false;
   }
-  if (readRaw(aside) !== judged) {
+  const removed = readRaw(aside) === judged;
+  if (!removed) {
     try {
       linkSync(aside, path);
     } catch {
     }
   }
   rmSync(aside, { force: true });
+  return removed;
 }
+function rewrite(path, owner) {
+  const current = readRaw(path);
+  if (current === void 0 || parseOwner(current)?.token !== owner.token) return;
+  const next = `${path}.${owner.token}.tmp`;
+  try {
+    writeFileSync2(next, JSON.stringify(owner));
+    renameSync(next, path);
+  } catch {
+    rmSync(next, { force: true });
+  }
+}
+var toStderr = (line) => {
+  process.stderr.write(`${line}
+`);
+};
 async function withLock(path, fn, options = {}) {
-  const { timeoutMs = 12e4, staleMs = 6e5, unreadableMs = 5e3, pollMs = 25 } = options;
-  const deadline = Date.now() + timeoutMs;
-  const token = randomUUID();
-  while (!tryCreate(path, token)) {
+  const {
+    timeoutMs = 3e5,
+    staleMs = 6e5,
+    unreadableMs = 5e3,
+    pollMs = 25,
+    noticeAfterMs = 2e3,
+    noticeEveryMs = 3e4,
+    progressEveryMs = 1e3,
+    notify = toStderr
+  } = options;
+  const name12 = basename2(path);
+  const owner = { token: randomUUID(), pid: process.pid, host: hostname(), time: Date.now(), command: commandLine() };
+  const waitStarted = Date.now();
+  let nextNotice = waitStarted + noticeAfterMs;
+  let lastSeen;
+  let quietSince = waitStarted;
+  for (; ; ) {
+    owner.time = Date.now();
+    if (tryCreate(path, owner)) break;
     const raw = readRaw(path);
-    if (raw !== void 0 && ownerIsGone(path, raw, staleMs, unreadableMs)) {
-      steal(path, raw);
+    const now = Date.now();
+    if (raw === void 0) continue;
+    if (raw !== lastSeen) {
+      lastSeen = raw;
+      quietSince = now;
+    }
+    const reason = abandonment(path, raw, staleMs, unreadableMs);
+    if (reason !== void 0) {
+      if (steal(path, raw)) notify(`${name12}: ${reason}, so this command takes the lock over`);
       continue;
     }
-    if (Date.now() > deadline) throw new LockTimeoutError(path);
+    const holder = parseOwner(raw);
+    if (now - quietSince > timeoutMs) {
+      throw new LockTimeoutError(path, holder === void 0 ? "a process that has not written its details" : describeHolder(holder), timeoutMs);
+    }
+    if (now >= nextNotice) {
+      notify(waitingLine(name12, holder, now));
+      nextNotice = now + noticeEveryMs;
+    }
     await sleep(pollMs);
   }
+  let lastProgress = 0;
+  const lock = {
+    progress(text3) {
+      const now = Date.now();
+      if (text3 === owner.progress || now - lastProgress < progressEveryMs) return;
+      owner.progress = text3;
+      lastProgress = now;
+      rewrite(path, owner);
+    }
+  };
   const heartbeat = setInterval(() => {
     try {
       const now = /* @__PURE__ */ new Date();
@@ -1583,19 +1690,17 @@ async function withLock(path, fn, options = {}) {
   }, Math.max(1e3, Math.floor(staleMs / 4)));
   heartbeat.unref();
   try {
-    return await fn();
+    return await fn(lock);
   } finally {
     clearInterval(heartbeat);
     const raw = readRaw(path);
-    if (raw !== void 0 && safeToken(raw) === token) rmSync(path, { force: true });
+    if (raw !== void 0 && parseOwner(raw)?.token === owner.token) rmSync(path, { force: true });
   }
 }
-function safeToken(raw) {
-  try {
-    return JSON.parse(raw).token;
-  } catch {
-    return void 0;
-  }
+function waitingLine(name12, holder, now) {
+  if (holder === void 0) return `waiting for ${name12}: held by a process that has not written its details yet`;
+  const progress = holder.progress === void 0 ? "" : `, ${holder.progress}`;
+  return `waiting for ${name12}: held by ${describeHolder(holder)} for ${formatDuration(now - holder.time)}${progress}`;
 }
 
 // packages/history/src/log-parser.ts
@@ -1929,7 +2034,7 @@ async function refresh(repoPath, options = {}) {
   ensureCacheDir(location);
   return withLock(
     location.lockPath,
-    async () => {
+    async (lock) => {
       const shallow = await readShallowInfo(location.repoRoot);
       const version = await gitVersion(location.repoRoot);
       const { db, rebuilt } = openForWrite(location.dbPath, settings);
@@ -1945,6 +2050,7 @@ async function refresh(repoPath, options = {}) {
           const batch = missing.slice(i2, i2 + batchSize2);
           const out2 = await runGit(location.repoRoot, logArgs(settings), { input: batch.join("\n") + "\n" });
           insertCommits(db, parseLog(out2), boundary);
+          lock.progress(`read ${i2 + batch.length} of ${missing.length} commits`);
         }
         setMeta(db, "git_version", version);
         return { headSha, added: missing.length, reachable: reachable.length, rebuilt, shallow, gitVersion: version };
@@ -2237,7 +2343,7 @@ function weightsFromChanges(changes, since, until, months) {
 
 // packages/history/src/reports.ts
 import { createHash as createHash2, randomUUID as randomUUID2 } from "node:crypto";
-import { mkdirSync as mkdirSync2, renameSync as renameSync2, rmSync as rmSync3, writeFileSync as writeFileSync2 } from "node:fs";
+import { mkdirSync as mkdirSync2, renameSync as renameSync2, rmSync as rmSync3, writeFileSync as writeFileSync3 } from "node:fs";
 import { join as join5 } from "node:path";
 function variantOf(stated) {
   const entries = Object.entries(stated ?? {}).filter(([, value]) => value !== void 0);
@@ -2302,7 +2408,7 @@ async function writeReport(context, identity2, command11, output, analysedHead, 
   mkdirSync2(join5(file, ".."), { recursive: true });
   const temporary = `${file}.${process.pid}.${randomUUID2()}.tmp`;
   try {
-    writeFileSync2(temporary, serialise(document2));
+    writeFileSync3(temporary, serialise(document2));
     renameSync2(temporary, file);
   } catch (error) {
     rmSync3(temporary, { force: true });
@@ -3233,6 +3339,16 @@ function resolveBySymbols(input, options = {}) {
     return edge;
   };
   const unitNames = (facts) => new Set(facts.units.map((unit) => unit.qualifiedName));
+  const byWritten = /* @__PURE__ */ new Map();
+  const declaredAs = (written, scope, entries) => {
+    const scopes2 = byWritten.get(written);
+    if (scopes2 === void 0) byWritten.set(written, /* @__PURE__ */ new Map([[scope, entries]]));
+    else scopes2.set(scope, entries);
+  };
+  for (const [name12, entries] of table3) {
+    declaredAs(name12, "", entries);
+    for (let dot = name12.indexOf(".", 1); dot !== -1; dot = name12.indexOf(".", dot + 1)) declaredAs(name12.slice(dot + 1), name12.slice(0, dot), entries);
+  }
   for (const [file, facts] of input.facts) {
     const symbols = facts.symbols;
     if (symbols === void 0) continue;
@@ -3244,8 +3360,9 @@ function resolveBySymbols(input, options = {}) {
       const known = resolved.get(name12);
       if (known !== void 0) return known;
       let found = null;
-      for (const scope of scopes2) {
-        const candidates = table3.get(scope === "" ? name12 : `${scope}.${name12}`)?.filter((entry) => entry.declaration.internal !== true || entry.file === file);
+      const declared = byWritten.get(name12);
+      for (const scope of declared === void 0 ? [] : scopes2) {
+        const candidates = declared.get(scope)?.filter((entry) => entry.declaration.internal !== true || entry.file === file);
         if (candidates !== void 0 && candidates.length > 0) {
           found = candidates;
           break;
@@ -4317,11 +4434,11 @@ function lastName(node) {
 }
 function annotation(node) {
   const names2 = /* @__PURE__ */ new Set();
-  const visit2 = (current) => {
+  const visit3 = (current) => {
     if (current.type === "type_identifier") names2.add(current.text);
-    for (const child of current.namedChildren) visit2(child);
+    for (const child of current.namedChildren) visit3(child);
   };
-  if (node !== null) visit2(node);
+  if (node !== null) visit3(node);
   return { callback: false, names: [...names2].sort() };
 }
 function parametersOf(list2) {
@@ -4357,7 +4474,7 @@ function importOf(node) {
 }
 function extractFileCensus(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
-  const visit2 = (node, className) => {
+  const visit3 = (node, className) => {
     const line = node.startPosition.row + 1;
     let nextClass = className;
     switch (node.type) {
@@ -4430,9 +4547,9 @@ function extractFileCensus(root) {
       }
       default:
     }
-    for (const child of node.children) visit2(child, nextClass);
+    for (const child of node.children) visit3(child, nextClass);
   };
-  visit2(root, null);
+  visit3(root, null);
   return facts;
 }
 
@@ -4603,12 +4720,12 @@ var bindingParents = /* @__PURE__ */ new Set([
 function modifierWords(node) {
   const modifiers2 = node.namedChildren.find((child) => child.type === "modifiers");
   const words3 = /* @__PURE__ */ new Set();
-  const visit2 = (current) => {
+  const visit3 = (current) => {
     if (current.type === "annotation") return;
     if (current.childCount === 0 && !current.isNamed) words3.add(current.type);
-    for (const child of current.children) visit2(child);
+    for (const child of current.children) visit3(child);
   };
-  if (modifiers2 !== void 0) visit2(modifiers2);
+  if (modifiers2 !== void 0) visit3(modifiers2);
   return words3;
 }
 function startRow2(node) {
@@ -4914,12 +5031,12 @@ function lastName2(node) {
 function annotation2(node) {
   const names2 = /* @__PURE__ */ new Set();
   let callback = false;
-  const visit2 = (current) => {
+  const visit3 = (current) => {
     if (current.type === "user_type") for (const name12 of identifiersOf(current).slice(-1)) names2.add(name12);
     if (current.type === "function_type") callback = true;
-    for (const child of current.namedChildren) visit2(child);
+    for (const child of current.namedChildren) visit3(child);
   };
-  if (node !== null) visit2(node);
+  if (node !== null) visit3(node);
   return { callback, names: [...names2].sort() };
 }
 function typeOf(parameter) {
@@ -4947,7 +5064,7 @@ function heritageOf2(node) {
 }
 function extractFileCensus2(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
-  const visit2 = (node, className) => {
+  const visit3 = (node, className) => {
     const line = node.startPosition.row + 1;
     let nextClass = className;
     switch (node.type) {
@@ -5014,9 +5131,9 @@ function extractFileCensus2(root) {
       }
       default:
     }
-    for (const child of node.children) visit2(child, nextClass);
+    for (const child of node.children) visit3(child, nextClass);
   };
-  visit2(root, null);
+  visit3(root, null);
   return facts;
 }
 
@@ -5163,13 +5280,13 @@ function lastName3(node) {
 function annotation3(node) {
   const names2 = /* @__PURE__ */ new Set();
   let callback = false;
-  const visit2 = (current, insideObject) => {
+  const visit3 = (current, insideObject) => {
     if (current.type === "type_identifier") names2.add(current.text);
     if (current.type === "function_type" && !insideObject) callback = true;
     const nested = insideObject || current.type === "object_type";
-    for (const child of current.namedChildren) visit2(child, nested);
+    for (const child of current.namedChildren) visit3(child, nested);
   };
-  if (node) visit2(node, false);
+  if (node) visit3(node, false);
   return { callback, names: [...names2].sort() };
 }
 function parametersOf3(list2) {
@@ -5209,7 +5326,7 @@ function heritageOf3(node) {
 }
 function extractFileCensus3(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
-  const visit2 = (node, className) => {
+  const visit3 = (node, className) => {
     const line = node.startPosition.row + 1;
     let nextClass = className;
     switch (node.type) {
@@ -5308,9 +5425,9 @@ function extractFileCensus3(root) {
         break;
       }
     }
-    for (const child of node.children) visit2(child, nextClass);
+    for (const child of node.children) visit3(child, nextClass);
   };
-  visit2(root, null);
+  visit3(root, null);
   return facts;
 }
 
@@ -6050,7 +6167,7 @@ var statementWords = /* @__PURE__ */ new Set(["abstract", "as", "satisfies"]);
 var afterStatementWord = /^\s*(\+\+|--|[-+*/%&|^]?=|\*\*=|\.|\(|\[|,|;|\)|$)/;
 function typescriptRepairs(root, source) {
   const offsets = /* @__PURE__ */ new Set();
-  const visit2 = (node) => {
+  const visit3 = (node) => {
     if (!node.hasError) return;
     if (node.type === "ERROR") {
       const start2 = node.startIndex;
@@ -6062,9 +6179,9 @@ function typescriptRepairs(root, source) {
         else if (statementWords.has(word) && afterStatementWord.test(rest)) offsets.add(start2);
       }
     }
-    for (const child of node.children) visit2(child);
+    for (const child of node.children) visit3(child);
   };
-  visit2(root);
+  visit3(root);
   return [...offsets].sort((a, b) => a - b).map((offset) => ({ offset, character: "_" }));
 }
 
@@ -7243,7 +7360,7 @@ function extractFileCensus4(root) {
     if (declared.type === "event_declaration") events.add(declared.childForFieldName("name")?.text ?? "");
     else for (const declarator of declared.descendantsOfType("variable_declarator")) events.add(declarator.childForFieldName("name")?.text ?? "");
   }
-  const visit2 = (node, className) => {
+  const visit3 = (node, className) => {
     const line = node.startPosition.row + 1;
     let nextClass = className;
     switch (node.type) {
@@ -7309,9 +7426,9 @@ function extractFileCensus4(root) {
       }
       default:
     }
-    for (const child of node.namedChildren) visit2(child, nextClass);
+    for (const child of node.namedChildren) visit3(child, nextClass);
   };
-  visit2(root, null);
+  visit3(root, null);
   return facts;
 }
 function isDictionary(node, type) {
@@ -7347,7 +7464,7 @@ function callOf(node, line, events) {
 
 // packages/parse/src/languages/csharp/resolve.ts
 var compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-var basename2 = (path) => path.slice(path.lastIndexOf("/") + 1);
+var basename3 = (path) => path.slice(path.lastIndexOf("/") + 1);
 function withGlobalUsings(facts, owner) {
   const globals = /* @__PURE__ */ new Map();
   for (const [path, file] of facts) {
@@ -7379,7 +7496,7 @@ function partialTypes(facts, owner) {
   for (const [key, parts3] of declared) {
     if (parts3.length < 2) continue;
     const primary = `${nameOf(key).slice(nameOf(key).lastIndexOf(".") + 1)}.cs`;
-    partial2.set(key, parts3.sort((a, b) => Number(basename2(b.file) === primary) - Number(basename2(a.file) === primary) || compare(a.file, b.file)));
+    partial2.set(key, parts3.sort((a, b) => Number(basename3(b.file) === primary) - Number(basename3(a.file) === primary) || compare(a.file, b.file)));
   }
   return partial2;
 }
@@ -7827,15 +7944,15 @@ function lastName4(node) {
 function typeFact(type, functionPointer) {
   const names2 = /* @__PURE__ */ new Set();
   let callback = functionPointer;
-  const visit2 = (current) => {
+  const visit3 = (current) => {
     if (current.type === "type_identifier") {
       names2.add(current.text);
       if (current.text === "function" && current.parent?.type === "template_type") callback = true;
     }
     if (current.type === "abstract_function_declarator" || current.type === "function_declarator") callback = true;
-    for (const child of current.namedChildren) visit2(child);
+    for (const child of current.namedChildren) visit3(child);
   };
-  if (type !== null) visit2(type);
+  if (type !== null) visit3(type);
   return { callback, names: [...names2].sort() };
 }
 function parameterFacts(list2) {
@@ -7877,7 +7994,7 @@ function isFunctionTypeAlias(type) {
 }
 function extractFileCensus5(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
-  const visit2 = (node, className, atFileLevel) => {
+  const visit3 = (node, className, atFileLevel) => {
     const line = node.startPosition.row + 1;
     let nextClass = className;
     let nextFileLevel = atFileLevel;
@@ -7998,7 +8115,7 @@ function extractFileCensus5(root) {
       default:
         nextFileLevel = false;
     }
-    for (const child of node.children) visit2(child, nextClass, nextFileLevel);
+    for (const child of node.children) visit3(child, nextClass, nextFileLevel);
   };
   const collectMap = (node, line) => {
     const type = field3(node, "type");
@@ -8011,7 +8128,7 @@ function extractFileCensus5(root) {
       if (current !== null && registryName5.test(current.text)) facts.keyedMaps.push({ line, name: current.text });
     }
   };
-  visit2(root, null, true);
+  visit3(root, null, true);
   return facts;
 }
 
@@ -10104,14 +10221,14 @@ function receiverName2(node) {
 function annotation4(node) {
   const names2 = /* @__PURE__ */ new Set();
   let callback = false;
-  const visit2 = (current) => {
+  const visit3 = (current) => {
     if (current.type === "identifier") {
       names2.add(current.text);
       if (current.text === "Callable") callback = true;
     }
-    for (const child of current.namedChildren) visit2(child);
+    for (const child of current.namedChildren) visit3(child);
   };
-  if (node !== null) visit2(node);
+  if (node !== null) visit3(node);
   return { callback, names: [...names2].sort() };
 }
 function parametersOf5(fn) {
@@ -10153,7 +10270,7 @@ function isFunctionType(value) {
 }
 function extractFileCensus6(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
-  const visit2 = (node, owner) => {
+  const visit3 = (node, owner) => {
     const line = node.startPosition.row + 1;
     let nextOwner = owner;
     switch (node.type) {
@@ -10231,9 +10348,9 @@ function extractFileCensus6(root) {
       }
       default:
     }
-    for (const child of node.children) visit2(child, nextOwner);
+    for (const child of node.children) visit3(child, nextOwner);
   };
-  visit2(root, null);
+  visit3(root, null);
   return facts;
 }
 
@@ -10698,13 +10815,13 @@ function lastName6(node) {
 function annotation5(node) {
   const names2 = /* @__PURE__ */ new Set();
   let callback = false;
-  const visit2 = (current, inside) => {
+  const visit3 = (current, inside) => {
     if (current.type === "type_identifier") names2.add(current.text);
     if (current.type === "function_type" && !inside) callback = true;
     const nested = inside || current.type === "struct_type" || current.type === "interface_type";
-    for (const child of current.namedChildren) visit2(child, nested);
+    for (const child of current.namedChildren) visit3(child, nested);
   };
-  if (node !== null) visit2(node, false);
+  if (node !== null) visit3(node, false);
   return { callback, names: [...names2].sort() };
 }
 function parametersOf6(list2) {
@@ -10754,7 +10871,7 @@ function extractFileCensus7(root) {
     const name12 = child.childForFieldName("name")?.text ?? "";
     if (name12.startsWith("New")) constructors.set(name12, parametersOf6(child.childForFieldName("parameters")).flatMap((parameter) => parameter.type.names));
   }
-  const visit2 = (node) => {
+  const visit3 = (node) => {
     const line = node.startPosition.row + 1;
     switch (node.type) {
       case "import_spec": {
@@ -10827,9 +10944,9 @@ function extractFileCensus7(root) {
       }
       default:
     }
-    for (const child of node.namedChildren) visit2(child);
+    for (const child of node.namedChildren) visit3(child);
   };
-  visit2(root);
+  visit3(root);
   return facts;
 }
 
@@ -11449,24 +11566,24 @@ var Extractor7 = class {
     const type = node.childForFieldName("type");
     if (type !== null) this.walk(type, context, node, "type");
     const keysAreValues = type !== null && ["map_type", "slice_type", "array_type", "implicit_length_array_type"].includes(type.type);
-    const visit2 = (literal) => {
+    const visit3 = (literal) => {
       for (const element2 of literal.namedChildren) {
         if (element2.type === "keyed_element") {
           const key = element2.childForFieldName("key");
           const value = element2.childForFieldName("value");
           const bareKey = key?.namedChildren.length === 1 && key.namedChildren[0]?.type === "identifier";
-          if (key !== null && (keysAreValues || !bareKey)) this.walkElement(key, context, visit2);
-          if (value !== null) this.walkElement(value, context, visit2);
-        } else this.walkElement(element2, context, visit2);
+          if (key !== null && (keysAreValues || !bareKey)) this.walkElement(key, context, visit3);
+          if (value !== null) this.walkElement(value, context, visit3);
+        } else this.walkElement(element2, context, visit3);
       }
     };
     const body2 = node.childForFieldName("body");
-    if (body2 !== null) visit2(body2);
+    if (body2 !== null) visit3(body2);
   }
-  walkElement(element2, context, visit2) {
+  walkElement(element2, context, visit3) {
     const inner2 = element2.type === "literal_element" ? element2.namedChildren : [element2];
     for (const child of inner2) {
-      if (child.type === "literal_value") visit2(child);
+      if (child.type === "literal_value") visit3(child);
       else this.walk(child, context, element2, null);
     }
   }
@@ -11743,6 +11860,7 @@ var ModuleTree = class {
   tree;
   implicitRoots;
   places = /* @__PURE__ */ new Map();
+  crateOfDirectory = /* @__PURE__ */ new Map();
   constructor(paths, crates) {
     this.tree = new Set(paths);
     this.crates = crates;
@@ -11752,13 +11870,17 @@ var ModuleTree = class {
   has(path) {
     return this.tree.has(path);
   }
+  /** The crate with the deepest directory above the file. Files of one directory have one crate, so it is found once per directory. */
   crateOf(file) {
+    const directory = posix14.dirname(file);
+    if (this.crateOfDirectory.has(directory)) return this.crateOfDirectory.get(directory);
     let best;
     for (const crate of this.crates) {
       if (crate.name === null) continue;
       if (crate.dir !== "." && !file.startsWith(`${crate.dir}/`)) continue;
       if (best === void 0 || crate.dir.length > best.dir.length) best = crate;
     }
+    this.crateOfDirectory.set(directory, best);
     return best;
   }
   placeOf(file) {
@@ -11769,9 +11891,11 @@ var ModuleTree = class {
     if (roots.includes(file)) root = file;
     else {
       const rank = (candidate) => candidate === crate?.libRoot || /(^|\/)lib\.rs$/.test(candidate) ? 0 : /(^|\/)main\.rs$/.test(candidate) ? 1 : 2;
+      const libDir = crate?.libRoot === void 0 ? void 0 : posix14.dirname(crate.libRoot);
+      const insideLibrary = (candidate) => libDir !== void 0 && candidate !== crate?.libRoot && file.startsWith(`${libDir}/`) && candidate.startsWith(`${libDir}/`) && !candidate.startsWith(`${libDir}/bin/`) && posix14.basename(candidate) !== "main.rs";
       const candidates = roots.filter((candidate) => {
         const dir = posix14.dirname(candidate);
-        return dir === "." || file.startsWith(`${dir}/`);
+        return (dir === "." || file.startsWith(`${dir}/`)) && !insideLibrary(candidate);
       });
       candidates.sort((a, b) => posix14.dirname(b).length - posix14.dirname(a).length || rank(a) - rank(b) || compare2(a, b));
       const shortest = candidates[0] === void 0 ? void 0 : posix14.dirname(candidates[0]).length;
@@ -11800,23 +11924,38 @@ var ModuleTree = class {
    * for an inline module and stepped over, so the files of modules declared inside it are still found. A
    * name that starts with a capital is an item, which ends the walk. `consumed` counts the names up to the
    * last file reached, so the rest name items of that file.
+   *
+   * `reexported`, when given, says which file a name of a module file is when the module only re-exports it
+   * (`pub use other::name`), and the walk moves into that file, which may be in another crate. It says null for
+   * a name that is re-exported from outside the tree, which ends the walk with `outside` set.
    */
-  walk(from, names2) {
+  walk(from, names2, reexported) {
     let file = from.file;
-    let directory = moduleDirectory(file, from.root);
+    let root = from.root;
+    let directory = moduleDirectory(file, root);
     let consumed = 0;
+    let via;
     for (let index = 0; index < names2.length; index++) {
       const name12 = names2[index];
       const found = this.child(directory, name12);
+      const elsewhere = found === void 0 ? reexported?.(file, name12) : void 0;
       if (found !== void 0) {
         file = found;
-        directory = moduleDirectory(found, from.root);
+        directory = moduleDirectory(found, root);
+        consumed = index + 1;
+      } else if (elsewhere === null) {
+        return { file, consumed, outside: true };
+      } else if (elsewhere !== void 0 && elsewhere !== file) {
+        via ??= file;
+        file = elsewhere;
+        root = this.placeOf(elsewhere)?.root ?? elsewhere;
+        directory = moduleDirectory(elsewhere, root);
         consumed = index + 1;
       } else if (/^[a-z_]/.test(name12)) {
         directory = posix14.join(directory, name12);
       } else break;
     }
-    return { file, consumed };
+    return { file, consumed, ...via === void 0 ? {} : { via } };
   }
 };
 
@@ -12026,13 +12165,24 @@ var rustMetricRules = {
   parameterCounts: parameterCounts7
 };
 
-// packages/parse/src/languages/rust/extract-facts.ts
-var extractorVersion4 = 3;
-function visibilityOf(node) {
-  const modifier = node.namedChildren.find((child) => child.type === "visibility_modifier");
-  if (modifier === void 0) return "private";
-  return modifier.namedChildren.length === 0 ? "public" : "restricted";
-}
+// packages/parse/src/languages/rust/test-code.ts
+var itemKinds = /* @__PURE__ */ new Set([
+  "function_item",
+  "function_signature_item",
+  "mod_item",
+  "impl_item",
+  "struct_item",
+  "union_item",
+  "enum_item",
+  "trait_item",
+  "type_item",
+  "const_item",
+  "static_item",
+  "use_declaration",
+  "macro_definition",
+  "macro_invocation",
+  "extern_crate_declaration"
+]);
 var isComment3 = (node) => node.type === "line_comment" || node.type === "block_comment";
 function attributesOf(node) {
   const out2 = [];
@@ -12041,11 +12191,79 @@ function attributesOf(node) {
   }
   return out2;
 }
+function isTestItem(node) {
+  return attributesOf(node).some((item) => {
+    const attribute2 = item.namedChildren.find((child) => child.type === "attribute");
+    const name12 = attribute2?.namedChildren[0]?.text.replace(/\s+/g, "");
+    if (attribute2 === void 0 || name12 === void 0) return false;
+    if (/^(\w+::)*test$/.test(name12)) return true;
+    if (name12 !== "cfg") return false;
+    const args2 = attribute2.childForFieldName("arguments")?.text;
+    return args2 !== void 0 && cfgRequiresTest(args2);
+  });
+}
+function itemStartLine(node) {
+  const attributes = attributesOf(node);
+  return (attributes.at(-1) ?? node).startPosition.row + 1;
+}
+function cfgRequiresTest(argumentText) {
+  const tokens2 = argumentText.match(/"(?:\\.|[^"\\])*"|[A-Za-z_][A-Za-z0-9_]*|[(),=]/g) ?? [];
+  let at2 = 0;
+  const parse = () => {
+    const name12 = tokens2[at2++];
+    if (name12 === void 0 || !/^[A-Za-z_]/.test(name12)) return void 0;
+    if (tokens2[at2] === "=") {
+      at2 += 2;
+      return { name: name12, args: void 0, value: true };
+    }
+    if (tokens2[at2] !== "(") return { name: name12, args: void 0, value: false };
+    at2++;
+    const args2 = [];
+    while (at2 < tokens2.length && tokens2[at2] !== ")") {
+      const arg = parse();
+      if (arg === void 0) return void 0;
+      args2.push(arg);
+      if (tokens2[at2] === ",") at2++;
+    }
+    at2++;
+    return { name: name12, args: args2, value: false };
+  };
+  if (tokens2[at2++] !== "(") return false;
+  const predicate = parse();
+  return predicate !== void 0 && requiresTest(predicate);
+}
+function requiresTest(predicate) {
+  if (predicate.args === void 0) return predicate.name === "test" && !predicate.value;
+  if (predicate.name === "all") return predicate.args.some(requiresTest);
+  if (predicate.name === "any") return predicate.args.length > 0 && predicate.args.every(requiresTest);
+  return false;
+}
+
+// packages/parse/src/languages/rust/extract-facts.ts
+var extractorVersion4 = 6;
+function visibilityOf(node) {
+  const modifier = node.namedChildren.find((child) => child.type === "visibility_modifier");
+  if (modifier === void 0) return "private";
+  return modifier.namedChildren.length === 0 ? "public" : "restricted";
+}
+var isComment4 = (node) => node.type === "line_comment" || node.type === "block_comment";
 function attributeNamed(node, name12) {
   return attributesOf(node).map((item) => item.namedChildren.find((child) => child.type === "attribute")).find((attribute2) => attribute2?.namedChildren[0]?.text === name12);
 }
-function isTestItem(node) {
-  return attributesOf(node).some((item) => /^#\[\s*(cfg\s*\(\s*test\s*\)|(\w+::)*test(\s*\(.*\))?)\s*\]$/s.test(item.text.trim()));
+function isProcMacro(node) {
+  return attributesOf(node).some((item) => /^#\[\s*proc_macro(_attribute|_derive)?\b/.test(item.text.trim()));
+}
+function derivedName(node) {
+  for (const item of attributesOf(node)) {
+    const found = /^#\[\s*proc_macro_derive\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)/.exec(item.text.trim());
+    if (found !== null) return found[1];
+  }
+  return void 0;
+}
+function standsForItems(node) {
+  let parent = node.parent;
+  if (parent?.type === "expression_statement") parent = parent.parent;
+  return parent?.type === "source_file" || parent?.type === "declaration_list";
 }
 function pathAttribute(node) {
   const value = attributeNamed(node, "path")?.childForFieldName("value");
@@ -12152,6 +12370,94 @@ function inlineModulesOf(scope, prefix, out2) {
 var primitives = /* @__PURE__ */ new Set(["bool", "char", "str", "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i64", "i128", "isize", "f32", "f64"]);
 var builtinCrates = /* @__PURE__ */ new Set(["std", "core", "alloc", "proc_macro", "test"]);
 var compareLines = (a, b) => a.line - b.line;
+var standardMacros = /* @__PURE__ */ new Set([
+  "addr_of",
+  "addr_of_mut",
+  "asm",
+  "assert",
+  "assert_eq",
+  "assert_ne",
+  "cfg",
+  "column",
+  "compile_error",
+  "concat",
+  "concat_idents",
+  "const_format_args",
+  "dbg",
+  "debug_assert",
+  "debug_assert_eq",
+  "debug_assert_ne",
+  "env",
+  "eprint",
+  "eprintln",
+  "file",
+  "format",
+  "format_args",
+  "global_asm",
+  "include",
+  "include_bytes",
+  "include_str",
+  "is_x86_feature_detected",
+  "line",
+  "macro_rules",
+  "matches",
+  "module_path",
+  "option_env",
+  "panic",
+  "pin",
+  "print",
+  "println",
+  "ready",
+  "stringify",
+  "thread_local",
+  "todo",
+  "try",
+  "unimplemented",
+  "unreachable",
+  "vec",
+  "write",
+  "writeln"
+]);
+var preludeNames = /* @__PURE__ */ new Set([
+  "Self",
+  "Some",
+  "None",
+  "Ok",
+  "Err",
+  "Option",
+  "Result",
+  "Vec",
+  "String",
+  "Box",
+  "Default",
+  "Clone",
+  "Copy",
+  "Send",
+  "Sync",
+  "Sized",
+  "Drop",
+  "Fn",
+  "FnMut",
+  "FnOnce",
+  "From",
+  "Into",
+  "TryFrom",
+  "TryInto",
+  "Iterator",
+  "IntoIterator",
+  "Extend",
+  "AsRef",
+  "AsMut",
+  "ToOwned",
+  "ToString",
+  "PartialEq",
+  "Eq",
+  "PartialOrd",
+  "Ord",
+  "Debug",
+  "Hash",
+  "drop"
+]);
 var Extractor8 = class {
   units = [];
   imports = [];
@@ -12162,6 +12468,12 @@ var Extractor8 = class {
   nameCounts = /* @__PURE__ */ new Map();
   inlineModules = /* @__PURE__ */ new Set();
   inlinePaths = [];
+  /** Paths in code that start at `crate`, `self` or `super`, already counted from the file's own module. */
+  relativePaths = [];
+  macroUses = [];
+  macros = /* @__PURE__ */ new Set();
+  itemMacros = false;
+  testRanges = [];
   codeRows;
   root;
   explain;
@@ -12178,10 +12490,16 @@ var Extractor8 = class {
       names2.add(inner2.exported);
       this.exports.push(inner2);
     }
+    this.ownMacros();
+    this.pathsThroughBindings();
     const locals = /* @__PURE__ */ new Set();
     for (const imported of this.imports) for (const binding of imported.bindings) locals.add(binding.local);
     this.inlineCrates(root, locals);
+    this.bareMacros(locals);
     for (const imported of this.imports) for (const binding of imported.bindings) locals.add(binding.local);
+    const globs = this.reexports.some((reexport) => reexport.exported === "*");
+    const declared = /* @__PURE__ */ new Set([...this.exports.map((exported) => exported.exported), ...this.units.map((unit) => unit.qualifiedName)]);
+    const mayBeGlobbed = (reference) => globs && !declared.has(reference.local) && !preludeNames.has(reference.local) && !primitives.has(reference.local) && (upper.test(reference.local) || reference.kind === "call" || reference.member !== void 0);
     const classes = new Set(this.units.filter((unit) => unit.kind === "class").map((unit) => unit.qualifiedName));
     for (const unit of this.units) {
       const dot = unit.qualifiedName.lastIndexOf(".");
@@ -12192,9 +12510,11 @@ var Extractor8 = class {
       imports: this.imports,
       reexports: this.reexports,
       exports: this.exports,
-      references: this.references.filter((reference) => locals.has(reference.local)),
-      nodes: nodeCount(root, (node) => isComment3(node) || node.type === "use_declaration") - 1,
-      hasSyntaxErrors: root.hasError
+      references: this.references.filter((reference) => locals.has(reference.local) || mayBeGlobbed(reference)),
+      nodes: nodeCount(root, (node) => isComment4(node) || node.type === "use_declaration") - 1,
+      hasSyntaxErrors: root.hasError,
+      ...this.itemMacros ? { itemMacros: true } : {},
+      ...this.testRanges.length === 0 ? {} : { testRanges: this.testRanges }
     };
   }
   /**
@@ -12203,26 +12523,97 @@ var Extractor8 = class {
    */
   inlineCrates(root, locals) {
     const modules = new Set(root.descendantsOfType("mod_item").map((item) => item.childForFieldName("name")?.text));
-    const known = /* @__PURE__ */ new Set();
-    for (const path of this.inlinePaths) {
+    const known = /* @__PURE__ */ new Map();
+    const outside = this.inlinePaths.filter((path) => {
       const [first] = path.segments;
-      if (locals.has(first) || modules.has(first) || primitives.has(first) || builtinCrates.has(first)) continue;
+      return !(locals.has(first) || modules.has(first) || primitives.has(first) || builtinCrates.has(first));
+    });
+    for (const path of [...outside, ...this.relativePaths]) {
       let item = path.segments.findIndex((segment3, index) => index > 0 && upper.test(segment3));
       if (item < 0) item = path.segments.length - 1;
+      if (item < 1 || isOwnModule(path.segments.slice(0, item), this.inlineModules)) continue;
       const local = path.segments.slice(0, item + 1).join("::");
-      if (!known.has(local)) {
-        known.add(local);
-        this.imports.push({ specifier: path.segments.slice(0, item).join("::"), kind: "import", typeOnly: false, line: path.line, bindings: [{ imported: path.segments[item], local, typeOnly: false }] });
-      }
+      const imported = known.get(local);
+      if (imported === void 0) {
+        const fact2 = { specifier: path.segments.slice(0, item).join("::"), kind: "import", typeOnly: false, line: path.line, bindings: [{ imported: path.segments[item], local, typeOnly: false }] };
+        if (path.test) fact2.test = true;
+        known.set(local, fact2);
+        this.imports.push(fact2);
+      } else if (!path.test) delete imported.test;
       const member = path.segments[item + 1];
       const fact = { local, kind: path.kind, line: path.line };
       if (member !== void 0) fact.member = member;
       if (path.unit !== void 0) fact.inUnit = path.unit;
+      if (path.test) fact.test = true;
       this.references.push(fact);
     }
   }
   inlinePath(segments, line, kind, context) {
-    if (segments.length >= 2 && /^[a-z_]/.test(segments[0])) this.inlinePaths.push({ segments, line, kind, unit: context.unit });
+    if (segments.length < 2) return;
+    const [first] = segments;
+    if (first === "crate" || first === "self" || first === "super") {
+      const counted = normalise2(segments, context);
+      if (counted !== void 0 && counted.every((segment3) => !segment3.startsWith("$"))) this.relativePaths.push({ segments: counted, line, kind, unit: context.unit, test: context.inTests === true });
+    } else if (/^[a-z_]/.test(first)) this.inlinePaths.push({ segments, line, kind, unit: context.unit, test: context.inTests === true });
+  }
+  /**
+   * `use a::b; use b::Name;`: the second path starts with a name the first binds, not with a crate, so it is
+   * written out from what that name is. One step is followed, which is what the idiom uses.
+   */
+  pathsThroughBindings() {
+    const bound = /* @__PURE__ */ new Map();
+    for (const imported of this.imports) {
+      if (imported.specifier === null || imported.declares === true || imported.specifier.startsWith("mod ")) continue;
+      for (const binding of imported.bindings) {
+        if (!/^[a-z_]/.test(binding.local) || bound.has(binding.local)) continue;
+        bound.set(binding.local, binding.imported === "*" ? imported.specifier : `${imported.specifier}::${binding.imported}`);
+      }
+    }
+    if (bound.size === 0) return;
+    const through = (specifier) => {
+      const split = specifier.indexOf("::");
+      const first = split < 0 ? specifier : specifier.slice(0, split);
+      const target2 = bound.get(first);
+      if (target2 === void 0 || target2 === specifier || target2.startsWith(`${first}::`)) return specifier;
+      return split < 0 ? target2 : `${target2}${specifier.slice(split)}`;
+    };
+    for (const imported of this.imports) {
+      if (imported.specifier === null || imported.declares === true) continue;
+      if (imported.bindings.some((binding) => bound.get(binding.local) === (binding.imported === "*" ? imported.specifier : `${imported.specifier}::${binding.imported}`))) continue;
+      imported.specifier = through(imported.specifier);
+    }
+    for (const reexport of this.reexports) reexport.specifier = through(reexport.specifier);
+  }
+  /** A `use name;` of a macro the file defines (`pub(crate) use name;` after `macro_rules! name`) exports the macro under the plain name. */
+  ownMacros() {
+    if (this.macros.size === 0) return;
+    const rebound = /* @__PURE__ */ new Set();
+    for (const imported of this.imports) {
+      const [binding] = imported.bindings;
+      if (binding === void 0 || imported.bindings.length !== 1 || binding.imported !== "*" || imported.specifier !== binding.local || !this.macros.has(binding.local)) continue;
+      rebound.add(imported);
+      for (const exported of [...this.exports, ...this.innerExports]) if (exported.local === binding.local) exported.local = `${binding.local}!`;
+    }
+    if (rebound.size > 0) this.imports.splice(0, this.imports.length, ...this.imports.filter((imported) => !rebound.has(imported)));
+  }
+  /** A bare `name!(..)` that neither a `use` nor the file itself gives a meaning is a macro of the crate, or of a crate it depends on. */
+  bareMacros(locals) {
+    const known = /* @__PURE__ */ new Map();
+    for (const use of this.macroUses) {
+      if (locals.has(use.name) || this.macros.has(use.name) || standardMacros.has(use.name)) continue;
+      const local = `${use.name}!`;
+      const imported = known.get(local);
+      if (imported === void 0) {
+        const fact2 = { specifier: `macro ${use.name}`, kind: "import", typeOnly: false, line: use.line, bindings: [{ imported: local, local, typeOnly: false }] };
+        if (use.test) fact2.test = true;
+        known.set(local, fact2);
+        this.imports.push(fact2);
+      } else if (!use.test) delete imported.test;
+      const fact = { local, kind: "call", line: use.line };
+      if (use.unit !== void 0) fact.inUnit = use.unit;
+      if (use.test) fact.test = true;
+      this.references.push(fact);
+    }
   }
   /** The modules a scope declares, so a path that starts with one is relative to the scope. */
   declaredMods(scope) {
@@ -12243,7 +12634,7 @@ var Extractor8 = class {
     for (let i2 = 0; i2 < node.childCount; i2++) {
       const child = node.child(i2);
       if (child === null || !child.isNamed) continue;
-      if (node.fieldNameForChild(i2) === "name" && !node.type.startsWith("scoped_")) continue;
+      if (node.fieldNameForChild(i2) === "name" && !node.type.startsWith("scoped_") && node.type !== "struct_expression") continue;
       this.visit(child, context);
     }
   }
@@ -12269,9 +12660,22 @@ var Extractor8 = class {
       if (forwarded !== void 0) unit.passThrough = forwarded;
       if (measured.recursive) unit.recursive = true;
       if (memberOf !== void 0 && context.implementsTrait === true) unit.override = true;
+      if (memberOf === void 0 && isProcMacro(node)) unit.entryPoint = true;
       if (memberOf !== void 0 && context.implementsTrait !== true && visibilityOf(node) !== "public") unit.hidden = true;
       if (measured.increments !== void 0) unit.increments = measured.increments;
     }
+    this.units.push(unit);
+    return qualifiedName;
+  }
+  /** A `macro_rules!` definition as a unit named `name!`. It has no metrics: its body is token patterns, which are not parsed. */
+  declareMacro(name12, node, context) {
+    const base = [this.prefix(context), `${name12}!`].filter((part) => part !== "").join(".");
+    const seen = this.nameCounts.get(base) ?? 0;
+    this.nameCounts.set(base, seen + 1);
+    const qualifiedName = seen === 0 ? base : `${base}~${seen + 1}`;
+    const unit = { qualifiedName, kind: "macro", startLine: node.startPosition.row + 1, endLine: node.endPosition.row + 1, source: "structural" };
+    if (context.unit !== void 0) unit.parent = context.unit;
+    if (context.inTests === true || isTestItem(node)) unit.test = true;
     this.units.push(unit);
     return qualifiedName;
   }
@@ -12284,7 +12688,12 @@ var Extractor8 = class {
     if (!exposed) fact.internal = true;
     (context.mods.length === 0 ? this.exports : this.innerExports).push(fact);
   }
-  visit(node, context) {
+  visit(node, outer) {
+    let context = outer;
+    if (outer.inTests !== true && itemKinds.has(node.type) && isTestItem(node)) {
+      context = { ...outer, inTests: true };
+      this.testRanges.push({ startLine: itemStartLine(node), endLine: node.endPosition.row + 1 });
+    }
     switch (node.type) {
       case "use_declaration":
         this.useDeclaration(node, context);
@@ -12299,6 +12708,8 @@ var Extractor8 = class {
         const kind = member === void 0 ? "function" : "method";
         const qualified = this.declareUnit(name12, kind, node, context, node, member);
         this.export(node, name12, qualified, "function", visibilityOf(node), context);
+        const derives = member === void 0 ? derivedName(node) : void 0;
+        if (derives !== void 0) this.export(node, derives, qualified, "function", "public", context);
         this.functionParts(node, { ...context, unit: qualified, owner: void 0 });
         return;
       }
@@ -12322,7 +12733,7 @@ var Extractor8 = class {
         const owner = typeName(node.childForFieldName("type")) ?? node.childForFieldName("type")?.text.replace(/\s+/g, " ") ?? "_";
         const body2 = node.childForFieldName("body");
         this.visitChildrenExcept(node, body2, { ...context, owner: void 0 });
-        if (body2 !== null) this.visitScope(body2, { ...context, owner, implementsTrait: node.childForFieldName("trait") !== null, ...isTestItem(node) ? { inTests: true } : {} });
+        if (body2 !== null) this.visitScope(body2, { ...context, owner, implementsTrait: node.childForFieldName("trait") !== null });
         return;
       }
       case "type_item":
@@ -12335,7 +12746,10 @@ var Extractor8 = class {
       }
       case "macro_definition": {
         const name12 = node.childForFieldName("name")?.text;
-        if (name12 !== void 0) this.export(node, name12, void 0, void 0, attributeNamed(node, "macro_export") === void 0 ? "private" : "public", context);
+        if (name12 === void 0) return;
+        const qualified = this.declareMacro(name12, node, context);
+        this.export(node, `${name12}!`, qualified, void 0, attributeNamed(node, "macro_export") === void 0 ? "private" : "public", { ...context, exposed: true });
+        if (context.owner === void 0 && context.unit === void 0) this.macros.add(name12);
         return;
       }
       case "let_declaration":
@@ -12418,13 +12832,13 @@ var Extractor8 = class {
     const body2 = node.childForFieldName("body");
     if (body2 !== null) {
       this.export(node, name12, void 0, "namespace", visibility, context);
-      this.visitScope(body2, { ...context, mods: [...context.mods, name12], exposed: context.exposed && visibility === "public", ...isTestItem(node) ? { inTests: true } : {} });
+      this.visitScope(body2, { ...context, mods: [...context.mods, name12], exposed: context.exposed && visibility === "public" });
       return;
     }
     const written = pathAttribute(node);
-    const specifier = `mod ${[...context.mods, name12].join("::")}${written === void 0 ? "" : `@${written}`}`;
+    const specifier = `mod ${[...context.mods, name12.replace(/^r#/, "")].join("::")}${written === void 0 ? "" : `@${written}`}`;
     const line = node.startPosition.row + 1;
-    this.imports.push({ specifier, kind: "import", typeOnly: false, line, bindings: [{ imported: "*", local: name12, typeOnly: false }] });
+    this.imports.push({ specifier, kind: "import", typeOnly: false, line, bindings: [{ imported: "*", local: name12, typeOnly: false }], declares: true, ...context.inTests === true ? { test: true } : {} });
     this.export(node, name12, name12, "namespace", visibility, context);
   }
   useDeclaration(node, context) {
@@ -12435,10 +12849,31 @@ var Extractor8 = class {
       const segments = normalise2(leaf.segments, context);
       if (segments === void 0) continue;
       if (isOwnModule(segments, this.inlineModules)) continue;
+      const test = context.inTests === true ? { test: true } : {};
       if (leaf.glob) {
+        const last = segments.at(-1);
+        if (segments.length > 1 && upper.test(last)) {
+          this.imports.push({ specifier: segments.slice(0, -1).join("::"), kind: "import", typeOnly: false, line: leaf.line, bindings: [{ imported: last, local: `${last}::*`, typeOnly: false }], ...test });
+          continue;
+        }
         const specifier2 = segments.join("::");
-        if (visibility === "public" && context.mods.length === 0) this.reexports.push({ specifier: specifier2, typeOnly: false, line: leaf.line, imported: "*", exported: "*" });
-        else this.imports.push({ specifier: specifier2, kind: "import", typeOnly: false, line: leaf.line, bindings: [] });
+        if (context.inTests === true) {
+          this.imports.push({ specifier: specifier2, kind: "import", typeOnly: false, line: leaf.line, bindings: [], ...test });
+          continue;
+        }
+        const exposed = visibility === "public" && context.exposed;
+        this.reexports.push({ specifier: specifier2, typeOnly: false, line: leaf.line, imported: "*", exported: "*", ...exposed ? {} : { visibility: visibility === "private" ? "private" : "restricted" } });
+        continue;
+      }
+      if (segments.length === 1) {
+        const local2 = leaf.alias ?? segments[0];
+        if (local2 === "_") continue;
+        this.imports.push({ specifier: segments[0], kind: "import", typeOnly: false, line: leaf.line, bindings: [{ imported: "*", local: local2, typeOnly: false }], ...test });
+        if (visibility !== "private" && context.owner === void 0 && context.unit === void 0) {
+          const fact = { exported: local2, local: local2, line: leaf.line };
+          if (visibility === "restricted" || !context.exposed) fact.internal = true;
+          (context.mods.length === 0 ? this.exports : this.innerExports).push(fact);
+        }
         continue;
       }
       let item = segments.findIndex((segment3, index) => index > 0 && upper.test(segment3));
@@ -12449,7 +12884,7 @@ var Extractor8 = class {
       const imported = segments[item];
       const local = leaf.alias ?? segments.at(-1);
       const bindings = local === "_" ? [] : [{ imported, local, typeOnly: false }];
-      this.imports.push({ specifier, kind: "import", typeOnly: false, line: leaf.line, bindings });
+      this.imports.push({ specifier, kind: "import", typeOnly: false, line: leaf.line, bindings, ...context.inTests === true ? { test: true } : {} });
       if (visibility !== "private" && bindings.length > 0 && context.owner === void 0 && context.unit === void 0) {
         const fact = { exported: local, local, line: leaf.line };
         if (visibility === "restricted" || !context.exposed) fact.internal = true;
@@ -12514,6 +12949,7 @@ var Extractor8 = class {
     const fact = { local, kind, line: node.startPosition.row + 1 };
     if (member !== void 0) fact.member = member;
     if (context.unit !== void 0) fact.inUnit = context.unit;
+    if (context.inTests === true) fact.test = true;
     this.references.push(fact);
   }
   /** A path used as a value or a type: its first name is the reference, the next one its member. */
@@ -12524,7 +12960,11 @@ var Extractor8 = class {
       return;
     }
     const [first, second] = segments;
-    if (first === "self" || first === "crate" || first === "super" || first === "Self") return;
+    if (first === "Self") return;
+    if (first === "self" || first === "crate" || first === "super") {
+      this.inlinePath(segments, node.startPosition.row + 1, kind, context);
+      return;
+    }
     this.reference(first, node, context, kind, second);
     this.inlinePath(segments, node.startPosition.row + 1, kind, context);
     for (const generic of node.descendantsOfType("type_arguments")) this.visitChildren(generic, context);
@@ -12543,8 +12983,11 @@ var Extractor8 = class {
   }
   macro(node, context) {
     const name12 = node.childForFieldName("macro");
-    if (name12?.type === "identifier") this.reference(name12.text, name12, context, "call");
-    else if (name12?.type === "scoped_identifier") this.path(name12, context, "call");
+    if (context.owner === void 0 && context.unit === void 0 && standsForItems(node)) this.itemMacros = true;
+    if (name12?.type === "identifier") {
+      this.reference(name12.text, name12, context, "call");
+      this.macroUses.push({ name: name12.text, line: name12.startPosition.row + 1, unit: context.unit, test: context.inTests === true });
+    } else if (name12?.type === "scoped_identifier") this.path(name12, context, "call");
     for (const tree of node.namedChildren.filter((child) => child.type === "token_tree")) this.tokens(tree, context);
   }
   /** Macro arguments are not parsed, so names in them are read from the tokens: `a`, or `a::b`. */
@@ -12553,14 +12996,14 @@ var Extractor8 = class {
     for (let i2 = 0; i2 < children.length; i2++) {
       const token = children[i2];
       if (token.type === "token_tree") this.tokens(token, context);
-      else if (token.type === "identifier" || token.type === "type_identifier") {
+      else if (token.type === "identifier" || token.type === "type_identifier" || (token.type === "crate" || token.type === "super" || token.type === "self") && children[i2 + 1]?.type === "::") {
         const segments = [token.text];
         let next = i2 + 1;
-        while (children[next]?.type === "::" && children[next + 1]?.type === "identifier") {
+        while (children[next]?.type === "::" && (children[next + 1]?.type === "identifier" || children[next + 1]?.type === "super")) {
           segments.push(children[next + 1].text);
           next += 2;
         }
-        this.reference(token.text, token, context, "reference", segments[1]);
+        if (token.type === "identifier" || token.type === "type_identifier") this.reference(token.text, token, context, "reference", segments[1]);
         this.inlinePath(segments, token.startPosition.row + 1, "reference", context);
         i2 = next - 1;
       }
@@ -12613,19 +13056,19 @@ function nameOf2(node) {
 function annotation6(node, callbackParameters) {
   const names2 = /* @__PURE__ */ new Set();
   let callback = false;
-  const visit2 = (current) => {
+  const visit3 = (current) => {
     if (current.type === "type_identifier") {
       names2.add(current.text);
       if (callbackParameters.has(current.text)) callback = true;
     }
     if (current.type === "function_type") callback = true;
-    for (const child of current.namedChildren) visit2(child);
+    for (const child of current.namedChildren) visit3(child);
   };
-  if (node !== null) visit2(node);
+  if (node !== null) visit3(node);
   return { callback, names: [...names2].sort() };
 }
-function callbackGenerics(fn) {
-  const names2 = /* @__PURE__ */ new Set();
+function callbackGenerics(fn, inherited = /* @__PURE__ */ new Set()) {
+  const names2 = new Set(inherited);
   for (const parameter of field5(fn, "type_parameters")?.namedChildren ?? []) {
     const bounds = field5(parameter, "bounds");
     const name12 = field5(parameter, "name")?.text;
@@ -12637,8 +13080,8 @@ function callbackGenerics(fn) {
   }
   return names2;
 }
-function parametersOf7(fn) {
-  const generics = callbackGenerics(fn);
+function parametersOf7(fn, inherited) {
+  const generics = callbackGenerics(fn, inherited);
   const out2 = [];
   for (const parameter of field5(fn, "parameters")?.namedChildren ?? []) {
     if (parameter.type !== "parameter") continue;
@@ -12653,12 +13096,19 @@ function attributeNames(attribute2) {
   if (own === "derive") return field5(attribute2, "arguments")?.namedChildren.filter((child) => child.type === "identifier").map((child) => child.text) ?? [];
   return own === null ? [] : [own];
 }
+function itemOf(attribute2) {
+  let next = attribute2.nextNamedSibling;
+  while (next !== null && (next.type === "attribute_item" || comment2(next))) next = next.nextNamedSibling;
+  return next;
+}
 function extractFileCensus8(root) {
   const facts = { imports: [], types: [], classes: [], functions: [], calls: [], news: [], decorators: [], keyedMaps: [] };
   const constructors = /* @__PURE__ */ new Map();
-  const visit2 = (node, owner) => {
+  const visit3 = (node, owner, generics) => {
+    if (node.type === "attribute_item" ? isTestItem(itemOf(node) ?? node) : itemKinds.has(node.type) && isTestItem(node)) return;
     const line = node.startPosition.row + 1;
     let nextOwner = owner;
+    let nextGenerics = generics;
     switch (node.type) {
       case "use_declaration": {
         const leaves = [];
@@ -12674,6 +13124,7 @@ function extractFileCensus8(root) {
         const name12 = field5(node, "name")?.text;
         if (name12 !== void 0) facts.types.push({ name: name12, kind: "interface", line });
         nextOwner = name12 ?? owner;
+        nextGenerics = callbackGenerics(node);
         break;
       }
       case "type_item": {
@@ -12695,18 +13146,20 @@ function extractFileCensus8(root) {
       case "impl_item": {
         const type = nameOf2(field5(node, "type"));
         const trait = nameOf2(field5(node, "trait"));
+        nextGenerics = callbackGenerics(node);
         if (type !== null && trait !== null) facts.classes.push({ name: type, line, heritage: [trait], constructorTypes: [] });
         if (type !== null && trait === null) {
           const body2 = field5(node, "body");
           const constructor = body2?.namedChildren.find((member) => member.type === "function_item" && field5(member, "name")?.text === "new");
-          if (constructor !== void 0) constructors.set(type, [...constructors.get(type) ?? [], ...parametersOf7(constructor).flatMap((parameter) => parameter.type.names)]);
+          if (constructor !== void 0) constructors.set(type, [...constructors.get(type) ?? [], ...parametersOf7(constructor, nextGenerics).flatMap((parameter) => parameter.type.names)]);
         }
         nextOwner = type;
         break;
       }
       case "function_item": {
         const name12 = field5(node, "name")?.text;
-        if (name12 !== void 0) facts.functions.push({ name: owner === null ? name12 : `${owner}.${name12}`, line, parameters: parametersOf7(node) });
+        if (name12 !== void 0) facts.functions.push({ name: owner === null ? name12 : `${owner}.${name12}`, line, parameters: parametersOf7(node, generics) });
+        nextGenerics = /* @__PURE__ */ new Set();
         break;
       }
       case "attribute_item": {
@@ -12758,30 +13211,181 @@ function extractFileCensus8(root) {
       }
       default:
     }
-    for (const child of node.children) visit2(child, nextOwner);
+    for (const child of node.children) visit3(child, nextOwner, nextGenerics);
   };
-  visit2(root, null);
+  visit3(root, null, /* @__PURE__ */ new Set());
   for (const klass of facts.classes) {
     if (klass.heritage.length === 0) klass.constructorTypes = [...new Set(constructors.get(klass.name) ?? [])].sort();
   }
   return facts;
 }
 
+// packages/parse/src/languages/rust/grammar-repair.ts
+function rustRepairs(root, source) {
+  const edits = /* @__PURE__ */ new Map();
+  const blank = (start2, end) => {
+    for (let i2 = start2; i2 < end; i2++) if (source[i2] !== "\n" && source[i2] !== "\r" && source[i2] !== " ") edits.set(i2, " ");
+  };
+  visit2(root, source, blank);
+  return [...edits].map(([offset, character]) => ({ offset, character }));
+}
+var attributeHolders = /* @__PURE__ */ new Set(["parameters", "closure_parameters", "struct_pattern"]);
+var primitives2 = /* @__PURE__ */ new Set(["bool", "char", "str", "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i64", "i128", "isize", "f32", "f64"]);
+function visit2(node, source, blank) {
+  if (!node.hasError && !node.isMissing && node.type !== "raw") return;
+  if (node.type === "raw" && !node.isNamed) rawBorrow(node, source, blank);
+  if (node.type === "ERROR") {
+    misplacedAttribute(node, source, blank);
+    boundLifetimes(node, blank);
+    primitiveTurbofish(node, source, blank);
+  }
+  for (const child of node.children) visit2(child, source, blank);
+}
+function rawBorrow(raw, source, blank) {
+  if (raw.parent?.type !== "ERROR") return;
+  const after = raw.nextSibling;
+  if (after !== null && (after.type === "const" || after.type === "mutable_specifier")) return;
+  let at2 = raw.startIndex - 1;
+  while (at2 >= 0 && /\s/.test(source[at2])) at2--;
+  if (source[at2] === "&") blank(at2, at2 + 1);
+}
+function misplacedAttribute(error, source, blank) {
+  if (!attributeHolders.has(error.parent?.type ?? "")) return;
+  const start2 = error.startIndex;
+  if (source[start2] !== "#") return;
+  let open = start2 + 1;
+  while (/\s/.test(source[open] ?? "")) open++;
+  if (source[open] !== "[") return;
+  const end = closingOf(source, open, "[", "]");
+  if (end !== void 0) blank(start2, end);
+}
+function boundLifetimes(error, blank) {
+  const children = error.children;
+  for (let i2 = 1; i2 < children.length; i2++) {
+    if (children[i2].type === "for_lifetimes" && children[i2 - 1].type === "+") blank(children[i2].startIndex, children[i2].endIndex);
+  }
+}
+function primitiveTurbofish(error, source, blank) {
+  if (error.text !== "::" || !primitives2.has(error.previousSibling?.text ?? "")) return;
+  const open = error.nextSibling;
+  if (open?.type !== "<") return;
+  const end = closingOf(source, open.startIndex, "<", ">");
+  if (end !== void 0) blank(error.startIndex, end);
+}
+function closingOf(source, open, opener, closer) {
+  let depth = 0;
+  for (let i2 = open; i2 < source.length; i2++) {
+    const c2 = source[i2];
+    if (c2 === '"') {
+      for (i2++; i2 < source.length && source[i2] !== '"'; i2++) if (source[i2] === "\\") i2++;
+      continue;
+    }
+    if (c2 === "'" && source[i2 + 2] === "'") {
+      i2 += 2;
+      continue;
+    }
+    if (c2 === "'" && source[i2 + 1] === "\\" && source[i2 + 3] === "'") {
+      i2 += 3;
+      continue;
+    }
+    if (c2 === "-" && source[i2 + 1] === ">") {
+      i2++;
+      continue;
+    }
+    if (c2 === opener) depth++;
+    else if (c2 === closer && --depth === 0) return i2 + 1;
+  }
+  return void 0;
+}
+
 // packages/parse/src/languages/rust/resolve-path.ts
 import { posix as posix15 } from "node:path";
 var isConfigPath3 = isManifestPath;
 var builtinCrates2 = /* @__PURE__ */ new Set(["std", "core", "alloc", "proc_macro", "test"]);
+var noMacros = /* @__PURE__ */ new Map();
 var PathResolver = class {
   tree;
   /** A `use` of an inline module of the file itself is no dependency. */
   dropsSelfDependencies = true;
   /** A module's own `use` declarations are visible to its child modules, so `use super::Name` finds a name the parent only imports. */
   importsAreVisible = true;
-  constructor(paths, configs) {
+  /** A `use` depends on the file that defines the item, whichever modules re-export it on the way. */
+  edgesReachDefinitions = true;
+  globsBindNames = true;
+  facts;
+  reexported;
+  /** `macro_rules!` definitions by the crate that holds them, then by name. The first file in path order defines a name. */
+  macros;
+  pathParents;
+  constructor(paths, configs, facts = /* @__PURE__ */ new Map()) {
     this.tree = new ModuleTree(paths, readCrates(paths, configs));
+    this.facts = facts;
+  }
+  followReexports(moduleNamed) {
+    this.reexported = moduleNamed;
   }
   resolve(from, specifier) {
-    return specifier.startsWith("mod ") ? this.declaredModule(from, specifier.slice(4)) : this.usedPath(from, specifier.split("::"));
+    if (specifier.startsWith("mod ")) return this.declaredModule(from, specifier.slice(4));
+    if (specifier.startsWith("macro ")) return this.bareMacro(from, specifier.slice(6));
+    return this.usedPath(from, specifier.split("::"));
+  }
+  exportedElsewhere(modulePath, name12) {
+    const place = this.tree.placeOf(modulePath);
+    if (place === void 0 || place.root !== modulePath) return void 0;
+    const bare = name12.endsWith("!");
+    const macro = bare ? name12.slice(0, -1) : name12;
+    const definition = this.macrosOf(modulePath).get(macro);
+    if (definition?.exported === true) return { file: definition.file, name: `${macro}!` };
+    if (bare && this.facts.get(modulePath)?.exports.some((exported) => exported.exported === macro && exported.local !== void 0) === true) return { file: modulePath, name: macro };
+    return void 0;
+  }
+  /** What scopes a macro: the crate of the file, or its root file when no manifest owns it. */
+  scopeOf(file) {
+    const place = this.tree.placeOf(file);
+    return place === void 0 ? void 0 : place.crate?.manifest ?? place.root;
+  }
+  macrosOf(file) {
+    if (this.macros === void 0) {
+      this.macros = /* @__PURE__ */ new Map();
+      for (const [path, facts] of this.facts) {
+        for (const exported of facts.exports) {
+          if (!exported.exported.endsWith("!")) continue;
+          const scope2 = this.scopeOf(path);
+          if (scope2 === void 0) continue;
+          let names2 = this.macros.get(scope2);
+          if (names2 === void 0) this.macros.set(scope2, names2 = /* @__PURE__ */ new Map());
+          const name12 = exported.exported.slice(0, -1);
+          if (!names2.has(name12)) names2.set(name12, { file: path, exported: exported.internal !== true });
+        }
+      }
+    }
+    const scope = this.scopeOf(file);
+    return (scope === void 0 ? void 0 : this.macros.get(scope)) ?? noMacros;
+  }
+  /** The file whose `#[path = ".."] mod name;` names the file, when one does and the declaration is not inside an inline module. */
+  declaringFile(file) {
+    if (this.pathParents === void 0) {
+      this.pathParents = /* @__PURE__ */ new Map();
+      for (const [path, facts] of this.facts) {
+        for (const imported of facts.imports) {
+          const at2 = imported.specifier?.indexOf("@") ?? -1;
+          if (imported.declares !== true || imported.specifier === null || at2 < 0 || imported.specifier.slice(4, at2).includes("::")) continue;
+          const target2 = posix15.normalize(posix15.join(posix15.dirname(path), imported.specifier.slice(at2 + 1)));
+          if (target2 !== path && !this.pathParents.has(target2)) this.pathParents.set(target2, path);
+        }
+      }
+    }
+    return this.pathParents.get(file);
+  }
+  bareMacro(from, name12) {
+    const own = this.macrosOf(from).get(name12);
+    if (own !== void 0) return { kind: "file", path: own.file };
+    const crate = this.tree.placeOf(from)?.crate;
+    for (const [, dir] of [...crate?.dependencies ?? []].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
+      const root = this.tree.crates.find((candidate) => candidate.dir === dir && candidate.name !== null)?.libRoot;
+      if (root !== void 0 && this.exportedElsewhere(root, `${name12}!`) !== void 0) return { kind: "file", path: root };
+    }
+    return { kind: "builtin" };
   }
   declaredModule(from, declaration) {
     const at2 = declaration.indexOf("@");
@@ -12802,8 +13406,14 @@ var PathResolver = class {
     const place = this.tree.placeOf(from);
     if (first === "crate" || first === "self" || first === "super") {
       if (place === void 0) return { kind: "not-found" };
-      if (first === "crate") return this.fileOf(this.tree.walk({ file: place.root, root: place.root }, rest));
-      if (first === "self") return this.fileOf(this.tree.walk({ file: from, root: place.root }, rest));
+      if (first === "crate") {
+        const named2 = rest[0] === void 0 || this.tree.child(posix15.dirname(place.root), rest[0]) !== void 0 ? void 0 : this.crateNamed(place.crate, rest[0]);
+        if (named2?.libRoot !== void 0 && named2.libRoot !== place.root) return this.fileOf(this.tree.walk({ file: named2.libRoot, root: named2.libRoot }, rest.slice(1), this.reexported));
+        return this.fileOf(this.tree.walk({ file: place.root, root: place.root }, rest, this.reexported));
+      }
+      if (first === "self") return this.fileOf(this.tree.walk({ file: from, root: place.root }, rest, this.reexported));
+      const declaring = this.declaringFile(from);
+      if (declaring !== void 0) return this.usedPath(declaring, ["self", ...rest]);
       let up = 1;
       let remainder = rest;
       while (remainder[0] === "super") {
@@ -12812,16 +13422,18 @@ var PathResolver = class {
       }
       if (up > place.path.length) return { kind: "not-found" };
       const parent = this.tree.walk({ file: place.root, root: place.root }, place.path.slice(0, place.path.length - up));
-      return this.fileOf(this.tree.walk({ file: parent.file, root: place.root }, remainder));
+      return this.fileOf(this.tree.walk({ file: parent.file, root: place.root }, remainder, this.reexported));
     }
     if (builtinCrates2.has(first)) return { kind: "builtin" };
     const crate = this.crateNamed(place?.crate, first);
     if (crate === void 0) return { kind: "external", packageName: first };
     if (crate.libRoot === void 0) return { kind: "not-found" };
-    return this.fileOf(this.tree.walk({ file: crate.libRoot, root: crate.libRoot }, rest));
+    return this.fileOf(this.tree.walk({ file: crate.libRoot, root: crate.libRoot }, rest, this.reexported));
   }
+  /** The file a walk ended in. A walk that left the tree through a re-export names nothing in it. */
   fileOf(walked) {
-    return { kind: "file", path: walked.file };
+    if (walked.outside === true) return { kind: "builtin" };
+    return { kind: "file", path: walked.file, ...walked.via === void 0 ? {} : { via: walked.via } };
   }
   /** The crate a name in a `use` path stands for: the importing crate's own library, one of its path dependencies, or a crate of the tree by that name. */
   crateNamed(importer, name12) {
@@ -12839,7 +13451,7 @@ var adapter8 = {
   tier: 2,
   support: "supported",
   lexerProfile: "rust",
-  grammars: [{ spec: { id: "rust", packageName: "tree-sitter-rust", file: "tree-sitter-rust.wasm" }, extensions: [".rs"] }],
+  grammars: [{ spec: { id: "rust", packageName: "tree-sitter-rust", file: "tree-sitter-rust.wasm", repairs: rustRepairs }, extensions: [".rs"] }],
   extractorVersion: extractorVersion4,
   extract: extractFacts8,
   isTestPath: (path) => /(^|\/)tests\//.test(path) || /(^|\/)tests?\.rs$/.test(path) || /_tests?\.rs$/.test(path),
@@ -12847,7 +13459,7 @@ var adapter8 = {
   dependencies: {
     model: "import-based",
     isConfigPath: isConfigPath3,
-    createResolver: (paths, configs) => new PathResolver(paths, configs)
+    createResolver: (paths, configs, facts) => new PathResolver(paths, configs, facts)
   },
   boundaries: rustBoundaries,
   census: { extract: extractFileCensus8 },
@@ -12911,7 +13523,8 @@ var TEST_FOLDER_NAMES = [
   "testfixture",
   "testfixtures",
   "integrationtesting",
-  "e2e"
+  "e2e",
+  "testdata"
 ];
 var SUPPORT_FOLDER = new RegExp(`(^|/)(${TEST_FOLDER_NAMES.join("|")})/`, "i");
 var isTestSupportFolder = (path) => SUPPORT_FOLDER.test(path.slice(0, path.lastIndexOf("/") + 1));
@@ -12959,7 +13572,7 @@ function exceeded(values, guidelines) {
     return value !== void 0 && value > limitOf(guidelines, metric);
   });
 }
-function labelsFor(values, guidelines, bumpyRoad = false) {
+function labelsFor(values, guidelines, bumpyRoad) {
   const labels = [];
   for (const metric of gatedMetrics) {
     const value = values[metric];
@@ -13214,7 +13827,7 @@ var recorded6 = { units: 68, found: 65, exact: 65, blocks: 73, spurious: 0 };
 var recorded7 = { units: 70, found: 70, exact: 70, blocks: 71, spurious: 0 };
 
 // packages/lexical/src/agreement-rates/rust.ts
-var recorded8 = { units: 61, found: 59, exact: 56, blocks: 56, spurious: 0 };
+var recorded8 = { units: 79, found: 77, exact: 74, blocks: 74, spurious: 0 };
 
 // packages/lexical/src/agreement-rates.ts
 var recordedAgreement = { ...recorded_agreement_exports };
@@ -13861,7 +14474,11 @@ function analyseSource(path, content, options = {}) {
   const selection = selectProfile(path, options.mappings);
   const profile = selection?.profile;
   const lines2 = stripSource(content, profile);
-  const file = { ...indentationMetrics(lines2), ...lengthMetrics(lines2) };
+  const ranges = options.testRanges ?? [];
+  const inTests = (index) => ranges.some((range) => range.startLine <= index + 1 && index + 1 <= range.endLine);
+  const own = ranges.length === 0 ? lines2 : lines2.filter((_, index) => !inTests(index));
+  const file = { ...indentationMetrics(own), ...lengthMetrics(own), lineCount: lines2.length };
+  if (ranges.length > 0) file.testCodeLines = lengthMetrics(lines2.filter((_, index) => inTests(index))).codeLines;
   const skipped = [];
   const blocks = [];
   if (profile === void 0) {
@@ -13870,7 +14487,7 @@ function analyseSource(path, content, options = {}) {
     skipped.push(`keywordComplexity: ${reason}`);
     skipped.push(`function blocks: ${reason}`);
   } else {
-    file.keywordComplexity = keywordComplexity(lines2, profile);
+    file.keywordComplexity = keywordComplexity(own, profile);
     for (const block of findFunctionBlocks(lines2, profile)) {
       const metrics = blockMetrics(lines2, block, profile, {
         indentUnit: file.indentUnit,
@@ -18009,8 +18626,9 @@ function repaired(parser, original, source, repairs) {
   if (best !== original) original.delete();
   return best;
 }
+var sharedFactsVersion = 2;
 function cacheKeyOf(adapter9, grammar) {
-  return `${grammar.version}.${adapter9.id}-extract-${adapter9.extractorVersion}`;
+  return `${grammar.version}.${adapter9.id}-extract-${adapter9.extractorVersion}.shared-${sharedFactsVersion}`;
 }
 var GrammarSet = class {
   options;
@@ -18058,10 +18676,33 @@ function nestsDeeperThan(root, limit) {
     cursor.delete();
   }
 }
+function firstSyntaxError(root) {
+  if (!root.hasError) return void 0;
+  let node = root;
+  for (; ; ) {
+    if (node.isMissing || node.type === "ERROR") break;
+    const child = node.children.find((candidate) => candidate.hasError || candidate.isMissing);
+    if (child === void 0) break;
+    node = child;
+  }
+  const at2 = { line: node.startPosition.row + 1, column: node.startPosition.column + 1 };
+  if (node.type === "ERROR") return { ...at2, kind: "unexpected", text: node.text.split(/\r?\n/, 1)[0].slice(0, 40) };
+  return { ...at2, kind: "missing", text: node.type };
+}
+function syntaxErrorAt(path, facts) {
+  return { path, ...facts.syntaxError ?? { line: 1, column: 1, kind: "unexpected", text: "" } };
+}
 function parseWith(adapter9, grammar, source, options = {}) {
   const tree = grammar.parse(source);
   try {
-    if (!nestsDeeperThan(tree.rootNode, MAX_TREE_DEPTH)) return adapter9.extract(tree.rootNode, options);
+    if (!nestsDeeperThan(tree.rootNode, MAX_TREE_DEPTH)) {
+      const facts = adapter9.extract(tree.rootNode, options);
+      if (facts.hasSyntaxErrors && facts.syntaxError === void 0) {
+        const first = firstSyntaxError(tree.rootNode);
+        if (first !== void 0) facts.syntaxError = first;
+      }
+      return facts;
+    }
   } finally {
     tree.delete();
   }
@@ -18124,13 +18765,9 @@ async function measureTree(tree, options) {
         skippedFiles.excluded++;
         continue;
       }
-      const lexical = analyseSource(path, text3, {
-        agreementBar: settings.agreementBar,
-        mappings: settings.languageProfiles,
-        bumpyRoad: bumpyRoadLimits(guidelinesFor(settings, path))
-      });
       const language9 = options.layer === "lexical" ? void 0 : await grammars.forPath(path);
       let structural;
+      let testRanges;
       if (language9 !== void 0) {
         const { facts, cached: cached2 } = await factsForBlob(language9, tree.files.get(path), text3, options.cache);
         if (cached2) stats.cached++;
@@ -18139,9 +18776,17 @@ async function measureTree(tree, options) {
           units: structuralUnits(path, facts.units, settings),
           interfaces: interfaceUnits(path, facts),
           syntaxErrors: facts.hasSyntaxErrors,
+          ...facts.syntaxError === void 0 ? {} : { syntaxError: facts.syntaxError },
           tooDeep: facts.tooDeep === true
         };
+        if (!settings.isTest(path)) testRanges = facts.testRanges;
       }
+      const lexical = analyseSource(path, text3, {
+        agreementBar: settings.agreementBar,
+        mappings: settings.languageProfiles,
+        bumpyRoad: bumpyRoadLimits(guidelinesFor(settings, path)),
+        ...testRanges === void 0 ? {} : { testRanges }
+      });
       files.push(fileRecord(path, text3, lexical, structural, options));
     }
   }
@@ -18163,7 +18808,8 @@ function interfaceUnits(path, facts) {
       ...unit.hidden === true ? { hidden: true } : {},
       nodes: unit.shape.nodes,
       interfaceSize: unit.shape.interfaceSize,
-      ...unit.passThrough === void 0 ? {} : { passThrough: unit.passThrough }
+      ...unit.passThrough === void 0 ? {} : { passThrough: unit.passThrough },
+      ...unit.override === true ? { required: "interface" } : unit.entryPoint === true ? { required: "entry-point" } : {}
     });
   }
   return { units, module: { nodes: facts.nodes, exports: facts.exports.length + facts.reexports.length } };
@@ -18241,11 +18887,13 @@ function fileRecord(path, text3, lexical, structural, options) {
     profile: lexical.profile,
     unverified: lexical.unverified,
     lines: { lineCount: lexical.file.lineCount, nonBlankLines: lexical.file.nonBlankLines, codeLines: lexical.file.codeLines },
+    testCodeLines: lexical.file.testCodeLines ?? 0,
     indentationComplexity: lexical.file.indentationComplexity,
     ...lexical.file.keywordComplexity === void 0 ? {} : { keywordComplexity: lexical.file.keywordComplexity },
     units,
     ...structural === void 0 ? {} : { interfaces: structural.interfaces },
     hasSyntaxErrors: structural?.syntaxErrors ?? false,
+    ...structural?.syntaxError === void 0 ? {} : { syntaxError: structural.syntaxError },
     skipped,
     ...agreement === void 0 ? {} : { agreement },
     ...options.keepText ? { text: text3 } : {}
@@ -18374,12 +19022,18 @@ function groupByLanding(changes, landings) {
 
 // packages/complexity/src/fix-ranges.ts
 var COMMIT_LINE = /^[0-9a-f]{40}$/;
-var HUNK = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/;
+var INDEX = /^index ([0-9a-f]+)\.\.([0-9a-f]+)/;
+var NO_BLOB = /^0+$/;
+var HUNK = /^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 function parseDiffs(output) {
   const commits = /* @__PURE__ */ new Map();
   let files;
   let file;
   let added = false;
+  let oldBlob;
+  let newBlob;
+  let oldPath;
+  let inHunks = false;
   for (const line of output.split("\n")) {
     if (COMMIT_LINE.test(line)) {
       files = /* @__PURE__ */ new Map();
@@ -18388,18 +19042,42 @@ function parseDiffs(output) {
     } else if (line.startsWith("diff --git ")) {
       file = void 0;
       added = false;
+      oldBlob = void 0;
+      newBlob = void 0;
+      oldPath = void 0;
+      inHunks = false;
     } else if (line.startsWith("new file mode")) {
       added = true;
-    } else if (line.startsWith("+++ ")) {
+    } else if (line.startsWith("rename from ")) {
+      oldPath = line.slice("rename from ".length);
+    } else if (line.startsWith("rename to ")) {
+      const target2 = line.slice("rename to ".length);
+      if (files !== void 0 && oldPath !== void 0 && !oldPath.startsWith('"') && !target2.startsWith('"')) {
+        file = { added: false, oldPath, ranges: [] };
+        files.set(target2, file);
+      }
+    } else if (INDEX.test(line)) {
+      const [, old, next] = INDEX.exec(line);
+      if (!NO_BLOB.test(old)) oldBlob = old;
+      if (!NO_BLOB.test(next)) newBlob = next;
+    } else if (!inHunks && line.startsWith("--- ")) {
+      const source = line.slice(4).replace(/\t$/, "");
+      if (source.startsWith("a/")) oldPath = source.slice(2);
+    } else if (!inHunks && line.startsWith("+++ ")) {
       const target2 = line.slice(4).replace(/\t$/, "");
       file = void 0;
       if (files !== void 0 && target2.startsWith("b/")) {
-        file = { added, ranges: [] };
+        file = { added, ...oldBlob === void 0 ? {} : { oldBlob }, ...newBlob === void 0 ? {} : { newBlob }, ...added || oldPath === void 0 ? {} : { oldPath }, ranges: [] };
         files.set(target2.slice(2), file);
+      } else if (files !== void 0 && target2 === "/dev/null" && oldPath !== void 0) {
+        files.set(oldPath, { added: false, ...oldBlob === void 0 ? {} : { oldBlob }, oldPath, deleted: true, ranges: [] });
       }
     } else if (file !== void 0) {
       const hunk = HUNK.exec(line);
-      if (hunk !== null) file.ranges.push({ start: Number(hunk[1]), count: hunk[2] === void 0 ? 1 : Number(hunk[2]) });
+      if (hunk !== null) {
+        inHunks = true;
+        file.ranges.push({ start: Number(hunk[2]), count: hunk[3] === void 0 ? 1 : Number(hunk[3]), removed: hunk[1] === void 0 ? 1 : Number(hunk[1]) });
+      }
     }
   }
   return commits;
@@ -18505,6 +19183,16 @@ function matchUnits(before, after, threshold, cache = /* @__PURE__ */ new Map())
   for (const body2 of oldBodies.values()) matches.push({ before: body2.unit, after: void 0, moved: false, changed: true });
   return matches.sort((a, b) => compare3((a.after ?? a.before).id, (b.after ?? b.before).id));
 }
+function followUnits(earlier, earlierUnits, later, laterUnits, threshold, cache) {
+  const original = /* @__PURE__ */ new Map();
+  const moved = earlierUnits.map((unit) => {
+    const relocated = { ...unit, path: later.path, id: `${later.path}${unit.id.slice(earlier.path.length)}` };
+    original.set(relocated.id, unit);
+    return relocated;
+  });
+  const matches = matchUnits([{ ...earlier, path: later.path, units: moved }], [{ ...later, units: [...laterUnits] }], threshold, cache);
+  return matches.flatMap((match) => match.before === void 0 ? [] : [{ before: original.get(match.before.id), after: match.after }]);
+}
 function compare3(a, b) {
   return Buffer.compare(Buffer.from(a), Buffer.from(b));
 }
@@ -18519,22 +19207,12 @@ var isLowEvidence = (fixes, minRevisions) => fixes.revisions < minRevisions;
 function byFixes(minRevisions) {
   return (a, b) => b.fixCommits - a.fixCommits || Number(isLowEvidence(a, minRevisions)) - Number(isLowEvidence(b, minRevisions)) || (b.fixShare ?? 0) - (a.fixShare ?? 0) || utf8(a.id, b.id);
 }
-function followUnits(earlier, earlierUnits, later, laterUnits, threshold, cache) {
-  const original = /* @__PURE__ */ new Map();
-  const moved = earlierUnits.map((unit) => {
-    const relocated = { ...unit, path: later.path, id: `${later.path}${unit.id.slice(earlier.path.length)}` };
-    original.set(relocated.id, unit);
-    return relocated;
-  });
-  const matches = matchUnits([{ ...earlier, path: later.path, units: moved }], [{ ...later, units: [...laterUnits] }], threshold, cache);
-  return matches.flatMap((match) => match.before === void 0 ? [] : [{ before: original.get(match.before.id), after: match.after }]);
-}
 async function diffsOf(root, shas) {
   const diffs = /* @__PURE__ */ new Map();
   for (let start2 = 0; start2 < shas.length; start2 += DIFF_BATCH) {
     const input = `${shas.slice(start2, start2 + DIFF_BATCH).join("\n")}
 `;
-    const out2 = await runGit(root, ["-c", "core.quotePath=false", "diff-tree", "--stdin", "-p", "-U0", "-M", "--no-color", "--no-ext-diff", "--root", "-r"], { input });
+    const out2 = await runGit(root, ["-c", "core.quotePath=false", "diff-tree", "--stdin", "-p", "-U0", "-M", "--no-color", "--no-ext-diff", "--full-index", "--root", "-r"], { input });
     for (const [sha, files] of parseDiffs(out2)) diffs.set(sha, files);
   }
   return diffs;
@@ -18596,7 +19274,7 @@ async function measureFixes(root, settings, exclude, current, request) {
         const diff = diffs.get(sha)?.get(file.path);
         const added = file.status === "A" || diff?.added === true;
         if (!added && (diff === void 0 || diff.ranges.length === 0)) continue;
-        touches.push({ changeId: landing.id, sha, fileId: file.fileId, path: file.path, blob: file.blob, added, ranges: diff?.ranges ?? [] });
+        touches.push({ changeId: landing.id, sha, fileId: file.fileId, path: file.path, blob: file.blob, added, oldBlob: added ? void 0 : diff?.oldBlob, ranges: diff?.ranges ?? [] });
       }
     }
   }
@@ -18611,7 +19289,7 @@ async function measureFixes(root, settings, exclude, current, request) {
   cacheStats.cached += currentMeasure.stats.cached;
   const currentFiles = new Map(currentMeasure.files.map((file) => [file.path, file]));
   const currentUnits = new Map(currentMeasure.files.flatMap((file) => file.units).map((unit) => [unit.id, unit]));
-  const pairKey = (path, blob) => `${path}\0${blob}`;
+  const pairKey2 = (path, blob) => `${path}\0${blob}`;
   const blobsByPath = /* @__PURE__ */ new Map();
   const touchesByPair = /* @__PURE__ */ new Map();
   const latestPair = /* @__PURE__ */ new Map();
@@ -18620,15 +19298,44 @@ async function measureFixes(root, settings, exclude, current, request) {
     const blobs = blobsByPath.get(touch.path) ?? [];
     if (!blobs.includes(touch.blob)) blobs.push(touch.blob);
     blobsByPath.set(touch.path, blobs);
-    const key = pairKey(touch.path, touch.blob);
+    const key = pairKey2(touch.path, touch.blob);
     const pairTouches = touchesByPair.get(key);
     if (pairTouches === void 0) touchesByPair.set(key, [touch]);
     else pairTouches.push(touch);
     if (!latestPair.has(touch.fileId)) latestPair.set(touch.fileId, key);
     fileOfPair.set(key, touch.fileId);
   }
-  const mapping = /* @__PURE__ */ new Map();
   const bodyCache = /* @__PURE__ */ new Map();
+  const isFixLike = (touch) => (fixOf.get(touch.changeId) ?? null) !== null || reviewFixOf.has(touch.sha);
+  const parentBlobsByPath = /* @__PURE__ */ new Map();
+  for (const touch of touches) {
+    if (touch.added || touch.oldBlob === void 0 || !isFixLike(touch)) continue;
+    const blobs = parentBlobsByPath.get(touch.path) ?? [];
+    if (!blobs.includes(touch.oldBlob)) blobs.push(touch.oldBlob);
+    parentBlobsByPath.set(touch.path, blobs);
+  }
+  const parents = /* @__PURE__ */ new Map();
+  const parentLayers = Math.max(0, ...[...parentBlobsByPath.values()].map((blobs) => blobs.length));
+  for (let layer = 0; layer < parentLayers; layer++) {
+    const wanted = [...parentBlobsByPath].flatMap(([path, blobs]) => blobs[layer] === void 0 ? [] : [{ path, blob: blobs[layer] }]);
+    const texts = await readBlobs(root, wanted.map((entry) => entry.blob));
+    const tree = treeFromTexts(Object.fromEntries(wanted.flatMap((entry) => texts.has(entry.blob) ? [[entry.path, texts.get(entry.blob)]] : [])));
+    const measurement = await measureTree(tree, measureOptions);
+    cacheStats.parsed += measurement.stats.parsed;
+    cacheStats.cached += measurement.stats.cached;
+    const records = new Map(measurement.files.map((file) => [file.path, file]));
+    for (const { path, blob } of wanted) {
+      const record = records.get(path);
+      if (record !== void 0 && record.source !== null) parents.set(pairKey2(path, blob), record);
+    }
+  }
+  const createdBy = (touch, record) => {
+    const parent = touch.oldBlob === void 0 ? void 0 : parents.get(pairKey2(touch.path, touch.oldBlob));
+    if (parent === void 0) return /* @__PURE__ */ new Set();
+    const existed = new Set(followUnits(parent, parent.units, record, record.units, settings.moveSimilarity, bodyCache).flatMap((match) => match.after === void 0 ? [] : [match.after.id]));
+    return new Set(record.units.map((unit) => unit.id).filter((id) => !existed.has(id)));
+  };
+  const mapping = /* @__PURE__ */ new Map();
   const retained = /* @__PURE__ */ new Map();
   const unitTouches = [];
   const outsideTouches = [];
@@ -18646,7 +19353,7 @@ async function measureFixes(root, settings, exclude, current, request) {
     for (const { path, blob } of wanted) {
       const record = records.get(path);
       if (record === void 0) continue;
-      const key = pairKey(path, blob);
+      const key = pairKey2(path, blob);
       const pairTouches = touchesByPair.get(key) ?? [];
       if (record.source === null) {
         skipped.noAdapter += pairTouches.length;
@@ -18673,7 +19380,11 @@ async function measureFixes(root, settings, exclude, current, request) {
         }
         const fix = (fixOf.get(touch.changeId) ?? null) !== null;
         const hit = touchedUnits(record.units, touch.ranges);
-        for (const unitId2 of hit.units) unitTouches.push({ key, unitId: unitId2, changeId: touch.changeId, sha: touch.sha, fix, review: reviewFixOf.has(touch.sha) });
+        const created = isFixLike(touch) ? createdBy(touch, record) : /* @__PURE__ */ new Set();
+        for (const unitId2 of hit.units) {
+          const isNew = created.has(unitId2);
+          unitTouches.push({ key, unitId: unitId2, changeId: touch.changeId, sha: touch.sha, fix: fix && !isNew, review: !isNew && reviewFixOf.has(touch.sha) });
+        }
         if (hit.outsideUnits) outsideTouches.push({ fileId, changeId: touch.changeId, fix });
       }
     }
@@ -18779,6 +19490,13 @@ function splitRoles(rows11, include) {
 }
 
 // packages/complexity/src/interface-depth.ts
+function groupOf(row) {
+  if (row.passThrough === null) return 2;
+  return row.required === null ? 0 : 1;
+}
+function byDepthRank(a, b) {
+  return groupOf(a) - groupOf(b) || b.score - a.score || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)) || Buffer.compare(Buffer.from(a.id), Buffer.from(b.id));
+}
 var round = (value, places) => Math.round(value * 10 ** places) / 10 ** places;
 function exportedUnits(file) {
   const known = new Map((file.interfaces?.units ?? []).map((unit) => [unit.name, unit]));
@@ -18803,14 +19521,18 @@ function depthRows(file, shallow) {
   const add = (row) => {
     const { shallowCandidate, ...rest } = row;
     const depth = round(row.nodes / row.interface, 2);
-    const labels = [...row.passThrough === null ? [] : ["pass-through"], ...shallowCandidate && row.nodes / row.interface < shallow ? ["shallow"] : []];
+    const labels = [
+      ...row.passThrough === null ? [] : ["pass-through"],
+      ...row.passThrough !== null && row.required !== null ? ["required"] : [],
+      ...shallowCandidate && row.nodes / row.interface < shallow ? ["shallow"] : []
+    ];
     rows11.push({
       path: file.path,
       ...rest,
       depth,
       role: roleOfTest(file.test),
       labels,
-      score: round(row.interface / row.nodes, 4) + (row.passThrough === null ? 0 : 1)
+      score: round(row.interface / row.nodes, 4)
     });
   };
   for (const unit of file.interfaces.units) {
@@ -18827,6 +19549,7 @@ function depthRows(file, shallow) {
       nodes: unit.nodes,
       interface: unit.interfaceSize,
       passThrough: unit.passThrough ?? null,
+      required: unit.required ?? null,
       shallowCandidate: unit.parent === void 0 && isExported2
     });
   }
@@ -18842,6 +19565,7 @@ function depthRows(file, shallow) {
       nodes: module3.nodes,
       interface: module3.exports,
       passThrough: null,
+      required: null,
       shallowCandidate: true
     });
   }
@@ -18908,7 +19632,8 @@ function topLevelUnits(units) {
   });
 }
 function fileRow(file, settings) {
-  const top = topLevelUnits(file.units);
+  const units = file.test ? file.units : file.units.filter((unit) => !unit.test);
+  const top = topLevelUnits(units);
   const aggregates = {};
   for (const metric of metricIds) {
     const values = top.flatMap((unit) => unit.values[metric] === void 0 ? [] : [unit.values[metric]]);
@@ -18925,10 +19650,12 @@ function fileRow(file, settings) {
     unverified: file.unverified,
     lineCount: file.lines.lineCount,
     codeLines: file.lines.codeLines,
+    testCodeLines: file.testCodeLines,
     keywordComplexity: file.keywordComplexity ?? null,
-    functions: file.units.length,
-    aggregates: file.units.length === 0 ? null : aggregates,
-    aboveGuideline: file.units.filter((unit) => exceeded(unit.values, guidelines).length > 0).length,
+    functions: units.length,
+    testFunctions: file.units.length - units.length,
+    aggregates: units.length === 0 ? null : aggregates,
+    aboveGuideline: units.filter((unit) => exceeded(unit.values, guidelines).length > 0).length,
     interfaceDepth: meanDepth(file),
     passThroughs: passThroughCount(file)
   };
@@ -19194,7 +19921,21 @@ var ruleDescriptions = {
       "parameter of the function, a spread of one, or a literal. The function adds nothing between its caller and the callee, so the",
       "two interfaces repeat each other. A call with a computed argument, a new, or several statements is the function doing work.",
       "Remedies: let callers use the callee, or move the behaviour that justified the layer into it. A function that exists to satisfy a",
-      "dependency boundary, or to give a stable name to a changing callee, may be right to keep. Judge it before removing it."
+      "dependency boundary, or to give a stable name to a changing callee, may be right to keep. Judge it before removing it.",
+      "A pass-through that something else requires is also labelled required, and `depth` ranks it after the ones that could be removed. See `explain required`."
+    ].join("\n")
+  },
+  required: {
+    summary: "Required: a pass-through whose name and signature something outside it fixes, so it cannot simply be removed",
+    explanation: [
+      "`depth` sets `required` on a unit, and labels a pass-through `required`, when the language shows that something outside the unit fixes it:",
+      "interface, a method that implements or overrides one its type inherits (a method of a Rust trait impl, a Java method annotated @Override,",
+      "a C#, C++, Kotlin or TypeScript method marked override, a Python method decorated @override); entry-point, a function a framework calls",
+      "by an attribute (a Rust #[proc_macro], #[proc_macro_attribute] or #[proc_macro_derive] function). A method that implements an interface",
+      "without such a marker (Go, a C# or TypeScript interface implementation) is not recognised, and stays an ordinary pass-through.",
+      "`depth` ranks removable pass-throughs first, then the required ones, and summary.passThroughByKind counts each kind. A required",
+      "pass-through is part of a contract: the question is whether the type needs to implement it, or whether the callee could, not whether",
+      "the layer can be inlined."
     ].join("\n")
   },
   fixes: {
@@ -19210,7 +19951,7 @@ var ruleDescriptions = {
       "a revert is not a fix. Each row lists the changes that matched, with the pattern, newest first, up to --evidence.",
       "A fix made on a branch before it merged was caught in review and is not a regression: reviewFixes counts those commits that changed the function, with reviewEvidence, and they are never in fixCommits.",
       "fixCommits is the landed changes that were fixes, unitRevisions is every landed change that touched the function, and fixShare is the first over the second.",
-      "Rows are sorted by fixCommits, then functions with at least fixes.minRevisions revisions before those labelled low evidence, then fixShare. A function in a commit that created its file counts as one revision and never as a fix.",
+      "Rows are sorted by fixCommits, then functions with at least fixes.minRevisions revisions before those labelled low evidence, then fixShare. A function in a commit that created its file, or a function a fix created, counts as one revision and never as a fix.",
       "A fix that changed only lines outside every function counts against the file, not a function, and is listed per file in the output.",
       "Read the header first. fixConvention says whether the landed changes' titles use a recognisable fix form (Conventional Commits types, a leading Fix or Fixes, issue references), with the form counts and the share of fixes beside it: when it says they",
       "probably do not, the counts are of the commits the patterns happened to match. The header also says how many commits were analysed and how many",
@@ -19221,6 +19962,55 @@ var ruleDescriptions = {
     ].join("\n")
   }
 };
+
+// packages/parse/src/non-production-folders.ts
+var CONVENTIONS = [
+  /(?:^|\/)(?:examples|samples|sample|playground|benches|integration)\//i,
+  /(?:^|\/)src\/it\//i,
+  /(?:^|\/)src\/[^/]+\/resources\//i
+];
+function nonProductionFolderOf(path) {
+  const directory = path.slice(0, path.lastIndexOf("/") + 1);
+  let end;
+  for (const convention of CONVENTIONS) {
+    const match = convention.exec(directory);
+    if (match === null) continue;
+    const matchEnd = match.index + match[0].length - 1;
+    if (end === void 0 || matchEnd < end) end = matchEnd;
+  }
+  return end === void 0 ? void 0 : directory.slice(0, end);
+}
+function nonProductionFolders(productionPaths) {
+  const counts = /* @__PURE__ */ new Map();
+  let total = 0;
+  for (const path of productionPaths) {
+    total++;
+    const folder = nonProductionFolderOf(path);
+    if (folder !== void 0) counts.set(folder, (counts.get(folder) ?? 0) + 1);
+  }
+  if (counts.size === 0) return void 0;
+  const folders = [...counts].map(([folder, files]) => ({ folder, files, share: Math.round(files / total * 1e4) / 1e4 })).sort((a, b) => b.files - a.files || (a.folder < b.folder ? -1 : a.folder > b.folder ? 1 : 0));
+  return { productionFiles: total, folders };
+}
+function withNonProductionFolders(output, productionPaths) {
+  const found = nonProductionFolders(productionPaths);
+  if (found === void 0) return output;
+  return {
+    ...output,
+    extra: { ...output.extra, possibleNonProductionFolders: found },
+    notices: [...output.notices ?? [], nonProductionFoldersNotice(found)]
+  };
+}
+var NAMED_IN_NOTICE = 5;
+function nonProductionFoldersNotice(found) {
+  const share = (value) => `${(value * 100).toFixed(1)}%`;
+  const named2 = found.folders.slice(0, NAMED_IN_NOTICE).map((entry) => `${entry.folder}/ ${entry.files} (${share(entry.share)})`);
+  const rest = found.folders.slice(NAMED_IN_NOTICE);
+  const restFiles = rest.reduce((sum, entry) => sum + entry.files, 0);
+  const more = rest.length === 0 ? "" : ` and ${rest.length} more ${rest.length === 1 ? "folder" : "folders"} with ${restFiles} ${restFiles === 1 ? "file" : "files"}`;
+  const totalFiles = found.folders.reduce((sum, entry) => sum + entry.files, 0);
+  return `${totalFiles} of ${found.productionFiles} production files (${share(totalFiles / found.productionFiles)}) are in folders that often hold examples, samples, test inputs or benchmarks: ${named2.join(", ")}${more}; they are counted as production code, and listing a folder in exclude (such as ${found.folders[0].folder}/**) leaves it out, and possibleNonProductionFolders in the JSON lists every folder`;
+}
 
 // packages/complexity/src/commands/analyse.ts
 var name2 = "analyse";
@@ -19277,7 +20067,7 @@ async function compute(context, paths) {
     }
   }
   const parsedFiles = measurement.files.filter((file) => file.interfaces !== void 0).length;
-  const filesWithSyntaxErrors = measurement.files.filter((file) => file.hasSyntaxErrors).map((file) => file.path);
+  const filesWithSyntaxErrors = measurement.files.filter((file) => file.hasSyntaxErrors).map((file) => syntaxErrorAt(file.path, file));
   const syntaxErrorShare = parsedFiles === 0 ? 0 : filesWithSyntaxErrors.length / parsedFiles;
   const syntaxErrorNotices = parsedFiles > 0 && syntaxErrorShare * 100 > settings.syntaxErrorPercent ? [
     `${filesWithSyntaxErrors.length} of ${parsedFiles} parsed files (${(syntaxErrorShare * 100).toFixed(1)}%) have syntax errors, above the complexity.syntaxErrorPercent guideline of ${settings.syntaxErrorPercent}%, so their units may be incomplete or missing; filesWithSyntaxErrors lists them`
@@ -19341,7 +20131,8 @@ async function compute(context, paths) {
       "labels"
     ]
   };
-  return output;
+  const productionFiles = new Set(allRows.filter((row) => row.role === "production").map((row) => row.path));
+  return withNonProductionFolders(output, productionFiles);
 }
 
 // packages/complexity/src/commands/backtest.ts
@@ -19401,7 +20192,10 @@ function folderOf(path) {
   return slash === -1 ? "" : path.slice(0, slash);
 }
 function depthOf(folder) {
-  return folder === "" ? 0 : folder.split("/").length;
+  if (folder === "") return 0;
+  let depth = 1;
+  for (let at2 = folder.indexOf("/"); at2 !== -1; at2 = folder.indexOf("/", at2 + 1)) depth++;
+  return depth;
 }
 
 // packages/graph/src/folders.ts
@@ -19513,12 +20307,29 @@ var MEASURE_SUMMARIES = {
   priorChanges: "Landed changes that touched the file in the period before the sample, as long as the period after it",
   hotspot: "Indentation complexity times prior changes"
 };
-var OUTCOMES = ["changes", "linesChurned", "linesPerChange", "fixShare"];
+var FUNCTION_MEASURES = ["codeLines", "cyclomatic", "cognitive", "nesting", "parameters", "priorChanges"];
+var FUNCTION_MEASURE_SUMMARIES = {
+  codeLines: "Lines of code of the function, blank and comment lines excluded, a nested function's lines included",
+  cyclomatic: "Cyclomatic complexity of the function",
+  cognitive: "Cognitive complexity of the function",
+  nesting: "Deepest nesting of control structures in the function",
+  parameters: "Declared parameters of the function",
+  priorChanges: "Landed changes that changed lines of the function in the period before the sample, as long as the period after it, the change that created it included"
+};
+var OUTCOMES = ["changes", "linesChurned", "linesPerChange", "fixShare", "fixesPerLine"];
 var OUTCOME_SUMMARIES = {
   changes: "Landed changes that touched the file, over every file",
   linesChurned: "Lines added plus deleted in the file, over every file",
   linesPerChange: "Lines added plus deleted per landed change, over the files that changed",
-  fixShare: "Share of the file's landed changes that are fixes, over the files with at least the minimum number of changes"
+  fixShare: "Share of the file's landed changes that are fixes, over the files with at least the minimum number of changes",
+  fixesPerLine: "Landed changes that are fixes and touched the file, per code line at the sample, over every file"
+};
+var FUNCTION_OUTCOME_SUMMARIES = {
+  changes: "Landed changes that changed lines of the function, over every function",
+  linesChurned: "Lines added inside the function plus the deleted lines of the hunks that touched it, over every function. A hunk that touched several functions shares its deleted lines between them equally",
+  linesPerChange: "Lines churned per landed change, over the functions that changed",
+  fixShare: "Share of the function's landed changes that are fixes, over the functions with at least the minimum number of changes",
+  fixesPerLine: "Landed changes that are fixes and changed lines of the function, per code line of the function at the sample, over every function"
 };
 function fileSamples(files, settings) {
   const samples = [];
@@ -19596,57 +20407,325 @@ function partial(x2, y2, control) {
   if (xy === null || xz === null || yz === null || Math.abs(xz) > 0.9999 || Math.abs(yz) > 0.9999) return null;
   return (xy - xz * yz) / Math.sqrt((1 - xz ** 2) * (1 - yz ** 2));
 }
-function population(outcome, files, minChanges) {
+function population(outcome, samples, minChanges) {
   if (outcome === "linesPerChange") {
-    const changed = files.filter((file) => file.changes > 0);
-    return { files: changed, values: changed.map((file) => file.linesChurned / file.changes) };
+    const changed = samples.filter((sample) => sample.changes > 0);
+    return { samples: changed, values: changed.map((sample) => sample.linesChurned / sample.changes) };
   }
   if (outcome === "fixShare") {
-    const busy = files.filter((file) => file.changes >= minChanges);
-    return { files: busy, values: busy.map((file) => file.fixes / file.changes) };
+    const busy = samples.filter((sample) => sample.changes >= minChanges);
+    return { samples: busy, values: busy.map((sample) => sample.fixes / sample.changes) };
   }
-  return { files: [...files], values: files.map((file) => file[outcome]) };
+  if (outcome === "fixesPerLine") return { samples: [...samples], values: samples.map((sample) => sample.fixes / Math.max(sample.codeLines, 1)) };
+  return { samples: [...samples], values: samples.map((sample) => sample[outcome]) };
 }
 var round32 = (value) => Math.round(value * 1e3) / 1e3;
-function correlate(periods, minFiles, minChanges) {
+var scaledRanks = (values) => ranks(values).map((rank) => (rank - 0.5) / values.length);
+function correlate(periods, measures, minSamples, minChanges) {
   const out2 = [];
   for (const outcome of OUTCOMES) {
-    const sums = new Map(MEASURES.map((measure) => [measure, { raw: 0, rawN: 0, part: 0, partN: 0, n: 0, periods: 0 }]));
+    const sums = new Map(measures.map((measure) => [measure, { raw: 0, rawN: 0, part: 0, partN: 0, n: 0, periods: 0 }]));
+    const pool = { x: new Map(measures.map((measure) => [measure, []])), y: [], control: [], changed: 0, periods: 0 };
     for (const period of periods) {
-      const { files, values } = population(outcome, period, minChanges);
-      if (files.length < minFiles || files.filter((file) => file.changes > 0).length < minFiles) continue;
+      const { samples, values } = population(outcome, period, minChanges);
+      if (samples.length > 0) {
+        pool.periods++;
+        pool.changed += samples.filter((sample) => sample.changes > 0).length;
+        pool.y.push(...scaledRanks(values));
+        pool.control.push(...scaledRanks(samples.map((sample) => sample.codeLines)));
+        for (const measure of measures) pool.x.get(measure).push(...scaledRanks(samples.map((sample) => sample[measure])));
+      }
+      if (samples.length < minSamples || samples.filter((sample) => sample.changes > 0).length < minSamples) continue;
       const y2 = ranks(values);
-      const control = ranks(files.map((file) => file.codeLines));
-      for (const measure of MEASURES) {
-        const x2 = ranks(files.map((file) => file[measure]));
+      const control = ranks(samples.map((sample) => sample.codeLines));
+      for (const measure of measures) {
+        const x2 = ranks(samples.map((sample) => sample[measure]));
         const sum = sums.get(measure);
-        sum.n += files.length;
+        sum.n += samples.length;
         sum.periods++;
         const raw = pearson(x2, y2);
         if (raw !== null) {
-          sum.raw += raw * files.length;
-          sum.rawN += files.length;
+          sum.raw += raw * samples.length;
+          sum.rawN += samples.length;
         }
         const held = measure === "codeLines" ? null : partial(x2, y2, control);
         if (held !== null) {
-          sum.part += held * files.length;
-          sum.partN += files.length;
+          sum.part += held * samples.length;
+          sum.partN += samples.length;
         }
       }
     }
-    for (const measure of MEASURES) {
+    const enough = pool.y.length >= minSamples && pool.changed >= minSamples;
+    for (const measure of measures) {
       const sum = sums.get(measure);
+      const x2 = pool.x.get(measure);
+      const pooled = enough ? pearson(x2, pool.y) : null;
+      const pooledHeld = enough && measure !== "codeLines" ? partial(x2, pool.y, pool.control) : null;
       out2.push({
         outcome,
         measure,
         correlation: sum.rawN === 0 ? null : round32(sum.raw / sum.rawN),
         partialOnCodeLines: sum.partN === 0 ? null : round32(sum.part / sum.partN),
-        fileSamples: sum.n,
-        periods: sum.periods
+        samples: sum.n,
+        periods: sum.periods,
+        pooledCorrelation: pooled === null ? null : round32(pooled),
+        pooledPartialOnCodeLines: pooledHeld === null ? null : round32(pooledHeld),
+        pooledSamples: pool.y.length,
+        pooledPeriods: pool.periods
       });
     }
   }
   return out2;
+}
+
+// packages/complexity/src/function-history.ts
+var CHUNK = 200;
+function followedUnits(file) {
+  if (file.test) return [];
+  return topLevelUnits(file.units).filter((unit) => !unit.test && unit.values.cyclomatic !== void 0);
+}
+var pairKey = (path, blob) => `${path}\0${blob}`;
+var FunctionFollower = class {
+  constructor(root, settings, line, start2, measure) {
+    this.root = root;
+    this.settings = settings;
+    this.line = line;
+    this.measure = measure;
+    this.position = start2;
+  }
+  root;
+  settings;
+  line;
+  measure;
+  /** Index on the line of the last commit followed. */
+  position;
+  state = /* @__PURE__ */ new Map();
+  /** The path a file had at the start, by its path now, for files renamed without a change and not read since. */
+  origin = /* @__PURE__ */ new Map();
+  touches = /* @__PURE__ */ new Map();
+  /** Index on the line of the commit at which each lineage that ended was last seen. */
+  ended = /* @__PURE__ */ new Map();
+  stats = { parsed: 0, cached: 0 };
+  /** The lineage of a function of the revision the follower has reached, or undefined when the follower lost track of it. */
+  lineageOf(path, unitId2) {
+    const tracked = this.state.get(path);
+    if (tracked !== void 0) return tracked.lineage.get(unitId2);
+    return `${this.origin.get(path) ?? path}${unitId2.slice(path.length)}`;
+  }
+  /** Follows every commit of the line after the one reached, up to and including the one at `index`. */
+  async advanceTo(index) {
+    while (this.position < index) {
+      const first = this.position + 1;
+      const last = Math.min(index, this.position + CHUNK);
+      await this.follow(first, last);
+      this.position = last;
+    }
+  }
+  analysable(path) {
+    return adapterForPath(path) !== void 0 && !this.settings.isExcluded(path) && !this.settings.isTest(path);
+  }
+  async follow(first, last) {
+    const input = [];
+    for (let k = first; k <= last; k++) input.push(k === 0 ? this.line[k].sha : `${this.line[k].sha} ${this.line[k - 1].sha}`);
+    const out2 = await runGit(this.root, ["-c", "core.quotePath=false", "diff-tree", "--stdin", "-p", "-U0", "-M", "--no-color", "--no-ext-diff", "--full-index", "--root", "-r"], { input: `${input.join("\n")}
+` });
+    const diffs = parseDiffs(out2);
+    const commits = [];
+    for (let k = first; k <= last; k++) commits.push({ at: k, files: [...diffs.get(this.line[k].sha) ?? /* @__PURE__ */ new Map()] });
+    const known = new Set(this.state.keys());
+    const wanted = /* @__PURE__ */ new Map();
+    const want = (path, blob) => {
+      const blobs = wanted.get(path) ?? [];
+      if (!blobs.includes(blob)) blobs.push(blob);
+      wanted.set(path, blobs);
+    };
+    for (const { files } of commits) {
+      for (const [path, diff] of files) {
+        const earlier = diff.oldPath ?? path;
+        if (diff.deleted) {
+          known.delete(earlier);
+          continue;
+        }
+        if (diff.newBlob === void 0) {
+          if (known.delete(earlier)) known.add(path);
+          continue;
+        }
+        if (!diff.added && !known.has(earlier) && diff.oldBlob !== void 0 && this.analysable(earlier)) want(earlier, diff.oldBlob);
+        known.delete(earlier);
+        if (this.analysable(path)) {
+          want(path, diff.newBlob);
+          known.add(path);
+        }
+      }
+    }
+    const records = /* @__PURE__ */ new Map();
+    const layers = Math.max(0, ...[...wanted.values()].map((blobs) => blobs.length));
+    for (let layer = 0; layer < layers; layer++) {
+      const pairs = [...wanted].flatMap(([path, blobs]) => blobs[layer] === void 0 ? [] : [{ path, blob: blobs[layer] }]);
+      const texts = await readBlobs(this.root, pairs.map((pair) => pair.blob));
+      const tree = treeFromTexts(Object.fromEntries(pairs.flatMap((pair) => texts.has(pair.blob) ? [[pair.path, texts.get(pair.blob)]] : [])));
+      const measurement = await measureTree(tree, { settings: this.settings, layer: "structural", cache: this.measure.cache, keepText: true, grammars: this.measure.grammars });
+      this.stats.parsed += measurement.stats.parsed;
+      this.stats.cached += measurement.stats.cached;
+      const byPath = new Map(measurement.files.map((file) => [file.path, file]));
+      for (const pair of pairs) {
+        const record = byPath.get(pair.path);
+        if (record !== void 0) records.set(pairKey(pair.path, pair.blob), record);
+      }
+    }
+    const bodies = /* @__PURE__ */ new Map();
+    for (const { at: at2, files } of commits) for (const [path, diff] of files) this.apply(at2, path, diff, records, bodies);
+  }
+  end(tracked, at2) {
+    for (const lineage of tracked?.lineage.values() ?? []) this.ended.set(lineage, at2);
+  }
+  fromStart(path, record) {
+    const origin = this.origin.get(path) ?? path;
+    return { record, lineage: new Map(followedUnits(record).map((unit) => [unit.id, `${origin}${unit.id.slice(path.length)}`])) };
+  }
+  apply(at2, path, diff, records, bodies) {
+    const earlierPath = diff.oldPath ?? path;
+    if (diff.deleted) {
+      this.end(this.state.get(earlierPath), at2);
+      this.state.delete(earlierPath);
+      this.origin.delete(earlierPath);
+      return;
+    }
+    if (diff.newBlob === void 0) {
+      if (earlierPath === path) return;
+      const tracked = this.state.get(earlierPath);
+      this.state.delete(earlierPath);
+      if (tracked === void 0) this.origin.set(path, this.origin.get(earlierPath) ?? earlierPath);
+      else {
+        const relocate = (id) => `${path}${id.slice(earlierPath.length)}`;
+        const record = { ...tracked.record, path, units: tracked.record.units.map((unit) => ({ ...unit, path, id: relocate(unit.id) })) };
+        this.state.set(path, { record, lineage: new Map([...tracked.lineage].map(([id, lineage2]) => [relocate(id), lineage2])) });
+      }
+      this.origin.delete(earlierPath);
+      return;
+    }
+    let earlier;
+    if (!diff.added) {
+      earlier = this.state.get(earlierPath);
+      if (earlier === void 0 && diff.oldBlob !== void 0) {
+        const record = records.get(pairKey(earlierPath, diff.oldBlob));
+        if (record !== void 0) earlier = this.fromStart(earlierPath, record);
+      }
+    }
+    this.state.delete(earlierPath);
+    this.origin.delete(earlierPath);
+    this.origin.delete(path);
+    const later = records.get(pairKey(path, diff.newBlob));
+    if (later === void 0) {
+      this.end(earlier, at2);
+      return;
+    }
+    const units = followedUnits(later);
+    const lineage = /* @__PURE__ */ new Map();
+    const created = /* @__PURE__ */ new Set();
+    if (earlier !== void 0) {
+      for (const { before, after } of followUnits(earlier.record, followedUnits(earlier.record), later, units, this.settings.moveSimilarity, bodies)) {
+        const own = earlier.lineage.get(before.id);
+        if (own === void 0) continue;
+        if (after === void 0) this.ended.set(own, at2);
+        else lineage.set(after.id, own);
+      }
+    }
+    for (const unit of units) {
+      if (lineage.has(unit.id)) continue;
+      lineage.set(unit.id, `${at2}:${unit.id}`);
+      created.add(unit.id);
+    }
+    this.state.set(path, { record: later, lineage });
+    const churn = /* @__PURE__ */ new Map();
+    for (const range of diff.ranges) {
+      const hit = touchedUnits(units, [range]).units;
+      if (hit.size === 0) continue;
+      const last = range.start + range.count - 1;
+      for (const unit of units) {
+        if (!hit.has(unit.id)) continue;
+        const added = Math.max(0, Math.min(last, unit.endLine) - Math.max(range.start, unit.startLine) + 1);
+        churn.set(unit.id, (churn.get(unit.id) ?? 0) + added + (range.removed ?? 0) / hit.size);
+      }
+    }
+    for (const [unitId2, lines2] of churn) {
+      const own = lineage.get(unitId2);
+      const list2 = this.touches.get(own) ?? [];
+      list2.push({ at: at2, churn: lines2, created: created.has(unitId2) });
+      this.touches.set(own, list2);
+    }
+  }
+};
+
+// packages/complexity/src/function-backtest.ts
+async function functionSamples(root, settings, line, commits, priorStarts, counted, measure) {
+  const index = new Map(line.map((commit, i2) => [commit.sha, i2]));
+  const at2 = commits.map((commit) => index.get(commit.sha));
+  const startOf = priorStarts.map((time, i2) => Math.min(at2[i2], line.findLastIndex((commit) => commit.date <= time)));
+  const follower = new FunctionFollower(root, settings, line, Math.min(...startOf), measure);
+  const stats = { parsed: 0, cached: 0 };
+  const atSample = [];
+  const periods = [];
+  for (let i2 = 0; i2 + 1 < commits.length; i2++) {
+    await follower.advanceTo(at2[i2]);
+    const { files, stats: own } = await measureTree(await treeFromRef(root, commits[i2].sha), { settings, layer: "structural", ...measure });
+    stats.parsed += own.parsed;
+    stats.cached += own.cached;
+    const rows11 = [];
+    let notFollowed = 0;
+    let withFunctions = 0;
+    for (const file of productionCode(files, settings)) {
+      const units = followedUnits(file);
+      if (units.length > 0) withFunctions++;
+      for (const unit of units) {
+        const lineage = follower.lineageOf(file.path, unit.id);
+        if (lineage === void 0) {
+          notFollowed++;
+          continue;
+        }
+        rows11.push({
+          lineage,
+          sample: {
+            path: file.path,
+            id: unit.id,
+            codeLines: unit.values.length ?? unit.endLine - unit.startLine + 1,
+            cyclomatic: unit.values.cyclomatic ?? 0,
+            cognitive: unit.values.cognitive ?? 0,
+            nesting: unit.values.nesting ?? 0,
+            parameters: unit.values.parameters ?? 0,
+            priorChanges: 0,
+            changes: 0,
+            linesChurned: 0,
+            fixes: 0
+          }
+        });
+      }
+    }
+    atSample.push(rows11);
+    periods.push({ files: withFunctions, functions: rows11.length, ended: 0, notFollowed });
+  }
+  await follower.advanceTo(at2.at(-1));
+  stats.parsed += follower.stats.parsed;
+  stats.cached += follower.stats.cached;
+  for (let i2 = 0; i2 < atSample.length; i2++) {
+    const from = at2[i2];
+    const to = at2[i2 + 1];
+    for (const { sample, lineage } of atSample[i2]) {
+      for (const touch of follower.touches.get(lineage) ?? []) {
+        const landing = counted.get(line[touch.at].sha);
+        if (landing === void 0) continue;
+        if (touch.at > startOf[i2] && touch.at <= from) sample.priorChanges++;
+        else if (touch.at > from && touch.at <= to) {
+          sample.changes++;
+          sample.linesChurned += touch.churn;
+          if (landing.fix && !touch.created) sample.fixes++;
+        }
+      }
+      const ended = follower.ended.get(lineage);
+      if (ended !== void 0 && ended > from && ended <= to) periods[i2].ended++;
+    }
+  }
+  return { samples: atSample.map((rows11) => rows11.map((row) => row.sample)), periods, stats };
 }
 
 // packages/complexity/src/commands/backtest.ts
@@ -19655,15 +20734,29 @@ var DEFAULT_SAMPLES = 7;
 var MAX_SAMPLES = 60;
 var DEFAULT_MONTHS = 36;
 var MIN_FILES = 20;
-var LIMITS = [
-  "A correlation says how well a measure orders the files by what followed. It does not say the measure caused it, and it is not a threshold for any measure.",
-  "A larger file is touched by more changes because there is more of it. The partial correlation holds code lines fixed, and is the figure that says whether a measure adds anything to size.",
-  "The unit is a file. Whether a function's complexity predicts changes to that function is not measured.",
-  "Changes are counted for the files that had a measured function at the sample. A file added after the sample, or read by the lexical layer alone, is not in the period.",
+var UNITS = ["file", "function"];
+var COMMON_LIMITS = [
   "A change with more files than `history.maxChangesetSize` is left out, as are commits made through the suite's skills.",
   "A fix is a landed change whose text matches `history.fixPatterns`. Some matches are not defects, and a repository that does not name its fixes gives no fix share.",
+  "The pooled figures rank each sample within its own period and then take one correlation over every period, so a period with too few samples to count on its own still adds to them. Samples of the same file or function in several periods are not independent, so the pooled sample size overstates the evidence.",
   "Every sample is read with the config of the checkout and the parsers of this version, not those of the time."
 ];
+var FILE_LIMITS = [
+  "A correlation says how well a measure orders the files by what followed. It does not say the measure caused it, and it is not a threshold for any measure.",
+  "A larger file is touched by more changes because there is more of it. The partial correlation holds code lines fixed, and is the figure that says whether a measure adds anything to size.",
+  "The unit is a file. `--unit function` measures functions instead.",
+  "Changes are counted for the files that had a measured function at the sample. A file added after the sample, or read by the lexical layer alone, is not in the period.",
+  ...COMMON_LIMITS
+];
+var FUNCTION_LIMITS = [
+  "A correlation says how well a measure orders the functions by what followed. It does not say the measure caused it, and it is not a threshold for any measure.",
+  "A larger function is touched by more changes because there is more of it. The partial correlation holds the function's code lines fixed, and is the figure that says whether a measure adds anything to size.",
+  "A landed change counts for a function when its diff against the commit before it on the first-parent line changed a line of the function, so an edit a branch made and undid before it merged is not counted.",
+  "A change that deletes a function, or changes it past recognition, is not counted for it, and the function is not followed after it. `ended` in each period counts such functions.",
+  "Changes are counted for the top-level production functions the structural layer measured at the sample. A nested function counts in the function that holds it, and a function added after the sample is not in the period.",
+  ...COMMON_LIMITS
+];
+var MATCHING = "A function is followed from each revision of its file to the next on the first-parent line, as `complexity fixes` follows it: by its identity (path and qualified name), then by body similarity of at least complexity.moveSimilarity, and through the file renames git detects. A function created by a change is not counted as fixed by it.";
 function wholeNumber(context, option, fallback, least, most) {
   const value = context.values[option];
   if (value === void 0) return fallback;
@@ -19672,18 +20765,41 @@ function wholeNumber(context, option, fallback, least, most) {
   }
   return Number(value);
 }
+function unitOf(context) {
+  const value = context.values.unit;
+  if (value === void 0) return "file";
+  if (typeof value !== "string" || !UNITS.includes(value)) throw usageError(`--unit must be one of ${UNITS.join(", ")}`);
+  return value;
+}
+function rowsFor(rows11, unit) {
+  const key = unit === "file" ? "fileSamples" : "functionSamples";
+  return rows11.map(({ samples, ...rest }) => ({
+    outcome: rest.outcome,
+    measure: rest.measure,
+    correlation: rest.correlation,
+    partialOnCodeLines: rest.partialOnCodeLines,
+    [key]: samples,
+    periods: rest.periods,
+    pooledCorrelation: rest.pooledCorrelation,
+    pooledPartialOnCodeLines: rest.pooledPartialOnCodeLines,
+    pooledSamples: rest.pooledSamples,
+    pooledPeriods: rest.pooledPeriods
+  }));
+}
 var command2 = {
-  summary: "Whether a file's size and complexity at past revisions order the files by the changes, lines churned and fixes of the period that followed, with code lines held fixed",
+  summary: "Whether a file's or a function's size and complexity at past revisions order the files or functions by the changes, lines churned and fixes of the period that followed, with code lines held fixed",
   hidden: true,
-  options: { samples: { type: "string" }, months: { type: "string" } },
+  options: { samples: { type: "string" }, months: { type: "string" }, unit: { type: "string" } },
   optionHelp: {
     samples: `how many revisions to sample, 3 to ${MAX_SAMPLES}; each one but the last starts a period that ends at the next (default ${DEFAULT_SAMPLES})`,
-    months: `how many months before HEAD's commit date the samples span (default ${DEFAULT_MONTHS})`
+    months: `how many months before HEAD's commit date the samples span; more months give longer periods and more changes per period (default ${DEFAULT_MONTHS})`,
+    unit: "what each sample is: file, or function, which follows each production function through the history (default file)"
   },
   async run(context) {
     if (context.positionals.length > 0) throw usageError("backtest takes no arguments");
     const wanted = wholeNumber(context, "samples", DEFAULT_SAMPLES, 3, MAX_SAMPLES);
     const months = wholeNumber(context, "months", DEFAULT_MONTHS, 1, 600);
+    const unit = unitOf(context);
     const settings = readSettings(context.config);
     const { root, head } = context.repo;
     if ((await readShallowInfo(root)).isShallow) throw usageError("history is shallow, so the periods after each sample cannot be measured");
@@ -19696,6 +20812,45 @@ var command2 = {
     const groups = groupByLanding(changes.filter((change) => !change.oversized), await readLandings(root, history.view.headSha));
     const cache = await ParseCache.forRepository(root);
     const grammars = new GrammarSet();
+    const minChanges = settings.fixes.minRevisions;
+    const periodOf = (i2) => {
+      const from = commits[i2];
+      const to = commits[i2 + 1];
+      return {
+        from: labels[i2],
+        to: labels[i2 + 1],
+        revision: from.sha,
+        landedChanges: groups.filter(({ landing }) => landing.time > from.date && landing.time <= to.date).length,
+        oversizedSkipped: changes.filter((change) => change.oversized && change.committerDate > from.date && change.committerDate <= to.date).length
+      };
+    };
+    const inputs = { samples: wanted, months, unit, revisions: commits.map((commit) => commit.sha) };
+    const extra = { evidence: { grade: history.evidence.grade, logicalChangesInWindow: history.evidence.logicalChangesInWindow, usableHistoryMonths: history.evidence.usableHistoryMonths } };
+    if (unit === "function") {
+      const counted = new Map(groups.map(({ landing }) => [landing.id, { fix: findFix(settings.fix, landing.id, [landing.text]) !== null }]));
+      const priorStarts = commits.slice(0, -1).map((from, i2) => from.date - (commits[i2 + 1].date - from.date));
+      const followed = await functionSamples(root, settings, line, commits, priorStarts, counted, { cache, grammars });
+      return withNonProductionFolders(
+        {
+          inputs,
+          extra,
+          results: {
+            periods: followed.periods.map((period, i2) => {
+              const { from, to, revision, landedChanges, oversizedSkipped } = periodOf(i2);
+              return { from, to, revision, files: period.files, functions: period.functions, ended: period.ended, notFollowed: period.notFollowed, landedChanges, oversizedSkipped };
+            }),
+            matching: MATCHING,
+            minFunctions: MIN_FILES,
+            minChanges,
+            measures: FUNCTION_MEASURE_SUMMARIES,
+            outcomes: FUNCTION_OUTCOME_SUMMARIES,
+            correlations: rowsFor(correlate(followed.samples, FUNCTION_MEASURES, MIN_FILES, minChanges), unit),
+            limits: FUNCTION_LIMITS
+          }
+        },
+        [...new Set((followed.samples.at(-1) ?? []).map((row) => row.path))]
+      );
+    }
     const identityAt = /* @__PURE__ */ new Map();
     let seen = 0;
     const periods = [];
@@ -19708,11 +20863,9 @@ var command2 = {
       const rows11 = fileSamples(files, settings);
       const byIdentity = new Map(rows11.map((row) => [identityAt.get(row.path) ?? row.path, row]));
       const before = from.date - (to.date - from.date);
-      let landed = 0;
       for (const { landing, changes: inLanding } of groups) {
         const after = landing.time > from.date && landing.time <= to.date;
         if (!after && !(landing.time > before && landing.time <= from.date)) continue;
-        if (after) landed++;
         const churn = /* @__PURE__ */ new Map();
         for (const change of inLanding) {
           for (const file of change.files) {
@@ -19733,29 +20886,25 @@ var command2 = {
       }
       for (const row of rows11) row.hotspot = row.indentation * row.priorChanges;
       samples.push(rows11);
-      periods.push({
-        from: labels[i2],
-        to: labels[i2 + 1],
-        revision: from.sha,
-        files: rows11.length,
-        landedChanges: landed,
-        oversizedSkipped: changes.filter((change) => change.oversized && change.committerDate > from.date && change.committerDate <= to.date).length
-      });
+      const { from: fromLabel, to: toLabel, revision, landedChanges, oversizedSkipped } = periodOf(i2);
+      periods.push({ from: fromLabel, to: toLabel, revision, files: rows11.length, landedChanges, oversizedSkipped });
     }
-    const minChanges = settings.fixes.minRevisions;
-    return {
-      inputs: { samples: wanted, months, revisions: commits.map((commit) => commit.sha) },
-      extra: { evidence: { grade: history.evidence.grade, logicalChangesInWindow: history.evidence.logicalChangesInWindow, usableHistoryMonths: history.evidence.usableHistoryMonths } },
-      results: {
-        periods,
-        minFiles: MIN_FILES,
-        minChanges,
-        measures: MEASURE_SUMMARIES,
-        outcomes: OUTCOME_SUMMARIES,
-        correlations: correlate(samples, MIN_FILES, minChanges),
-        limits: LIMITS
-      }
-    };
+    return withNonProductionFolders(
+      {
+        inputs,
+        extra,
+        results: {
+          periods,
+          minFiles: MIN_FILES,
+          minChanges,
+          measures: MEASURE_SUMMARIES,
+          outcomes: OUTCOME_SUMMARIES,
+          correlations: rowsFor(correlate(samples, MEASURES, MIN_FILES, minChanges), unit),
+          limits: FILE_LIMITS
+        }
+      },
+      (samples.at(-1) ?? []).map((row) => row.path)
+    );
   }
 };
 
@@ -19905,7 +21054,7 @@ var command4 = {
     const paths = normalisePaths(context.positionals);
     const inPaths = pathSelector(paths);
     const files = measurement.files.filter((file) => inPaths(file.path));
-    const all = files.flatMap((file) => depthRows(file, settings.shallowDepth)).sort((a, b) => b.score - a.score || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
+    const all = files.flatMap((file) => depthRows(file, settings.shallowDepth)).sort(byDepthRank);
     const { listed: rows11, tests } = splitRoles(all, wantsTests(context));
     const summary = {
       files: files.filter((file) => file.interfaces !== void 0).length,
@@ -19913,6 +21062,12 @@ var command4 = {
       rows: rows11.length,
       shallow: rows11.filter((row) => row.labels.includes("shallow")).length,
       passThrough: rows11.filter((row) => row.passThrough !== null).length,
+      /** The listed pass-throughs by what keeps them: nothing, an interface or base type, or a framework that calls them. */
+      passThroughByKind: {
+        removable: rows11.filter((row) => row.passThrough !== null && row.required === null).length,
+        interface: rows11.filter((row) => row.passThrough !== null && row.required === "interface").length,
+        entryPoint: rows11.filter((row) => row.passThrough !== null && row.required === "entry-point").length
+      },
       /** Pass-through functions with no row because the language does not export them. */
       passThroughNotExported: files.reduce((sum, file) => sum + passThroughCount(file), 0) - all.filter((row) => row.passThrough !== null && row.kind !== "module").length
     };
@@ -19920,7 +21075,8 @@ var command4 = {
       inputs: { tree: current.kind, paths, shallow: settings.shallowDepth, includeTests: wantsTests(context) },
       extra: { summary, ...tests === null ? {} : { tests }, skippedFiles: measurement.skippedFiles },
       results: rows11,
-      columns: ["path", "unit", "kind", "role", "exported", "nodes", "interface", "depth", "passThrough", "labels"],
+      presorted: true,
+      columns: ["path", "unit", "kind", "role", "exported", "nodes", "interface", "depth", "passThrough", "required", "labels"],
       notices: tests === null || tests.count === 0 ? [] : [`${tests.count} test rows are not listed (--include-tests lists them with the production code, and the JSON has the first ${tests.listed} in \`tests\`)`]
     };
     if (!isPartial(context) && current.kind === "head") await storeReport(context, name5, output);
@@ -19990,7 +21146,7 @@ var command5 = {
         after: pick(after.values, metricIds),
         delta: before === void 0 ? null : delta(before.values, after.values),
         score: (after.values.cognitive ?? 0) - (before?.values.cognitive ?? 0),
-        labels: labelsFor(after.values, guidelines)
+        labels: labelsFor(after.values, guidelines, after.bumpyRoad === true)
       });
     }
     return {
@@ -20220,7 +21376,7 @@ async function breakdown(context, current, text3, path, wanted) {
   }
   const source = text3.split("\n");
   const rows11 = unit.increments.filter((increment) => increment.switchMode === void 0 || increment.switchMode === settings.cyclomaticSwitch).map((increment, index) => ({ increment, index })).sort(
-    (a, b) => a.increment.line - b.increment.line || metricOrder[a.increment.metric] - metricOrder[b.increment.metric] || a.index - b.index
+    (a, b) => b.increment.amount - a.increment.amount || a.increment.line - b.increment.line || metricOrder[a.increment.metric] - metricOrder[b.increment.metric] || a.index - b.index
   ).map(({ increment }) => ({
     line: increment.line,
     metric: increment.metric,
@@ -20230,6 +21386,7 @@ async function breakdown(context, current, text3, path, wanted) {
     code: (source[increment.line - 1] ?? "").trim()
   }));
   const values = structuralValues(unit.metrics, settings.cyclomaticSwitch);
+  const guidelines = guidelinesFor(settings, path);
   return {
     inputs: { tree: current.kind, unit: `${path}#${wanted}` },
     extra: {
@@ -20239,11 +21396,12 @@ async function breakdown(context, current, text3, path, wanted) {
         startLine: unit.startLine,
         endLine: unit.endLine,
         metrics: values,
-        labels: labelsFor(values, guidelinesFor(settings, path)),
+        labels: labelsFor(values, guidelines, isBumpyRoad(unit.metrics, bumpyRoadLimits(guidelines))),
         cyclomaticSwitch: settings.cyclomaticSwitch
       }
     },
     results: rows11,
+    presorted: true,
     columns: ["line", "metric", "construct", "amount", "nesting", "code"]
   };
 }
@@ -20255,6 +21413,9 @@ __export(files_exports, {
   name: () => name8
 });
 var name8 = "files";
+function byMeasuredThenScore(a, b) {
+  return Number(b.functions > 0) - Number(a.functions > 0) || b.score - a.score || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path));
+}
 var command7 = {
   summary: "File-level aggregates; a full run writes the complexity.files report other plugins read",
   options: { ...layerOption, ...includeTestsOption, ...noCacheOption },
@@ -20268,7 +21429,8 @@ var command7 = {
     if (listed.length < rows11.length) {
       for (const row of rows11) if (row.role === "test") recordDropped("tests", row.path);
     }
-    return { ...all, inputs: { ...all.inputs, includeTests: wantsTests(context) }, results: listed };
+    const production = rows11.filter((row) => row.role === "production").map((row) => row.path);
+    return withNonProductionFolders({ ...all, inputs: { ...all.inputs, includeTests: wantsTests(context) }, results: [...listed].sort(byMeasuredThenScore), presorted: true }, production);
   }
 };
 async function compute2(context, layer, paths) {
@@ -21801,7 +22963,7 @@ __export(report_exports, {
 });
 
 // packages/cli-kit/src/report-command.ts
-import { mkdirSync as mkdirSync4, readFileSync as readFileSync11, writeFileSync as writeFileSync4 } from "node:fs";
+import { mkdirSync as mkdirSync4, readFileSync as readFileSync11, writeFileSync as writeFileSync5 } from "node:fs";
 import { dirname as dirname6, resolve as resolve2 } from "node:path";
 
 // packages/report/src/json.ts
@@ -25090,8 +26252,8 @@ function slotsDocument(report) {
 // packages/cli-kit/src/report-build-cache.ts
 import { createHash as createHash9, randomUUID as randomUUID4 } from "node:crypto";
 import { execFileSync as execFileSync2 } from "node:child_process";
-import { existsSync as existsSync11, mkdirSync as mkdirSync3, readdirSync as readdirSync4, readFileSync as readFileSync9, realpathSync, renameSync as renameSync3, rmSync as rmSync4, statSync as statSync3, writeFileSync as writeFileSync3 } from "node:fs";
-import { basename as basename3, dirname as dirname4, join as join13, resolve } from "node:path";
+import { existsSync as existsSync11, mkdirSync as mkdirSync3, readdirSync as readdirSync4, readFileSync as readFileSync9, realpathSync, renameSync as renameSync3, rmSync as rmSync4, statSync as statSync3, writeFileSync as writeFileSync4 } from "node:fs";
+import { basename as basename4, dirname as dirname4, join as join13, resolve } from "node:path";
 var FORMAT2 = 1;
 var OUTPUT_KEYS = ["slots", "notes", "format", "out", "no-cache"];
 var WATCHED = [".mailmap", ".code-health/identity-decisions.json", ".code-health/local/mailmap", ".code-health/local/identity-decisions.json", ".gitattributes"];
@@ -25128,7 +26290,7 @@ function canonical3(value) {
 }
 function real(path) {
   try {
-    return join13(realpathSync(dirname4(path)), basename3(path));
+    return join13(realpathSync(dirname4(path)), basename4(path));
   } catch {
     return path;
   }
@@ -25160,10 +26322,10 @@ function write(file, entry) {
   const dir = dirname4(file);
   mkdirSync3(dir, { recursive: true });
   const ignore = join13(dir, ".gitignore");
-  if (!existsSync11(ignore)) writeFileSync3(ignore, "*\n");
+  if (!existsSync11(ignore)) writeFileSync4(ignore, "*\n");
   const temporary = `${file}.${randomUUID4()}.tmp`;
   try {
-    writeFileSync3(temporary, JSON.stringify(entry));
+    writeFileSync4(temporary, JSON.stringify(entry));
     renameSync3(temporary, file);
   } catch {
     rmSync4(temporary, { force: true });
@@ -25285,7 +26447,7 @@ function reportCommand(kinds) {
         if (request.out === void 0) return { results: [], text: text3 };
         const file = resolve2(context.cwd, request.out);
         mkdirSync4(dirname6(file), { recursive: true });
-        writeFileSync4(file, text3);
+        writeFileSync5(file, text3);
         return { results: [], text: `wrote ${request.out}
 ` };
       } catch (error) {
@@ -25544,7 +26706,7 @@ var trendsReport = {
       sections,
       limits: [
         "This is a leading indicator. It shows the size and shape of the code at each sample and says nothing about whether changes cost less or more: `complexity outcome` measures that.",
-        "These are the measures the SlopCodeBench paper set against the cost of an agent's next change. Code lines had the strongest link there, the largest and mean cyclomatic complexity a weaker one, and the weighted percent above a cutoff the weakest. That was measured on small programs written by one agent, not on this repository.",
+        "None of these figures was checked against what changes cost in this repository, so the page does not say which of them matters most for the next change.",
         `More concentrated, less concentrated and no clear change are labels from a guideline: the last value differs from the first by more than ${formatNumber(TREND_TOLERANCE * 100)} percent of it. The guideline labels the change and decides nothing.`,
         "The function figures cover the functions a grammar measured, with a nested function counted in the function that holds it. A file read by the lexical layer alone adds its code lines and no function. Test code is left out.",
         "Every sample is read with the config of the checkout (excludes, test patterns, guidelines) and the parsers of this version, not those of the time.",
@@ -25743,18 +26905,21 @@ var xray = {
     const settings = readSettings(context.config);
     const forFile = { ...context, positionals: [file], values: { ...context.values, "include-tests": true } };
     const analysis = await command.run(forFile);
-    const rows11 = analysis.results.filter((row) => row.path === file);
-    if (rows11.length === 0) throw usageError(`no functions were measured in "${file}": name a source file of the current tree that a language adapter reads`);
+    const measured = analysis.results.filter((row) => row.path === file);
+    if (measured.length === 0) throw usageError(`no functions were measured in "${file}": name a source file of the current tree that a language adapter reads`);
+    const production = measured.filter((row) => row.role !== "test");
+    const rows11 = production.length === 0 ? measured : production;
+    const testsLeftOut = measured.length - rows11.length;
     const current = await currentTree(context);
     let fixes;
     let changes;
     let header2;
     let fixProblem;
     try {
-      const measured = await measureFixesFor(forFile, settings, current);
-      fixes = measured.stats.units;
-      changes = measured.stats.changes;
-      header2 = fixHeader(measured.stats, measured.request, settings);
+      const measured2 = await measureFixesFor(forFile, settings, current);
+      fixes = measured2.stats.units;
+      changes = measured2.stats.changes;
+      header2 = fixHeader(measured2.stats, measured2.request, settings);
     } catch (error) {
       if (!(error instanceof CliError)) throw error;
       fixProblem = error.message;
@@ -25788,6 +26953,7 @@ var xray = {
         caption: `Measures of ${file}`,
         facts: [
           { label: "Functions measured", value: String(data.functions.length) },
+          ...testsLeftOut === 0 ? [] : [{ label: "Test functions left out", value: String(testsLeftOut) }],
           { label: "Functions with a code smell label", value: String(above) },
           ...fixes === void 0 ? [] : [{ label: "Functions changed in the window", value: String(touched) }],
           ...commits === void 0 ? [] : [{ label: "Commits analysed", value: `${commits.analysed} of ${commits.inWindow} in the window` }]
@@ -25813,7 +26979,8 @@ var xray = {
       ],
       limits: [
         "Guidelines order and label results. They are heuristics for investigation and decide nothing.",
-        `${data.functions.length <= XRAY_ROWS ? `The table lists every function of the file` : `The table lists the ${XRAY_ROWS} most complex of the file's ${data.functions.length} functions; \`complexity analyse ${file} --with-fixes --limit all\` lists every one`}, sorted by cognitive complexity, then cyclomatic complexity, highest first. Length has no guideline: a long, linear function is often clearer than five shallow fragments.`,
+        `${data.functions.length <= XRAY_ROWS ? `The table lists every ${testsLeftOut === 0 ? "" : "production "}function of the file` : `The table lists the ${XRAY_ROWS} most complex of the file's ${data.functions.length} ${testsLeftOut === 0 ? "" : "production "}functions; \`complexity analyse ${file} --with-fixes --limit all\` lists every one`}, sorted by cognitive complexity, then cyclomatic complexity, highest first. Length has no guideline: a long, linear function is often clearer than five shallow fragments.`,
+        ...testsLeftOut === 0 ? [] : [`The ${testsLeftOut} functions of the file's inline test code are left out of the table and the judgements.`],
         "Revisions and fixes are counts of landed changes in the window that touched the function, and a fix is a count of commit messages, not of defects.",
         ...header2?.shallow === true ? ["The clone is shallow, so history before its boundary is missing."] : [],
         ...commits !== void 0 && commits.skipped > 0 ? [`${commits.skipped} of ${commits.inWindow} commits in the window were not analysed (see what was excluded).`] : [],

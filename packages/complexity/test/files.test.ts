@@ -76,6 +76,42 @@ test("sorts by file complexity and each row's score is that complexity", async (
   expect(scores).toEqual([...scores].sort((a, b) => b - a));
 });
 
+test("ranks files with a measured function before files with none, so the top row is one report xray takes", async () => {
+  const declarations = [
+    "export interface Shape {",
+    "  outline: {",
+    "    points: {",
+    "      x: number;",
+    "      y: number;",
+    "    }[];",
+    "  };",
+    "}",
+    "",
+  ].join("\n");
+  const mixed = buildRepo([
+    {
+      type: "commit",
+      message: "Add declarations with no function",
+      date: "2024-01-02T00:00:00+00:00",
+      changes: [{ op: "add", path: "src/shapes.d.ts", content: declarations.repeat(8) }],
+    },
+  ]);
+  try {
+    const run = await runComplexity(mixed.path, ["files", "--json", "--limit", "all"]);
+    const rows = JSON.parse(run.stdout).results as FileRow[];
+    const declared = rows.findIndex((row) => row.path === "src/shapes.d.ts");
+    expect(rows[declared]!.functions).toBe(0);
+    // It is the most indented file, and it comes after every file with a function.
+    expect(rows[declared]!.complexity).toBe(Math.max(...rows.map((row) => row.complexity)));
+    expect(rows.slice(0, declared).every((row) => row.functions > 0)).toBe(true);
+    expect(rows.slice(declared).every((row) => row.functions === 0)).toBe(true);
+    const xray = await runComplexity(mixed.path, ["report", "xray", rows[0]!.path, "--slots"]);
+    expect(xray.code).toBe(ExitCode.Success);
+  } finally {
+    mixed.dispose();
+  }
+});
+
 test("a nested function adds to its parent and is not summed again", async () => {
   const nested = buildRepo([
     {

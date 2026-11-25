@@ -12,7 +12,7 @@ import { readBlobs, restrictTree, treeFromTexts, type SourceTree } from "@code-h
 import type { ComplexitySettings } from "./config.ts";
 import { pathSelector } from "./current-tree.ts";
 import { parseDiffs, touchedUnits, type FileDiff } from "./fix-ranges.ts";
-import { matchUnits, type BodyCache } from "./match-units.ts";
+import { followUnits, type BodyCache } from "./match-units.ts";
 import { measureTree, type FileRecord, type UnitRecord } from "./measure.ts";
 
 /** Rows kept in each secondary list, deleted units and files with fixes outside any unit. The output says how many were left out. */
@@ -107,6 +107,8 @@ interface Touch {
   blob: string;
   /** The commit created the file: every unit counts as touched once, and none as fixed. */
   added: boolean;
+  /** The file's blob before the commit, when the commit changed an existing file. */
+  oldBlob: string | undefined;
   ranges: FileDiff["ranges"];
 }
 
@@ -134,34 +136,11 @@ export function byFixes(minRevisions: number): (a: UnitFixes, b: UnitFixes) => n
     utf8(a.id, b.id);
 }
 
-/**
- * Matches some units of an earlier revision of a file with some of a later one. The earlier units are given the later path first, so
- * a file renamed in git keeps its functions by identity and only a function renamed inside it is matched by body. Returns, for each
- * earlier unit, the later unit it became, or undefined when none did.
- */
-function followUnits(
-  earlier: FileRecord,
-  earlierUnits: readonly UnitRecord[],
-  later: FileRecord,
-  laterUnits: readonly UnitRecord[],
-  threshold: number,
-  cache: BodyCache,
-): { before: UnitRecord; after: UnitRecord | undefined }[] {
-  const original = new Map<string, UnitRecord>();
-  const moved = earlierUnits.map((unit) => {
-    const relocated = { ...unit, path: later.path, id: `${later.path}${unit.id.slice(earlier.path.length)}` };
-    original.set(relocated.id, unit);
-    return relocated;
-  });
-  const matches = matchUnits([{ ...earlier, path: later.path, units: moved }], [{ ...later, units: [...laterUnits] }], threshold, cache);
-  return matches.flatMap((match) => (match.before === undefined ? [] : [{ before: original.get(match.before.id)!, after: match.after }]));
-}
-
 async function diffsOf(root: string, shas: readonly string[]): Promise<Map<string, Map<string, FileDiff>>> {
   const diffs = new Map<string, Map<string, FileDiff>>();
   for (let start = 0; start < shas.length; start += DIFF_BATCH) {
     const input = `${shas.slice(start, start + DIFF_BATCH).join("\n")}\n`;
-    const out = await runGit(root, ["-c", "core.quotePath=false", "diff-tree", "--stdin", "-p", "-U0", "-M", "--no-color", "--no-ext-diff", "--root", "-r"], { input });
+    const out = await runGit(root, ["-c", "core.quotePath=false", "diff-tree", "--stdin", "-p", "-U0", "-M", "--no-color", "--no-ext-diff", "--full-index", "--root", "-r"], { input });
     for (const [sha, files] of parseDiffs(out)) diffs.set(sha, files);
   }
   return diffs;
@@ -246,7 +225,7 @@ export async function measureFixes(
         const diff = diffs.get(sha)?.get(file.path);
         const added = file.status === "A" || diff?.added === true;
         if (!added && (diff === undefined || diff.ranges.length === 0)) continue;
-        touches.push({ changeId: landing.id, sha, fileId: file.fileId, path: file.path, blob: file.blob, added, ranges: diff?.ranges ?? [] });
+        touches.push({ changeId: landing.id, sha, fileId: file.fileId, path: file.path, blob: file.blob, added, oldBlob: added ? undefined : diff?.oldBlob, ranges: diff?.ranges ?? [] });
       }
     }
   }
@@ -282,9 +261,41 @@ export async function measureFixes(
     fileOfPair.set(key, touch.fileId);
   }
 
+  const bodyCache: BodyCache = new Map();
+  // The revision before each fix, so a function the fix created is not counted as fixed by it, as a file the commit created is not.
+  const isFixLike = (touch: Touch): boolean => (fixOf.get(touch.changeId) ?? null) !== null || reviewFixOf.has(touch.sha);
+  const parentBlobsByPath = new Map<string, string[]>();
+  for (const touch of touches) {
+    if (touch.added || touch.oldBlob === undefined || !isFixLike(touch)) continue;
+    const blobs = parentBlobsByPath.get(touch.path) ?? [];
+    if (!blobs.includes(touch.oldBlob)) blobs.push(touch.oldBlob);
+    parentBlobsByPath.set(touch.path, blobs);
+  }
+  const parents = new Map<string, FileRecord>();
+  const parentLayers = Math.max(0, ...[...parentBlobsByPath.values()].map((blobs) => blobs.length));
+  for (let layer = 0; layer < parentLayers; layer++) {
+    const wanted = [...parentBlobsByPath].flatMap(([path, blobs]) => (blobs[layer] === undefined ? [] : [{ path, blob: blobs[layer]! }]));
+    const texts = await readBlobs(root, wanted.map((entry) => entry.blob));
+    const tree = treeFromTexts(Object.fromEntries(wanted.flatMap((entry) => (texts.has(entry.blob) ? [[entry.path, texts.get(entry.blob)!]] : []))));
+    const measurement = await measureTree(tree, measureOptions);
+    cacheStats.parsed += measurement.stats.parsed;
+    cacheStats.cached += measurement.stats.cached;
+    const records = new Map(measurement.files.map((file) => [file.path, file] as const));
+    for (const { path, blob } of wanted) {
+      const record = records.get(path);
+      if (record !== undefined && record.source !== null) parents.set(pairKey(path, blob), record);
+    }
+  }
+  /** The units of a revision that its parent revision has no counterpart for, by the same matcher that follows units forward. */
+  const createdBy = (touch: Touch, record: FileRecord): ReadonlySet<string> => {
+    const parent = touch.oldBlob === undefined ? undefined : parents.get(pairKey(touch.path, touch.oldBlob));
+    if (parent === undefined) return new Set();
+    const existed = new Set(followUnits(parent, parent.units, record, record.units, settings.moveSimilarity, bodyCache).flatMap((match) => (match.after === undefined ? [] : [match.after.id])));
+    return new Set(record.units.map((unit) => unit.id).filter((id) => !existed.has(id)));
+  };
+
   /** Which unit a historical unit is now, by revision of a file: `c:` is a unit that still exists and `d:` one that does not. */
   const mapping = new Map<string, Map<string, string>>();
-  const bodyCache: BodyCache = new Map();
   const retained = new Map<string, { record: FileRecord; unmatched: UnitRecord[] }>();
   const unitTouches: { key: string; unitId: string; changeId: string; sha: string; fix: boolean; review: boolean }[] = [];
   const outsideTouches: { fileId: string; changeId: string; fix: boolean }[] = [];
@@ -332,7 +343,11 @@ export async function measureFixes(
         }
         const fix = (fixOf.get(touch.changeId) ?? null) !== null;
         const hit = touchedUnits(record.units, touch.ranges);
-        for (const unitId of hit.units) unitTouches.push({ key, unitId, changeId: touch.changeId, sha: touch.sha, fix, review: reviewFixOf.has(touch.sha) });
+        const created = isFixLike(touch) ? createdBy(touch, record) : new Set<string>();
+        for (const unitId of hit.units) {
+          const isNew = created.has(unitId);
+          unitTouches.push({ key, unitId, changeId: touch.changeId, sha: touch.sha, fix: fix && !isNew, review: !isNew && reviewFixOf.has(touch.sha) });
+        }
         if (hit.outsideUnits) outsideTouches.push({ fileId, changeId: touch.changeId, fix });
       }
     }

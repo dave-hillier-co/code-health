@@ -22,13 +22,9 @@ export const command: Command = {
     const abort = new AbortController();
     const interrupt = () => abort.abort();
     process.once("SIGINT", interrupt);
-    // A long first run reports progress to a terminal; what finished stays stored, so an interrupted run resumes.
-    const progress = process.stderr.isTTY
-      ? ({ done, total }: { done: number; total: number }) => process.stderr.write(`\rblame ${done}/${total}`)
-      : undefined;
+    // What finished stays stored, so an interrupted run resumes.
     try {
-      const result = await refreshBlameFor(context, history, settings, history.view.headSha, { onProgress: progress, signal: abort.signal });
-      if (progress) process.stderr.write("\n");
+      const result = await refreshBlameFor(context, history, settings, history.view.headSha, { signal: abort.signal });
       return {
         inputs: { copyDetection: blameOptions(history, settings).copyDetection },
         results: {

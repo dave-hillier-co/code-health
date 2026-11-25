@@ -84,11 +84,16 @@ export function buildModel(project: Project, settings: LocalitySettings, history
   const productionSet = new Set(production);
   const importSets = new Map<string, Set<string>>(production.map((path) => [path, new Set()]));
   const importers = new Map<string, string[]>();
+  // A statement whose edge runs on to a definition (Rust) also imports the file its path names, which is `via`.
+  const imported = (from: string, to: string): void => {
+    if (from === to || !productionSet.has(to) || importSets.get(from)!.has(to)) return;
+    importSets.get(from)!.add(to);
+    addToList(importers, to, from);
+  };
   for (const edge of analysis.importEdges) {
     if (edge.from === edge.to || !productionSet.has(edge.from) || !productionSet.has(edge.to)) continue;
-    if (importSets.get(edge.from)!.has(edge.to)) continue;
-    importSets.get(edge.from)!.add(edge.to);
-    addToList(importers, edge.to, edge.from);
+    if (edge.via !== undefined) imported(edge.from, edge.via);
+    imported(edge.from, edge.to);
   }
   const imports = new Map([...importSets].map(([from, targets]): [string, string[]] => [from, [...targets].sort(compareIds)]));
   for (const list of importers.values()) list.sort(compareIds);

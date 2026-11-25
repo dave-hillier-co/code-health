@@ -91,12 +91,41 @@ test("reads the new line ranges of each file of each commit, and whether the fil
   const parsed = parseDiffs(diff);
   expect(parsed.get(sha)!.get("src/a.ts")).toEqual({
     added: false,
+    oldBlob: "111",
+    newBlob: "222",
+    oldPath: "src/a.ts",
     ranges: [
-      { start: 3, count: 1 },
-      { start: 10, count: 0 },
-      { start: 19, count: 3 },
+      { start: 3, count: 1, removed: 1 },
+      { start: 10, count: 0, removed: 2 },
+      { start: 19, count: 3, removed: 0 },
     ],
   });
-  expect(parsed.get(sha)!.get("src/new file.ts")).toEqual({ added: true, ranges: [{ start: 1, count: 2 }] });
-  expect(parsed.get(other)!.size).toBe(0);
+  expect(parsed.get(sha)!.get("src/new file.ts")).toEqual({ added: true, ranges: [{ start: 1, count: 2, removed: 0 }] });
+  expect([...parsed.get(other)!]).toEqual([["src/gone.ts", { added: false, oldPath: "src/gone.ts", deleted: true, ranges: [] }]]);
+});
+
+test("reads a rename by both paths, with no ranges when the file did not change, and a changed line that looks like a header as a line", () => {
+  const sha = "c".repeat(40);
+  const diff = [
+    sha,
+    "diff --git a/src/old.ts b/src/moved.ts",
+    "similarity index 100%",
+    "rename from src/old.ts",
+    "rename to src/moved.ts",
+    "diff --git a/src/b.ts b/src/c.ts",
+    "similarity index 90%",
+    "rename from src/b.ts",
+    "rename to src/c.ts",
+    "index 333..444 100644",
+    "--- a/src/b.ts",
+    "+++ b/src/c.ts",
+    "@@ -4 +4 @@",
+    "--- a/src/elsewhere.ts",
+    "+++ b/src/elsewhere.ts",
+    "",
+  ].join("\n");
+  const files = parseDiffs(diff).get(sha)!;
+  expect([...files.keys()]).toEqual(["src/moved.ts", "src/c.ts"]);
+  expect(files.get("src/moved.ts")).toEqual({ added: false, oldPath: "src/old.ts", ranges: [] });
+  expect(files.get("src/c.ts")).toEqual({ added: false, oldBlob: "333", newBlob: "444", oldPath: "src/b.ts", ranges: [{ start: 4, count: 1, removed: 1 }] });
 });

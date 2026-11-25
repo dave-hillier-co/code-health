@@ -6,6 +6,7 @@ import { treeFromRef, type SourceTree } from "@code-health/parse/source-tree";
 import { recordRunNote } from "@code-health/cli-kit/run-notes";
 import { readBuildConfigs } from "@code-health/parse/build-configs";
 import { describeIncludeResolution } from "@code-health/parse/include-resolution";
+import { isManifestPath, ModuleTree, readCrates } from "@code-health/parse/languages/rust/crates";
 import type { LocalitySettings } from "./config.ts";
 import { goPackages, type GoPackages } from "./placement.ts";
 
@@ -21,6 +22,8 @@ export interface Project {
   packageEntries: ReadonlySet<string>;
   /** Every path of the revision, excluded files too: where a moved file may land, and the manifests that bound packages. */
   tree: ReadonlySet<string>;
+  /** The text of every `Cargo.toml` of the revision, which says where each Rust crate's targets are. */
+  cargoManifests: ReadonlyMap<string, string>;
 }
 
 /** The tree without the files the suite config excludes. */
@@ -54,13 +57,27 @@ export async function loadProject(root: string, ref: string, settings: LocalityS
   const production = [...tree.files.keys()].filter((path) => hasAdapter(path) && !isTestPath(path) && !generated.has(path));
   const texts = await tree.readMany(production);
   const packageEntries = await readPackageEntries(tree);
-  return { analysis, production, isTest: isTestPath, texts, packageEntries, tree: new Set(fullTree.files.keys()) };
+  const cargoManifests = await fullTree.readMany([...fullTree.files.keys()].filter(isManifestPath));
+  return { analysis, production, isTest: isTestPath, texts, packageEntries, tree: new Set(fullTree.files.keys()), cargoManifests };
 }
 
 /** What the Go placement rules read from a project: which Go file uses which, and the `package main` folders. */
 export function goPackagesOf(project: Project): GoPackages {
   const production = new Set(project.production);
   return goPackages(project.analysis.importEdges.filter((edge) => production.has(edge.from) && production.has(edge.to)), project.texts, project.analysis.consumers.filter((consumer) => production.has(consumer.to) && (production.has(consumer.from) || (consumer.from.endsWith(".go") && project.isTest(consumer.from)))));
+}
+
+const rustModules = new WeakMap<Project, ModuleTree>();
+
+/** What the Rust placement rule reads from a project: each crate's targets, and the module tree their files make. */
+export function rustModulesOf(project: Project): ModuleTree {
+  let found = rustModules.get(project);
+  if (found === undefined) {
+    const paths = [...project.tree];
+    found = new ModuleTree(paths, readCrates(paths, project.cargoManifests));
+    rustModules.set(project, found);
+  }
+  return found;
 }
 
 /** The source lines of a unit, as the structural layer delimits it. */

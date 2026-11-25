@@ -3,7 +3,7 @@ import { breakingSets } from "@code-health/graph/feedback-arc-set";
 import { runGit } from "@code-health/history/git";
 import type { StructureSettings } from "./config.ts";
 import { findLayerViolations, type LayerViolation } from "./layers.ts";
-import { csharpProjectOfFolders } from "./cycles.ts";
+import { csharpProjectOfFolders, cycleId, idLevel } from "./cycles.ts";
 import { buildModuleGraph, importGraph, type Level } from "./modules.ts";
 import { loadProject, type Project } from "./project.ts";
 
@@ -69,7 +69,7 @@ function cyclesOf(project: Project, level: Level, settings: Pick<StructureSettin
   // Folders of one C# project are one compilation unit, so a cycle among them is not a failure of `check` unless the setting asks for it.
   const judged = (nodes: readonly string[]): boolean => level !== "folder" || settings.csharpFolderCycles || csharpProjectOfFolders(project, graph, nodes) === undefined;
   return breakingSets(importGraph(graph), { exactLimit: settings.exactLimit }).filter((cycle) => judged(cycle.nodes)).map((cycle) => ({
-    id: `cycle:${level}:${cycle.nodes[0]}`,
+    id: cycleId(idLevel(graph, cycle.nodes), cycle.nodes[0]!),
     level,
     nodes: [...cycle.nodes],
     breakingSet: cycle.edges.map((e) => ({ from: e.from, to: e.to })),

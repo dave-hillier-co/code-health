@@ -5,7 +5,7 @@ import { factsForBlob, MAX_TREE_DEPTH } from "@code-health/parse/file-facts";
 import { GrammarSet } from "@code-health/parse/grammars";
 import type { ParseCache } from "@code-health/parse/parse-cache";
 import { exportedUnitNames } from "@code-health/parse/exported-units";
-import type { FileFacts, UnitFact } from "@code-health/parse/facts";
+import type { FileFacts, SyntaxErrorFact, UnitFact } from "@code-health/parse/facts";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import type { UnitKind } from "@code-health/lexical/unit";
 import { guidelinesFor, type ComplexitySettings } from "./config.ts";
@@ -60,7 +60,11 @@ export interface InterfaceUnit {
   passThrough?: string;
   /** A method code outside its class cannot call (the language's own rule), so it is not part of the class's interface. */
   hidden?: true;
+  /** Something outside the unit fixes its name and signature: an interface or base type it implements or overrides, or a framework that calls it by an attribute. */
+  required?: RequiredBy;
 }
+
+export type RequiredBy = "interface" | "entry-point";
 
 export interface FileRecord {
   path: string;
@@ -70,13 +74,19 @@ export interface FileRecord {
   profile: string | null;
   /** The profile came from config, so nothing measures its accuracy. */
   unverified: boolean;
+  /** Measured without the test code inside a production file, `lineCount` aside. */
   lines: LengthMetrics;
+  /** Code lines of test code inside a production file, such as a Rust `#[cfg(test)]` module. */
+  testCodeLines: number;
+  /** Measured without the test code inside a production file. */
   indentationComplexity: number;
   keywordComplexity?: number;
   units: UnitRecord[];
   /** Structural only: the file's functions and classes with their depth shape, and the module itself. */
   interfaces?: { units: InterfaceUnit[]; module: { nodes: number; exports: number } };
   hasSyntaxErrors: boolean;
+  /** Where the first syntax error is, when there are any. */
+  syntaxError?: SyntaxErrorFact;
   /** What could not be measured, and why. */
   skipped: string[];
   /** Exact-boundary agreement that released lexical per-function metrics, when they were used. */
@@ -141,13 +151,9 @@ export async function measureTree(tree: SourceTree, options: MeasureOptions): Pr
         skippedFiles.excluded++;
         continue;
       }
-      const lexical = analyseSource(path, text, {
-        agreementBar: settings.agreementBar,
-        mappings: settings.languageProfiles,
-        bumpyRoad: bumpyRoadLimits(guidelinesFor(settings, path)),
-      });
       const language = options.layer === "lexical" ? undefined : await grammars.forPath(path);
-      let structural: { units: UnitRecord[]; interfaces: NonNullable<FileRecord["interfaces"]>; syntaxErrors: boolean; tooDeep: boolean } | undefined;
+      let structural: { units: UnitRecord[]; interfaces: NonNullable<FileRecord["interfaces"]>; syntaxErrors: boolean; syntaxError?: SyntaxErrorFact; tooDeep: boolean } | undefined;
+      let testRanges: FileFacts["testRanges"];
       if (language !== undefined) {
         const { facts, cached } = await factsForBlob(language, tree.files.get(path)!, text, options.cache);
         if (cached) stats.cached++;
@@ -156,9 +162,18 @@ export async function measureTree(tree: SourceTree, options: MeasureOptions): Pr
           units: structuralUnits(path, facts.units, settings),
           interfaces: interfaceUnits(path, facts),
           syntaxErrors: facts.hasSyntaxErrors,
+          ...(facts.syntaxError === undefined ? {} : { syntaxError: facts.syntaxError }),
           tooDeep: facts.tooDeep === true,
         };
+        // A test file is test code throughout, so only a production file has its test lines counted apart.
+        if (!settings.isTest(path)) testRanges = facts.testRanges;
       }
+      const lexical = analyseSource(path, text, {
+        agreementBar: settings.agreementBar,
+        mappings: settings.languageProfiles,
+        bumpyRoad: bumpyRoadLimits(guidelinesFor(settings, path)),
+        ...(testRanges === undefined ? {} : { testRanges }),
+      });
       files.push(fileRecord(path, text, lexical, structural, options));
     }
   }
@@ -183,6 +198,7 @@ function interfaceUnits(path: string, facts: FileFacts): NonNullable<FileRecord[
       nodes: unit.shape.nodes,
       interfaceSize: unit.shape.interfaceSize,
       ...(unit.passThrough === undefined ? {} : { passThrough: unit.passThrough }),
+      ...(unit.override === true ? { required: "interface" as const } : unit.entryPoint === true ? { required: "entry-point" as const } : {}),
     });
   }
   return { units, module: { nodes: facts.nodes, exports: facts.exports.length + facts.reexports.length } };
@@ -219,7 +235,7 @@ function fileRecord(
   path: string,
   text: string,
   lexical: FileAnalysis,
-  structural: { units: UnitRecord[]; interfaces: NonNullable<FileRecord["interfaces"]>; syntaxErrors: boolean; tooDeep: boolean } | undefined,
+  structural: { units: UnitRecord[]; interfaces: NonNullable<FileRecord["interfaces"]>; syntaxErrors: boolean; syntaxError?: SyntaxErrorFact; tooDeep: boolean } | undefined,
   options: MeasureOptions,
 ): FileRecord {
   const test = options.settings.isTest(path);
@@ -271,11 +287,13 @@ function fileRecord(
     profile: lexical.profile,
     unverified: lexical.unverified,
     lines: { lineCount: lexical.file.lineCount, nonBlankLines: lexical.file.nonBlankLines, codeLines: lexical.file.codeLines },
+    testCodeLines: lexical.file.testCodeLines ?? 0,
     indentationComplexity: lexical.file.indentationComplexity,
     ...(lexical.file.keywordComplexity === undefined ? {} : { keywordComplexity: lexical.file.keywordComplexity }),
     units,
     ...(structural === undefined ? {} : { interfaces: structural.interfaces }),
     hasSyntaxErrors: structural?.syntaxErrors ?? false,
+    ...(structural?.syntaxError === undefined ? {} : { syntaxError: structural.syntaxError }),
     skipped,
     ...(agreement === undefined ? {} : { agreement }),
     ...(options.keepText ? { text } : {}),

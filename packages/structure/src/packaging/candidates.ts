@@ -4,7 +4,7 @@ import { round3 } from "../stability.ts";
 import type { PackageAnalysis } from "./analysis.ts";
 import { independenceTail } from "./changes.ts";
 import { reachingGuideline, type Finding } from "./findings.ts";
-import { consumerPackages, isPublished, isYoung, purposeOf, type PackageModel } from "./model.ts";
+import { consumerPackages, internalMarker, isPublished, isYoung, publishedSource, purposeOf, type PackageModel } from "./model.ts";
 import { deployablesOf } from "./release.ts";
 import type { ExportComponent, ReuseAnalysis } from "./reuse-profile.ts";
 
@@ -45,7 +45,12 @@ export interface Candidate {
   step: number;
   /** What the candidate would also fix, such as a package cycle. */
   also: string[];
-  /** The command that gives the evidence pack for a dependency to break, for the structure skill. */
+  /** For a package in the zone of pain, the packages that depend on it: each dependency is one to break or invert. Null for every other candidate. */
+  dependants: string[] | null;
+  /**
+   * The structure command that gives the evidence pack for a dependency to break, for the structure skill.
+   * For a package in the zone of pain, the pack of the dependency that shared the most changes with it.
+   */
   handoff: string | null;
 }
 
@@ -54,6 +59,12 @@ export interface Withheld {
   packages: string[];
   reason: string;
   findings: string[];
+  /** The published packages among them that are published only because nothing marks them internal. */
+  assumed: string[];
+  /** What to ask the user when a package is published only by default, and how to record the answer. Null when config declared it published. */
+  question: string | null;
+  /** The proposal that would be made if none of its packages were published. */
+  candidate: Candidate;
 }
 
 export interface Candidates {
@@ -153,32 +164,33 @@ export function buildCandidates(model: PackageModel, listed: PackageAnalysis): C
   };
   const { reuse } = analysis;
   const found = new Map<string, Candidate>();
-  const withheld: Withheld[] = [];
+  const withheld = new Map<string, Withheld>();
   const mismatched = new Set(analysis.boundaries.filter((f) => f.kind === "purpose-mismatch").map((f) => f.packages[0]!));
 
-  const add = (candidate: Omit<Candidate, "step" | "status" | "tentative" | "also" | "handoff"> & { also?: string[]; handoff?: string | null }): void => {
-    const existing = found.get(candidate.id);
+  const publishedAmong = (ids: readonly string[]): string[] => ids.filter((id) => isPublished(model, model.byId.get(id)!));
+  const add = (
+    candidate: Omit<Candidate, "step" | "status" | "tentative" | "also" | "dependants" | "handoff"> & { also?: string[]; dependants?: string[]; handoff?: string | null },
+  ): void => {
+    // a manifest correction or a dependency to break changes nothing a consumer outside the repository depends on
+    const published = candidate.kind === "fix-manifest" || candidate.kind === "break-dependency" ? [] : publishedAmong(candidate.packages);
+    const existing = published.length > 0 ? withheld.get(candidate.id)?.candidate : found.get(candidate.id);
     if (existing) {
       existing.findings = [...new Set([...existing.findings, ...candidate.findings])].sort(compareIds);
       existing.changeCost = Math.max(existing.changeCost, candidate.changeCost);
+      if (published.length > 0) withheld.get(candidate.id)!.findings = existing.findings;
       return;
     }
-    found.set(candidate.id, {
+    const complete: Candidate = {
       ...candidate,
       status: candidate.against.some((a) => a.hard) ? "blocked" : "proposed",
       tentative: candidate.packages.some((id) => isYoung(model, id)),
       step: STEP[candidate.kind],
       also: candidate.also ?? [],
+      dependants: candidate.dependants ?? null,
       handoff: candidate.handoff ?? null,
-    });
-  };
-
-  const publishedAmong = (ids: readonly string[]): string[] => ids.filter((id) => isPublished(model, model.byId.get(id)!));
-  const withhold = (kind: CandidateKind, ids: string[], findings: Finding[]): boolean => {
-    const published = publishedAmong(ids);
-    if (published.length === 0) return false;
-    withheld.push({ kind, packages: ids, reason: `${published.join(", ")} ${published.length === 1 ? "is" : "are"} published: its consumers outside the repository cannot be seen, so nothing is proposed`, findings: findings.map((f) => f.id).sort(compareIds) });
-    return true;
+    };
+    if (published.length === 0) found.set(candidate.id, complete);
+    else withheld.set(candidate.id, withholding(model, complete, published));
   };
 
   const softAgainst = (ids: readonly string[]): Against[] => {
@@ -225,7 +237,6 @@ export function buildCandidates(model: PackageModel, listed: PackageAnalysis): C
     }
   }
   for (const { a, b, findings, keep: preferred } of [...merges.values()].sort((x, y) => compareIds(x.a, y.a) || compareIds(x.b, y.b))) {
-    if (withhold("merge", [a, b], findings)) continue;
     const [keep, go] = preferred !== null && !model.byId.get(preferred.id === a ? b : a)!.entry ? [preferred.id, preferred.id === a ? b : a] : mergeDirection(model, a, b);
     const against: Against[] = softAgainst([a, b]);
     const [da, db] = [deployablesOf(model, a), deployablesOf(model, b)];
@@ -259,7 +270,6 @@ export function buildCandidates(model: PackageModel, listed: PackageAnalysis): C
     }
   }
   for (const [id, findings] of [...splitFindings].sort(([a], [b]) => compareIds(a, b))) {
-    if (withhold("split", [id], findings)) continue;
     const profile = reuse.profiles.get(id);
     if (!profile) continue;
     const consumed = profile.components.filter((c) => c.consumers.length > 0);
@@ -281,7 +291,7 @@ export function buildCandidates(model: PackageModel, listed: PackageAnalysis): C
       packages: [id],
       into: null,
       unit: null,
-      parts: parts.map((p) => ({ exports: p.exports.map((e) => e.slice(e.lastIndexOf("#") + 1)), consumers: p.consumers })),
+      parts: parts.map((p) => ({ exports: [...new Set(p.exports)].sort(compareIds), consumers: p.consumers })),
       findings: findings.map((f) => f.id).sort(compareIds),
       against,
       changeCost: Math.max(...findings.map((f) => f.changeCost)),
@@ -293,7 +303,6 @@ export function buildCandidates(model: PackageModel, listed: PackageAnalysis): C
   for (const finding of analysis.cohesion.filter((f) => f.kind === "crossing-unit")) {
     const [from, to] = finding.packages as [string, string];
     const unit = finding.unit!;
-    if (withhold("move-unit", [from, to], [finding])) continue;
     const against = softAgainst([from, to]);
     const cycles = newCycles(model, unit, to);
     if (cycles.length > 0) {
@@ -320,8 +329,7 @@ export function buildCandidates(model: PackageModel, listed: PackageAnalysis): C
   }
   for (const finding of followers) {
     const [from, to] = finding.packages as [string, string];
-    if ([...found.values()].some((c) => c.kind === "move-unit" && c.findings.includes(finding.id))) continue;
-    if (withhold("move-unit", [from, to], [finding])) continue;
+    if ([...found.values(), ...[...withheld.values()].map((w) => w.candidate)].some((c) => c.kind === "move-unit" && c.findings.includes(finding.id))) continue;
     add({
       id: `move-unit:${to}->${from}`,
       kind: "move-unit",
@@ -341,7 +349,6 @@ export function buildCandidates(model: PackageModel, listed: PackageAnalysis): C
     narrowing.set(finding.packages[0]!, [...(narrowing.get(finding.packages[0]!) ?? []), finding]);
   }
   for (const [id, findings] of [...narrowing].sort(([a], [b]) => compareIds(a, b))) {
-    if (withhold("narrow-interface", [id], findings)) continue;
     add({
       id: `narrow-interface:${id}`,
       kind: "narrow-interface",
@@ -381,12 +388,12 @@ export function buildCandidates(model: PackageModel, listed: PackageAnalysis): C
       add({ id: `break-dependency:${from}->${to}`, kind: "break-dependency", packages: [from, to], into: null, unit: null, parts: null, findings: [finding.id], against: [], changeCost: finding.changeCost, handoff: `structure evidence "${from}->${to}" --level package` });
     }
     if (finding.kind === "zone-of-pain") {
-      // the dependants are what ripples: each dependency on it is one to break or invert
+      // the dependants are what ripples: each dependency on it is one to break or invert, so one candidate names them all
       const id = finding.packages[0]!;
-      for (const [from, targets] of model.model.graph.graph) {
-        if (!targets.includes(id)) continue;
-        add({ id: `break-dependency:${from}->${id}`, kind: "break-dependency", packages: [from, id], into: null, unit: null, parts: null, findings: [finding.id], against: [], changeCost: finding.changeCost, handoff: `structure evidence "${from}->${id}" --level package` });
-      }
+      const dependants = [...model.model.graph.graph].filter(([, targets]) => targets.includes(id)).map(([from]) => from).sort(compareIds);
+      if (dependants.length === 0) continue;
+      const first = [...dependants].sort((a, b) => model.activity.shared(b, id) - model.activity.shared(a, id) || compareIds(a, b))[0]!;
+      add({ id: `break-dependency:${id}`, kind: "break-dependency", packages: [id], into: null, unit: null, parts: null, findings: [finding.id], against: [], changeCost: finding.changeCost, dependants, handoff: `structure evidence "${first}->${id}" --level package` });
     }
     if (finding.kind === "package-cycle") {
       for (const edge of finding.evidence.breakingSet as string[]) {
@@ -404,7 +411,33 @@ export function buildCandidates(model: PackageModel, listed: PackageAnalysis): C
       Number(a.tentative) - Number(b.tentative) ||
       compareIds(a.id, b.id),
   );
-  return { candidates, withheld: withheld.sort((a, b) => compareIds(a.kind, b.kind) || compareIds(a.packages.join(), b.packages.join())) };
+  return { candidates, withheld: [...withheld.values()].sort((a, b) => compareIds(a.kind, b.kind) || compareIds(a.packages.join(), b.packages.join())) };
+}
+
+/** A candidate set aside because it would change a published package, with the question that settles it when nothing marks the package either way. */
+function withholding(model: PackageModel, candidate: Candidate, published: readonly string[]): Withheld {
+  const assumed = published.filter((id) => publishedSource(model, model.byId.get(id)!) === "default");
+  const declared = published.filter((id) => !assumed.includes(id));
+  const reasons: string[] = [];
+  if (declared.length > 0) reasons.push(`${declared.join(", ")} ${declared.length === 1 ? "is" : "are"} declared published in config`);
+  for (const id of assumed) {
+    const pkg = model.byId.get(id)!;
+    const marker = internalMarker(pkg) ?? `${pkg.ecosystem} manifests have no such marker`;
+    reasons.push(`${id} is treated as published because its manifest does not mark it internal (${marker}) and no config says otherwise`);
+  }
+  const question =
+    assumed.length === 0
+      ? null
+      : `${assumed.length === 1 ? "Does" : "Do"} ${assumed.join(" and ")} have consumers outside this repository? If not, set ${assumed.map((id) => `structure.packages.byPackage[${JSON.stringify(id)}].published`).join(" and ")} to false and run packages candidates again.`;
+  return {
+    kind: candidate.kind,
+    packages: candidate.packages,
+    reason: `${reasons.join("; ")}: ${published.length === 1 ? "its" : "their"} consumers outside the repository cannot be seen, so nothing is proposed`,
+    findings: candidate.findings,
+    assumed,
+    question,
+    candidate,
+  };
 }
 
 /** Which of two packages stays in a merge: an entry point, else the one with more consumers, then more files, then the first by name. Returns [keep, go]. */

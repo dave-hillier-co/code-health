@@ -1,0 +1,27 @@
+{
+  "units": {
+    "src/errors/build.rs": [["BuildError", "class", 4, 7]],
+    "src/http/client.rs": [["reject", "function", 3, 5]],
+    "src/http/service.rs": [["check", "function", 3, 8]]
+  },
+  "importEdges": [
+    "src/errors/mod.rs -> src/errors/build.rs import nominal",
+    "src/http/mod.rs -> src/http/client.rs import nominal",
+    "src/http/mod.rs -> src/http/service.rs import nominal",
+    "src/http/service.rs -> src/errors/build.rs import",
+    "src/lib.rs -> src/errors/mod.rs import nominal",
+    "src/lib.rs -> src/http/mod.rs import nominal"
+  ],
+  "fileEdges": ["src/http/service.rs -> src/errors/build.rs reference call=0 reference=1"],
+  "consumers": ["src/http/service.rs#check -> src/errors/build.rs#BuildError reference x1"],
+  "unresolved": [
+    "src/http/client.rs:1 crate::errors::build export-not-found",
+    "src/http/service.rs:1 crate::errors::build export-not-found"
+  ],
+  "barrels": [
+    "src/errors/mod.rs",
+    "src/http/mod.rs",
+    "src/lib.rs"
+  ],
+  "syntaxErrors": []
+}

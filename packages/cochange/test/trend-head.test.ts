@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { GitFixture, type Identity, type Step } from "@code-health/fixtures/git-fixture";
+import { expectGolden } from "./support/golden.ts";
 import { runCochange } from "./support/run.ts";
 import { nested } from "./support/trend-scenarios.ts";
 
@@ -20,7 +21,9 @@ beforeAll(() => {
 afterAll(() => repo.dispose());
 
 test("when the analysed history leaves out a later change the last sample is the file at HEAD, so the peak is not below the current value", async () => {
-  const result = JSON.parse((await runCochange(repo.path, ["trend", file, "--json"])).stdout).results;
+  const { stdout } = await runCochange(repo.path, ["trend", file, "--json"]);
+  expectGolden("trend", "trend.at-head", stdout);
+  const result = JSON.parse(stdout).results;
   expect(result.revisions).toBe(2);
   const last = result.samples.at(-1);
   expect(last).toMatchObject({ commit: repo.git("rev-parse", "HEAD"), complexity: 36, atHead: true });

@@ -78,10 +78,24 @@ export async function projectFromTree(tree: SourceTree, headSha: string, options
     .sort(compareUtf8);
   const inProject = new Set(files);
 
+  const components = readComponents(options.components ?? {});
+  const packages = await discoverPackages(tree, {
+    ignore: options.packages?.ignore ?? [],
+    extra: options.packages?.extra ?? [],
+    components,
+    exclude: options.exclude,
+    entryPoints: options.entryPoints ?? [],
+  });
+  const packageIndex = indexPackages(packages, components);
+  const packageOf = (path: string): string => packageIndex.owner(path) ?? ".";
+
+  // A nominal edge (a Rust `mod` declaration, or a `pub use` that passes a name along) is no dependency inside a
+  // package. Between two packages it is one: the package that re-exports another cannot be built without it.
+  const nominalInside = (edge: ImportEdge): boolean => edge.nominal === true && packageOf(edge.from) === packageOf(edge.to);
   const imports = new Map<string, ImportEdge[]>();
   const adjacency = new Map<string, string[]>(files.map((path) => [path, []]));
   for (const edge of analysis.importEdges) {
-    if (edge.pairing === true || !inProject.has(edge.from) || !inProject.has(edge.to)) continue;
+    if (edge.pairing === true || edge.test === true || !inProject.has(edge.from) || !inProject.has(edge.to) || nominalInside(edge)) continue;
     const key = edgeKey(edge.from, edge.to);
     imports.set(key, [...(imports.get(key) ?? []), edge]);
     adjacency.get(edge.from)!.push(edge.to);
@@ -93,17 +107,6 @@ export async function projectFromTree(tree: SourceTree, headSha: string, options
     const key = edgeKey(consumer.from, consumer.to);
     consumers.set(key, [...(consumers.get(key) ?? []), consumer]);
   }
-
-  const components = readComponents(options.components ?? {});
-  const packages = await discoverPackages(tree, {
-    ignore: options.packages?.ignore ?? [],
-    extra: options.packages?.extra ?? [],
-    components,
-    exclude: options.exclude,
-    entryPoints: options.entryPoints ?? [],
-  });
-  const packageIndex = indexPackages(packages, components);
-  const packageOf = (path: string): string => packageIndex.owner(path) ?? ".";
 
   return { headSha, files, graph: normalise(adjacency), analysis, imports, consumers, packages, packageIndex, packageOf };
 }

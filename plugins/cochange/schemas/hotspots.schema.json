@@ -41,9 +41,14 @@
       "additionalProperties": false
     },
     "fixConvention": { "$ref": "common.schema.json#/$defs/fixConvention" },
+    "possibleNonProductionFolders": { "$ref": "common.schema.json#/$defs/possibleNonProductionFolders" },
     "complexitySource": {
       "description": "Where the complexity column came from: the complexity plugin's file report, or indentation complexity computed from the files at the analysed commit.",
       "enum": ["complexity-report", "indentation"]
+    },
+    "complexityMeasure": {
+      "const": "indentation-complexity",
+      "description": "What the complexity column measures, whichever source supplied it: indentation complexity, the sum of logical indentation levels over a file's code lines. The complexity plugin's file report uses the same definition."
     },
     "results": {
       "type": "array",
@@ -106,6 +111,6 @@
       }
     }
   },
-  "required": ["complexitySource", "fixConvention"],
+  "required": ["complexitySource", "complexityMeasure", "fixConvention"],
   "unevaluatedProperties": false
 }

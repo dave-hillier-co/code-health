@@ -7,8 +7,8 @@ import { GrammarSet, type LoadedGrammar } from "@code-health/parse/grammars";
 import { pathSegments } from "@code-health/parse/languages/rust/extract-facts";
 import type { SourceTree } from "@code-health/parse/source-tree";
 import type { FileOperation } from "../move-plan.ts";
-import type { MoveResult, MoverBackend, Skeleton } from "./mover-language.ts";
-import { readConfigs, RustMove } from "./rust-moves.ts";
+import { oncePerTree, type MoveResult, type MoverBackend, type Skeleton } from "./mover-language.ts";
+import { readProject, RustMove } from "./rust-moves.ts";
 
 let grammar: LoadedGrammar | undefined;
 
@@ -26,8 +26,11 @@ async function loadGrammar(): Promise<LoadedGrammar> {
   return grammar;
 }
 
+/** The Rust files and manifests of a tree, read and parsed once for the tree (see `oncePerTree`). */
+const projectOf = oncePerTree(async (tree) => readProject(tree, await loadGrammar()));
+
 async function performMove(tree: SourceTree, operations: readonly FileOperation[]): Promise<Omit<MoveResult, "confirmations">> {
-  const move = new RustMove(tree, operations, await loadGrammar(), await readConfigs(tree));
+  const move = new RustMove(tree, operations, await projectOf(tree));
   return move.run();
 }
 

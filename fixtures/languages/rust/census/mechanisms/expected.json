@@ -1,9 +1,11 @@
 {
-  "files": 12,
+  "files": 13,
   "occurrences": [
+    "callbacks function-parameter src/jobs/queue.rs:6 | Queue.new(task) is a method of Queue, which is used from src/app",
+    "callbacks function-parameter src/jobs/queue.rs:15 | Queue.replace(task) is a method of Queue, which is used from src/app",
     "callbacks function-parameter src/jobs/retry.rs:1 | retry(task) is called from src/app",
     "interfaces interface src/ports/store.rs:1 | Store is implemented in src/adapters",
-    "dependency-injection constructor-injection src/app/service.rs:4 | Service takes Store from src/ports",
+    "dependency-injection constructor-injection src/app/service.rs:5 | Service takes Store from src/ports",
     "events base-type src/events.rs:3 | Bus extends EventEmitter",
     "events call src/events.rs:7 | self.emit",
     "handlers handler-type src/jobs/handler.rs:7 | Ping implements CommandHandler",

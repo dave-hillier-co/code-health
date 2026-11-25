@@ -3,7 +3,7 @@ import { historySections, identityStamps } from "../analysis-command.ts";
 import { loadHistory, type LoadedHistory } from "../history-access.ts";
 import { overridesExposure } from "./overrides-exposure.ts";
 import { loadKnowledge, type LoadedKnowledge } from "./load.ts";
-import { mappedShareNotices, noticesSection } from "./notices.ts";
+import { noticesSection, readMappedShare } from "./notices.ts";
 import { requireKnowledge, type KnowledgeSettings } from "./settings.ts";
 
 /** What every subcommand of the abandonment analysis starts from. */
@@ -16,6 +16,8 @@ export interface Prepared {
   noRefresh: boolean;
   /** Printed with the results: the mapped share is under its guideline. */
   notices: string[];
+  /** The mapped share, as a percentage, when it is under its guideline; otherwise null. */
+  mappedShareUnder: number | null;
 }
 
 /**
@@ -29,8 +31,8 @@ export async function prepare(context: CommandContext): Promise<Prepared> {
   if (exposure !== null) process.stderr.write(`${exposure}\n`);
   const history = await loadHistory(context, { noRefresh });
   const knowledge = await loadKnowledge(context, history, settings, { noRefresh });
-  const notices = await mappedShareNotices(context, settings);
-  return { context, settings, history, knowledge, noRefresh, notices };
+  const mapped = await readMappedShare(context, settings);
+  return { context, settings, history, knowledge, noRefresh, notices: mapped.notices, mappedShareUnder: mapped.under };
 }
 
 /** The `inputs` every subcommand reports: what its results depend on beyond the repository and history. Counts only, never identities. */

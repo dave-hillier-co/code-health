@@ -59,6 +59,19 @@ export function resolveBySymbols(input: ResolveInput, options: SymbolModelOption
   };
 
   const unitNames = (facts: FileFacts): ReadonlySet<string> => new Set(facts.units.map((unit) => unit.qualifiedName));
+  // The declarations by the name a reference may write and the scope that name is read in: `A.B.C` is `C` in `A.B`,
+  // `B.C` in `A` and `A.B.C` as written (scope ""). A name no declaration ends with resolves in no scope, which is
+  // most of the names a file writes, so it is answered without trying each of the file's scopes.
+  const byWritten = new Map<string, Map<string, Declared[]>>();
+  const declaredAs = (written: string, scope: string, entries: Declared[]): void => {
+    const scopes = byWritten.get(written);
+    if (scopes === undefined) byWritten.set(written, new Map([[scope, entries]]));
+    else scopes.set(scope, entries);
+  };
+  for (const [name, entries] of table) {
+    declaredAs(name, "", entries);
+    for (let dot = name.indexOf(".", 1); dot !== -1; dot = name.indexOf(".", dot + 1)) declaredAs(name.slice(dot + 1), name.slice(0, dot), entries);
+  }
 
   for (const [file, facts] of input.facts) {
     const symbols = facts.symbols;
@@ -72,9 +85,10 @@ export function resolveBySymbols(input: ResolveInput, options: SymbolModelOption
       const known = resolved.get(name);
       if (known !== undefined) return known;
       let found: Declared[] | null = null;
-      for (const scope of scopes) {
+      const declared = byWritten.get(name);
+      for (const scope of declared === undefined ? [] : scopes) {
         // A declaration with internal linkage is visible to its own file only; elsewhere it neither matches nor shadows.
-        const candidates = table.get(scope === "" ? name : `${scope}.${name}`)?.filter((entry) => entry.declaration.internal !== true || entry.file === file);
+        const candidates = declared!.get(scope)?.filter((entry) => entry.declaration.internal !== true || entry.file === file);
         if (candidates !== undefined && candidates.length > 0) {
           found = candidates;
           break;

@@ -21,8 +21,21 @@ export const MEASURE_SUMMARIES: Record<MeasureId, string> = {
   hotspot: "Indentation complexity times prior changes",
 };
 
-/** What the changes of the period after a sample did to a file. */
-export const OUTCOMES = ["changes", "linesChurned", "linesPerChange", "fixShare"] as const;
+/** The measures of one function at a sample. `codeLines` is first, as in the file measures. */
+export const FUNCTION_MEASURES = ["codeLines", "cyclomatic", "cognitive", "nesting", "parameters", "priorChanges"] as const;
+export type FunctionMeasureId = (typeof FUNCTION_MEASURES)[number];
+
+export const FUNCTION_MEASURE_SUMMARIES: Record<FunctionMeasureId, string> = {
+  codeLines: "Lines of code of the function, blank and comment lines excluded, a nested function's lines included",
+  cyclomatic: "Cyclomatic complexity of the function",
+  cognitive: "Cognitive complexity of the function",
+  nesting: "Deepest nesting of control structures in the function",
+  parameters: "Declared parameters of the function",
+  priorChanges: "Landed changes that changed lines of the function in the period before the sample, as long as the period after it, the change that created it included",
+};
+
+/** What the changes of the period after a sample did to a file or a function. */
+export const OUTCOMES = ["changes", "linesChurned", "linesPerChange", "fixShare", "fixesPerLine"] as const;
 export type OutcomeId = (typeof OUTCOMES)[number];
 
 export const OUTCOME_SUMMARIES: Record<OutcomeId, string> = {
@@ -30,14 +43,30 @@ export const OUTCOME_SUMMARIES: Record<OutcomeId, string> = {
   linesChurned: "Lines added plus deleted in the file, over every file",
   linesPerChange: "Lines added plus deleted per landed change, over the files that changed",
   fixShare: "Share of the file's landed changes that are fixes, over the files with at least the minimum number of changes",
+  fixesPerLine: "Landed changes that are fixes and touched the file, per code line at the sample, over every file",
 };
 
-/** One file at one sample, with what followed. */
-export interface FileSample extends Record<MeasureId, number> {
-  path: string;
+export const FUNCTION_OUTCOME_SUMMARIES: Record<OutcomeId, string> = {
+  changes: "Landed changes that changed lines of the function, over every function",
+  linesChurned: "Lines added inside the function plus the deleted lines of the hunks that touched it, over every function. A hunk that touched several functions shares its deleted lines between them equally",
+  linesPerChange: "Lines churned per landed change, over the functions that changed",
+  fixShare: "Share of the function's landed changes that are fixes, over the functions with at least the minimum number of changes",
+  fixesPerLine: "Landed changes that are fixes and changed lines of the function, per code line of the function at the sample, over every function",
+};
+
+/** What followed a sample, for one file or one function. */
+export interface Followed {
   changes: number;
   linesChurned: number;
   fixes: number;
+}
+
+/** One unit at one sample: its measures, with code lines among them, and what followed. */
+export type Sample<M extends string> = Record<M | "codeLines", number> & Followed;
+
+/** One file at one sample, with what followed. */
+export interface FileSample extends Record<MeasureId, number>, Followed {
+  path: string;
 }
 
 /** The measures of the production code files that have a function with a cyclomatic complexity. History figures start at 0. */
@@ -129,75 +158,104 @@ export function partial(x: readonly number[], y: readonly number[], control: rea
   return (xy - xz * yz) / Math.sqrt((1 - xz ** 2) * (1 - yz ** 2));
 }
 
-export interface Correlation {
+export interface Correlation<M extends string = MeasureId> {
   outcome: OutcomeId;
-  measure: MeasureId;
-  /** Spearman correlation within each period, averaged over the periods by their number of files. Null when no period had variation on both sides. */
+  measure: M;
+  /** Spearman correlation within each period, averaged over the periods by their number of samples. Null when no period had variation on both sides. */
   correlation: number | null;
   /** The same with code lines held fixed. Null for code lines itself. */
   partialOnCodeLines: number | null;
-  /** How many files, summed over the periods, the figures rest on. */
-  fileSamples: number;
-  /** How many periods had enough files. */
+  /** How many samples, summed over the periods, the figures rest on. */
+  samples: number;
+  /** How many periods had enough samples. */
   periods: number;
+  /** One correlation over the samples of every period, each value ranked within its own period. Null when the pool is below the minimum or has no variation on a side. */
+  pooledCorrelation: number | null;
+  /** The same with code lines held fixed. Null for code lines itself. */
+  pooledPartialOnCodeLines: number | null;
+  /** How many samples, from every period, the pooled figures rest on. */
+  pooledSamples: number;
+  /** How many periods gave samples to the pool. */
+  pooledPeriods: number;
 }
 
-function population(outcome: OutcomeId, files: readonly FileSample[], minChanges: number): { files: FileSample[]; values: number[] } {
+function population<S extends Followed & { codeLines: number }>(outcome: OutcomeId, samples: readonly S[], minChanges: number): { samples: S[]; values: number[] } {
   if (outcome === "linesPerChange") {
-    const changed = files.filter((file) => file.changes > 0);
-    return { files: changed, values: changed.map((file) => file.linesChurned / file.changes) };
+    const changed = samples.filter((sample) => sample.changes > 0);
+    return { samples: changed, values: changed.map((sample) => sample.linesChurned / sample.changes) };
   }
   if (outcome === "fixShare") {
-    const busy = files.filter((file) => file.changes >= minChanges);
-    return { files: busy, values: busy.map((file) => file.fixes / file.changes) };
+    const busy = samples.filter((sample) => sample.changes >= minChanges);
+    return { samples: busy, values: busy.map((sample) => sample.fixes / sample.changes) };
   }
-  return { files: [...files], values: files.map((file) => file[outcome]) };
+  if (outcome === "fixesPerLine") return { samples: [...samples], values: samples.map((sample) => sample.fixes / Math.max(sample.codeLines, 1)) };
+  return { samples: [...samples], values: samples.map((sample) => sample[outcome]) };
 }
 
 const round3 = (value: number) => Math.round(value * 1000) / 1000;
 
+/** Ranks scaled to the period's size, from 0 to 1, so that samples ranked within periods of different sizes can be pooled. */
+const scaledRanks = (values: readonly number[]): number[] => ranks(values).map((rank) => (rank - 0.5) / values.length);
+
 /**
  * Each measure against each outcome. A correlation is taken within a period and never across periods, so that a
  * repository that grew and got busier over the years does not show that as a link between size and change.
- * A period with fewer than `minFiles` files for an outcome, or fewer than `minFiles` of them changed, is left out of
- * that outcome.
+ * A period with fewer than `minSamples` samples for an outcome, or fewer than `minSamples` of them changed, is left out of
+ * that outcome. The pooled figures take every period, each sample ranked within its own period, and need the minimum
+ * over the pool instead of in each period.
  */
-export function correlate(periods: readonly (readonly FileSample[])[], minFiles: number, minChanges: number): Correlation[] {
-  const out: Correlation[] = [];
+export function correlate<M extends string>(periods: readonly (readonly Sample<M>[])[], measures: readonly M[], minSamples: number, minChanges: number): Correlation<M>[] {
+  const out: Correlation<M>[] = [];
   for (const outcome of OUTCOMES) {
-    const sums = new Map<MeasureId, { raw: number; rawN: number; part: number; partN: number; n: number; periods: number }>(MEASURES.map((measure) => [measure, { raw: 0, rawN: 0, part: 0, partN: 0, n: 0, periods: 0 }]));
+    const sums = new Map<M, { raw: number; rawN: number; part: number; partN: number; n: number; periods: number }>(measures.map((measure) => [measure, { raw: 0, rawN: 0, part: 0, partN: 0, n: 0, periods: 0 }]));
+    const pool = { x: new Map<M, number[]>(measures.map((measure) => [measure, []])), y: [] as number[], control: [] as number[], changed: 0, periods: 0 };
     for (const period of periods) {
-      const { files, values } = population(outcome, period, minChanges);
-      // A period in which almost nothing changed orders the files by nothing, and would count for as much as a busy one.
-      if (files.length < minFiles || files.filter((file) => file.changes > 0).length < minFiles) continue;
+      const { samples, values } = population(outcome, period, minChanges);
+      if (samples.length > 0) {
+        pool.periods++;
+        pool.changed += samples.filter((sample) => sample.changes > 0).length;
+        pool.y.push(...scaledRanks(values));
+        pool.control.push(...scaledRanks(samples.map((sample) => sample.codeLines)));
+        for (const measure of measures) pool.x.get(measure)!.push(...scaledRanks(samples.map((sample) => sample[measure])));
+      }
+      // A period in which almost nothing changed orders the samples by nothing, and would count for as much as a busy one.
+      if (samples.length < minSamples || samples.filter((sample) => sample.changes > 0).length < minSamples) continue;
       const y = ranks(values);
-      const control = ranks(files.map((file) => file.codeLines));
-      for (const measure of MEASURES) {
-        const x = ranks(files.map((file) => file[measure]));
+      const control = ranks(samples.map((sample) => sample.codeLines));
+      for (const measure of measures) {
+        const x = ranks(samples.map((sample) => sample[measure]));
         const sum = sums.get(measure)!;
-        sum.n += files.length;
+        sum.n += samples.length;
         sum.periods++;
         const raw = pearson(x, y);
         if (raw !== null) {
-          sum.raw += raw * files.length;
-          sum.rawN += files.length;
+          sum.raw += raw * samples.length;
+          sum.rawN += samples.length;
         }
         const held = measure === "codeLines" ? null : partial(x, y, control);
         if (held !== null) {
-          sum.part += held * files.length;
-          sum.partN += files.length;
+          sum.part += held * samples.length;
+          sum.partN += samples.length;
         }
       }
     }
-    for (const measure of MEASURES) {
+    const enough = pool.y.length >= minSamples && pool.changed >= minSamples;
+    for (const measure of measures) {
       const sum = sums.get(measure)!;
+      const x = pool.x.get(measure)!;
+      const pooled = enough ? pearson(x, pool.y) : null;
+      const pooledHeld = enough && measure !== "codeLines" ? partial(x, pool.y, pool.control) : null;
       out.push({
         outcome,
         measure,
         correlation: sum.rawN === 0 ? null : round3(sum.raw / sum.rawN),
         partialOnCodeLines: sum.partN === 0 ? null : round3(sum.part / sum.partN),
-        fileSamples: sum.n,
+        samples: sum.n,
         periods: sum.periods,
+        pooledCorrelation: pooled === null ? null : round3(pooled),
+        pooledPartialOnCodeLines: pooledHeld === null ? null : round3(pooledHeld),
+        pooledSamples: pool.y.length,
+        pooledPeriods: pool.periods,
       });
     }
   }

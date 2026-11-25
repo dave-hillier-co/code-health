@@ -189,3 +189,97 @@ export function conventionsRepository(): GitFixture {
     },
   ]);
 }
+
+/**
+ * A package whose orders depend on its billing, with events used twice: three times the same call in its own
+ * events folder, and once in a package nested inside its orders folder, which is nearer by folder but another package.
+ */
+export function workspaceRepository(): GitFixture {
+  return GitFixture.build([
+    {
+      type: "commit",
+      message: "Add the packages",
+      date: "2024-03-01T09:00:00Z",
+      author: { name: "Alice", email: "alice@example.com" },
+      changes: [
+        add("packages/app/package.json", [JSON.stringify({ name: "app", version: "1.0.0" })]),
+        add("packages/app/src/billing/lines.ts", ["export const total = (n: number): number => n + 1;"]),
+        add("packages/app/src/orders/place.ts", ['import { total } from "../billing/lines.ts";', "export const place = (): number => total(1);"]),
+        add("packages/app/src/events/bus.ts", ['import { EventEmitter } from "node:events";', "export const bus = new EventEmitter();"]),
+        add("packages/app/src/events/announce.ts", [
+          'import { bus } from "./bus.ts";',
+          "export function announce(): void {",
+          '  bus.emit("placed");',
+          '  bus.emit("paid");',
+          '  bus.emit("shipped");',
+          "}",
+        ]),
+        add("packages/app/src/orders/plugin/package.json", [JSON.stringify({ name: "plugin", version: "1.0.0" })]),
+        add("packages/app/src/orders/plugin/hook.ts", ['import { EventEmitter } from "node:events";', "const hooks = new EventEmitter();", 'hooks.on("ready", () => {});']),
+      ],
+    },
+  ]);
+}
+
+/**
+ * A Rust crate whose `emit` is telemetry: each event type implements a trait whose `emit` logs it, and
+ * nothing listens. Beside it, a bus that is an event mechanism: it publishes and has subscribers.
+ */
+export function telemetryRepository(): GitFixture {
+  return GitFixture.build([
+    {
+      type: "commit",
+      message: "Add the crate",
+      date: "2024-03-01T09:00:00Z",
+      author: { name: "Alice", email: "alice@example.com" },
+      changes: [
+        add("Cargo.toml", ["[package]", 'name = "telemetry"', 'version = "0.1.0"']),
+        add("src/lib.rs", ["pub mod bus;", "pub mod internal_events;", "pub mod sources;"]),
+        add("src/internal_events.rs", [
+          "pub trait InternalEvent {",
+          "    fn emit(self);",
+          "}",
+          "",
+          "pub fn emit(event: impl InternalEvent) {",
+          "    event.emit();",
+          "}",
+          "",
+          "pub struct Dropped {",
+          "    pub count: usize,",
+          "}",
+          "",
+          "impl InternalEvent for Dropped {",
+          "    fn emit(self) {",
+          '        println!("dropped {}", self.count);',
+          "    }",
+          "}",
+        ]),
+        add("src/bus.rs", [
+          "pub struct Bus;",
+          "",
+          "impl Bus {",
+          "    pub fn publish(&self, topic: &str) {",
+          "        let _ = topic;",
+          "    }",
+          "",
+          "    pub fn subscribe(&self, topic: &str) {",
+          "        let _ = topic;",
+          "    }",
+          "}",
+        ]),
+        add("src/sources/mod.rs", ["pub mod file;"]),
+        add("src/sources/file.rs", [
+          "use crate::bus::Bus;",
+          "use crate::internal_events::{emit, Dropped};",
+          "",
+          "pub fn read(bus: &Bus) {",
+          '    bus.subscribe("lines");',
+          "    emit(Dropped { count: 1 });",
+          "    emit(Dropped { count: 2 });",
+          '    bus.publish("lines");',
+          "}",
+        ]),
+      ],
+    },
+  ]);
+}

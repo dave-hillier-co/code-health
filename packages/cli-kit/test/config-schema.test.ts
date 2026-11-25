@@ -24,6 +24,7 @@ test("the schema is valid and names the shared keys and a section per plugin, in
     "$schema",
     "exclude",
     "testPatterns",
+    "generatedPatterns",
     "languages",
     "entryPoints",
     "includeRoots",
