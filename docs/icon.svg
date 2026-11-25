@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-labelledby="title desc">
+  <!-- Source of the plugin icon. Render with: rsvg-convert -w 1024 -h 1024 docs/icon.svg -o plugins/code-health/.claude-plugin/icon.png -->
+  <title id="title">code-health</title>
+  <desc id="desc">An opening curly brace followed by a pulse line that ends rising to a point, on a dark tile with a faint grid.</desc>
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1d2b46"/>
+      <stop offset="1" stop-color="#0e182b"/>
+    </linearGradient>
+    <linearGradient id="line" gradientUnits="userSpaceOnUse" x1="200" y1="0" x2="820" y2="0">
+      <stop offset="0" stop-color="#2bb8cf"/>
+      <stop offset="0.55" stop-color="#2fd9b8"/>
+      <stop offset="1" stop-color="#22e58f"/>
+    </linearGradient>
+    <pattern id="grid" width="64" height="64" patternUnits="userSpaceOnUse">
+      <path d="M64 0H0V64" fill="none" stroke="#3a5174" stroke-width="2" stroke-opacity="0.45"/>
+    </pattern>
+    <clipPath id="shape">
+      <rect width="1024" height="1024" rx="232"/>
+    </clipPath>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+    <path id="brace" d="M322 322H300Q262 322 262 360V462Q262 512 208 512Q262 512 262 562V664Q262 702 300 702H322"/>
+    <path id="pulse" d="M312 512H372Q388 512 396 498L408 478Q416 466 424 480L452 548Q460 566 466 546L512 366Q518 348 522 368L562 652Q566 674 572 654L620 492Q626 474 640 486L660 502Q682 518 702 496L806 372"/>
+  </defs>
+  <g clip-path="url(#shape)">
+    <rect width="1024" height="1024" fill="url(#tile)"/>
+    <rect width="1024" height="1024" fill="url(#grid)"/>
+  </g>
+  <g transform="translate(512 512) scale(1.2) translate(-507 -512)">
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g filter="url(#glow)" opacity="0.75" stroke="url(#line)">
+      <use href="#brace" stroke-width="40" stroke-linecap="butt"/>
+      <use href="#pulse" stroke-width="30"/>
+      <circle cx="806" cy="372" r="34" fill="#22e58f" stroke="none"/>
+    </g>
+    <use href="#brace" stroke="url(#line)" stroke-width="36" stroke-linecap="butt"/>
+    <use href="#pulse" stroke="url(#line)" stroke-width="24"/>
+    <use href="#pulse" stroke="#c9fff0" stroke-width="5" stroke-opacity="0.6"/>
+  </g>
+  <circle cx="806" cy="372" r="28" fill="#22e58f"/>
+  <circle cx="806" cy="372" r="12" fill="#c9fff0"/>
+  </g>
+</svg>
