@@ -4,10 +4,11 @@ import { afterAll, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
 import type { GitFixture } from "@code-health/fixtures/git-fixture";
 import { reportPath } from "../src/reports.ts";
+import { identityHistory } from "./support/identity-scenario.ts";
 import { auth, knowledgeHistory } from "./support/knowledge-scenario.ts";
 import { runCochange, runCochangeOnTerminal } from "./support/run.ts";
 
-vi.setConfig({ testTimeout: 120_000 });
+vi.setConfig({ testTimeout: 300_000 });
 
 let repo: GitFixture;
 beforeAll(() => {
@@ -25,8 +26,13 @@ beforeEach(() => {
 
 const everyCommand = [
   ["abandonment", "current"],
+  ["abandonment", "current", "--by", "component"],
+  ["abandonment", "patterns"],
+  ["abandonment", "redundancy"],
   ["abandonment", "turnover"],
   ["abandonment", "simulate"],
+  ["abandonment", "trend", "--points", "2"],
+  ["abandonment", "adoption", "--at", "2024-06-01", "--horizon", "1"],
   ["abandonment", "backtest", "--at", "2024-02-29"],
   ["successors", auth],
 ];
@@ -62,6 +68,41 @@ test("no output names or addresses anyone unless successors is asked for names",
   expect(table.stdout).not.toMatch(identities);
   const named = await runCochange(repo.path, ["successors", auth, "--names"]);
   expect(named.stdout).toMatch(/Ann Active/);
+});
+
+test("successors --names prints the names of active developers without their addresses", async () => {
+  configure({});
+  const named = JSON.parse((await runCochange(repo.path, ["successors", auth, "--names"])).stdout);
+  expect(named.results[0].successors.map((s: { developer: string }) => s.developer)).toEqual(["Ann Active", "Bob Builder"]);
+  expect(JSON.stringify(named.results)).not.toMatch(/example\.com|@/);
+});
+
+test("identities check gives counts and shares for former contributors, and names them only with --names", async () => {
+  // With a one-month activity window, everyone who stopped committing before the last four weeks of the history has left.
+  const people = identityHistory();
+  try {
+    writeFileSync(join(people.path, "code-health.json"), JSON.stringify({ cochange: { knowledge: { activityWindowMonths: 1 } } }));
+    const former = /J Park|jo@x\.com|jsmith|John Smith|Maria Lopez|maria@corp\.com|Alex Kim|alex@a\.com|akim@b\.com|Sam Ro|sam@home\.net|sam@corp\.com/i;
+    const plain = await runCochange(people.path, ["identities", "check", "--limit", "all"]);
+    expect(plain.stdout).not.toMatch(former);
+    const named = await runCochange(people.path, ["identities", "check", "--limit", "all", "--names"]);
+    expect(named.stdout).toMatch(/J Park/);
+    const [withheld, shown] = [JSON.parse(plain.stdout), JSON.parse(named.stdout)];
+    expect(withheld.inputs.names).toBe(false);
+    expect(plain.code).toBe(named.code);
+    // The same findings with the same counts: only the identities and the words naming them differ.
+    const counts = (d: { results: { kind: string; lines: number | null; commits: number | null; linesShare: number | null }[] }) =>
+      d.results.map((r) => [r.kind, r.lines, r.commits, r.linesShare]);
+    expect(counts(withheld)).toEqual(counts(shown));
+    expect(withheld.results.some((r: { formerContributors: number }) => r.formerContributors > 0)).toBe(true);
+    // A last-active date is given only for an identity still shown, never for a former contributor withheld.
+    for (const r of withheld.results as { identities: string[]; detail: string }[]) if (r.detail.includes("last active")) expect(r.identities).not.toEqual([]);
+    // An active identity is still named, because settling it is what the check is for.
+    expect(plain.stdout).toContain("Jo Park <jo+git@x.com>");
+    expect(withheld.measurement).toEqual(shown.measurement);
+  } finally {
+    people.dispose();
+  }
 });
 
 test("only the configured simulation is stored as a report, and it holds files and counts and no one's name", async () => {

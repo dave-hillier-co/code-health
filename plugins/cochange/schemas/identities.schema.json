@@ -380,10 +380,11 @@
           "items": {
             "$ref": "#/$defs/identity"
           },
-          "minItems": 1
+          "description": "Without --names, former contributors are left out, so the list can be empty."
         },
         "detail": {
-          "type": "string"
+          "type": "string",
+          "description": "Without --names, a finding about a former contributor says it in words that hold no name, address or date of theirs."
         },
         "windowCommits": {
           "type": [
@@ -416,6 +417,10 @@
             "null"
           ],
           "description": "Unmapped only: the identity holds lines at HEAD or has at least the significantCommits guideline of commits in the window. Identities below it are listed after those above."
+        },
+        "formerContributors": {
+          "$ref": "common.schema.json#/$defs/count",
+          "description": "People the finding is about with no commit in cochange.knowledge.activityWindowMonths. Without --names their identities are not shown."
         }
       },
       "required": [
@@ -426,7 +431,8 @@
         "windowCommits",
         "lines",
         "linesShare",
-        "aboveGuideline"
+        "aboveGuideline",
+        "formerContributors"
       ],
       "additionalProperties": false
     },
@@ -465,6 +471,10 @@
         },
         "apply": {
           "type": "boolean"
+        },
+        "names": {
+          "type": "boolean",
+          "description": "`check` only. Whether former contributors are named."
         }
       },
       "required": [
@@ -633,10 +643,12 @@
           "properties": {
             "subcommand": {
               "const": "check"
-            }
+            },
+            "names": true
           },
           "required": [
-            "subcommand"
+            "subcommand",
+            "names"
           ]
         },
         "results": {

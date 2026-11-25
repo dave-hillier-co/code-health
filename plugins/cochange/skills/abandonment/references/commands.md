@@ -4,7 +4,7 @@ Invocation: `node ${CLAUDE_PLUGIN_ROOT}/dist/cochange.mjs <command> [options] --
 
 Exit codes: 0 success, 2 usage or config error (including `knowledge-disabled`), 3 environment error. With `--json`, errors are JSON on stderr.
 
-Every document of `abandonment` and `successors` carries the history's `window`, `filtersApplied` and `evidence` (its grade says how far to trust anything history-based), `developers` (`active` and `inactive`, as counts) and `blame` (`unknownFiles`, the authored files the cache holds nothing right for, and `unattributedLines`). They are never stored as reports. Identities appear nowhere except `successors --names`.
+Every document of `abandonment` and `successors` carries the history's `window`, `filtersApplied` and `evidence` (its grade says how far to trust anything history-based), `developers` (`active` and `inactive`, as counts) and `blame` (`unknownFiles`, the authored files the cache holds nothing right for, and `unattributedLines`). They are never stored as reports. Names appear nowhere except `successors --names`, which prints the names of active developers without their addresses.
 
 ## blame refresh
 
@@ -12,7 +12,7 @@ Brings the blame cache up to date: `git blame -w -M -C` of every authored file w
 
 ## abandonment current [--by file|component] [--rank hotspot|abandonment]
 
-Files with any lines held by people who have left. Rows: `path`, `abandoned` (the share is at or above `abandonmentGuideline`), `score`, `hotspot`, `hotspotPercentile`, `findings`, `abandonedShare`, `abandonedLines`, `peopleLines`, `activeAuthors`, `formerAuthors` (counts of people holding lines), `nonPersonLines`. `score` is the abandoned share times the hotspot percentile, or with `--rank abandonment` the abandoned lines. With `--by component`: `path`, `score`, `files`, `abandonedFiles`, `abandonedShare`, `abandonedLines`, `peopleLines`. The `summary` section gives the files and lines of the whole repository.
+Files with any lines held by people who have left. Rows: `path`, `abandoned` (the share is at or above `abandonmentGuideline`), `score`, `hotspot`, `hotspotPercentile`, `findings`, `abandonedShare`, `abandonedLines`, `peopleLines`, `activeAuthors`, `formerAuthors` (counts of people holding lines), `nonPersonLines`. `score` is the abandoned share times the hotspot percentile, or with `--rank abandonment` the abandoned lines. With `--by component`: `path`, `score`, `files`, `abandonedFiles`, `abandonedShare`, `abandonedLines`, `peopleLines`. With no `components` in the config every file is in `(unassigned)`, and `notices` says so. The `summary` section gives the files and lines of the whole repository.
 
 ## abandonment patterns
 
@@ -34,14 +34,16 @@ One row per usable period: `start`, `end`, `developers` (on the team at its star
 - `files`: the top N (default 20) by `score`, with `probability`, `tailShare`, `abandoned`, `hotspot`, `hotspotPercentile`, `peopleLines`, `activeAuthors`, `formerAuthors` and `findings`.
 - `components`: per component `peopleLines`, `abandonedLines`, `expectedLoss` (increment in lines), `atRisk` and `findings`.
 
+`notices` says the loss figures are an upper bound when `leaverProbability` is at or above `leaverProbabilityGuideline` percent or the mapped share is under `mappedShareGuideline`.
+
 `--k` needs `--mode k-leavers` and cannot exceed the active developers. `--mode historical` needs at least one usable period and ignores a configured rate. Rate mode with no usable period and no configured rate stops and asks for one.
 
 ## successors PATH... [--names] [--top N]
 
-One row per path: `abandoned`, `coupledFiles` (`path`, `degree`, `support`), `candidates` (active developers with a score), `noSuccessor`, and `successors` (the top N, default 5): `rank`, `score`, `coupledChanges`, `ownShare`, `evidence` (coupled files they changed, with `degree` and `changes`). `--names` adds `developer` to each. Only active developers are candidates.
+One row per path: `abandoned`, `coupledFiles` (`path`, `degree`, `support`), `candidates` (active developers with a score), `noSuccessor` (no candidate: no active developer holds a line of the file or has changed a file coupled with it), and `successors` (the top N, default 5): `rank`, `score`, `coupledChanges`, `ownShare`, `evidence` (coupled files they changed, with `degree` and `changes`). `--names` adds `developer` to each: the developer's name, without the address. Only active developers are candidates.
 
 ## Configuration (`cochange.knowledge`)
 
-`enabled` (false), `activityWindowMonths` (6), `periodMonths` (3), `horizonPeriods` (4), `abandonmentGuideline` (90), `turnoverRate` (null, a percentage per period from 0 to 100: 15 is 15 percent), `minTurnoverPeriods` (4), `mappedShareGuideline` (80), `trials` (10000), `alphas` ([95, 99]), `seed` (1), `rank` (`hotspot`), `copyDetection` (true), `atRiskProbability` (10), `concentratedTailRatio` (3), and the pattern guidelines `singleOwnerShare` (90), `formerContributorShare` (50), `complexityPercentile` (75), `manyActiveAuthors` (5), `meaningfulShare` (5), `inconclusiveShare` (50), `busFactorShare` (80).
+`enabled` (false), `activityWindowMonths` (6), `periodMonths` (3), `horizonPeriods` (4), `abandonmentGuideline` (90), `turnoverRate` (null, a percentage per period from 0 to 100: 15 is 15 percent), `minTurnoverPeriods` (4), `mappedShareGuideline` (80), `leaverProbabilityGuideline` (50), `populationChangeGuideline` (25), `trials` (10000), `alphas` ([95, 99]), `seed` (1), `rank` (`hotspot`), `copyDetection` (true), `atRiskProbability` (10), `concentratedTailRatio` (3), and the pattern guidelines `singleOwnerShare` (90), `formerContributorShare` (50), `complexityPercentile` (75), `manyActiveAuthors` (5), `meaningfulShare` (5), `inconclusiveShare` (50), `busFactorShare` (80).
 
 Local, never committed: `.code-health/local/knowledge-overrides.json`, `{ "schemaVersion": 1, "active": ["Name <email>"], "inactive": ["Name <email>"] }`.

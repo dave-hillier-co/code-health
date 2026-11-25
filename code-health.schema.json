@@ -512,6 +512,14 @@
               "type": "number",
               "default": 80
             },
+            "leaverProbabilityGuideline": {
+              "type": "number",
+              "default": 50
+            },
+            "populationChangeGuideline": {
+              "type": "number",
+              "default": 25
+            },
             "trials": {
               "type": "number",
               "default": 10000
@@ -585,6 +593,8 @@
             "turnoverRate": null,
             "minTurnoverPeriods": 4,
             "mappedShareGuideline": 80,
+            "leaverProbabilityGuideline": 50,
+            "populationChangeGuideline": 25,
             "trials": 10000,
             "alphas": [
               95,

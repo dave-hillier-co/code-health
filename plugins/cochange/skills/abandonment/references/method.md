@@ -41,7 +41,7 @@ Raw abandonment puts old, stable code first. By default files are ranked by aban
 - `abandoned`: already abandoned.
 - `at-risk-hot` and `at-risk-cold`: probability at least `cochange.knowledge.atRiskProbability` percent (default 10), for a file that is or is not a hotspot.
 - `concentrated-component`: tail ratio of the component's increment in lines, at the lowest alpha, at or above the guideline `cochange.knowledge.concentratedTailRatio` (default 3, from the paper's finding that tail losses exceed three times the expected loss). Each component row prints `tailRatio`, `guideline` and `ratioToGuideline`, so a ratio just under the guideline is visible. Needs `components` in the config. The unassigned group is listed with its size and never given the finding.
-- `no-successor`: an abandoned or at-risk file where no active developer has changed any file that changes with it.
+- `no-successor`: an abandoned or at-risk file for which the successor model has no candidate: no active developer holds a line of it, and none has changed a file coupled with it at `cochange.minSupport`. An active developer who holds lines is a candidate, so a file with active authors never has the finding, however little it is coupled.
 
 ## Successors
 

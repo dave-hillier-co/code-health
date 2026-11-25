@@ -34,7 +34,7 @@ const run = async (repo: GitFixture, ...args: string[]) => {
   return JSON.parse(stdout);
 };
 
-const mappedNotice = (notices: string[] | undefined) => (notices ?? []).filter((n) => n.includes("mappedShareGuideline"));
+const mappedNotice = (notices: string[] | undefined) => (notices ?? []).filter((n) => n.startsWith("Identities that are settled"));
 
 test("current and simulate print the mapped share when it is under the guideline, and still print every result", async () => {
   configure(identity, { turnoverRate: 10 });
@@ -82,4 +82,48 @@ test("a history too short to estimate turnover says which key to set and in what
   } finally {
     young.dispose();
   }
+});
+
+const upperBound = (notices: string[] | undefined) => (notices ?? []).filter((n) => n.startsWith("The loss figures are an upper bound"));
+
+test("a high leaver probability says the loss figures are an upper bound, at the guideline and not below it", async () => {
+  // A rate of 30 percent per period over four periods is a leaver probability of 1 - 0.7^4, 76 percent.
+  configure(knowledge, { turnoverRate: 30 });
+  const high = upperBound((await run(knowledge, "simulate")).notices);
+  expect(high).toHaveLength(1);
+  expect(high[0]).toContain("leaves within the horizon is 76%, at or above the guideline of 50% (cochange.knowledge.leaverProbabilityGuideline)");
+  expect(upperBound((await run(knowledge, "trend", "--points", "2")).notices)).toHaveLength(1);
+  configure(knowledge, { turnoverRate: 30, leaverProbabilityGuideline: 77 });
+  expect(upperBound((await run(knowledge, "simulate")).notices)).toEqual([]);
+  configure(knowledge, { turnoverRate: 10 });
+  expect(upperBound((await run(knowledge, "simulate")).notices)).toEqual([]);
+});
+
+test("a mapped share under its guideline also says the loss figures are an upper bound", async () => {
+  configure(identity, { turnoverRate: 1 });
+  const notice = upperBound((await run(identity, "simulate")).notices);
+  expect(notice).toHaveLength(1);
+  expect(notice[0]).toContain("(cochange.knowledge.mappedShareGuideline)");
+  expect(notice[0]).not.toContain("leaverProbabilityGuideline");
+});
+
+test("grouping by component with no components configured says so, and configured components do not", async () => {
+  const unconfigured = (notices: string[] | undefined) => (notices ?? []).filter((n) => n.includes("No components are configured"));
+  configure(knowledge, { turnoverRate: 10 });
+  const current = await run(knowledge, "current", "--by", "component");
+  expect(current.results.map((r: { path: string }) => r.path)).toEqual(["(unassigned)"]);
+  expect(unconfigured(current.notices)).toHaveLength(1);
+  expect(unconfigured((await run(knowledge, "current")).notices)).toEqual([]);
+  writeFileSync(join(knowledge.path, "code-health.json"), JSON.stringify({ components: { core: "src/core/**" }, cochange: { knowledge: { enabled: true, trials: 100, turnoverRate: 10 } } }));
+  expect(unconfigured((await run(knowledge, "current", "--by", "component")).notices)).toEqual([]);
+});
+
+test("adoption says why a rate is null: nothing abandoned at the date, or nothing adopted", async () => {
+  configure(knowledge, {});
+  const none = await run(knowledge, "adoption", "--at", "2024-06-01", "--horizon", "1");
+  expect(none.results).toMatchObject({ abandoned: 2, adopted: 0, recommendationHitRate: null });
+  expect(none.notices.join("\n")).toContain("recommendationHitRate is null: none of the 2 files abandoned at 2024-06-01 was adopted");
+  const early = await run(knowledge, "adoption", "--at", "2023-06-01", "--horizon", "1");
+  expect(early.results).toMatchObject({ abandoned: 0, adoptionRate: null, recommendationHitRate: null });
+  expect(early.notices.join("\n")).toContain("adoptionRate and recommendationHitRate are null: no file was abandoned at 2023-06-01");
 });

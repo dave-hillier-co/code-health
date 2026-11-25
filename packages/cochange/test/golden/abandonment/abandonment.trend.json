@@ -112,6 +112,7 @@
     "horizonPeriods": 4,
     "periodMonths": 3,
     "points": 3,
+    "populationChangeGuideline": 25,
     "seed": 1,
     "subcommand": "trend",
     "trials": 200,
@@ -173,7 +174,8 @@
             "expected": 36.265,
             "expectedShare": 0.5579
           }
-        }
+        },
+        "unknownFiles": 0
       },
       {
         "abandonedFiles": 3,
@@ -224,7 +226,8 @@
             "expected": 48.125,
             "expectedShare": 0.6417
           }
-        }
+        },
+        "unknownFiles": 0
       },
       {
         "abandonedFiles": 3,
@@ -275,7 +278,8 @@
             "expected": 48.125,
             "expectedShare": 0.6417
           }
-        }
+        },
+        "unknownFiles": 0
       }
     ],
     "ratePerPeriod": 0.1111,

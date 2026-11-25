@@ -55,7 +55,7 @@ test("the scaffold gives the answers the cases' graders look for", async () => {
   expect(files["src/core/engine.ts"]).toEqual(["abandoned", "no-successor"]);
 
   const successors = JSON.parse((await run(dir, "successors", "src/api/auth.ts", "--names")).stdout);
-  expect(successors.results[0].successors.map((s: { developer: string }) => s.developer)).toEqual(["Ann Active <ann@example.com>", "Bob Builder <bob@example.com>"]);
+  expect(successors.results[0].successors.map((s: { developer: string }) => s.developer)).toEqual(["Ann Active", "Bob Builder"]);
 });
 
 test("the off scaffold has not opted in, so the analysis refuses until the repository does", async () => {

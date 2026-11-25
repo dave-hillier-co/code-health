@@ -28,6 +28,8 @@ test("the analysis is off by default and the defaults follow the spec", () => {
     turnoverRatePercent: null,
     minTurnoverPeriods: 4,
     mappedShareGuideline: 80,
+    leaverProbabilityGuideline: 50,
+    populationChangeGuideline: 25,
     trials: 10_000,
     alphas: [95, 99],
     seed: 1,

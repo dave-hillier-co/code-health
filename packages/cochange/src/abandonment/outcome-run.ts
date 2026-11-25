@@ -15,7 +15,7 @@ import { hotspotWeights } from "./ranking.ts";
 import { measureRedundancy, summariseRedundancy } from "./redundancy.ts";
 import { reportLoss } from "./report.ts";
 import { readSimulationSettings } from "./selection.ts";
-import { mappedShareNotices, noticesSection, turnoverNotices, turnoverRateHint } from "./notices.ts";
+import { adoptionNotices, mappedShareNotices, noticesSection, readMappedShare, turnoverNotices, turnoverRateHint, upperBoundNotices } from "./notices.ts";
 import { requireKnowledge } from "./settings.ts";
 import { simulate } from "./simulate.ts";
 import { buildSuccessorIndex } from "./successors.ts";
@@ -72,6 +72,7 @@ export async function trendCommand(context: CommandContext): Promise<CommandOutp
 
   const rows = [];
   let skipped = 0;
+  let leaverProbability = 0;
   for (let i = 0; i < points; i++) {
     const at = anchor - i * periodSeconds;
     const sha = i === 0 ? history.view.headSha : commitAt(history, at);
@@ -88,12 +89,14 @@ export async function trendCommand(context: CommandContext): Promise<CommandOutp
       guidelinePercent: settings.abandonmentGuideline,
       components,
     });
+    leaverProbability = result.meanLeaverProbability;
     const abandoned = measureCurrent(knowledge.model, settings.abandonmentGuideline).filter((f) => f.abandoned).length;
     rows.push({
       date: isoDay(at),
       commit: sha,
       activeDevelopers: result.activeDevelopers,
       files: result.population.files,
+      unknownFiles: knowledge.model.missing.length,
       abandonedFiles: abandoned,
       lines: reportLoss(result.lines, result.baseline.lines, result.population.peopleLines),
     });
@@ -101,7 +104,13 @@ export async function trendCommand(context: CommandContext): Promise<CommandOutp
   rows.reverse();
   const first = rows[0]?.lines.total.expectedShare;
   const last = rows.at(-1)?.lines.total.expectedShare;
-  const notices = [...(await mappedShareNotices(context, settings)), ...turnoverNotices(settings, observed, settings.turnoverRate === null)];
+  const mapped = await readMappedShare(context, settings);
+  const notices = [
+    ...mapped.notices,
+    ...turnoverNotices(settings, observed, settings.turnoverRate === null),
+    ...upperBoundNotices(settings, leaverProbability, mapped.under),
+    ...populationNotices(rows, settings.populationChangeGuideline, noRefresh),
+  ];
   const direction = rows.length < 2 || first === undefined || last === undefined ? null : last < first ? "falling" : last > first ? "rising" : "flat";
   return {
     inputs: {
@@ -116,6 +125,7 @@ export async function trendCommand(context: CommandContext): Promise<CommandOutp
       periodMonths: settings.periodMonths,
       copyDetection: settings.copyDetection,
       turnoverRatePercent: settings.turnoverRatePercent,
+      populationChangeGuideline: settings.populationChangeGuideline,
       ...identityStamps(history),
     },
     extra: { ...historySections(history), ...noticesSection(notices) },
@@ -128,6 +138,51 @@ export async function trendCommand(context: CommandContext): Promise<CommandOutp
       points: rows,
     },
   };
+}
+
+interface TrendPopulation {
+  date: string;
+  files: number;
+  unknownFiles: number;
+  activeDevelopers: number;
+}
+
+/**
+ * What makes trend points measure different populations: files with no blame at a point, which leave the point
+ * smaller than its tree, and a change between neighbouring points in the measured files or the active developers
+ * of at least the guideline. The points are printed either way.
+ */
+export function populationNotices(points: readonly TrendPopulation[], guidelinePercent: number, noRefresh: boolean): string[] {
+  const notices: string[] = [];
+  for (const point of points) {
+    if (point.unknownFiles === 0) continue;
+    notices.push(
+      `${point.unknownFiles} files with no blame in the cache at ${point.date} are left out of that point, so it measures ${point.files} files instead of ${point.files + point.unknownFiles}${noRefresh ? "; run without --no-refresh to blame them" : ""}`,
+    );
+  }
+  const change = (from: number, to: number): number | null => (from === 0 ? (to === 0 ? 0 : null) : (Math.abs(to - from) / from) * 100);
+  const sharp = (from: number, to: number): boolean => {
+    const percent = change(from, to);
+    return percent === null || percent >= guidelinePercent;
+  };
+  const percentText = (from: number, to: number): string => {
+    const percent = change(from, to);
+    return percent === null ? "from none" : `${to >= from ? "+" : "-"}${Math.round(percent)}%`;
+  };
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1]!;
+    const b = points[i]!;
+    const parts: string[] = [];
+    if (sharp(a.files, b.files)) parts.push(`the measured files went from ${a.files} at ${a.date} to ${b.files} at ${b.date} (${percentText(a.files, b.files)})`);
+    if (sharp(a.activeDevelopers, b.activeDevelopers)) {
+      parts.push(`the active developers went from ${a.activeDevelopers} at ${a.date} to ${b.activeDevelopers} at ${b.date} (${percentText(a.activeDevelopers, b.activeDevelopers)})`);
+    }
+    if (parts.length === 0) continue;
+    notices.push(
+      `Between neighbouring points ${parts.join(" and ")}, at or above the guideline of ${guidelinePercent}% (cochange.knowledge.populationChangeGuideline), so the two points measure different populations: compare their shares, not their counts`,
+    );
+  }
+  return notices;
 }
 
 /**
@@ -177,7 +232,7 @@ export async function adoptionCommand(context: CommandContext): Promise<CommandO
     recommended,
   });
   const summary = summariseAdoption(files);
-  const notices = await mappedShareNotices(context, settings);
+  const notices = [...(await mappedShareNotices(context, settings)), ...adoptionNotices(isoDay(at), summary)];
   return {
     inputs: {
       subcommand: "adoption",

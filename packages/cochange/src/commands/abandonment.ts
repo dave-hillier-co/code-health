@@ -4,6 +4,7 @@ import { backtestCommand } from "../abandonment/backtest.ts";
 import { groupByComponent, measureCurrent, round4, summariseCurrent } from "../abandonment/current.ts";
 import { commonExtra, commonInputs, prepare } from "../abandonment/prepare.ts";
 import { fileFindings, hotspotWeights, rankScore, rules as abandonmentRules } from "../abandonment/ranking.ts";
+import { componentNotices, noticesSection } from "../abandonment/notices.ts";
 import { readRank } from "../abandonment/settings.ts";
 import { noSuccessorCheck } from "../abandonment/successors.ts";
 import { simulationOptions } from "../abandonment/selection.ts";
@@ -95,6 +96,7 @@ async function current(context: CommandContext): Promise<CommandOutput> {
   const rank = readRank(context, p.settings);
   const weights = by === "file" ? await hotspotWeights(context, p.history) : new Map();
   const noSuccessor = noSuccessorCheck(p.history, model);
+  const components = readComponents(context.config.effective.components);
   const rows =
     by === "file"
       ? files
@@ -116,16 +118,17 @@ async function current(context: CommandContext): Promise<CommandOutput> {
             nonPersonLines: f.nonPersonLines,
           }))
       : // Every component with a measured file is listed. Components with no abandoned lines have score 0 and sort last.
-        groupByComponent(files, readComponents(context.config.effective.components)).map((g) => ({ ...g, score: g.abandonedShare }));
+        groupByComponent(files, components).map((g) => ({ ...g, score: g.abandonedShare }));
 
+  const unassigned = by === "component" ? componentNotices(components) : [];
   return {
     inputs: commonInputs(p, "current", { by, rank }),
-    extra: commonExtra(p, { summary: summariseCurrent(files, unattributed) }),
+    extra: commonExtra(p, { summary: summariseCurrent(files, unattributed), ...noticesSection([...p.notices, ...unassigned]) }),
     results: rows,
     // Only the file view omits rows by a value: files with no lines held by people who have left. Say how many.
     notices: [
       ...p.notices,
-      ...(by === "file" ? [`Omitted ${files.length - rows.length} of ${files.length} measured files that have no lines held by people who have left`] : []),
+      ...(by === "file" ? [`Omitted ${files.length - rows.length} of ${files.length} measured files that have no lines held by people who have left`] : unassigned),
     ],
     columns:
       by === "file"

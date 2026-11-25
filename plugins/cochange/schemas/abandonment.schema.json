@@ -9,6 +9,7 @@
       "properties": {
         "subcommand": { "enum": ["current", "patterns", "turnover", "simulate", "backtest", "redundancy", "trend", "adoption"] },
         "points": { "type": "integer", "minimum": 2, "description": "Trend: how many dates, one period apart, are measured." },
+        "populationChangeGuideline": { "type": "integer", "minimum": 0, "description": "Trend: the percentage change in measured files or active developers between neighbouring points at which a notice says they measure different populations. A guideline from cochange.knowledge.populationChangeGuideline." },
         "successors": { "type": "integer", "minimum": 1, "description": "Adoption: how many of the ranked successors count as recommended." },
         "minAuthors": { "type": "integer", "minimum": 1, "description": "Redundancy: active authors a file needs." },
         "minSharePercent": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Redundancy: the percentage of a file's lines each of them must hold." },
@@ -370,11 +371,12 @@
         "date": { "type": "string", "format": "date" },
         "commit": { "$ref": "common.schema.json#/$defs/sha" },
         "activeDevelopers": { "$ref": "common.schema.json#/$defs/count" },
-        "files": { "$ref": "common.schema.json#/$defs/count", "description": "Files holding lines of people." },
+        "files": { "$ref": "common.schema.json#/$defs/count", "description": "Files holding lines of people: the measured population of the point." },
+        "unknownFiles": { "$ref": "common.schema.json#/$defs/count", "description": "Authored files at the point's commit with no blame in the cache. They are not in `files`, so a point with any measures less than its tree." },
         "abandonedFiles": { "$ref": "common.schema.json#/$defs/count" },
         "lines": { "$ref": "#/$defs/loss" }
       },
-      "required": ["date", "commit", "activeDevelopers", "files", "abandonedFiles", "lines"],
+      "required": ["date", "commit", "activeDevelopers", "files", "unknownFiles", "abandonedFiles", "lines"],
       "additionalProperties": false
     },
     "trend": {
@@ -612,8 +614,8 @@
       "properties": {
         "inputs": {
           "type": "object",
-          "properties": { "subcommand": { "const": "trend" }, "points": true, "trials": true, "horizonPeriods": true, "seed": true, "alphas": true, "turnoverRatePercent": true },
-          "required": ["subcommand", "points", "trials", "horizonPeriods", "seed", "alphas", "turnoverRatePercent"]
+          "properties": { "subcommand": { "const": "trend" }, "points": true, "trials": true, "horizonPeriods": true, "seed": true, "alphas": true, "turnoverRatePercent": true, "populationChangeGuideline": true },
+          "required": ["subcommand", "points", "trials", "horizonPeriods", "seed", "alphas", "turnoverRatePercent", "populationChangeGuideline"]
         },
         "results": { "$ref": "#/$defs/trend" }
       },

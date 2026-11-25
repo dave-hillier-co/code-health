@@ -3,6 +3,7 @@ import type { CommandContext } from "@code-health/cli-kit/run-cli";
 import { commitsInSnapshot, resolveOwners } from "@code-health/history/blame-owners";
 import { readBlame } from "@code-health/history/blame-read";
 import { refreshBlame, type BlameRefreshResult } from "@code-health/history/blame-refresh";
+import { listTree } from "@code-health/history/tree";
 import type { LoadedHistory } from "../history-access.ts";
 import { SECONDS_PER_MONTH, windowSecondsOf } from "../active-developers.ts";
 import { readActivity, type Activity } from "./activity.ts";
@@ -39,7 +40,7 @@ export async function refreshBlameFor(
   history: LoadedHistory,
   settings: KnowledgeSettings,
   sha: string,
-  callbacks: { signal?: AbortSignal } = {},
+  callbacks: { signal?: AbortSignal; paths?: readonly string[] } = {},
 ): Promise<BlameRefreshResult> {
   const progress = progressReporter((done, total) => `blame: ${done} of ${total} files blamed`);
   try {
@@ -63,7 +64,9 @@ export async function loadKnowledge(
   const { root } = context.repo;
   const target = options.target ?? { sha: history.view.headSha, asOf: history.view.headDate };
   const present = options.target === undefined;
-  const refreshed = options.noRefresh ? null : await refreshBlameFor(context, history, settings, target.sha);
+  // A past tree is blamed file by file, so the refresh keeps the blames of HEAD instead of pruning every blob that tree lacks.
+  const past = target.sha !== history.view.headSha;
+  const refreshed = options.noRefresh ? null : await refreshBlameFor(context, history, settings, target.sha, past ? { paths: await listTree(root, target.sha) } : {});
   const snapshot = await readBlame(root, { ref: target.sha, ...blameOptions(history, settings) });
   const identity = { localMailmap: history.identities.localMailmap, matcher: history.identities.matcher };
   const owners = await resolveOwners(root, commitsInSnapshot(snapshot), identity);

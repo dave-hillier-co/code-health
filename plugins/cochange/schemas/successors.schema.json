@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "successors.schema.json",
   "title": "cochange successors PATH... [--names] --json",
-  "description": "Who could pick up a file's knowledge. Without --names a successor is a rank and a score. With it the developer's identity is shown, and only an active developer's: the command never lists people who have left. Never stored as a report.",
+  "description": "Who could pick up a file's knowledge. Without --names a successor is a rank and a score. With it the developer's name is shown, without the address, and only an active developer's: the command never lists people who have left. Never stored as a report.",
   "$defs": {
     "evidence": {
       "type": "object",
@@ -19,7 +19,7 @@
       "type": "object",
       "properties": {
         "rank": { "type": "integer", "minimum": 1 },
-        "developer": { "type": "string", "description": "`Name <email>` of an active developer. Only with --names." },
+        "developer": { "type": "string", "description": "The name of an active developer, without the address (the part of the address before @ when the identity has no name). Only with --names.", "not": { "pattern": "@" } },
         "score": { "type": "number", "minimum": 0, "description": "coupledChanges plus ownShare." },
         "coupledChanges": { "type": "number", "minimum": 0, "description": "Sum over coupled files of the coupling degree (as a fraction) times the developer's changes to that file." },
         "ownShare": { "type": "number", "minimum": 0, "maximum": 1, "description": "The share of the people's lines in the file that the developer holds." },
@@ -47,7 +47,7 @@
           }
         },
         "candidates": { "$ref": "common.schema.json#/$defs/count", "description": "Active developers with a score, before --top limits the list." },
-        "noSuccessor": { "type": "boolean", "description": "No active developer has changed a file that changes with this one." },
+        "noSuccessor": { "type": "boolean", "description": "No candidate: no active developer holds a line of the file, and none has changed a file coupled with it at the minimum support." },
         "successors": { "type": "array", "items": { "$ref": "#/$defs/successor" } }
       },
       "required": ["path", "abandoned", "coupledFiles", "candidates", "noSuccessor", "successors"],

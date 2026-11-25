@@ -42,6 +42,9 @@ export function isActiveDeveloper(key: string, times: readonly number[], asOf: n
   return activeAt(times, asOf, rule.windowSeconds);
 }
 
+/** The name of a mapped identity, `Name <email>`, without the address; the part of the address before `@` when the name is empty. */
+export const displayNameOf = (identity: string): string => identity.replace(/\s*<[^>]*>$/, "").trim() || emailOf(identity).split("@")[0]!;
+
 /** The lower-case address of a mapped identity, `Name <email>`. */
 export const emailOf = (identity: string): string => (/<([^>]*)>$/.exec(identity)?.[1] ?? "").toLowerCase();
 

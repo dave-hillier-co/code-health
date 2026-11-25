@@ -1,6 +1,7 @@
 import { usageError } from "@code-health/cli-kit/errors";
 import type { Command } from "@code-health/cli-kit/run-cli";
 import { listTree } from "@code-health/history/tree";
+import { displayNameOf } from "../active-developers.ts";
 import { goneLinesOf, reachesGuideline } from "../abandonment/knowledge-model.ts";
 import { commonExtra, commonInputs, prepare } from "../abandonment/prepare.ts";
 import { buildSuccessorIndex, hasNoSuccessor, successorsOf } from "../abandonment/successors.ts";
@@ -13,7 +14,7 @@ export const name = "successors";
 /**
  * Who could pick up a file's knowledge: active developers ranked by their changes to the files that
  * change with it, plus their own lines in it. Behind the privacy gate. Without `--names` a successor is
- * a rank and a score. With it the developer's identity is shown, and only ever an active developer's:
+ * a rank and a score. With it the developer's name is shown, without the address, and only ever an active developer's:
  * the command never lists the people who have left, or the people whose departure would lose the most.
  */
 export const command: Command = {
@@ -44,7 +45,7 @@ export const command: Command = {
         noSuccessor: hasNoSuccessor(successors),
         successors: successors.slice(0, top).map((s, i) => ({
           rank: i + 1,
-          ...(names ? { developer: s.developer } : {}),
+          ...(names ? { developer: displayNameOf(s.developer) } : {}),
           score: s.score,
           coupledChanges: s.coupledChanges,
           ownShare: s.ownShare,

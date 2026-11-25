@@ -9,7 +9,7 @@ import { goneLinesOf, reachesGuideline } from "./knowledge-model.ts";
 import { commonExtra, commonInputs, prepare, type Prepared } from "./prepare.ts";
 import { fileFindings, hotspotWeights, rankScore } from "./ranking.ts";
 import { reportLoss } from "./report.ts";
-import { noticesSection, turnoverNotices } from "./notices.ts";
+import { noticesSection, turnoverNotices, upperBoundNotices } from "./notices.ts";
 import { noSuccessorCheck } from "./successors.ts";
 import { chooseSelection, readSimulationSettings } from "./selection.ts";
 import { readRank, requireKnowledge } from "./settings.ts";
@@ -125,7 +125,11 @@ export async function simulateCommand(context: CommandContext): Promise<CommandO
     .sort((a, b) => b.expectedLoss - a.expectedLoss || Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
 
   const leaverProbability = round4(result.meanLeaverProbability);
-  const notices = [...p.notices, ...turnoverNotices(settings, turnover, selection.mode === "historical" || (selection.mode === "rate" && source === "history"))];
+  const notices = [
+    ...p.notices,
+    ...turnoverNotices(settings, turnover, selection.mode === "historical" || (selection.mode === "rate" && source === "history")),
+    ...upperBoundNotices(settings, result.meanLeaverProbability, p.mappedShareUnder),
+  ];
   const output: CommandOutput = {
     inputs: commonInputs(p, "simulate", {
       mode: sim.mode,
