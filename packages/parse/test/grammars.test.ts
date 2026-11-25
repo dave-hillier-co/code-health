@@ -1,10 +1,10 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { grammarSamples } from "@code-health/fixtures/language-samples";
-import { copyGrammars } from "../src/copy-grammars.ts";
-import { grammarIdForPath, loadGrammar, runtimeSpec, shippedGrammarSpecs } from "../src/grammars.ts";
+import { copyGrammars, shippedGrammarFiles } from "../src/copy-grammars.ts";
+import { GRAMMAR_PART_BYTES, grammarIdForPath, grammarPartName, loadGrammar, locateGrammarFile, readGrammarFile, shippedGrammarSpecs } from "../src/grammars.ts";
 
 const scratch: string[] = [];
 afterEach(() => {
@@ -69,8 +69,9 @@ describe("loadGrammar", () => {
     scratch.push(dist);
     const copied = copyGrammars(join(dist, "grammars"));
     // The grammar of every supported adapter and the runtime, whichever languages are supported.
-    expect(copied).toEqual([...new Set([...shippedGrammarSpecs().map((spec) => spec.file), runtimeSpec.file])].sort());
+    expect(copied).toEqual(shippedGrammarFiles());
     expect(copied).toEqual(expect.arrayContaining(["tree-sitter-typescript.wasm", "tree-sitter-java.wasm", "tree-sitter-kotlin.wasm", "web-tree-sitter.wasm"]));
+    expect(readdirSync(join(dist, "grammars")).sort()).toEqual(copied);
     const grammar = await loadGrammar("typescript", { grammarDir: join(dist, "grammars") });
     const tree = grammar.parse("class A {}");
     expect(tree.rootNode.child(0)?.type).toBe("class_declaration");
@@ -91,6 +92,33 @@ describe("loadGrammar", () => {
       expect(tree.rootNode.childCount, `${spec.id} reads something`).toBeGreaterThan(0);
       tree.delete();
     }
+  });
+
+  it("ships a grammar larger than a part as parts, none over the size, and loads it as the same grammar", async () => {
+    const dist = mkdtempSync(join(tmpdir(), "code-health-grammars-"));
+    scratch.push(dist);
+    const grammars = join(dist, "grammars");
+    const copied = copyGrammars(grammars);
+    for (const name of copied) expect(statSync(join(grammars, name)).size, name).toBeLessThanOrEqual(GRAMMAR_PART_BYTES);
+
+    const large = shippedGrammarSpecs().filter((spec) => statSync(locateGrammarFile(spec)).size > GRAMMAR_PART_BYTES);
+    expect(large.map((spec) => spec.id)).toContain("csharp");
+    for (const spec of large) {
+      expect(copied).not.toContain(spec.file);
+      expect(copied).toEqual(expect.arrayContaining([grammarPartName(spec.file, 0), grammarPartName(spec.file, 1)]));
+      expect(readGrammarFile(join(grammars, spec.file)).equals(readFileSync(locateGrammarFile(spec)))).toBe(true);
+      // The version is a hash of the joined bytes, so facts cached from the whole file are still read.
+      expect((await loadGrammar(spec.id, { grammarDir: grammars })).version).toBe((await loadGrammar(spec.id)).version);
+    }
+  });
+
+  it("copying again removes a file that is no longer shipped, such as the whole file of a grammar now in parts", () => {
+    const dist = mkdtempSync(join(tmpdir(), "code-health-grammars-"));
+    scratch.push(dist);
+    const grammars = join(dist, "grammars");
+    copyGrammars(grammars);
+    writeFileSync(join(grammars, "tree-sitter-c_sharp.wasm"), "stale");
+    expect(copyGrammars(grammars)).toEqual(readdirSync(grammars).sort());
   });
 
   it("fails clearly when a grammar file is missing", async () => {

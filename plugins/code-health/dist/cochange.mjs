@@ -15490,7 +15490,7 @@ async function assessBranch(context, history, request) {
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
   const locality = readLocalityFanIn(root, change3.head);
   const touched = change3.files.filter((file) => file.status !== "D").map((file) => file.fileId);
-  const { changedSignatures, withSignatures } = await import("./chunk-CRPEMWDA.mjs");
+  const { changedSignatures, withSignatures } = await import("./chunk-H7WWDCMB.mjs");
   const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change3);
   const factors = await Promise.all(
     banded.map(async ({ m, result }) => {

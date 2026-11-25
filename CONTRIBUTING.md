@@ -58,7 +58,7 @@ A command may group subcommands that share its setup, as `structure packages <li
 
 ### Modules loaded on demand
 
-A module a command loads with `await import("./x.ts")` is built into `plugins/code-health/dist/chunk-<hash>.mjs`, with whatever only it uses, and is read only when the command runs. Use it for a heavy dependency that most commands never need, as locality does for ts-morph. A module that holds shared state must stay in the main bundle: a chunk is another file, so it would not be the same module. `npm run build` writes the chunks and removes ones that are no longer produced, and `npm run check:dist` compares them.
+A module a command loads with `await import("./x.ts")` is built into `plugins/code-health/dist/chunk-<hash>.mjs`, with whatever only it uses, and is read only when the command runs. Use it for a heavy dependency that most commands never need, as locality does for ts-morph. A module that holds shared state must stay in the main bundle: a chunk is another file, so it would not be the same module. The plugin directory refuses a plugin with a file over 5 MiB, and `npm run build` fails when `dist/` has one. A chunk that holds only third-party code is minified, and a third-party module too large to share a chunk is listed in `OWN_CHUNK_MODULES` in `scripts/bundle.mjs`, which gives it a chunk of its own, as the TypeScript compiler inside ts-morph has. `npm run build` writes the chunks and removes ones that are no longer produced, and `npm run check:dist` compares them.
 
 ### Tools that parse
 
@@ -221,7 +221,7 @@ Record the lexical agreement with `UPDATE_AGREEMENT=1 npx vitest run packages/pa
 
 ### Grammars
 
-The plugin ships the grammar of every supported adapter in `dist/grammars/`, from the adapters' `grammars`, and a tool loads only the ones the analysed repository has files for. Nothing is listed by hand: a new supported language changes the committed `dist/grammars`, so `npm run build` follows.
+The plugin ships the grammar of every supported adapter in `dist/grammars/`, from the adapters' `grammars`, and a tool loads only the ones the analysed repository has files for. Nothing is listed by hand: a new supported language changes the committed `dist/grammars`, so `npm run build` follows. A grammar over 4 MiB is written as parts, `<file>.part0`, `<file>.part1` and so on, because the plugin directory refuses a file over 5 MiB. The loader joins the parts, and the grammar's version is a hash of the joined bytes, so it is the same whole or in parts.
 
 ## Evals
 

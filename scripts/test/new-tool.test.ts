@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import Ajv2020Module from "ajv/dist/2020.js";
 import { afterAll, beforeAll, beforeEach, afterEach, expect, test, vi } from "vitest";
 import { GitFixture } from "@code-health/fixtures/git-fixture";
-import { runtimeSpec, shippedGrammarSpecs } from "@code-health/parse/grammars";
+import { shippedGrammarFiles } from "@code-health/parse/copy-grammars";
 import { buildAll, staleBundles } from "../bundle.mjs";
 import { scaffoldTool, validateToolName } from "../new-tool.mjs";
 
@@ -107,7 +107,7 @@ test("a tool that parses makes the plugin ship grammars beside the bundles, whic
   await buildAll(root);
   const dist = join(plugin(), "dist");
   // The grammar of every supported adapter and the runtime, whichever languages are supported.
-  expect(readdirSync(join(dist, "grammars")).sort()).toEqual([...new Set([...shippedGrammarSpecs().map((spec) => spec.file), runtimeSpec.file])].sort());
+  expect(readdirSync(join(dist, "grammars")).sort()).toEqual(shippedGrammarFiles());
 
   // Run a copy of dist from a directory that has no node_modules and is not the build tree: the grammars must come from beside the bundle.
   const installed = mkdtempSync(join(tmpdir(), "installed-plugin-"));

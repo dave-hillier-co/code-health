@@ -40,7 +40,7 @@ const run = (...args: string[]) => spawnSync("node", [main, ...args, "--json"], 
 
 test("the bundle itself is small, and the compiler is in a chunk of its own", () => {
   expect(Buffer.byteLength(mainText)).toBeLessThan(1_000_000);
-  expect(statSync(join(work, compiler)).size).toBeGreaterThan(5_000_000);
+  expect(statSync(join(work, compiler)).size).toBeGreaterThan(3_000_000);
   expect(mainText).not.toContain("ts-morph");
   expect(readdirSync(work).filter((name) => /^chunk-.+\.mjs$/.test(name))).toContain(compiler);
 });

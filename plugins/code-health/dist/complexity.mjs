@@ -18545,17 +18545,29 @@ var Query = class {
 
 // packages/parse/src/grammars.ts
 var runtimeSpec = { packageName: "web-tree-sitter", file: "web-tree-sitter.wasm" };
+var GRAMMAR_PART_BYTES = 4 * 1024 * 1024;
+function grammarPartName(file, index) {
+  return `${file}.part${index}`;
+}
+function readGrammarFile(path) {
+  if (existsSync8(path)) return readFileSync7(path);
+  const parts3 = [];
+  while (existsSync8(grammarPartName(path, parts3.length))) parts3.push(readFileSync7(grammarPartName(path, parts3.length)));
+  if (parts3.length === 0) throw new Error(`Grammar file not found: ${path}`);
+  return Buffer.concat(parts3);
+}
+var shipped = (path) => existsSync8(path) || existsSync8(grammarPartName(path, 0));
 var require2 = createRequire(import.meta.url);
 var loaded = /* @__PURE__ */ new Map();
 var runtimeInit;
 function locate(file, packageName, grammarDir) {
   if (grammarDir !== void 0) {
     const explicit = join11(grammarDir, file);
-    if (!existsSync8(explicit)) throw new Error(`Grammar file not found: ${explicit}`);
+    if (!shipped(explicit)) throw new Error(`Grammar file not found: ${explicit}`);
     return explicit;
   }
   const bundled = fileURLToPath2(new URL(`./grammars/${file}`, import.meta.url));
-  if (existsSync8(bundled)) return bundled;
+  if (shipped(bundled)) return bundled;
   try {
     return require2.resolve(`${packageName}/${file}`);
   } catch {
@@ -18582,7 +18594,7 @@ async function load(spec, grammarDir) {
   const id = spec.id;
   const path = locate(spec.file, spec.packageName, grammarDir);
   const runtimePath = locate(runtimeSpec.file, runtimeSpec.packageName, grammarDir);
-  const bytes = readFileSync7(path);
+  const bytes = readGrammarFile(path);
   await initRuntime2(runtimePath);
   const language9 = await Language.load(new Uint8Array(bytes));
   const parser = new Parser();

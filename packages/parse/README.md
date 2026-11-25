@@ -30,6 +30,8 @@ Grammars come from npm packages that ship prebuilt `.wasm` files, so there are n
 
 The plugin ships the grammar of every supported adapter next to the tools' bundles, in `dist/grammars/`, and a tool loads only the ones the repository it analyses has files for (`GrammarSet` loads a grammar when the first file needs it). `grammars.ts` resolves them relative to `import.meta.url`: `grammars/` beside the bundle first, then the npm package when running from source. The build script bundles each tool's CLI with esbuild and, when any tool parses, calls `copyGrammars(tools/code-health/dist/grammars)` from `copy-grammars.ts`, which copies the runtime and `shippedGrammarSpecs()`.
 
+A grammar file over 4 MiB (`GRAMMAR_PART_BYTES`) is copied as parts, `<file>.part0`, `<file>.part1` and so on, because the plugin directory refuses a file over 5 MiB. `readGrammarFile` reads a grammar whole or joins its parts. The runtime is loaded by path and is always whole.
+
 A grammar's version is a hash of the bytes of its `.wasm` and of the runtime's, so it is available in a bundle and cannot drift from what was loaded.
 
 ## Parse cache
