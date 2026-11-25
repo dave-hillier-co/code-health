@@ -338,6 +338,16 @@ function resolveBySymbols(input, options = {}) {
     return edge;
   };
   const unitNames = (facts) => new Set(facts.units.map((unit) => unit.qualifiedName));
+  const byWritten = /* @__PURE__ */ new Map();
+  const declaredAs = (written, scope, entries) => {
+    const scopes2 = byWritten.get(written);
+    if (scopes2 === void 0) byWritten.set(written, /* @__PURE__ */ new Map([[scope, entries]]));
+    else scopes2.set(scope, entries);
+  };
+  for (const [name, entries] of table3) {
+    declaredAs(name, "", entries);
+    for (let dot = name.indexOf(".", 1); dot !== -1; dot = name.indexOf(".", dot + 1)) declaredAs(name.slice(dot + 1), name.slice(0, dot), entries);
+  }
   for (const [file, facts] of input.facts) {
     const symbols = facts.symbols;
     if (symbols === void 0) continue;
@@ -349,8 +359,9 @@ function resolveBySymbols(input, options = {}) {
       const known = resolved.get(name);
       if (known !== void 0) return known;
       let found = null;
-      for (const scope of scopes2) {
-        const candidates = table3.get(scope === "" ? name : `${scope}.${name}`)?.filter((entry) => entry.declaration.internal !== true || entry.file === file);
+      const declared = byWritten.get(name);
+      for (const scope of declared === void 0 ? [] : scopes2) {
+        const candidates = declared.get(scope)?.filter((entry) => entry.declaration.internal !== true || entry.file === file);
         if (candidates !== void 0 && candidates.length > 0) {
           found = candidates;
           break;
@@ -2641,7 +2652,7 @@ function requiresTest(predicate) {
 }
 
 // packages/parse/src/languages/rust/extract-facts.ts
-var extractorVersion2 = 5;
+var extractorVersion2 = 6;
 function visibilityOf(node) {
   const modifier = node.namedChildren.find((child) => child.type === "visibility_modifier");
   if (modifier === void 0) return "private";
@@ -2653,6 +2664,18 @@ function attributeNamed(node, name) {
 }
 function isProcMacro(node) {
   return attributesOf(node).some((item) => /^#\[\s*proc_macro(_attribute|_derive)?\b/.test(item.text.trim()));
+}
+function derivedName(node) {
+  for (const item of attributesOf(node)) {
+    const found = /^#\[\s*proc_macro_derive\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)/.exec(item.text.trim());
+    if (found !== null) return found[1];
+  }
+  return void 0;
+}
+function standsForItems(node) {
+  let parent = node.parent;
+  if (parent?.type === "expression_statement") parent = parent.parent;
+  return parent?.type === "source_file" || parent?.type === "declaration_list";
 }
 function pathAttribute(node) {
   const value = attributeNamed(node, "path")?.childForFieldName("value");
@@ -2759,6 +2782,94 @@ function inlineModulesOf(scope, prefix, out) {
 var primitives = /* @__PURE__ */ new Set(["bool", "char", "str", "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i64", "i128", "isize", "f32", "f64"]);
 var builtinCrates = /* @__PURE__ */ new Set(["std", "core", "alloc", "proc_macro", "test"]);
 var compareLines = (a, b) => a.line - b.line;
+var standardMacros = /* @__PURE__ */ new Set([
+  "addr_of",
+  "addr_of_mut",
+  "asm",
+  "assert",
+  "assert_eq",
+  "assert_ne",
+  "cfg",
+  "column",
+  "compile_error",
+  "concat",
+  "concat_idents",
+  "const_format_args",
+  "dbg",
+  "debug_assert",
+  "debug_assert_eq",
+  "debug_assert_ne",
+  "env",
+  "eprint",
+  "eprintln",
+  "file",
+  "format",
+  "format_args",
+  "global_asm",
+  "include",
+  "include_bytes",
+  "include_str",
+  "is_x86_feature_detected",
+  "line",
+  "macro_rules",
+  "matches",
+  "module_path",
+  "option_env",
+  "panic",
+  "pin",
+  "print",
+  "println",
+  "ready",
+  "stringify",
+  "thread_local",
+  "todo",
+  "try",
+  "unimplemented",
+  "unreachable",
+  "vec",
+  "write",
+  "writeln"
+]);
+var preludeNames = /* @__PURE__ */ new Set([
+  "Self",
+  "Some",
+  "None",
+  "Ok",
+  "Err",
+  "Option",
+  "Result",
+  "Vec",
+  "String",
+  "Box",
+  "Default",
+  "Clone",
+  "Copy",
+  "Send",
+  "Sync",
+  "Sized",
+  "Drop",
+  "Fn",
+  "FnMut",
+  "FnOnce",
+  "From",
+  "Into",
+  "TryFrom",
+  "TryInto",
+  "Iterator",
+  "IntoIterator",
+  "Extend",
+  "AsRef",
+  "AsMut",
+  "ToOwned",
+  "ToString",
+  "PartialEq",
+  "Eq",
+  "PartialOrd",
+  "Ord",
+  "Debug",
+  "Hash",
+  "drop"
+]);
 var Extractor2 = class {
   units = [];
   imports = [];
@@ -2769,6 +2880,11 @@ var Extractor2 = class {
   nameCounts = /* @__PURE__ */ new Map();
   inlineModules = /* @__PURE__ */ new Set();
   inlinePaths = [];
+  /** Paths in code that start at `crate`, `self` or `super`, already counted from the file's own module. */
+  relativePaths = [];
+  macroUses = [];
+  macros = /* @__PURE__ */ new Set();
+  itemMacros = false;
   testRanges = [];
   codeRows;
   root;
@@ -2786,10 +2902,16 @@ var Extractor2 = class {
       names.add(inner2.exported);
       this.exports.push(inner2);
     }
+    this.ownMacros();
+    this.pathsThroughBindings();
     const locals = /* @__PURE__ */ new Set();
     for (const imported of this.imports) for (const binding of imported.bindings) locals.add(binding.local);
     this.inlineCrates(root, locals);
+    this.bareMacros(locals);
     for (const imported of this.imports) for (const binding of imported.bindings) locals.add(binding.local);
+    const globs = this.reexports.some((reexport) => reexport.exported === "*");
+    const declared = /* @__PURE__ */ new Set([...this.exports.map((exported) => exported.exported), ...this.units.map((unit) => unit.qualifiedName)]);
+    const mayBeGlobbed = (reference) => globs && !declared.has(reference.local) && !preludeNames.has(reference.local) && !primitives.has(reference.local) && (upper.test(reference.local) || reference.kind === "call" || reference.member !== void 0);
     const classes = new Set(this.units.filter((unit) => unit.kind === "class").map((unit) => unit.qualifiedName));
     for (const unit of this.units) {
       const dot = unit.qualifiedName.lastIndexOf(".");
@@ -2800,9 +2922,10 @@ var Extractor2 = class {
       imports: this.imports,
       reexports: this.reexports,
       exports: this.exports,
-      references: this.references.filter((reference) => locals.has(reference.local)),
+      references: this.references.filter((reference) => locals.has(reference.local) || mayBeGlobbed(reference)),
       nodes: nodeCount(root, (node) => isComment2(node) || node.type === "use_declaration") - 1,
       hasSyntaxErrors: root.hasError,
+      ...this.itemMacros ? { itemMacros: true } : {},
       ...this.testRanges.length === 0 ? {} : { testRanges: this.testRanges }
     };
   }
@@ -2813,11 +2936,14 @@ var Extractor2 = class {
   inlineCrates(root, locals) {
     const modules = new Set(root.descendantsOfType("mod_item").map((item) => item.childForFieldName("name")?.text));
     const known = /* @__PURE__ */ new Map();
-    for (const path of this.inlinePaths) {
+    const outside = this.inlinePaths.filter((path) => {
       const [first] = path.segments;
-      if (locals.has(first) || modules.has(first) || primitives.has(first) || builtinCrates.has(first)) continue;
+      return !(locals.has(first) || modules.has(first) || primitives.has(first) || builtinCrates.has(first));
+    });
+    for (const path of [...outside, ...this.relativePaths]) {
       let item = path.segments.findIndex((segment, index) => index > 0 && upper.test(segment));
       if (item < 0) item = path.segments.length - 1;
+      if (item < 1 || isOwnModule(path.segments.slice(0, item), this.inlineModules)) continue;
       const local = path.segments.slice(0, item + 1).join("::");
       const imported = known.get(local);
       if (imported === void 0) {
@@ -2835,7 +2961,71 @@ var Extractor2 = class {
     }
   }
   inlinePath(segments, line, kind, context) {
-    if (segments.length >= 2 && /^[a-z_]/.test(segments[0])) this.inlinePaths.push({ segments, line, kind, unit: context.unit, test: context.inTests === true });
+    if (segments.length < 2) return;
+    const [first] = segments;
+    if (first === "crate" || first === "self" || first === "super") {
+      const counted = normalise(segments, context);
+      if (counted !== void 0 && counted.every((segment) => !segment.startsWith("$"))) this.relativePaths.push({ segments: counted, line, kind, unit: context.unit, test: context.inTests === true });
+    } else if (/^[a-z_]/.test(first)) this.inlinePaths.push({ segments, line, kind, unit: context.unit, test: context.inTests === true });
+  }
+  /**
+   * `use a::b; use b::Name;`: the second path starts with a name the first binds, not with a crate, so it is
+   * written out from what that name is. One step is followed, which is what the idiom uses.
+   */
+  pathsThroughBindings() {
+    const bound = /* @__PURE__ */ new Map();
+    for (const imported of this.imports) {
+      if (imported.specifier === null || imported.declares === true || imported.specifier.startsWith("mod ")) continue;
+      for (const binding of imported.bindings) {
+        if (!/^[a-z_]/.test(binding.local) || bound.has(binding.local)) continue;
+        bound.set(binding.local, binding.imported === "*" ? imported.specifier : `${imported.specifier}::${binding.imported}`);
+      }
+    }
+    if (bound.size === 0) return;
+    const through = (specifier) => {
+      const split = specifier.indexOf("::");
+      const first = split < 0 ? specifier : specifier.slice(0, split);
+      const target2 = bound.get(first);
+      if (target2 === void 0 || target2 === specifier || target2.startsWith(`${first}::`)) return specifier;
+      return split < 0 ? target2 : `${target2}${specifier.slice(split)}`;
+    };
+    for (const imported of this.imports) {
+      if (imported.specifier === null || imported.declares === true) continue;
+      if (imported.bindings.some((binding) => bound.get(binding.local) === (binding.imported === "*" ? imported.specifier : `${imported.specifier}::${binding.imported}`))) continue;
+      imported.specifier = through(imported.specifier);
+    }
+    for (const reexport of this.reexports) reexport.specifier = through(reexport.specifier);
+  }
+  /** A `use name;` of a macro the file defines (`pub(crate) use name;` after `macro_rules! name`) exports the macro under the plain name. */
+  ownMacros() {
+    if (this.macros.size === 0) return;
+    const rebound = /* @__PURE__ */ new Set();
+    for (const imported of this.imports) {
+      const [binding] = imported.bindings;
+      if (binding === void 0 || imported.bindings.length !== 1 || binding.imported !== "*" || imported.specifier !== binding.local || !this.macros.has(binding.local)) continue;
+      rebound.add(imported);
+      for (const exported of [...this.exports, ...this.innerExports]) if (exported.local === binding.local) exported.local = `${binding.local}!`;
+    }
+    if (rebound.size > 0) this.imports.splice(0, this.imports.length, ...this.imports.filter((imported) => !rebound.has(imported)));
+  }
+  /** A bare `name!(..)` that neither a `use` nor the file itself gives a meaning is a macro of the crate, or of a crate it depends on. */
+  bareMacros(locals) {
+    const known = /* @__PURE__ */ new Map();
+    for (const use of this.macroUses) {
+      if (locals.has(use.name) || this.macros.has(use.name) || standardMacros.has(use.name)) continue;
+      const local = `${use.name}!`;
+      const imported = known.get(local);
+      if (imported === void 0) {
+        const fact2 = { specifier: `macro ${use.name}`, kind: "import", typeOnly: false, line: use.line, bindings: [{ imported: local, local, typeOnly: false }] };
+        if (use.test) fact2.test = true;
+        known.set(local, fact2);
+        this.imports.push(fact2);
+      } else if (!use.test) delete imported.test;
+      const fact = { local, kind: "call", line: use.line };
+      if (use.unit !== void 0) fact.inUnit = use.unit;
+      if (use.test) fact.test = true;
+      this.references.push(fact);
+    }
   }
   /** The modules a scope declares, so a path that starts with one is relative to the scope. */
   declaredMods(scope) {
@@ -2856,7 +3046,7 @@ var Extractor2 = class {
     for (let i = 0; i < node.childCount; i++) {
       const child = node.child(i);
       if (child === null || !child.isNamed) continue;
-      if (node.fieldNameForChild(i) === "name" && !node.type.startsWith("scoped_")) continue;
+      if (node.fieldNameForChild(i) === "name" && !node.type.startsWith("scoped_") && node.type !== "struct_expression") continue;
       this.visit(child, context);
     }
   }
@@ -2889,6 +3079,18 @@ var Extractor2 = class {
     this.units.push(unit);
     return qualifiedName;
   }
+  /** A `macro_rules!` definition as a unit named `name!`. It has no metrics: its body is token patterns, which are not parsed. */
+  declareMacro(name, node, context) {
+    const base = [this.prefix(context), `${name}!`].filter((part) => part !== "").join(".");
+    const seen = this.nameCounts.get(base) ?? 0;
+    this.nameCounts.set(base, seen + 1);
+    const qualifiedName = seen === 0 ? base : `${base}~${seen + 1}`;
+    const unit = { qualifiedName, kind: "macro", startLine: node.startPosition.row + 1, endLine: node.endPosition.row + 1, source: "structural" };
+    if (context.unit !== void 0) unit.parent = context.unit;
+    if (context.inTests === true || isTestItem(node)) unit.test = true;
+    this.units.push(unit);
+    return qualifiedName;
+  }
   export(node, name, local, kind, visibility, context) {
     if (context.owner !== void 0 || context.unit !== void 0) return;
     const exposed = visibility === "public" && context.exposed;
@@ -2918,6 +3120,8 @@ var Extractor2 = class {
         const kind = member === void 0 ? "function" : "method";
         const qualified = this.declareUnit(name, kind, node, context, node, member);
         this.export(node, name, qualified, "function", visibilityOf(node), context);
+        const derives = member === void 0 ? derivedName(node) : void 0;
+        if (derives !== void 0) this.export(node, derives, qualified, "function", "public", context);
         this.functionParts(node, { ...context, unit: qualified, owner: void 0 });
         return;
       }
@@ -2954,7 +3158,10 @@ var Extractor2 = class {
       }
       case "macro_definition": {
         const name = node.childForFieldName("name")?.text;
-        if (name !== void 0) this.export(node, name, void 0, void 0, attributeNamed(node, "macro_export") === void 0 ? "private" : "public", context);
+        if (name === void 0) return;
+        const qualified = this.declareMacro(name, node, context);
+        this.export(node, `${name}!`, qualified, void 0, attributeNamed(node, "macro_export") === void 0 ? "private" : "public", { ...context, exposed: true });
+        if (context.owner === void 0 && context.unit === void 0) this.macros.add(name);
         return;
       }
       case "let_declaration":
@@ -3041,9 +3248,9 @@ var Extractor2 = class {
       return;
     }
     const written = pathAttribute(node);
-    const specifier = `mod ${[...context.mods, name].join("::")}${written === void 0 ? "" : `@${written}`}`;
+    const specifier = `mod ${[...context.mods, name.replace(/^r#/, "")].join("::")}${written === void 0 ? "" : `@${written}`}`;
     const line = node.startPosition.row + 1;
-    this.imports.push({ specifier, kind: "import", typeOnly: false, line, bindings: [{ imported: "*", local: name, typeOnly: false }], ...context.inTests === true ? { test: true } : {} });
+    this.imports.push({ specifier, kind: "import", typeOnly: false, line, bindings: [{ imported: "*", local: name, typeOnly: false }], declares: true, ...context.inTests === true ? { test: true } : {} });
     this.export(node, name, name, "namespace", visibility, context);
   }
   useDeclaration(node, context) {
@@ -3054,10 +3261,31 @@ var Extractor2 = class {
       const segments = normalise(leaf.segments, context);
       if (segments === void 0) continue;
       if (isOwnModule(segments, this.inlineModules)) continue;
+      const test = context.inTests === true ? { test: true } : {};
       if (leaf.glob) {
+        const last = segments.at(-1);
+        if (segments.length > 1 && upper.test(last)) {
+          this.imports.push({ specifier: segments.slice(0, -1).join("::"), kind: "import", typeOnly: false, line: leaf.line, bindings: [{ imported: last, local: `${last}::*`, typeOnly: false }], ...test });
+          continue;
+        }
         const specifier2 = segments.join("::");
-        if (visibility === "public" && context.mods.length === 0) this.reexports.push({ specifier: specifier2, typeOnly: false, line: leaf.line, imported: "*", exported: "*" });
-        else this.imports.push({ specifier: specifier2, kind: "import", typeOnly: false, line: leaf.line, bindings: [], ...context.inTests === true ? { test: true } : {} });
+        if (context.inTests === true) {
+          this.imports.push({ specifier: specifier2, kind: "import", typeOnly: false, line: leaf.line, bindings: [], ...test });
+          continue;
+        }
+        const exposed = visibility === "public" && context.exposed;
+        this.reexports.push({ specifier: specifier2, typeOnly: false, line: leaf.line, imported: "*", exported: "*", ...exposed ? {} : { visibility: visibility === "private" ? "private" : "restricted" } });
+        continue;
+      }
+      if (segments.length === 1) {
+        const local2 = leaf.alias ?? segments[0];
+        if (local2 === "_") continue;
+        this.imports.push({ specifier: segments[0], kind: "import", typeOnly: false, line: leaf.line, bindings: [{ imported: "*", local: local2, typeOnly: false }], ...test });
+        if (visibility !== "private" && context.owner === void 0 && context.unit === void 0) {
+          const fact = { exported: local2, local: local2, line: leaf.line };
+          if (visibility === "restricted" || !context.exposed) fact.internal = true;
+          (context.mods.length === 0 ? this.exports : this.innerExports).push(fact);
+        }
         continue;
       }
       let item = segments.findIndex((segment, index) => index > 0 && upper.test(segment));
@@ -3144,7 +3372,11 @@ var Extractor2 = class {
       return;
     }
     const [first, second] = segments;
-    if (first === "self" || first === "crate" || first === "super" || first === "Self") return;
+    if (first === "Self") return;
+    if (first === "self" || first === "crate" || first === "super") {
+      this.inlinePath(segments, node.startPosition.row + 1, kind, context);
+      return;
+    }
     this.reference(first, node, context, kind, second);
     this.inlinePath(segments, node.startPosition.row + 1, kind, context);
     for (const generic of node.descendantsOfType("type_arguments")) this.visitChildren(generic, context);
@@ -3163,8 +3395,11 @@ var Extractor2 = class {
   }
   macro(node, context) {
     const name = node.childForFieldName("macro");
-    if (name?.type === "identifier") this.reference(name.text, name, context, "call");
-    else if (name?.type === "scoped_identifier") this.path(name, context, "call");
+    if (context.owner === void 0 && context.unit === void 0 && standsForItems(node)) this.itemMacros = true;
+    if (name?.type === "identifier") {
+      this.reference(name.text, name, context, "call");
+      this.macroUses.push({ name: name.text, line: name.startPosition.row + 1, unit: context.unit, test: context.inTests === true });
+    } else if (name?.type === "scoped_identifier") this.path(name, context, "call");
     for (const tree of node.namedChildren.filter((child) => child.type === "token_tree")) this.tokens(tree, context);
   }
   /** Macro arguments are not parsed, so names in them are read from the tokens: `a`, or `a::b`. */
@@ -3173,14 +3408,14 @@ var Extractor2 = class {
     for (let i = 0; i < children.length; i++) {
       const token = children[i];
       if (token.type === "token_tree") this.tokens(token, context);
-      else if (token.type === "identifier" || token.type === "type_identifier") {
+      else if (token.type === "identifier" || token.type === "type_identifier" || (token.type === "crate" || token.type === "super" || token.type === "self") && children[i + 1]?.type === "::") {
         const segments = [token.text];
         let next = i + 1;
-        while (children[next]?.type === "::" && children[next + 1]?.type === "identifier") {
+        while (children[next]?.type === "::" && (children[next + 1]?.type === "identifier" || children[next + 1]?.type === "super")) {
           segments.push(children[next + 1].text);
           next += 2;
         }
-        this.reference(token.text, token, context, "reference", segments[1]);
+        if (token.type === "identifier" || token.type === "type_identifier") this.reference(token.text, token, context, "reference", segments[1]);
         this.inlinePath(segments, token.startPosition.row + 1, "reference", context);
         i = next - 1;
       }
@@ -9445,6 +9680,7 @@ var ModuleTree = class {
   tree;
   implicitRoots;
   places = /* @__PURE__ */ new Map();
+  crateOfDirectory = /* @__PURE__ */ new Map();
   constructor(paths, crates) {
     this.tree = new Set(paths);
     this.crates = crates;
@@ -9454,13 +9690,17 @@ var ModuleTree = class {
   has(path) {
     return this.tree.has(path);
   }
+  /** The crate with the deepest directory above the file. Files of one directory have one crate, so it is found once per directory. */
   crateOf(file) {
+    const directory = posix14.dirname(file);
+    if (this.crateOfDirectory.has(directory)) return this.crateOfDirectory.get(directory);
     let best;
     for (const crate of this.crates) {
       if (crate.name === null) continue;
       if (crate.dir !== "." && !file.startsWith(`${crate.dir}/`)) continue;
       if (best === void 0 || crate.dir.length > best.dir.length) best = crate;
     }
+    this.crateOfDirectory.set(directory, best);
     return best;
   }
   placeOf(file) {
@@ -9471,9 +9711,11 @@ var ModuleTree = class {
     if (roots.includes(file)) root = file;
     else {
       const rank = (candidate) => candidate === crate?.libRoot || /(^|\/)lib\.rs$/.test(candidate) ? 0 : /(^|\/)main\.rs$/.test(candidate) ? 1 : 2;
+      const libDir = crate?.libRoot === void 0 ? void 0 : posix14.dirname(crate.libRoot);
+      const insideLibrary = (candidate) => libDir !== void 0 && candidate !== crate?.libRoot && file.startsWith(`${libDir}/`) && candidate.startsWith(`${libDir}/`) && !candidate.startsWith(`${libDir}/bin/`) && posix14.basename(candidate) !== "main.rs";
       const candidates = roots.filter((candidate) => {
         const dir = posix14.dirname(candidate);
-        return dir === "." || file.startsWith(`${dir}/`);
+        return (dir === "." || file.startsWith(`${dir}/`)) && !insideLibrary(candidate);
       });
       candidates.sort((a, b) => posix14.dirname(b).length - posix14.dirname(a).length || rank(a) - rank(b) || compare2(a, b));
       const shortest = candidates[0] === void 0 ? void 0 : posix14.dirname(candidates[0]).length;
@@ -9502,23 +9744,38 @@ var ModuleTree = class {
    * for an inline module and stepped over, so the files of modules declared inside it are still found. A
    * name that starts with a capital is an item, which ends the walk. `consumed` counts the names up to the
    * last file reached, so the rest name items of that file.
+   *
+   * `reexported`, when given, says which file a name of a module file is when the module only re-exports it
+   * (`pub use other::name`), and the walk moves into that file, which may be in another crate. It says null for
+   * a name that is re-exported from outside the tree, which ends the walk with `outside` set.
    */
-  walk(from, names) {
+  walk(from, names, reexported) {
     let file = from.file;
-    let directory = moduleDirectory(file, from.root);
+    let root = from.root;
+    let directory = moduleDirectory(file, root);
     let consumed = 0;
+    let via;
     for (let index = 0; index < names.length; index++) {
       const name = names[index];
       const found = this.child(directory, name);
+      const elsewhere = found === void 0 ? reexported?.(file, name) : void 0;
       if (found !== void 0) {
         file = found;
-        directory = moduleDirectory(found, from.root);
+        directory = moduleDirectory(found, root);
+        consumed = index + 1;
+      } else if (elsewhere === null) {
+        return { file, consumed, outside: true };
+      } else if (elsewhere !== void 0 && elsewhere !== file) {
+        via ??= file;
+        file = elsewhere;
+        root = this.placeOf(elsewhere)?.root ?? elsewhere;
+        directory = moduleDirectory(elsewhere, root);
         consumed = index + 1;
       } else if (/^[a-z_]/.test(name)) {
         directory = posix14.join(directory, name);
       } else break;
     }
-    return { file, consumed };
+    return { file, consumed, ...via === void 0 ? {} : { via } };
   }
 };
 
@@ -9825,17 +10082,90 @@ function closingOf(source, open, opener, closer) {
 import { posix as posix15 } from "node:path";
 var isConfigPath3 = isManifestPath;
 var builtinCrates2 = /* @__PURE__ */ new Set(["std", "core", "alloc", "proc_macro", "test"]);
+var noMacros = /* @__PURE__ */ new Map();
 var PathResolver = class {
   tree;
   /** A `use` of an inline module of the file itself is no dependency. */
   dropsSelfDependencies = true;
   /** A module's own `use` declarations are visible to its child modules, so `use super::Name` finds a name the parent only imports. */
   importsAreVisible = true;
-  constructor(paths, configs) {
+  /** A `use` depends on the file that defines the item, whichever modules re-export it on the way. */
+  edgesReachDefinitions = true;
+  globsBindNames = true;
+  facts;
+  reexported;
+  /** `macro_rules!` definitions by the crate that holds them, then by name. The first file in path order defines a name. */
+  macros;
+  pathParents;
+  constructor(paths, configs, facts = /* @__PURE__ */ new Map()) {
     this.tree = new ModuleTree(paths, readCrates(paths, configs));
+    this.facts = facts;
+  }
+  followReexports(moduleNamed) {
+    this.reexported = moduleNamed;
   }
   resolve(from, specifier) {
-    return specifier.startsWith("mod ") ? this.declaredModule(from, specifier.slice(4)) : this.usedPath(from, specifier.split("::"));
+    if (specifier.startsWith("mod ")) return this.declaredModule(from, specifier.slice(4));
+    if (specifier.startsWith("macro ")) return this.bareMacro(from, specifier.slice(6));
+    return this.usedPath(from, specifier.split("::"));
+  }
+  exportedElsewhere(modulePath, name) {
+    const place = this.tree.placeOf(modulePath);
+    if (place === void 0 || place.root !== modulePath) return void 0;
+    const bare = name.endsWith("!");
+    const macro = bare ? name.slice(0, -1) : name;
+    const definition = this.macrosOf(modulePath).get(macro);
+    if (definition?.exported === true) return { file: definition.file, name: `${macro}!` };
+    if (bare && this.facts.get(modulePath)?.exports.some((exported) => exported.exported === macro && exported.local !== void 0) === true) return { file: modulePath, name: macro };
+    return void 0;
+  }
+  /** What scopes a macro: the crate of the file, or its root file when no manifest owns it. */
+  scopeOf(file) {
+    const place = this.tree.placeOf(file);
+    return place === void 0 ? void 0 : place.crate?.manifest ?? place.root;
+  }
+  macrosOf(file) {
+    if (this.macros === void 0) {
+      this.macros = /* @__PURE__ */ new Map();
+      for (const [path, facts] of this.facts) {
+        for (const exported of facts.exports) {
+          if (!exported.exported.endsWith("!")) continue;
+          const scope2 = this.scopeOf(path);
+          if (scope2 === void 0) continue;
+          let names = this.macros.get(scope2);
+          if (names === void 0) this.macros.set(scope2, names = /* @__PURE__ */ new Map());
+          const name = exported.exported.slice(0, -1);
+          if (!names.has(name)) names.set(name, { file: path, exported: exported.internal !== true });
+        }
+      }
+    }
+    const scope = this.scopeOf(file);
+    return (scope === void 0 ? void 0 : this.macros.get(scope)) ?? noMacros;
+  }
+  /** The file whose `#[path = ".."] mod name;` names the file, when one does and the declaration is not inside an inline module. */
+  declaringFile(file) {
+    if (this.pathParents === void 0) {
+      this.pathParents = /* @__PURE__ */ new Map();
+      for (const [path, facts] of this.facts) {
+        for (const imported of facts.imports) {
+          const at = imported.specifier?.indexOf("@") ?? -1;
+          if (imported.declares !== true || imported.specifier === null || at < 0 || imported.specifier.slice(4, at).includes("::")) continue;
+          const target2 = posix15.normalize(posix15.join(posix15.dirname(path), imported.specifier.slice(at + 1)));
+          if (target2 !== path && !this.pathParents.has(target2)) this.pathParents.set(target2, path);
+        }
+      }
+    }
+    return this.pathParents.get(file);
+  }
+  bareMacro(from, name) {
+    const own = this.macrosOf(from).get(name);
+    if (own !== void 0) return { kind: "file", path: own.file };
+    const crate = this.tree.placeOf(from)?.crate;
+    for (const [, dir] of [...crate?.dependencies ?? []].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
+      const root = this.tree.crates.find((candidate) => candidate.dir === dir && candidate.name !== null)?.libRoot;
+      if (root !== void 0 && this.exportedElsewhere(root, `${name}!`) !== void 0) return { kind: "file", path: root };
+    }
+    return { kind: "builtin" };
   }
   declaredModule(from, declaration) {
     const at = declaration.indexOf("@");
@@ -9856,8 +10186,14 @@ var PathResolver = class {
     const place = this.tree.placeOf(from);
     if (first === "crate" || first === "self" || first === "super") {
       if (place === void 0) return { kind: "not-found" };
-      if (first === "crate") return this.fileOf(this.tree.walk({ file: place.root, root: place.root }, rest));
-      if (first === "self") return this.fileOf(this.tree.walk({ file: from, root: place.root }, rest));
+      if (first === "crate") {
+        const named = rest[0] === void 0 || this.tree.child(posix15.dirname(place.root), rest[0]) !== void 0 ? void 0 : this.crateNamed(place.crate, rest[0]);
+        if (named?.libRoot !== void 0 && named.libRoot !== place.root) return this.fileOf(this.tree.walk({ file: named.libRoot, root: named.libRoot }, rest.slice(1), this.reexported));
+        return this.fileOf(this.tree.walk({ file: place.root, root: place.root }, rest, this.reexported));
+      }
+      if (first === "self") return this.fileOf(this.tree.walk({ file: from, root: place.root }, rest, this.reexported));
+      const declaring = this.declaringFile(from);
+      if (declaring !== void 0) return this.usedPath(declaring, ["self", ...rest]);
       let up = 1;
       let remainder = rest;
       while (remainder[0] === "super") {
@@ -9866,16 +10202,18 @@ var PathResolver = class {
       }
       if (up > place.path.length) return { kind: "not-found" };
       const parent = this.tree.walk({ file: place.root, root: place.root }, place.path.slice(0, place.path.length - up));
-      return this.fileOf(this.tree.walk({ file: parent.file, root: place.root }, remainder));
+      return this.fileOf(this.tree.walk({ file: parent.file, root: place.root }, remainder, this.reexported));
     }
     if (builtinCrates2.has(first)) return { kind: "builtin" };
     const crate = this.crateNamed(place?.crate, first);
     if (crate === void 0) return { kind: "external", packageName: first };
     if (crate.libRoot === void 0) return { kind: "not-found" };
-    return this.fileOf(this.tree.walk({ file: crate.libRoot, root: crate.libRoot }, rest));
+    return this.fileOf(this.tree.walk({ file: crate.libRoot, root: crate.libRoot }, rest, this.reexported));
   }
+  /** The file a walk ended in. A walk that left the tree through a re-export names nothing in it. */
   fileOf(walked) {
-    return { kind: "file", path: walked.file };
+    if (walked.outside === true) return { kind: "builtin" };
+    return { kind: "file", path: walked.file, ...walked.via === void 0 ? {} : { via: walked.via } };
   }
   /** The crate a name in a `use` path stands for: the importing crate's own library, one of its path dependencies, or a crate of the tree by that name. */
   crateNamed(importer, name) {
@@ -9901,7 +10239,7 @@ var adapter8 = {
   dependencies: {
     model: "import-based",
     isConfigPath: isConfigPath3,
-    createResolver: (paths, configs) => new PathResolver(paths, configs)
+    createResolver: (paths, configs, facts) => new PathResolver(paths, configs, facts)
   },
   boundaries: rustBoundaries,
   census: { extract: extractFileCensus8 },

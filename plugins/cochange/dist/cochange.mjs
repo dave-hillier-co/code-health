@@ -35,7 +35,7 @@ import {
   restoreDropped,
   runGit,
   useGeneratedPatterns
-} from "./chunk-GQQ2SMPA.mjs";
+} from "./chunk-5AWXAUIB.mjs";
 
 // packages/cli-kit/src/args.ts
 import { parseArgs } from "node:util";
@@ -3056,15 +3056,23 @@ function folderOf(path) {
   return slash === -1 ? "" : path.slice(0, slash);
 }
 function depthOf(folder) {
-  return folder === "" ? 0 : folder.split("/").length;
+  if (folder === "") return 0;
+  let depth = 1;
+  for (let at2 = folder.indexOf("/"); at2 !== -1; at2 = folder.indexOf("/", at2 + 1)) depth++;
+  return depth;
 }
+var SLASH = 47;
 function commonDepth(a, b) {
   if (a === "" || b === "") return 0;
-  const left = a.split("/");
-  const right = b.split("/");
+  const shorter = Math.min(a.length, b.length);
   let shared = 0;
-  while (shared < left.length && shared < right.length && left[shared] === right[shared]) shared++;
-  return shared;
+  for (let at2 = 0; at2 < shorter; at2++) {
+    const code = a.charCodeAt(at2);
+    if (code !== b.charCodeAt(at2)) return shared;
+    if (code === SLASH) shared++;
+  }
+  if (a.length === b.length) return shared + 1;
+  return (a.length > shorter ? a : b).charCodeAt(shorter) === SLASH ? shared + 1 : shared;
 }
 function folderDistance(a, b) {
   return depthOf(a) + depthOf(b) - 2 * commonDepth(a, b);
@@ -5955,7 +5963,7 @@ var recorded6 = { units: 68, found: 65, exact: 65, blocks: 73, spurious: 0 };
 var recorded7 = { units: 70, found: 70, exact: 70, blocks: 71, spurious: 0 };
 
 // packages/lexical/src/agreement-rates/rust.ts
-var recorded8 = { units: 61, found: 59, exact: 56, blocks: 56, spurious: 0 };
+var recorded8 = { units: 79, found: 77, exact: 74, blocks: 74, spurious: 0 };
 
 // packages/lexical/src/agreement-rates.ts
 var recordedAgreement = { ...recorded_agreement_exports };
@@ -15482,7 +15490,7 @@ async function assessBranch(context, history, request) {
   const banded = measurements.map((m) => ({ m, result: bander(m) }));
   const locality = readLocalityFanIn(root, change3.head);
   const touched = change3.files.filter((file) => file.status !== "D").map((file) => file.fileId);
-  const { changedSignatures, withSignatures } = await import("./chunk-FBXVSTCY.mjs");
+  const { changedSignatures, withSignatures } = await import("./chunk-CRPEMWDA.mjs");
   const signatures = risk.disabled.has("blast-radius") ? null : await changedSignatures(root, change3);
   const factors = await Promise.all(
     banded.map(async ({ m, result }) => {
@@ -18521,7 +18529,7 @@ var FACTOR_DOCS = [
     layer: "history",
     banding: "percentile",
     signal: "Files with high co-change confidence towards the touched files",
-    definition: "Without a locality report, the number of files with confidence and support at or above the missing-co-change guidelines towards any touched file. With locality's report for this commit, the fan-in of the touched files. When a parse adapter reads any touched file, also the exported symbols of the touched files whose signature changed (kind or interface size) or that were removed, each with the number of files that used it at the base, placed against every exported symbol's fan-in. The band is the highest of these.",
+    definition: "Without a locality report, the number of files with confidence and support at or above the missing-co-change guidelines towards any touched file. With locality's report for this commit, the fan-in of the touched files. When a parse adapter reads any touched file, also the exported symbols of the touched files whose signature changed (kind or interface size) or that were removed, each with the number of files that used it at the base (fanIn), placed against every exported symbol's fan-in. fanInUnresolved counts the files that import a name equal to the symbol's which was not followed to a definition: each may be a consumer that fanIn does not count, so a fanIn of 0 beside a fanInUnresolved above 0 is unresolved, not unused. The band is the highest of these.",
     why: "A flaw in widely used code is inherited by every consumer."
   },
   {

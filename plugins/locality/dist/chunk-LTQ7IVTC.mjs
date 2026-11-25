@@ -2,11 +2,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Commercial. Third-party licences: THIRD_PARTY_NOTICES.md.
 import { createRequire as __codeHealthCreateRequire } from "node:module"; import { fileURLToPath as __codeHealthFileURLToPath } from "node:url"; import { dirname as __codeHealthDirname } from "node:path"; var require = __codeHealthCreateRequire(import.meta.url); var __filename = __codeHealthFileURLToPath(import.meta.url); var __dirname = __codeHealthDirname(__filename);
 import {
-  performMove
-} from "./chunk-XRCEUFAA.mjs";
-import "./chunk-ID5MBVSO.mjs";
-import "./chunk-LS633N4T.mjs";
+  absolutePath,
+  buildProject,
+  projectFromFiles,
+  readProjectFiles
+} from "./chunk-PXP3VSAO.mjs";
+import "./chunk-7KKGBP3S.mjs";
+import "./chunk-INFC25BD.mjs";
+import "./chunk-BVIRNGKV.mjs";
 import "./chunk-OQRLKAKZ.mjs";
 export {
-  performMove
+  absolutePath,
+  buildProject,
+  projectFromFiles,
+  readProjectFiles
 };

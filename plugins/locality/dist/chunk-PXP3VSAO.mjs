@@ -6,7 +6,7 @@ import {
 } from "./chunk-7KKGBP3S.mjs";
 import {
   sourceFilesOf
-} from "./chunk-L66PW574.mjs";
+} from "./chunk-INFC25BD.mjs";
 import {
   __toESM
 } from "./chunk-OQRLKAKZ.mjs";
@@ -25,12 +25,18 @@ var fallbackOptions = {
 };
 var absolutePath = (path) => `/${path}`;
 async function buildProject(tree) {
-  const host = new import_ts_morph.InMemoryFileSystemHost();
+  return projectFromFiles(await readProjectFiles(tree));
+}
+async function readProjectFiles(tree) {
   const wanted = [...tree.files.keys()].filter((path) => isSource(path) || manifestName.test(path));
-  for (const [path, text] of await tree.readMany(wanted)) host.writeFileSync(absolutePath(path), text);
+  return { texts: await tree.readMany(wanted), hasTsconfig: tree.files.has("tsconfig.json") };
+}
+function projectFromFiles(files) {
+  const host = new import_ts_morph.InMemoryFileSystemHost();
+  for (const [path, text] of files.texts) host.writeFileSync(absolutePath(path), text);
   const warnings = [];
   let project;
-  if (tree.files.has("tsconfig.json")) {
+  if (files.hasTsconfig) {
     try {
       project = new import_ts_morph.Project({
         fileSystem: host,
@@ -49,5 +55,7 @@ async function buildProject(tree) {
 
 export {
   absolutePath,
-  buildProject
+  buildProject,
+  readProjectFiles,
+  projectFromFiles
 };

@@ -11,13 +11,13 @@ import {
   reverse,
   subgraph,
   treeDistance
-} from "./chunk-LTFHE5HI.mjs";
+} from "./chunk-ESUSHE6C.mjs";
 import {
   hasCodeHealthTrailer
 } from "./chunk-QOYPGNKA.mjs";
 import {
   isSourceFile
-} from "./chunk-ID5MBVSO.mjs";
+} from "./chunk-2WHK5LPL.mjs";
 import {
   BUILTIN_EXCLUDE_ENTRIES,
   GitError,
@@ -40,8 +40,8 @@ import {
 } from "./chunk-C4HOGH7Q.mjs";
 import {
   analyseTree
-} from "./chunk-5K6BH7F7.mjs";
-import "./chunk-TXZHYMY6.mjs";
+} from "./chunk-QASHDEFY.mjs";
+import "./chunk-Z64A23YB.mjs";
 import {
   ModuleTree,
   adapterForPath,
@@ -52,7 +52,7 @@ import {
   isManifestPath,
   isTestPath,
   readCrates
-} from "./chunk-LS633N4T.mjs";
+} from "./chunk-BVIRNGKV.mjs";
 import {
   __export
 } from "./chunk-OQRLKAKZ.mjs";
@@ -364,11 +364,11 @@ function merge(defaultValue, fileValue, path, rows11) {
     for (const key of Object.keys(fileValue)) {
       if (!(key in defaultValue)) throw configError(`${CONFIG_FILE}: ${path}.${key} is an unknown setting${removedHint(`${path}.${key}`)}`);
     }
-    const merged = {};
+    const merged2 = {};
     for (const key of Object.keys(defaultValue)) {
-      merged[key] = merge(defaultValue[key], fileValue[key], `${path}.${key}`, rows11);
+      merged2[key] = merge(defaultValue[key], fileValue[key], `${path}.${key}`, rows11);
     }
-    return merged;
+    return merged2;
   }
   if (defaultValue !== null && kindOf(fileValue) !== kindOf(defaultValue)) {
     throw configError(`${CONFIG_FILE}: ${path} must be ${article(kindOf(defaultValue))}`);
@@ -1164,20 +1164,32 @@ function goFoldersOf(go) {
         reverse2.get(target).add(from);
       }
     }
+    const unexported = [...go.unexportedUses].flatMap(([declared, uses]) => uses.map(({ name: name9, by }) => ({ declared, name: name9, by })));
+    const unexportedAt = /* @__PURE__ */ new Map();
+    unexported.forEach(({ declared, by }, at2) => {
+      for (const file of /* @__PURE__ */ new Set([declared, by])) {
+        const list = unexportedAt.get(file);
+        if (list === void 0) unexportedAt.set(file, [at2]);
+        else list.push(at2);
+      }
+    });
     found = {
       folder,
       usedBy,
       counts,
       reverse: reverse2,
       graph: new Map([...lists].map(([from, targets]) => [from, new Set(targets)])),
-      cyclic: new Set(stronglyConnectedComponents(lists).filter((component) => component.length > 1).flat())
+      cyclic: new Set(stronglyConnectedComponents(lists).filter((component) => component.length > 1).flat()),
+      unexported,
+      unexportedAt
     };
     goFolders.set(go, found);
   }
   return found;
 }
-function goRefusals(operations, go) {
+function goRefusals(operations, go, firstOnly) {
   const refusals = [];
+  const base = goFoldersOf(go);
   const moved = new Map(operations.filter((operation) => operation.from.endsWith(".go") && operation.role === "unit").map((operation) => [operation.from, operation.to]));
   if (moved.size === 0) return refusals;
   const movedWithTests = new Map([...moved, ...operations.filter((operation) => operation.from.endsWith(".go") && operation.role === "test").map((operation) => [operation.from, operation.to])]);
@@ -1201,15 +1213,16 @@ function goRefusals(operations, go) {
       }
     }
   }
-  unexported: for (const [declared, uses] of go.unexportedUses) {
-    for (const { name: name9, by } of uses) {
-      if ((movedWithTests.has(declared) || movedWithTests.has(by)) && posix2.dirname(newPathWithTests(declared)) !== posix2.dirname(newPathWithTests(by))) {
-        refusals.push({ code: "unexported-use", detail: `unexported symbol used in its package: ${name9} used by ${by}`, label: "unexported symbol used in its package" });
-        break unexported;
-      }
+  if (firstOnly && refusals.length > 0) return refusals;
+  const touching = [...new Set([...movedWithTests.keys()].flatMap((file) => base.unexportedAt.get(file) ?? []))].sort((a, b) => a - b);
+  for (const at2 of touching) {
+    const { declared, name: name9, by } = base.unexported[at2];
+    if (posix2.dirname(newPathWithTests(declared)) !== posix2.dirname(newPathWithTests(by))) {
+      refusals.push({ code: "unexported-use", detail: `unexported symbol used in its package: ${name9} used by ${by}`, label: "unexported symbol used in its package" });
+      break;
     }
   }
-  const base = goFoldersOf(go);
+  if (firstOnly && refusals.length > 0) return refusals;
   const folderOf2 = (path) => moved.has(path) ? posix2.dirname(moved.get(path)) : base.folder.get(path) ?? posix2.dirname(path);
   const folderNow = (path) => base.folder.get(path) ?? posix2.dirname(path);
   const key = (from, to) => `${from}\0${to}`;
@@ -1229,13 +1242,17 @@ function goRefusals(operations, go) {
     add(folderNow(from), folderNow(to), -1);
     add(folderOf2(from), folderOf2(to), 1);
   }
-  const removed = /* @__PURE__ */ new Set();
+  const removedFrom = /* @__PURE__ */ new Map();
+  const removedTo = /* @__PURE__ */ new Map();
   const added = /* @__PURE__ */ new Map();
   const fresh = [];
   for (const [edge, by] of change3) {
     const count3 = base.counts.get(edge) ?? 0;
     const [from, to] = ends.get(edge);
-    if (count3 > 0 && count3 + by <= 0) removed.add(edge);
+    if (count3 > 0 && count3 + by <= 0) {
+      removedFrom.set(from, (removedFrom.get(from) ?? /* @__PURE__ */ new Set()).add(to));
+      removedTo.set(to, (removedTo.get(to) ?? /* @__PURE__ */ new Set()).add(from));
+    }
     if (count3 === 0 && by > 0) {
       added.set(from, [...added.get(from) ?? [], to]);
       fresh.push([from, to]);
@@ -1246,9 +1263,12 @@ function goRefusals(operations, go) {
   const reached = (start, forward) => {
     const seen = /* @__PURE__ */ new Set([start]);
     const pending = [start];
+    const graph = forward ? base.graph : base.reverse;
+    const removed = forward ? removedFrom : removedTo;
     for (let folder = pending.pop(); folder !== void 0; folder = pending.pop()) {
-      for (const next of (forward ? base.graph : base.reverse).get(folder) ?? []) {
-        if (seen.has(next) || removed.has(forward ? key(folder, next) : key(next, folder))) continue;
+      const gone = removed.get(folder);
+      for (const next of graph.get(folder) ?? []) {
+        if (seen.has(next) || gone?.has(next) === true) continue;
         seen.add(next);
         pending.push(next);
       }
@@ -1337,6 +1357,27 @@ function rustRefusals(operations, modules) {
   return refusals;
 }
 function placementRefusals(operations, manifests, tree, go, rust) {
+  return refusalsOf(operations, manifests, tree, go, rust, false);
+}
+function firstPlacementRefusal(operations, manifests, tree, go, rust) {
+  return refusalsOf(operations, manifests, tree, go, rust, true)[0];
+}
+var testdataOf = /* @__PURE__ */ new WeakMap();
+function testdataIn(tree) {
+  let found = testdataOf.get(tree);
+  if (found === void 0) {
+    found = /* @__PURE__ */ new Map();
+    for (const path of tree) {
+      for (let at2 = path.startsWith("testdata/") ? 0 : path.indexOf("/testdata/"); at2 !== -1; at2 = path.indexOf("/testdata/", at2 + 1)) {
+        const dir = at2 === 0 && path.startsWith("testdata/") ? "." : path.slice(0, at2);
+        if (!found.has(dir)) found.set(dir, path);
+      }
+    }
+    testdataOf.set(tree, found);
+  }
+  return found;
+}
+function refusalsOf(operations, manifests, tree, go, rust, firstOnly) {
   const refusals = [];
   const leaving = new Set(operations.map((operation) => operation.from));
   const landing = /* @__PURE__ */ new Set();
@@ -1353,7 +1394,7 @@ function placementRefusals(operations, manifests, tree, go, rust) {
     }
     const dir = posix2.dirname(operation.from);
     if (operation.from.endsWith("_test.go") && dir !== posix2.dirname(operation.to)) {
-      const testdata = [...tree].find((path) => path.startsWith(dir === "." ? "testdata/" : `${dir}/testdata/`));
+      const testdata = testdataIn(tree).get(dir);
       if (testdata !== void 0) {
         refusals.push({ code: "testdata", detail: `${operation.from} would leave ${dir}/testdata behind, and Go tests read ./testdata of their own package folder (${testdata})`, label: "tests read the testdata folder they would leave" });
       }
@@ -1362,7 +1403,9 @@ function placementRefusals(operations, manifests, tree, go, rust) {
     else if (tree.has(operation.to) && !leaving.has(operation.to)) refusals.push({ code: "collision", detail: `${operation.to} already exists`, label: "name collision" });
     landing.add(operation.to);
   }
-  if (go !== void 0) refusals.push(...goRefusals(operations, go));
+  if (firstOnly && refusals.length > 0) return refusals;
+  if (go !== void 0) refusals.push(...goRefusals(operations, go, firstOnly));
+  if (firstOnly && refusals.length > 0) return refusals;
   if (rust !== void 0) refusals.push(...rustRefusals(operations, rust));
   return refusals;
 }
@@ -1490,6 +1533,17 @@ function netDistance(edges, base) {
   for (const edge of edges) sum += edge.weight * folderDistance(place(base, edge.inner), edge.outer);
   return sum;
 }
+function merged(edges) {
+  if (!edges.every((edge) => Number.isInteger(edge.weight))) return edges;
+  const byPair = /* @__PURE__ */ new Map();
+  for (const edge of edges) {
+    const key = `${edge.inner}\0${edge.outer}`;
+    const found = byPair.get(key);
+    if (found === void 0) byPair.set(key, { ...edge });
+    else found.weight += edge.weight;
+  }
+  return [...byPair.values()];
+}
 function chain(folder) {
   if (folder === "") return [""];
   const parts2 = folder.split("/");
@@ -1498,7 +1552,8 @@ function chain(folder) {
 function prefers(a, b) {
   return depthOf(a) !== depthOf(b) ? depthOf(a) < depthOf(b) : compareIds(a, b) < 0;
 }
-function bestTarget(edges, base, options) {
+function bestTarget(boundary, base, options) {
+  const edges = merged(boundary);
   const current = netDistance(edges, base);
   const candidates = /* @__PURE__ */ new Set();
   for (const edge of edges) for (const folder of chain(edge.outer)) candidates.add(folder);
@@ -3212,11 +3267,15 @@ function analyseProject(project, model, settings, history) {
   }
   const unitsByFile = /* @__PURE__ */ new Map();
   for (const unit of analysis.units) unitsByFile.set(unit.path, [...unitsByFile.get(unit.path) ?? [], unit]);
+  let goTestUses;
   function goTestsOf(files) {
-    const declaredBy = /* @__PURE__ */ new Map();
-    for (const [declared, uses] of go.unexportedUses) {
-      for (const { by } of uses) if (project.isTest(by)) declaredBy.set(by, (declaredBy.get(by) ?? /* @__PURE__ */ new Set()).add(declared));
+    if (goTestUses === void 0) {
+      goTestUses = /* @__PURE__ */ new Map();
+      for (const [declared, uses] of go.unexportedUses) {
+        for (const { by } of uses) if (project.isTest(by)) goTestUses.set(by, (goTestUses.get(by) ?? /* @__PURE__ */ new Set()).add(declared));
+      }
     }
+    const declaredBy = goTestUses;
     return [...declaredBy].filter(([, declared]) => [...declared].every((file) => files.has(file)) && [...declared].some((file) => files.has(file))).map(([test]) => test);
   }
   function testsOf(files) {
@@ -3291,7 +3350,7 @@ function analyseProject(project, model, settings, history) {
     const memo = /* @__PURE__ */ new Map();
     return (folder) => {
       if (!memo.has(folder)) {
-        const [first] = placementRefusals(relocate(files, tests, base, folder), manifests, project.tree, go, rust);
+        const first = firstPlacementRefusal(relocate(files, tests, base, folder), manifests, project.tree, go, rust);
         memo.set(folder, first === void 0 ? groupingRefusal(files, folder) : { label: first.label, detail: first.detail });
       }
       return memo.get(folder);
@@ -3829,11 +3888,15 @@ function buildModel(project, settings, history) {
   const productionSet = new Set(production);
   const importSets = new Map(production.map((path) => [path, /* @__PURE__ */ new Set()]));
   const importers = /* @__PURE__ */ new Map();
+  const imported = (from, to) => {
+    if (from === to || !productionSet.has(to) || importSets.get(from).has(to)) return;
+    importSets.get(from).add(to);
+    addToList(importers, to, from);
+  };
   for (const edge of analysis.importEdges) {
     if (edge.from === edge.to || !productionSet.has(edge.from) || !productionSet.has(edge.to)) continue;
-    if (importSets.get(edge.from).has(edge.to)) continue;
-    importSets.get(edge.from).add(edge.to);
-    addToList(importers, edge.to, edge.from);
+    if (edge.via !== void 0) imported(edge.from, edge.via);
+    imported(edge.from, edge.to);
   }
   const imports = new Map([...importSets].map(([from, targets]) => [from, [...targets].sort(compareIds)]));
   for (const list of importers.values()) list.sort(compareIds);
@@ -4141,6 +4204,40 @@ function writeReport2(context, command9, output) {
   return writeReport(context, { tool: TOOL, schemaVersion: SCHEMA_VERSION2 }, command9, output, context.repo.head);
 }
 
+// packages/locality/src/unresolved-imports.ts
+var UNRESOLVED_SAMPLE_SIZE = 10;
+function sampleUnresolved(unresolved) {
+  const byReason = /* @__PURE__ */ new Map();
+  for (const entry of unresolved) {
+    let distinct = byReason.get(entry.reason);
+    if (distinct === void 0) byReason.set(entry.reason, distinct = /* @__PURE__ */ new Map());
+    const key = `${entry.specifier ?? ""}\0${entry.name ?? ""}\0${entry.to ?? ""}`;
+    const known = distinct.get(key);
+    if (known !== void 0) known.imports++;
+    else distinct.set(key, { specifier: entry.specifier, ...entry.name === void 0 ? {} : { name: entry.name }, ...entry.to === void 0 ? {} : { to: entry.to }, imports: 1, from: entry.from, line: entry.line });
+  }
+  const sample = {};
+  for (const reason of [...byReason.keys()].sort(compareIds)) {
+    sample[reason] = [...byReason.get(reason).values()].sort((a, b) => b.imports - a.imports || compareIds(a.specifier ?? "", b.specifier ?? "") || compareIds(a.name ?? "", b.name ?? "") || compareIds(a.from, b.from) || a.line - b.line).slice(0, UNRESOLVED_SAMPLE_SIZE);
+  }
+  return sample;
+}
+function unresolvedFanInReader(unresolved, isProduction) {
+  const aimedAt = /* @__PURE__ */ new Map();
+  for (const entry of unresolved) {
+    if (entry.to === void 0 || !isProduction(entry.from)) continue;
+    let from = aimedAt.get(entry.to);
+    if (from === void 0) aimedAt.set(entry.to, from = /* @__PURE__ */ new Set());
+    from.add(entry.from);
+  }
+  return (files) => {
+    const own = new Set(files);
+    const consumers = /* @__PURE__ */ new Set();
+    for (const file of files) for (const from of aimedAt.get(file) ?? []) if (!own.has(from)) consumers.add(from);
+    return consumers.size;
+  };
+}
+
 // packages/locality/src/commands/analyse.ts
 var name = "analyse";
 var rules = { ...ruleDescriptions, ...historyRuleDescriptions };
@@ -4172,11 +4269,23 @@ var command = {
     const analysis = analyseProject(project, model, settings, history);
     requireMatches(prefixes, [...project.production, ...analysis.candidates.flatMap((candidate) => [...candidate.unit.files, ...candidate.unit.tests])]);
     const partial = prefixes.length > 0 || wanted !== void 0 || source !== "structural";
+    const production = new Set(project.production);
+    const unresolvedFanIn = unresolvedFanInReader(project.analysis.unresolved, (path) => production.has(path));
     const rows11 = analysis.candidates.filter(
       (candidate) => (wanted === void 0 || candidate.recommendation === wanted) && (prefixes.length === 0 || prefixes.some((prefix) => candidate.path === prefix || candidate.path.startsWith(`${prefix}/`)))
-    );
+    ).map((candidate) => ({ ...candidate, fanInUnresolved: unresolvedFanIn(candidate.unit.files) }));
     const unresolved = {};
     for (const entry of project.analysis.unresolved) unresolved[entry.reason] = (unresolved[entry.reason] ?? 0) + 1;
+    const unresolvedTotal = project.analysis.unresolved.length;
+    const withUnresolvedFanIn = rows11.filter((row) => row.fanInUnresolved > 0).length;
+    const notices = [
+      ...analysis.omitted.length === 0 ? [] : [
+        `Omitted, with no proposed move: ${Object.entries(analysis.summary.omitted).map(([reason, count3]) => `${reason} ${count3}`).join(", ")} (listed in omitted; guidelines locality.maxMoveFiles ${settings.maxMoveFiles}, locality.minTargetDepth ${settings.minTargetDepth})`
+      ],
+      ...unresolvedTotal === 0 ? [] : [
+        `Imports not followed to a file or a definition: ${Object.entries(unresolved).sort(([a], [b]) => compareIds(a, b)).map(([reason, count3]) => `${reason} ${count3}`).join(", ")} (the most frequent are listed in unresolvedSample). fanIn does not count them: ${withUnresolvedFanIn} of the ${rows11.length} units listed have fanInUnresolved above 0.`
+      ]
+    ];
     const output = {
       inputs: {
         entrySource: model.entrySource,
@@ -4192,6 +4301,7 @@ var command = {
         unreachable: model.unreachable,
         barrels: project.analysis.barrels,
         unresolved,
+        unresolvedSample: sampleUnresolved(project.analysis.unresolved),
         history: history === void 0 ? null : { window: history.window, ...history.evidence },
         filesWithSyntaxErrors: project.analysis.syntaxErrors,
         // Only languages with a preprocessor have any, so the key is absent for the rest.
@@ -4200,11 +4310,7 @@ var command = {
       },
       results: rows11,
       columns: ["path", "score", "recommendation", "rule", "location", "target", "gain", "fanIn"],
-      ...analysis.omitted.length === 0 ? {} : {
-        notices: [
-          `Omitted, with no proposed move: ${Object.entries(analysis.summary.omitted).map(([reason, count3]) => `${reason} ${count3}`).join(", ")} (listed in omitted; guidelines locality.maxMoveFiles ${settings.maxMoveFiles}, locality.minTargetDepth ${settings.minTargetDepth})`
-        ]
-      }
+      ...notices.length === 0 ? {} : { notices }
     };
     if (!partial) await writeReport2(context, name, output);
     else skipReport(context, "the run was limited by path arguments, --recommendation or --source");
@@ -6623,7 +6729,7 @@ var command4 = {
     if (apply && !await isClean(context.repo.root)) {
       refusals.push({ code: "dirty-working-tree", detail: "commit or stash first: a move commit must hold only the move" });
     }
-    const { performMove } = await import("./chunk-CEP3LBIK.mjs");
+    const { performMove } = await import("./chunk-Z7EDTPAA.mjs");
     const moved = plan.refusals.length === 0 ? await performMove(tree, plan.operations) : void 0;
     const mentions = moved === void 0 ? [] : await textMentions(context.repo.root, plan, isSourceFile);
     for (const broken of moved?.breaks ?? []) refusals.push({ code: "does-not-compile", detail: broken });
@@ -10327,7 +10433,7 @@ async function dryRun(tree, candidate, settings, files, go, rust) {
   const base = { destination: plan.destination, filesMoved: plan.operations.length, refusal: plan.refusals.length === 0 ? null : refusalLine(plan.refusals) };
   if (plan.refusals.length > 0) return { ...base, rewrites: 0, filesRewritten: 0, filesEdited: 0, failure: null, warnings: [] };
   try {
-    const { performMove } = await import("./chunk-CEP3LBIK.mjs");
+    const { performMove } = await import("./chunk-Z7EDTPAA.mjs");
     const moved = await performMove(tree, plan.operations, { confirm: false });
     if ((moved.breaks ?? []).length > 0) {
       return { ...base, refusal: refusalLine((moved.breaks ?? []).map((detail) => ({ code: "does-not-compile", detail }))), rewrites: 0, filesRewritten: 0, filesEdited: 0, failure: null, warnings: [] };
@@ -11093,8 +11199,8 @@ var command6 = {
     let typed;
     let results = [];
     if (chosen.length > 0) {
-      const { scrutinise } = await import("./chunk-MOK677SR.mjs");
-      const { buildProject } = await import("./chunk-NCHHKEP5.mjs");
+      const { scrutinise } = await import("./chunk-GJBH6QAE.mjs");
+      const { buildProject } = await import("./chunk-LTQ7IVTC.mjs");
       const loaded = await buildProject(await treeFromRef(context.repo.root, "HEAD"));
       typed = loaded;
       results = chosen.map((candidate) => scrutinise(candidate, candidate.recommendation === "scrutinise" ? "high-fan-in" : "requested", loaded, project.isTest));
@@ -11314,7 +11420,7 @@ var command8 = {
     const commitTree = await treeFromRef(root, ref);
     const plan = planMove(candidate, settings, new Set(parentTree.files.keys()), { to, reason: "verification" }, goPackagesOf(project), rustModulesOf(project));
     const message = await runGit(root, ["log", "-1", "--format=%B", ref]);
-    const { verifyMove } = await import("./chunk-SSATBH67.mjs");
+    const { verifyMove } = await import("./chunk-HVTRBVTW.mjs");
     const verification = await verifyMove(parentTree, commitTree, plan.operations, message);
     const refusals = plan.refusals;
     const verified = verification.verified && refusals.length === 0;

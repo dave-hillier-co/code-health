@@ -6498,6 +6498,16 @@ function resolveBySymbols(input, options2 = {}) {
     return edge;
   };
   const unitNames = (facts) => new Set(facts.units.map((unit) => unit.qualifiedName));
+  const byWritten = /* @__PURE__ */ new Map();
+  const declaredAs = (written, scope, entries) => {
+    const scopes2 = byWritten.get(written);
+    if (scopes2 === void 0) byWritten.set(written, /* @__PURE__ */ new Map([[scope, entries]]));
+    else scopes2.set(scope, entries);
+  };
+  for (const [name14, entries] of table4) {
+    declaredAs(name14, "", entries);
+    for (let dot = name14.indexOf(".", 1); dot !== -1; dot = name14.indexOf(".", dot + 1)) declaredAs(name14.slice(dot + 1), name14.slice(0, dot), entries);
+  }
   for (const [file, facts] of input.facts) {
     const symbols = facts.symbols;
     if (symbols === void 0) continue;
@@ -6509,8 +6519,9 @@ function resolveBySymbols(input, options2 = {}) {
       const known = resolved.get(name14);
       if (known !== void 0) return known;
       let found = null;
-      for (const scope of scopes2) {
-        const candidates2 = table4.get(scope === "" ? name14 : `${scope}.${name14}`)?.filter((entry) => entry.declaration.internal !== true || entry.file === file);
+      const declared = byWritten.get(name14);
+      for (const scope of declared === void 0 ? [] : scopes2) {
+        const candidates2 = declared.get(scope)?.filter((entry) => entry.declaration.internal !== true || entry.file === file);
         if (candidates2 !== void 0 && candidates2.length > 0) {
           found = candidates2;
           break;
@@ -15012,6 +15023,7 @@ var ModuleTree = class {
   tree;
   implicitRoots;
   places = /* @__PURE__ */ new Map();
+  crateOfDirectory = /* @__PURE__ */ new Map();
   constructor(paths, crates) {
     this.tree = new Set(paths);
     this.crates = crates;
@@ -15021,13 +15033,17 @@ var ModuleTree = class {
   has(path) {
     return this.tree.has(path);
   }
+  /** The crate with the deepest directory above the file. Files of one directory have one crate, so it is found once per directory. */
   crateOf(file) {
+    const directory = posix14.dirname(file);
+    if (this.crateOfDirectory.has(directory)) return this.crateOfDirectory.get(directory);
     let best;
     for (const crate of this.crates) {
       if (crate.name === null) continue;
       if (crate.dir !== "." && !file.startsWith(`${crate.dir}/`)) continue;
       if (best === void 0 || crate.dir.length > best.dir.length) best = crate;
     }
+    this.crateOfDirectory.set(directory, best);
     return best;
   }
   placeOf(file) {
@@ -15038,9 +15054,11 @@ var ModuleTree = class {
     if (roots.includes(file)) root = file;
     else {
       const rank = (candidate) => candidate === crate?.libRoot || /(^|\/)lib\.rs$/.test(candidate) ? 0 : /(^|\/)main\.rs$/.test(candidate) ? 1 : 2;
+      const libDir = crate?.libRoot === void 0 ? void 0 : posix14.dirname(crate.libRoot);
+      const insideLibrary = (candidate) => libDir !== void 0 && candidate !== crate?.libRoot && file.startsWith(`${libDir}/`) && candidate.startsWith(`${libDir}/`) && !candidate.startsWith(`${libDir}/bin/`) && posix14.basename(candidate) !== "main.rs";
       const candidates2 = roots.filter((candidate) => {
         const dir = posix14.dirname(candidate);
-        return dir === "." || file.startsWith(`${dir}/`);
+        return (dir === "." || file.startsWith(`${dir}/`)) && !insideLibrary(candidate);
       });
       candidates2.sort((a, b) => posix14.dirname(b).length - posix14.dirname(a).length || rank(a) - rank(b) || compare2(a, b));
       const shortest = candidates2[0] === void 0 ? void 0 : posix14.dirname(candidates2[0]).length;
@@ -15069,23 +15087,38 @@ var ModuleTree = class {
    * for an inline module and stepped over, so the files of modules declared inside it are still found. A
    * name that starts with a capital is an item, which ends the walk. `consumed` counts the names up to the
    * last file reached, so the rest name items of that file.
+   *
+   * `reexported`, when given, says which file a name of a module file is when the module only re-exports it
+   * (`pub use other::name`), and the walk moves into that file, which may be in another crate. It says null for
+   * a name that is re-exported from outside the tree, which ends the walk with `outside` set.
    */
-  walk(from, names2) {
+  walk(from, names2, reexported) {
     let file = from.file;
-    let directory = moduleDirectory(file, from.root);
+    let root = from.root;
+    let directory = moduleDirectory(file, root);
     let consumed = 0;
+    let via;
     for (let index = 0; index < names2.length; index++) {
       const name14 = names2[index];
       const found = this.child(directory, name14);
+      const elsewhere = found === void 0 ? reexported?.(file, name14) : void 0;
       if (found !== void 0) {
         file = found;
-        directory = moduleDirectory(found, from.root);
+        directory = moduleDirectory(found, root);
+        consumed = index + 1;
+      } else if (elsewhere === null) {
+        return { file, consumed, outside: true };
+      } else if (elsewhere !== void 0 && elsewhere !== file) {
+        via ??= file;
+        file = elsewhere;
+        root = this.placeOf(elsewhere)?.root ?? elsewhere;
+        directory = moduleDirectory(elsewhere, root);
         consumed = index + 1;
       } else if (/^[a-z_]/.test(name14)) {
         directory = posix14.join(directory, name14);
       } else break;
     }
-    return { file, consumed };
+    return { file, consumed, ...via === void 0 ? {} : { via } };
   }
 };
 
@@ -15370,7 +15403,7 @@ function requiresTest(predicate) {
 }
 
 // packages/parse/src/languages/rust/extract-facts.ts
-var extractorVersion4 = 5;
+var extractorVersion4 = 6;
 function visibilityOf(node) {
   const modifier = node.namedChildren.find((child2) => child2.type === "visibility_modifier");
   if (modifier === void 0) return "private";
@@ -15382,6 +15415,18 @@ function attributeNamed(node, name14) {
 }
 function isProcMacro(node) {
   return attributesOf(node).some((item) => /^#\[\s*proc_macro(_attribute|_derive)?\b/.test(item.text.trim()));
+}
+function derivedName(node) {
+  for (const item of attributesOf(node)) {
+    const found = /^#\[\s*proc_macro_derive\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)/.exec(item.text.trim());
+    if (found !== null) return found[1];
+  }
+  return void 0;
+}
+function standsForItems(node) {
+  let parent = node.parent;
+  if (parent?.type === "expression_statement") parent = parent.parent;
+  return parent?.type === "source_file" || parent?.type === "declaration_list";
 }
 function pathAttribute(node) {
   const value = attributeNamed(node, "path")?.childForFieldName("value");
@@ -15488,6 +15533,94 @@ function inlineModulesOf(scope, prefix, out2) {
 var primitives = /* @__PURE__ */ new Set(["bool", "char", "str", "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i64", "i128", "isize", "f32", "f64"]);
 var builtinCrates = /* @__PURE__ */ new Set(["std", "core", "alloc", "proc_macro", "test"]);
 var compareLines = (a, b) => a.line - b.line;
+var standardMacros = /* @__PURE__ */ new Set([
+  "addr_of",
+  "addr_of_mut",
+  "asm",
+  "assert",
+  "assert_eq",
+  "assert_ne",
+  "cfg",
+  "column",
+  "compile_error",
+  "concat",
+  "concat_idents",
+  "const_format_args",
+  "dbg",
+  "debug_assert",
+  "debug_assert_eq",
+  "debug_assert_ne",
+  "env",
+  "eprint",
+  "eprintln",
+  "file",
+  "format",
+  "format_args",
+  "global_asm",
+  "include",
+  "include_bytes",
+  "include_str",
+  "is_x86_feature_detected",
+  "line",
+  "macro_rules",
+  "matches",
+  "module_path",
+  "option_env",
+  "panic",
+  "pin",
+  "print",
+  "println",
+  "ready",
+  "stringify",
+  "thread_local",
+  "todo",
+  "try",
+  "unimplemented",
+  "unreachable",
+  "vec",
+  "write",
+  "writeln"
+]);
+var preludeNames = /* @__PURE__ */ new Set([
+  "Self",
+  "Some",
+  "None",
+  "Ok",
+  "Err",
+  "Option",
+  "Result",
+  "Vec",
+  "String",
+  "Box",
+  "Default",
+  "Clone",
+  "Copy",
+  "Send",
+  "Sync",
+  "Sized",
+  "Drop",
+  "Fn",
+  "FnMut",
+  "FnOnce",
+  "From",
+  "Into",
+  "TryFrom",
+  "TryInto",
+  "Iterator",
+  "IntoIterator",
+  "Extend",
+  "AsRef",
+  "AsMut",
+  "ToOwned",
+  "ToString",
+  "PartialEq",
+  "Eq",
+  "PartialOrd",
+  "Ord",
+  "Debug",
+  "Hash",
+  "drop"
+]);
 var Extractor8 = class {
   units = [];
   imports = [];
@@ -15498,6 +15631,11 @@ var Extractor8 = class {
   nameCounts = /* @__PURE__ */ new Map();
   inlineModules = /* @__PURE__ */ new Set();
   inlinePaths = [];
+  /** Paths in code that start at `crate`, `self` or `super`, already counted from the file's own module. */
+  relativePaths = [];
+  macroUses = [];
+  macros = /* @__PURE__ */ new Set();
+  itemMacros = false;
   testRanges = [];
   codeRows;
   root;
@@ -15515,10 +15653,16 @@ var Extractor8 = class {
       names2.add(inner2.exported);
       this.exports.push(inner2);
     }
+    this.ownMacros();
+    this.pathsThroughBindings();
     const locals = /* @__PURE__ */ new Set();
     for (const imported of this.imports) for (const binding of imported.bindings) locals.add(binding.local);
     this.inlineCrates(root, locals);
+    this.bareMacros(locals);
     for (const imported of this.imports) for (const binding of imported.bindings) locals.add(binding.local);
+    const globs = this.reexports.some((reexport) => reexport.exported === "*");
+    const declared = /* @__PURE__ */ new Set([...this.exports.map((exported) => exported.exported), ...this.units.map((unit) => unit.qualifiedName)]);
+    const mayBeGlobbed = (reference) => globs && !declared.has(reference.local) && !preludeNames.has(reference.local) && !primitives.has(reference.local) && (upper.test(reference.local) || reference.kind === "call" || reference.member !== void 0);
     const classes = new Set(this.units.filter((unit) => unit.kind === "class").map((unit) => unit.qualifiedName));
     for (const unit of this.units) {
       const dot = unit.qualifiedName.lastIndexOf(".");
@@ -15529,9 +15673,10 @@ var Extractor8 = class {
       imports: this.imports,
       reexports: this.reexports,
       exports: this.exports,
-      references: this.references.filter((reference) => locals.has(reference.local)),
+      references: this.references.filter((reference) => locals.has(reference.local) || mayBeGlobbed(reference)),
       nodes: nodeCount(root, (node) => isComment4(node) || node.type === "use_declaration") - 1,
       hasSyntaxErrors: root.hasError,
+      ...this.itemMacros ? { itemMacros: true } : {},
       ...this.testRanges.length === 0 ? {} : { testRanges: this.testRanges }
     };
   }
@@ -15542,11 +15687,14 @@ var Extractor8 = class {
   inlineCrates(root, locals) {
     const modules = new Set(root.descendantsOfType("mod_item").map((item) => item.childForFieldName("name")?.text));
     const known = /* @__PURE__ */ new Map();
-    for (const path of this.inlinePaths) {
+    const outside = this.inlinePaths.filter((path) => {
       const [first] = path.segments;
-      if (locals.has(first) || modules.has(first) || primitives.has(first) || builtinCrates.has(first)) continue;
+      return !(locals.has(first) || modules.has(first) || primitives.has(first) || builtinCrates.has(first));
+    });
+    for (const path of [...outside, ...this.relativePaths]) {
       let item = path.segments.findIndex((segment3, index) => index > 0 && upper.test(segment3));
       if (item < 0) item = path.segments.length - 1;
+      if (item < 1 || isOwnModule(path.segments.slice(0, item), this.inlineModules)) continue;
       const local = path.segments.slice(0, item + 1).join("::");
       const imported = known.get(local);
       if (imported === void 0) {
@@ -15564,7 +15712,71 @@ var Extractor8 = class {
     }
   }
   inlinePath(segments2, line, kind, context) {
-    if (segments2.length >= 2 && /^[a-z_]/.test(segments2[0])) this.inlinePaths.push({ segments: segments2, line, kind, unit: context.unit, test: context.inTests === true });
+    if (segments2.length < 2) return;
+    const [first] = segments2;
+    if (first === "crate" || first === "self" || first === "super") {
+      const counted = normalise2(segments2, context);
+      if (counted !== void 0 && counted.every((segment3) => !segment3.startsWith("$"))) this.relativePaths.push({ segments: counted, line, kind, unit: context.unit, test: context.inTests === true });
+    } else if (/^[a-z_]/.test(first)) this.inlinePaths.push({ segments: segments2, line, kind, unit: context.unit, test: context.inTests === true });
+  }
+  /**
+   * `use a::b; use b::Name;`: the second path starts with a name the first binds, not with a crate, so it is
+   * written out from what that name is. One step is followed, which is what the idiom uses.
+   */
+  pathsThroughBindings() {
+    const bound = /* @__PURE__ */ new Map();
+    for (const imported of this.imports) {
+      if (imported.specifier === null || imported.declares === true || imported.specifier.startsWith("mod ")) continue;
+      for (const binding of imported.bindings) {
+        if (!/^[a-z_]/.test(binding.local) || bound.has(binding.local)) continue;
+        bound.set(binding.local, binding.imported === "*" ? imported.specifier : `${imported.specifier}::${binding.imported}`);
+      }
+    }
+    if (bound.size === 0) return;
+    const through = (specifier) => {
+      const split = specifier.indexOf("::");
+      const first = split < 0 ? specifier : specifier.slice(0, split);
+      const target2 = bound.get(first);
+      if (target2 === void 0 || target2 === specifier || target2.startsWith(`${first}::`)) return specifier;
+      return split < 0 ? target2 : `${target2}${specifier.slice(split)}`;
+    };
+    for (const imported of this.imports) {
+      if (imported.specifier === null || imported.declares === true) continue;
+      if (imported.bindings.some((binding) => bound.get(binding.local) === (binding.imported === "*" ? imported.specifier : `${imported.specifier}::${binding.imported}`))) continue;
+      imported.specifier = through(imported.specifier);
+    }
+    for (const reexport of this.reexports) reexport.specifier = through(reexport.specifier);
+  }
+  /** A `use name;` of a macro the file defines (`pub(crate) use name;` after `macro_rules! name`) exports the macro under the plain name. */
+  ownMacros() {
+    if (this.macros.size === 0) return;
+    const rebound = /* @__PURE__ */ new Set();
+    for (const imported of this.imports) {
+      const [binding] = imported.bindings;
+      if (binding === void 0 || imported.bindings.length !== 1 || binding.imported !== "*" || imported.specifier !== binding.local || !this.macros.has(binding.local)) continue;
+      rebound.add(imported);
+      for (const exported of [...this.exports, ...this.innerExports]) if (exported.local === binding.local) exported.local = `${binding.local}!`;
+    }
+    if (rebound.size > 0) this.imports.splice(0, this.imports.length, ...this.imports.filter((imported) => !rebound.has(imported)));
+  }
+  /** A bare `name!(..)` that neither a `use` nor the file itself gives a meaning is a macro of the crate, or of a crate it depends on. */
+  bareMacros(locals) {
+    const known = /* @__PURE__ */ new Map();
+    for (const use of this.macroUses) {
+      if (locals.has(use.name) || this.macros.has(use.name) || standardMacros.has(use.name)) continue;
+      const local = `${use.name}!`;
+      const imported = known.get(local);
+      if (imported === void 0) {
+        const fact2 = { specifier: `macro ${use.name}`, kind: "import", typeOnly: false, line: use.line, bindings: [{ imported: local, local, typeOnly: false }] };
+        if (use.test) fact2.test = true;
+        known.set(local, fact2);
+        this.imports.push(fact2);
+      } else if (!use.test) delete imported.test;
+      const fact = { local, kind: "call", line: use.line };
+      if (use.unit !== void 0) fact.inUnit = use.unit;
+      if (use.test) fact.test = true;
+      this.references.push(fact);
+    }
   }
   /** The modules a scope declares, so a path that starts with one is relative to the scope. */
   declaredMods(scope) {
@@ -15585,7 +15797,7 @@ var Extractor8 = class {
     for (let i2 = 0; i2 < node.childCount; i2++) {
       const child2 = node.child(i2);
       if (child2 === null || !child2.isNamed) continue;
-      if (node.fieldNameForChild(i2) === "name" && !node.type.startsWith("scoped_")) continue;
+      if (node.fieldNameForChild(i2) === "name" && !node.type.startsWith("scoped_") && node.type !== "struct_expression") continue;
       this.visit(child2, context);
     }
   }
@@ -15618,6 +15830,18 @@ var Extractor8 = class {
     this.units.push(unit);
     return qualifiedName;
   }
+  /** A `macro_rules!` definition as a unit named `name!`. It has no metrics: its body is token patterns, which are not parsed. */
+  declareMacro(name14, node, context) {
+    const base = [this.prefix(context), `${name14}!`].filter((part) => part !== "").join(".");
+    const seen = this.nameCounts.get(base) ?? 0;
+    this.nameCounts.set(base, seen + 1);
+    const qualifiedName = seen === 0 ? base : `${base}~${seen + 1}`;
+    const unit = { qualifiedName, kind: "macro", startLine: node.startPosition.row + 1, endLine: node.endPosition.row + 1, source: "structural" };
+    if (context.unit !== void 0) unit.parent = context.unit;
+    if (context.inTests === true || isTestItem(node)) unit.test = true;
+    this.units.push(unit);
+    return qualifiedName;
+  }
   export(node, name14, local, kind, visibility, context) {
     if (context.owner !== void 0 || context.unit !== void 0) return;
     const exposed = visibility === "public" && context.exposed;
@@ -15647,6 +15871,8 @@ var Extractor8 = class {
         const kind = member === void 0 ? "function" : "method";
         const qualified = this.declareUnit(name14, kind, node, context, node, member);
         this.export(node, name14, qualified, "function", visibilityOf(node), context);
+        const derives = member === void 0 ? derivedName(node) : void 0;
+        if (derives !== void 0) this.export(node, derives, qualified, "function", "public", context);
         this.functionParts(node, { ...context, unit: qualified, owner: void 0 });
         return;
       }
@@ -15683,7 +15909,10 @@ var Extractor8 = class {
       }
       case "macro_definition": {
         const name14 = node.childForFieldName("name")?.text;
-        if (name14 !== void 0) this.export(node, name14, void 0, void 0, attributeNamed(node, "macro_export") === void 0 ? "private" : "public", context);
+        if (name14 === void 0) return;
+        const qualified = this.declareMacro(name14, node, context);
+        this.export(node, `${name14}!`, qualified, void 0, attributeNamed(node, "macro_export") === void 0 ? "private" : "public", { ...context, exposed: true });
+        if (context.owner === void 0 && context.unit === void 0) this.macros.add(name14);
         return;
       }
       case "let_declaration":
@@ -15770,9 +15999,9 @@ var Extractor8 = class {
       return;
     }
     const written = pathAttribute(node);
-    const specifier = `mod ${[...context.mods, name14].join("::")}${written === void 0 ? "" : `@${written}`}`;
+    const specifier = `mod ${[...context.mods, name14.replace(/^r#/, "")].join("::")}${written === void 0 ? "" : `@${written}`}`;
     const line = node.startPosition.row + 1;
-    this.imports.push({ specifier, kind: "import", typeOnly: false, line, bindings: [{ imported: "*", local: name14, typeOnly: false }], ...context.inTests === true ? { test: true } : {} });
+    this.imports.push({ specifier, kind: "import", typeOnly: false, line, bindings: [{ imported: "*", local: name14, typeOnly: false }], declares: true, ...context.inTests === true ? { test: true } : {} });
     this.export(node, name14, name14, "namespace", visibility, context);
   }
   useDeclaration(node, context) {
@@ -15783,10 +16012,31 @@ var Extractor8 = class {
       const segments2 = normalise2(leaf.segments, context);
       if (segments2 === void 0) continue;
       if (isOwnModule(segments2, this.inlineModules)) continue;
+      const test = context.inTests === true ? { test: true } : {};
       if (leaf.glob) {
+        const last = segments2.at(-1);
+        if (segments2.length > 1 && upper.test(last)) {
+          this.imports.push({ specifier: segments2.slice(0, -1).join("::"), kind: "import", typeOnly: false, line: leaf.line, bindings: [{ imported: last, local: `${last}::*`, typeOnly: false }], ...test });
+          continue;
+        }
         const specifier2 = segments2.join("::");
-        if (visibility === "public" && context.mods.length === 0) this.reexports.push({ specifier: specifier2, typeOnly: false, line: leaf.line, imported: "*", exported: "*" });
-        else this.imports.push({ specifier: specifier2, kind: "import", typeOnly: false, line: leaf.line, bindings: [], ...context.inTests === true ? { test: true } : {} });
+        if (context.inTests === true) {
+          this.imports.push({ specifier: specifier2, kind: "import", typeOnly: false, line: leaf.line, bindings: [], ...test });
+          continue;
+        }
+        const exposed = visibility === "public" && context.exposed;
+        this.reexports.push({ specifier: specifier2, typeOnly: false, line: leaf.line, imported: "*", exported: "*", ...exposed ? {} : { visibility: visibility === "private" ? "private" : "restricted" } });
+        continue;
+      }
+      if (segments2.length === 1) {
+        const local2 = leaf.alias ?? segments2[0];
+        if (local2 === "_") continue;
+        this.imports.push({ specifier: segments2[0], kind: "import", typeOnly: false, line: leaf.line, bindings: [{ imported: "*", local: local2, typeOnly: false }], ...test });
+        if (visibility !== "private" && context.owner === void 0 && context.unit === void 0) {
+          const fact = { exported: local2, local: local2, line: leaf.line };
+          if (visibility === "restricted" || !context.exposed) fact.internal = true;
+          (context.mods.length === 0 ? this.exports : this.innerExports).push(fact);
+        }
         continue;
       }
       let item = segments2.findIndex((segment3, index) => index > 0 && upper.test(segment3));
@@ -15873,7 +16123,11 @@ var Extractor8 = class {
       return;
     }
     const [first, second] = segments2;
-    if (first === "self" || first === "crate" || first === "super" || first === "Self") return;
+    if (first === "Self") return;
+    if (first === "self" || first === "crate" || first === "super") {
+      this.inlinePath(segments2, node.startPosition.row + 1, kind, context);
+      return;
+    }
     this.reference(first, node, context, kind, second);
     this.inlinePath(segments2, node.startPosition.row + 1, kind, context);
     for (const generic of node.descendantsOfType("type_arguments")) this.visitChildren(generic, context);
@@ -15892,8 +16146,11 @@ var Extractor8 = class {
   }
   macro(node, context) {
     const name14 = node.childForFieldName("macro");
-    if (name14?.type === "identifier") this.reference(name14.text, name14, context, "call");
-    else if (name14?.type === "scoped_identifier") this.path(name14, context, "call");
+    if (context.owner === void 0 && context.unit === void 0 && standsForItems(node)) this.itemMacros = true;
+    if (name14?.type === "identifier") {
+      this.reference(name14.text, name14, context, "call");
+      this.macroUses.push({ name: name14.text, line: name14.startPosition.row + 1, unit: context.unit, test: context.inTests === true });
+    } else if (name14?.type === "scoped_identifier") this.path(name14, context, "call");
     for (const tree of node.namedChildren.filter((child2) => child2.type === "token_tree")) this.tokens(tree, context);
   }
   /** Macro arguments are not parsed, so names in them are read from the tokens: `a`, or `a::b`. */
@@ -15902,14 +16159,14 @@ var Extractor8 = class {
     for (let i2 = 0; i2 < children.length; i2++) {
       const token = children[i2];
       if (token.type === "token_tree") this.tokens(token, context);
-      else if (token.type === "identifier" || token.type === "type_identifier") {
+      else if (token.type === "identifier" || token.type === "type_identifier" || (token.type === "crate" || token.type === "super" || token.type === "self") && children[i2 + 1]?.type === "::") {
         const segments2 = [token.text];
         let next = i2 + 1;
-        while (children[next]?.type === "::" && children[next + 1]?.type === "identifier") {
+        while (children[next]?.type === "::" && (children[next + 1]?.type === "identifier" || children[next + 1]?.type === "super")) {
           segments2.push(children[next + 1].text);
           next += 2;
         }
-        this.reference(token.text, token, context, "reference", segments2[1]);
+        if (token.type === "identifier" || token.type === "type_identifier") this.reference(token.text, token, context, "reference", segments2[1]);
         this.inlinePath(segments2, token.startPosition.row + 1, "reference", context);
         i2 = next - 1;
       }
@@ -16208,17 +16465,90 @@ function closingOf(source, open, opener, closer) {
 import { posix as posix15 } from "node:path";
 var isConfigPath3 = isManifestPath;
 var builtinCrates2 = /* @__PURE__ */ new Set(["std", "core", "alloc", "proc_macro", "test"]);
+var noMacros = /* @__PURE__ */ new Map();
 var PathResolver = class {
   tree;
   /** A `use` of an inline module of the file itself is no dependency. */
   dropsSelfDependencies = true;
   /** A module's own `use` declarations are visible to its child modules, so `use super::Name` finds a name the parent only imports. */
   importsAreVisible = true;
-  constructor(paths, configs) {
+  /** A `use` depends on the file that defines the item, whichever modules re-export it on the way. */
+  edgesReachDefinitions = true;
+  globsBindNames = true;
+  facts;
+  reexported;
+  /** `macro_rules!` definitions by the crate that holds them, then by name. The first file in path order defines a name. */
+  macros;
+  pathParents;
+  constructor(paths, configs, facts = /* @__PURE__ */ new Map()) {
     this.tree = new ModuleTree(paths, readCrates(paths, configs));
+    this.facts = facts;
+  }
+  followReexports(moduleNamed) {
+    this.reexported = moduleNamed;
   }
   resolve(from, specifier) {
-    return specifier.startsWith("mod ") ? this.declaredModule(from, specifier.slice(4)) : this.usedPath(from, specifier.split("::"));
+    if (specifier.startsWith("mod ")) return this.declaredModule(from, specifier.slice(4));
+    if (specifier.startsWith("macro ")) return this.bareMacro(from, specifier.slice(6));
+    return this.usedPath(from, specifier.split("::"));
+  }
+  exportedElsewhere(modulePath, name14) {
+    const place = this.tree.placeOf(modulePath);
+    if (place === void 0 || place.root !== modulePath) return void 0;
+    const bare = name14.endsWith("!");
+    const macro = bare ? name14.slice(0, -1) : name14;
+    const definition = this.macrosOf(modulePath).get(macro);
+    if (definition?.exported === true) return { file: definition.file, name: `${macro}!` };
+    if (bare && this.facts.get(modulePath)?.exports.some((exported) => exported.exported === macro && exported.local !== void 0) === true) return { file: modulePath, name: macro };
+    return void 0;
+  }
+  /** What scopes a macro: the crate of the file, or its root file when no manifest owns it. */
+  scopeOf(file) {
+    const place = this.tree.placeOf(file);
+    return place === void 0 ? void 0 : place.crate?.manifest ?? place.root;
+  }
+  macrosOf(file) {
+    if (this.macros === void 0) {
+      this.macros = /* @__PURE__ */ new Map();
+      for (const [path, facts] of this.facts) {
+        for (const exported of facts.exports) {
+          if (!exported.exported.endsWith("!")) continue;
+          const scope2 = this.scopeOf(path);
+          if (scope2 === void 0) continue;
+          let names2 = this.macros.get(scope2);
+          if (names2 === void 0) this.macros.set(scope2, names2 = /* @__PURE__ */ new Map());
+          const name14 = exported.exported.slice(0, -1);
+          if (!names2.has(name14)) names2.set(name14, { file: path, exported: exported.internal !== true });
+        }
+      }
+    }
+    const scope = this.scopeOf(file);
+    return (scope === void 0 ? void 0 : this.macros.get(scope)) ?? noMacros;
+  }
+  /** The file whose `#[path = ".."] mod name;` names the file, when one does and the declaration is not inside an inline module. */
+  declaringFile(file) {
+    if (this.pathParents === void 0) {
+      this.pathParents = /* @__PURE__ */ new Map();
+      for (const [path, facts] of this.facts) {
+        for (const imported of facts.imports) {
+          const at2 = imported.specifier?.indexOf("@") ?? -1;
+          if (imported.declares !== true || imported.specifier === null || at2 < 0 || imported.specifier.slice(4, at2).includes("::")) continue;
+          const target2 = posix15.normalize(posix15.join(posix15.dirname(path), imported.specifier.slice(at2 + 1)));
+          if (target2 !== path && !this.pathParents.has(target2)) this.pathParents.set(target2, path);
+        }
+      }
+    }
+    return this.pathParents.get(file);
+  }
+  bareMacro(from, name14) {
+    const own = this.macrosOf(from).get(name14);
+    if (own !== void 0) return { kind: "file", path: own.file };
+    const crate = this.tree.placeOf(from)?.crate;
+    for (const [, dir] of [...crate?.dependencies ?? []].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
+      const root = this.tree.crates.find((candidate) => candidate.dir === dir && candidate.name !== null)?.libRoot;
+      if (root !== void 0 && this.exportedElsewhere(root, `${name14}!`) !== void 0) return { kind: "file", path: root };
+    }
+    return { kind: "builtin" };
   }
   declaredModule(from, declaration) {
     const at2 = declaration.indexOf("@");
@@ -16239,8 +16569,14 @@ var PathResolver = class {
     const place = this.tree.placeOf(from);
     if (first === "crate" || first === "self" || first === "super") {
       if (place === void 0) return { kind: "not-found" };
-      if (first === "crate") return this.fileOf(this.tree.walk({ file: place.root, root: place.root }, rest));
-      if (first === "self") return this.fileOf(this.tree.walk({ file: from, root: place.root }, rest));
+      if (first === "crate") {
+        const named2 = rest[0] === void 0 || this.tree.child(posix15.dirname(place.root), rest[0]) !== void 0 ? void 0 : this.crateNamed(place.crate, rest[0]);
+        if (named2?.libRoot !== void 0 && named2.libRoot !== place.root) return this.fileOf(this.tree.walk({ file: named2.libRoot, root: named2.libRoot }, rest.slice(1), this.reexported));
+        return this.fileOf(this.tree.walk({ file: place.root, root: place.root }, rest, this.reexported));
+      }
+      if (first === "self") return this.fileOf(this.tree.walk({ file: from, root: place.root }, rest, this.reexported));
+      const declaring = this.declaringFile(from);
+      if (declaring !== void 0) return this.usedPath(declaring, ["self", ...rest]);
       let up = 1;
       let remainder = rest;
       while (remainder[0] === "super") {
@@ -16249,16 +16585,18 @@ var PathResolver = class {
       }
       if (up > place.path.length) return { kind: "not-found" };
       const parent = this.tree.walk({ file: place.root, root: place.root }, place.path.slice(0, place.path.length - up));
-      return this.fileOf(this.tree.walk({ file: parent.file, root: place.root }, remainder));
+      return this.fileOf(this.tree.walk({ file: parent.file, root: place.root }, remainder, this.reexported));
     }
     if (builtinCrates2.has(first)) return { kind: "builtin" };
     const crate = this.crateNamed(place?.crate, first);
     if (crate === void 0) return { kind: "external", packageName: first };
     if (crate.libRoot === void 0) return { kind: "not-found" };
-    return this.fileOf(this.tree.walk({ file: crate.libRoot, root: crate.libRoot }, rest));
+    return this.fileOf(this.tree.walk({ file: crate.libRoot, root: crate.libRoot }, rest, this.reexported));
   }
+  /** The file a walk ended in. A walk that left the tree through a re-export names nothing in it. */
   fileOf(walked) {
-    return { kind: "file", path: walked.file };
+    if (walked.outside === true) return { kind: "builtin" };
+    return { kind: "file", path: walked.file, ...walked.via === void 0 ? {} : { via: walked.via } };
   }
   /** The crate a name in a `use` path stands for: the importing crate's own library, one of its path dependencies, or a crate of the tree by that name. */
   crateNamed(importer, name14) {
@@ -16284,7 +16622,7 @@ var adapter8 = {
   dependencies: {
     model: "import-based",
     isConfigPath: isConfigPath3,
-    createResolver: (paths, configs) => new PathResolver(paths, configs)
+    createResolver: (paths, configs, facts) => new PathResolver(paths, configs, facts)
   },
   boundaries: rustBoundaries,
   census: { extract: extractFileCensus8 },
@@ -16508,6 +16846,8 @@ function parseWith(adapter9, grammar, source, options2 = {}) {
 }
 
 // packages/parse/src/import-model.ts
+var MAX_CHAIN = 64;
+var MAX_NESTED_RESOLUTIONS = 32;
 var ImportModel = class {
   facts;
   resolver;
@@ -16518,10 +16858,20 @@ var ImportModel = class {
   fileEdges = /* @__PURE__ */ new Map();
   unresolved = /* @__PURE__ */ new Map();
   externals = /* @__PURE__ */ new Map();
+  resolving = /* @__PURE__ */ new Set();
+  exportResults = /* @__PURE__ */ new Map();
+  exportsInProgress = /* @__PURE__ */ new Set();
   constructor(facts, resolver, isTest) {
     this.facts = facts;
     this.resolver = resolver;
     this.isTest = isTest;
+    resolver.followReexports?.((file, name14) => {
+      const result = this.exportOf(file, name14);
+      if (result.status === "namespace") return result.file;
+      if (result.status === "external") return null;
+      if (result.status === "defined" && this.facts.get(result.file)?.exports.some((exported) => exported.exported === result.exportName && exported.kind === "namespace") === true) return result.file;
+      return void 0;
+    });
   }
   build() {
     const barrels = [];
@@ -16539,35 +16889,47 @@ var ImportModel = class {
       unresolved: [...this.unresolved.values()]
     };
   }
-  /** A file that defines nothing of its own and only passes other modules' exports along. */
+  /**
+   * A file that defines nothing of its own and only passes other modules' exports along. A namespace written out in the
+   * file (a Rust inline module) is not something of its own: what it holds is listed among the file's exports.
+   */
   isBarrel(file) {
     if (file.units.length > 0) return false;
     const imported = new Set(file.imports.flatMap((fact) => fact.bindings.map((binding) => binding.local)));
-    const passThrough = file.exports.filter((exported) => exported.local !== void 0 && imported.has(exported.local));
-    return file.reexports.length + passThrough.length > 0 && passThrough.length === file.exports.length;
+    const own = file.exports.filter((exported) => !(exported.kind === "namespace" && exported.local === void 0));
+    const passThrough = own.filter((exported) => exported.local !== void 0 && imported.has(exported.local));
+    return file.reexports.length + passThrough.length > 0 && passThrough.length === own.length;
   }
   resolve(from, specifier) {
     const key = `${from}\0${specifier}`;
     let resolution = this.resolutions.get(key);
     if (!resolution) {
-      resolution = this.resolver.resolve(from, specifier);
+      if (this.resolving.has(key) || this.resolving.size >= MAX_NESTED_RESOLUTIONS) return { kind: "not-found" };
+      this.resolving.add(key);
+      try {
+        resolution = this.resolver.resolve(from, specifier);
+      } finally {
+        this.resolving.delete(key);
+      }
       this.resolutions.set(key, resolution);
     }
     return resolution;
   }
-  addUnresolved(from, line, specifier, reason) {
-    this.unresolved.set(`${from}\0${line}\0${specifier}\0${reason}`, { from, line, specifier, reason });
+  /** `name` and `to` are given for a name a module does not export: the name, and the module's file. */
+  addUnresolved(from, line, specifier, reason, name14, to) {
+    this.unresolved.set(`${from}\0${line}\0${specifier}\0${reason}\0${name14 ?? ""}`, { from, line, specifier, reason, ...name14 === void 0 ? {} : { name: name14 }, ...to === void 0 ? {} : { to } });
   }
   /** Records an import edge. It is `test` while every statement behind it is test code. */
-  addImportEdge(from, to, kind, typeOnly, test = false) {
+  addImportEdge(from, to, kind, typeOnly, test = false, nominal = false, named2) {
     if (from === to && this.resolver.dropsSelfDependencies === true) return;
-    const key = `${from}\0${to}\0${kind}\0${typeOnly}`;
+    const via = named2 === to || named2 === from ? void 0 : named2;
+    const key = `${from}\0${to}\0${kind}\0${typeOnly}\0${nominal}\0${via ?? ""}`;
     const existing = this.importEdges.get(key);
     if (existing !== void 0) {
       if (!test) delete existing.test;
       return;
     }
-    this.importEdges.set(key, { from, to, kind, typeOnly, ...test ? { test: true } : {} });
+    this.importEdges.set(key, { from, to, kind, typeOnly, ...nominal ? { nominal: true } : {}, ...via === void 0 ? {} : { via }, ...test ? { test: true } : {} });
   }
   addExternal(from, packageName, typeOnly) {
     this.externals.set(`${from}\0${packageName}\0${typeOnly}`, { from, packageName, typeOnly });
@@ -16580,7 +16942,7 @@ var ImportModel = class {
       for (const name14 of this.namesExportedBy(path, /* @__PURE__ */ new Set())) {
         if (seen.has(name14)) continue;
         seen.add(name14);
-        const result = this.resolveExport(path, name14, /* @__PURE__ */ new Set());
+        const result = this.exportOf(path, name14);
         if (result.status !== "defined") continue;
         const definition = this.facts.get(result.file)?.exports.find((exported) => exported.exported === result.exportName);
         if (definition?.internal === true) continue;
@@ -16606,6 +16968,7 @@ var ImportModel = class {
     visiting.add(path);
     const names2 = file.exports.map((exported) => exported.exported);
     for (const reexport of file.reexports) {
+      if (reexport.visibility !== void 0) continue;
       if (reexport.exported !== "*") {
         names2.push(reexport.exported);
         continue;
@@ -16616,11 +16979,19 @@ var ImportModel = class {
     return names2;
   }
   fileDependencies(path, file) {
+    const reach = this.resolver.edgesReachDefinitions === true;
+    const globs = [];
     for (const reexport of file.reexports) {
       const target2 = this.resolve(path, reexport.specifier);
       if (target2.kind === "external") this.addExternal(path, target2.packageName, reexport.typeOnly);
-      if (target2.kind === "file") this.addImportEdge(path, target2.path, "reexport", reexport.typeOnly);
-      else if (target2.kind === "not-found") this.addUnresolved(path, reexport.line, reexport.specifier, "not-found");
+      if (target2.kind === "not-found") this.addUnresolved(path, reexport.line, reexport.specifier, "not-found");
+      if (target2.kind !== "file") continue;
+      if (!reach) this.addImportEdge(path, target2.path, "reexport", reexport.typeOnly);
+      else if (reexport.exported === "*") globs.push({ target: target2.path, named: target2.via ?? target2.path, reexport });
+      else {
+        const result = this.exportOf(target2.path, reexport.imported);
+        this.addImportEdge(path, result.status === "defined" || result.status === "namespace" ? result.file : target2.path, "reexport", reexport.typeOnly, false, true, target2.via ?? target2.path);
+      }
     }
     const unitNames = new Set(file.units.map((unit) => unit.qualifiedName));
     const implicitIsReexport = this.resolver.reexportsImplicitly?.(path) === true;
@@ -16636,42 +17007,101 @@ var ImportModel = class {
       if (target2.kind === "not-found") this.addUnresolved(path, imported.line, imported.specifier, "not-found");
       if (target2.kind !== "file") continue;
       const test = imported.test === true;
-      this.addImportEdge(path, target2.path, imported.kind === "require" ? "require" : "import", imported.typeOnly, test);
-      if (imported.bindings.length === 0) this.touch(path, target2.path, test);
+      const kind = imported.kind === "require" ? "require" : "import";
+      const declares = imported.declares === true;
+      const named2 = target2.via ?? target2.path;
+      let testUse = test;
+      const land = (to) => {
+        if (reach) this.addImportEdge(path, to, kind, imported.typeOnly, testUse, false, named2);
+      };
+      if (declares) this.addImportEdge(path, target2.path, kind, imported.typeOnly, test, true);
+      else if (!reach) this.addImportEdge(path, target2.path, kind, imported.typeOnly, test);
+      if (imported.bindings.length === 0) {
+        this.touch(path, target2.path, test);
+        land(target2.path);
+      }
       for (const binding of imported.bindings) {
         const uses = file.references.filter((reference) => reference.local === binding.local);
+        if (declares && uses.length === 0) continue;
+        const onlyTests = uses.length > 0 && uses.every((use) => use.test === true);
+        testUse = test || onlyTests;
         const passThrough = uses.length === 0 && exportedLocals.has(binding.local);
-        if (passThrough) {
-          const exposed = binding.imported === "*" ? void 0 : this.resolveExport(target2.path, binding.imported, /* @__PURE__ */ new Set());
+        if (passThrough || reach && onlyTests && !test && exportedLocals.has(binding.local)) {
+          const exposed = binding.imported === "*" ? void 0 : this.exportOf(target2.path, binding.imported);
           if (exposed?.status === "namespace" && exposed.submodule === true) this.addImportEdge(path, exposed.file, "import", imported.typeOnly, test);
-          continue;
+          if (reach) {
+            if (exposed === void 0) this.addImportEdge(path, target2.path, "reexport", imported.typeOnly, test, true, named2);
+            else if (exposed.status === "missing" && passThrough) this.addUnresolved(path, imported.line, imported.specifier, "export-not-found", binding.imported, target2.path);
+            else if (exposed.status !== "external" && exposed.status !== "missing") this.addImportEdge(path, exposed.file, "reexport", imported.typeOnly, test, true, named2);
+          }
+          if (passThrough) continue;
         }
         if (binding.imported === "*") {
-          this.useNamespace(path, target2.path, uses, unitNames, test);
+          this.useNamespace(path, target2.path, uses, unitNames, testUse, land);
           continue;
         }
-        const result = this.resolveExport(target2.path, binding.imported, /* @__PURE__ */ new Set());
+        const result = this.exportOf(target2.path, binding.imported);
         switch (result.status) {
           case "defined":
-            this.touch(path, result.file, test);
+            this.touch(path, result.file, testUse);
+            land(result.file);
             for (const use of uses) {
               this.consume(path, use, unitNames, result.file, result.exportName, result.symbol, false);
+            }
+            if (reach && uses.length === 0) {
+              this.consume(path, { local: binding.local, kind: "reference", line: imported.line, ...test ? { test: true } : {} }, unitNames, result.file, result.exportName, result.symbol, false);
             }
             break;
           case "namespace":
             if (result.submodule === true) this.addImportEdge(path, result.file, "import", imported.typeOnly, test);
-            this.useNamespace(path, result.file, uses, unitNames, test);
+            this.useNamespace(path, result.file, uses, unitNames, testUse, land);
             break;
           case "opaque":
-            this.touch(path, result.file, test);
+            this.touch(path, result.file, testUse);
+            land(result.file);
             for (const use of uses) this.consume(path, use, unitNames, result.file, binding.imported, void 0, false);
             break;
           case "missing":
-            this.addUnresolved(path, imported.line, imported.specifier, "export-not-found");
+            this.addUnresolved(path, imported.line, imported.specifier, "export-not-found", binding.imported, target2.path);
             break;
           case "external":
             break;
         }
+      }
+    }
+    if (globs.length > 0) this.globDependencies(path, file, globs, unitNames);
+  }
+  /**
+   * The glob imports of a file whose edges run to definitions. A name the file uses and neither declares nor imports
+   * is looked up in each glob's module, in order, and is a use of the file that defines it. A glob that is `pub` in
+   * any form passes names along, which is a nominal edge. A private one through which no use was found is still an
+   * import of its module: what it brings in may be used in a way no name shows, as a trait's methods are.
+   */
+  globDependencies(path, file, globs, unitNames) {
+    const used = /* @__PURE__ */ new Set();
+    if (this.resolver.globsBindNames === true) {
+      const bound = new Set(file.imports.flatMap((imported) => imported.bindings.map((binding) => binding.local)));
+      for (const use of file.references) {
+        if (bound.has(use.local)) continue;
+        const test = use.test === true;
+        for (const [index, glob] of globs.entries()) {
+          const land = (to) => this.addImportEdge(path, to, "import", false, test, false, glob.named);
+          const result = this.exportOf(glob.target, use.local);
+          if (result.status === "defined") {
+            this.consume(path, use, unitNames, result.file, result.exportName, result.symbol, false);
+            land(result.file);
+          } else if (result.status === "namespace") this.useNamespace(path, result.file, [use], unitNames, test, land);
+          else continue;
+          used.add(index);
+          break;
+        }
+      }
+    }
+    for (const [index, glob] of globs.entries()) {
+      if (glob.reexport.visibility !== "private") this.addImportEdge(path, glob.target, "reexport", glob.reexport.typeOnly, false, true, glob.named);
+      else if (!used.has(index)) {
+        this.touch(path, glob.target);
+        this.addImportEdge(path, glob.target, "import", glob.reexport.typeOnly, false, false, glob.named);
       }
     }
   }
@@ -16690,19 +17120,27 @@ var ImportModel = class {
     } else if (!testUse && edge.kind === "test") edge.kind = "reference";
     return edge;
   }
-  useNamespace(from, namespace, uses, unitNames, test) {
-    if (uses.length === 0) this.touch(from, namespace, test);
+  /** Counts the uses of a module imported whole. `land` is told each file a use reaches. */
+  useNamespace(from, namespace, uses, unitNames, test, land = () => {
+  }) {
+    if (uses.length === 0) {
+      this.touch(from, namespace, test);
+      land(namespace);
+    }
     for (const use of uses) {
       if (use.member === void 0) {
         this.consume(from, use, unitNames, namespace, "*", void 0, false);
+        land(namespace);
         continue;
       }
-      const result = this.resolveExport(namespace, use.member, /* @__PURE__ */ new Set());
+      const result = this.exportOf(namespace, use.member);
       if (result.status === "defined") {
         this.consume(from, use, unitNames, result.file, result.exportName, result.symbol, true);
+        land(result.file);
       } else {
         const file = result.status === "namespace" || result.status === "opaque" ? result.file : namespace;
         this.consume(from, use, unitNames, file, use.member, void 0, true);
+        land(file);
       }
     }
   }
@@ -16737,21 +17175,35 @@ var ImportModel = class {
     if (toSymbol !== void 0) consumer.toSymbol = toSymbol;
     this.consumers.set(key, consumer);
   }
+  /** What a name exported by a file is, followed to its definition. Each answer is worked out once. */
+  exportOf(path, name14) {
+    const key = `${path}\0${name14}`;
+    const known = this.exportResults.get(key);
+    if (known !== void 0) return known;
+    if (this.exportsInProgress.has(key)) return { status: "missing" };
+    this.exportsInProgress.add(key);
+    try {
+      const result = this.resolveExport(path, name14, /* @__PURE__ */ new Set());
+      this.exportResults.set(key, result);
+      return result;
+    } finally {
+      this.exportsInProgress.delete(key);
+    }
+  }
   /** Follows an exported name through re-exports and barrels to the file that defines it. */
   resolveExport(path, name14, visiting) {
     const file = this.facts.get(path);
     if (!file) return { status: "opaque", file: path };
     const key = `${path}\0${name14}`;
-    if (visiting.has(key)) return { status: "missing" };
+    if (visiting.has(key) || visiting.size >= MAX_CHAIN) return { status: "missing" };
     visiting.add(key);
     for (const exported of file.exports) {
       if (exported.exported !== name14) continue;
       if (exported.local === void 0) return { status: "defined", file: path, exportName: name14 };
+      const unit = file.units.find((candidate) => candidate.qualifiedName === exported.local && !candidate.parent);
+      if (unit) return { status: "defined", file: path, exportName: name14, symbol: unit.qualifiedName };
       const binding = this.importBinding(file, exported.local);
-      if (!binding) {
-        const unit = file.units.find((candidate) => candidate.qualifiedName === exported.local && !candidate.parent);
-        return unit ? { status: "defined", file: path, exportName: name14, symbol: unit.qualifiedName } : { status: "defined", file: path, exportName: name14 };
-      }
+      if (!binding) return { status: "defined", file: path, exportName: name14 };
       const target2 = this.resolve(path, binding.specifier);
       if (target2.kind === "file" && target2.path === path && binding.imported === name14) continue;
       return this.followBinding(path, binding.specifier, binding.imported, visiting);
@@ -16759,19 +17211,26 @@ var ImportModel = class {
     for (const reexport of file.reexports) {
       if (reexport.exported === name14) return this.followBinding(path, reexport.specifier, reexport.imported, visiting);
     }
+    let unlisted;
     if (name14 !== "default") {
       for (const reexport of file.reexports) {
         if (reexport.exported !== "*") continue;
         const result = this.followBinding(path, reexport.specifier, name14, visiting);
-        if (result.status !== "missing") return result;
+        if (result.status === "missing") continue;
+        if (result.status === "external" || result.status === "opaque" && result.guessed === true) unlisted ??= result;
+        else return result;
       }
     }
     if (this.resolver.importsAreVisible === true) {
       const binding = this.importBinding(file, name14);
       if (binding) return this.followBinding(path, binding.specifier, binding.imported, visiting);
     }
+    const elsewhere = this.resolver.exportedElsewhere?.(path, name14);
+    if (elsewhere !== void 0) return this.resolveExport(elsewhere.file, elsewhere.name, visiting);
     const submodule = this.resolver.submodule?.(path, name14);
     if (submodule !== void 0) return { status: "namespace", file: submodule, submodule: true };
+    if (file.itemMacros === true) return { status: "opaque", file: path, guessed: true };
+    if (unlisted !== void 0) return unlisted;
     return file.exports.length === 0 && file.reexports.length === 0 ? { status: "opaque", file: path } : { status: "missing" };
   }
   followBinding(from, specifier, imported, visiting) {
@@ -16853,7 +17312,7 @@ async function analyseTree(tree, options2 = {}) {
     const input = { facts: groupFacts, paths: sortedPaths, configs, isTestPath: isTest, untrackedConfigs, includeRoots: options2.includeRoots ?? [] };
     const dependencies = group[0].dependencies;
     resolved.push(
-      dependencies.model === "import-based" ? new ImportModel(groupFacts, dependencies.createResolver(sortedPaths, configs), isTest).build() : dependencies.resolve?.(input) ?? resolveBySymbols(input)
+      dependencies.model === "import-based" ? new ImportModel(groupFacts, dependencies.createResolver(sortedPaths, configs, groupFacts), isTest).build() : dependencies.resolve?.(input) ?? resolveBySymbols(input)
     );
   }
   return { ...assemble(facts, resolved), stats };
@@ -16893,7 +17352,7 @@ function assemble(facts, resolved) {
   return {
     units,
     importEdges: all("importEdges").sort(
-      (a, b) => compareUtf8(a.from, b.from) || compareUtf8(a.to, b.to) || compareUtf8(a.kind, b.kind) || Number(a.typeOnly) - Number(b.typeOnly)
+      (a, b) => compareUtf8(a.from, b.from) || compareUtf8(a.to, b.to) || compareUtf8(a.kind, b.kind) || Number(a.typeOnly) - Number(b.typeOnly) || Number(a.nominal === true) - Number(b.nominal === true) || compareUtf8(a.via ?? "", b.via ?? "")
     ),
     consumers: all("consumers").sort(
       (a, b) => compareUtf8(a.from, b.from) || compareUtf8(a.fromUnit ?? "", b.fromUnit ?? "") || compareUtf8(a.to, b.to) || compareUtf8(a.toSymbol ?? a.toExport, b.toSymbol ?? b.toExport) || compareUtf8(a.kind, b.kind)
@@ -16904,7 +17363,7 @@ function assemble(facts, resolved) {
     externalImports: all("externalImports").sort(
       (a, b) => compareUtf8(a.from, b.from) || compareUtf8(a.packageName, b.packageName) || Number(a.typeOnly) - Number(b.typeOnly)
     ),
-    unresolved: all("unresolved").sort((a, b) => compareUtf8(a.from, b.from) || a.line - b.line || compareUtf8(a.specifier ?? "", b.specifier ?? "")),
+    unresolved: all("unresolved").sort((a, b) => compareUtf8(a.from, b.from) || a.line - b.line || compareUtf8(a.specifier ?? "", b.specifier ?? "") || compareUtf8(a.name ?? "", b.name ?? "")),
     filesWithSyntaxErrors,
     syntaxErrors,
     filesWithMacroCode,
@@ -17940,20 +18399,6 @@ async function projectFromTree(tree, headSha, options2, cache) {
   const generated = new Set(analysis.generatedFiles);
   const files = [...tree.files.keys()].filter((path) => hasAdapter(path) && !isTestPath(path) && !excluded(path) && !generated.has(path)).sort(compareUtf8);
   const inProject = new Set(files);
-  const imports = /* @__PURE__ */ new Map();
-  const adjacency = new Map(files.map((path) => [path, []]));
-  for (const edge of analysis.importEdges) {
-    if (edge.pairing === true || edge.test === true || !inProject.has(edge.from) || !inProject.has(edge.to)) continue;
-    const key = edgeKey(edge.from, edge.to);
-    imports.set(key, [...imports.get(key) ?? [], edge]);
-    adjacency.get(edge.from).push(edge.to);
-  }
-  const consumers = /* @__PURE__ */ new Map();
-  for (const consumer of analysis.consumers) {
-    if (consumer.kind === "test" || !inProject.has(consumer.from) || !inProject.has(consumer.to)) continue;
-    const key = edgeKey(consumer.from, consumer.to);
-    consumers.set(key, [...consumers.get(key) ?? [], consumer]);
-  }
   const components = readComponents(options2.components ?? {});
   const packages = await discoverPackages(tree, {
     ignore: options2.packages?.ignore ?? [],
@@ -17964,6 +18409,21 @@ async function projectFromTree(tree, headSha, options2, cache) {
   });
   const packageIndex = indexPackages(packages, components);
   const packageOf = (path) => packageIndex.owner(path) ?? ".";
+  const nominalInside = (edge) => edge.nominal === true && packageOf(edge.from) === packageOf(edge.to);
+  const imports = /* @__PURE__ */ new Map();
+  const adjacency = new Map(files.map((path) => [path, []]));
+  for (const edge of analysis.importEdges) {
+    if (edge.pairing === true || edge.test === true || !inProject.has(edge.from) || !inProject.has(edge.to) || nominalInside(edge)) continue;
+    const key = edgeKey(edge.from, edge.to);
+    imports.set(key, [...imports.get(key) ?? [], edge]);
+    adjacency.get(edge.from).push(edge.to);
+  }
+  const consumers = /* @__PURE__ */ new Map();
+  for (const consumer of analysis.consumers) {
+    if (consumer.kind === "test" || !inProject.has(consumer.from) || !inProject.has(consumer.to)) continue;
+    const key = edgeKey(consumer.from, consumer.to);
+    consumers.set(key, [...consumers.get(key) ?? [], consumer]);
+  }
   return { headSha, files, graph: normalise3(adjacency), analysis, imports, consumers, packages, packageIndex, packageOf };
 }
 
@@ -22710,7 +23170,7 @@ function assemblePackageModel(headSha, history, tree, project) {
   for (const imported of project.analysis.importEdges) {
     if (imported.pairing === true || excluded(imported.from) || excluded(imported.to)) continue;
     const from = index.owner(imported.from);
-    const to = index.owner(imported.to);
+    const to = index.owner(imported.via ?? imported.to);
     if (from === void 0 || to === void 0 || from === to) continue;
     const edge = edgeFor(from, to);
     if (imported.test === true || isTestPath(imported.from) || isTestPath(imported.to)) edge.testImports++;
@@ -23599,15 +24059,16 @@ function deepImports(context, reuse) {
   const excluded = compileGlobs(model.settings.exclude);
   const found = /* @__PURE__ */ new Map();
   for (const edge of model.project.analysis.importEdges) {
-    if (edge.pairing === true || excluded(edge.from) || excluded(edge.to) || isTestPath(edge.to)) continue;
+    const target2 = edge.via ?? edge.to;
+    if (edge.pairing === true || excluded(edge.from) || excluded(target2) || isTestPath(target2)) continue;
     const consumer = model.index.owner(edge.from);
-    const owner = model.index.owner(edge.to);
+    const owner = model.index.owner(target2);
     if (consumer === void 0 || owner === void 0 || consumer === owner) continue;
     const entries = reuse.profiles.get(owner)?.entries;
-    if (!entries || entries.files.has(edge.to)) continue;
+    if (!entries || entries.files.has(target2)) continue;
     const key = edgeKey(consumer, owner);
     const entry = found.get(key) ?? { files: /* @__PURE__ */ new Set(), importers: /* @__PURE__ */ new Set(), tests: 0 };
-    entry.files.add(edge.to);
+    entry.files.add(target2);
     entry.importers.add(edge.from);
     if (edge.test === true || isTestPath(edge.from)) entry.tests++;
     found.set(key, entry);

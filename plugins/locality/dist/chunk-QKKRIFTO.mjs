@@ -3,7 +3,10 @@
 import { createRequire as __codeHealthCreateRequire } from "node:module"; import { fileURLToPath as __codeHealthFileURLToPath } from "node:url"; import { dirname as __codeHealthDirname } from "node:path"; var require = __codeHealthCreateRequire(import.meta.url); var __filename = __codeHealthFileURLToPath(import.meta.url); var __dirname = __codeHealthDirname(__filename);
 import {
   GrammarSet
-} from "./chunk-TXZHYMY6.mjs";
+} from "./chunk-Z64A23YB.mjs";
+import {
+  oncePerTree
+} from "./chunk-INFC25BD.mjs";
 import {
   ModuleTree,
   isManifestPath,
@@ -12,7 +15,7 @@ import {
   parseToml,
   pathSegments,
   readCrates
-} from "./chunk-LS633N4T.mjs";
+} from "./chunk-BVIRNGKV.mjs";
 import "./chunk-OQRLKAKZ.mjs";
 
 // packages/locality/src/movers/rust-backend.ts
@@ -23,6 +26,47 @@ import { dirname, join } from "node:path";
 
 // packages/locality/src/movers/rust-moves.ts
 import "node:path";
+function pathSites(source) {
+  const root = source.tree.rootNode;
+  const uses = root.descendantsOfType("use_declaration").map((declaration) => {
+    const leaves = [];
+    leavesOf(declaration.childForFieldName("argument"), [], leaves);
+    return { declaration, leaves, inline: insideInlineModule(declaration) };
+  });
+  const scoped = [];
+  for (const node of [...root.descendantsOfType("scoped_identifier"), ...root.descendantsOfType("scoped_type_identifier")]) {
+    if (within(node, "use_declaration") || node.parent?.type === "scoped_identifier" || node.parent?.type === "scoped_type_identifier") continue;
+    const segments = [];
+    if (!pathSegments(node, segments)) continue;
+    scoped.push({ node, segments, inline: insideInlineModule(node) });
+  }
+  return { uses, scoped };
+}
+var parsedTrees = new FinalizationRegistry((trees) => {
+  for (const tree of trees) tree.delete();
+});
+async function readProject(tree, grammar2) {
+  const paths = [...tree.files.keys()];
+  const configs = await tree.readMany(paths.filter(isManifestPath));
+  const sources = /* @__PURE__ */ new Map();
+  const rust = paths.filter((path) => path.endsWith(".rs")).sort(compare);
+  for (const [path, text] of await tree.readMany(rust)) sources.set(path, { path, text, tree: grammar2.parse(text) });
+  parsedTrees.register(tree, [...sources.values()].map((source) => source.tree));
+  const sites = /* @__PURE__ */ new Map();
+  return {
+    configs,
+    sources,
+    before: new ModuleTree(paths, readCrates(paths, configs)),
+    sitesOf(source) {
+      let found = sites.get(source);
+      if (found === void 0) {
+        found = pathSites(source);
+        sites.set(source, found);
+      }
+      return found;
+    }
+  };
+}
 var compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function visibilityOf(node) {
   const modifier = node.namedChildren.find((child) => child.type === "visibility_modifier");
@@ -70,30 +114,29 @@ var RustMove = class {
   warnings = [];
   breaks = [];
   texts = /* @__PURE__ */ new Map();
-  sources = /* @__PURE__ */ new Map();
+  project;
+  sources;
   destination;
   origin = /* @__PURE__ */ new Map();
   before;
   after;
   edits = /* @__PURE__ */ new Map();
   declarations = /* @__PURE__ */ new Map();
-  grammar;
-  tree;
   operations;
   configs;
   /** Whether the new `mod` line of each moved file is covered by a `#[cfg(test)]`, by its path after the move. */
   gated = /* @__PURE__ */ new Map();
-  constructor(tree, operations, grammar2, configs) {
-    this.tree = tree;
+  constructor(tree, operations, project) {
+    this.project = project;
     this.operations = operations;
-    this.grammar = grammar2;
-    this.configs = configs;
+    this.sources = project.sources;
+    this.configs = project.configs;
     this.destination = new Map(operations.map((operation) => [operation.from, operation.to]));
     for (const operation of operations) this.origin.set(operation.to, operation.from);
     const paths = [...tree.files.keys()];
     const afterPaths = [.../* @__PURE__ */ new Set([...paths.filter((path) => !this.destination.has(path)), ...operations.map((operation) => operation.to)])];
-    this.before = new ModuleTree(paths, readCrates(paths, configs));
-    this.after = new ModuleTree(afterPaths, readCrates(afterPaths, configs));
+    this.before = project.before;
+    this.after = new ModuleTree(afterPaths, readCrates(afterPaths, this.configs));
   }
   /** Where a file is after the move. */
   moved(path) {
@@ -118,19 +161,13 @@ var RustMove = class {
     this.edits.set(path, [...this.edits.get(path) ?? [], edit]);
   }
   async run() {
-    const rust = [...this.tree.files.keys()].filter((path) => path.endsWith(".rs")).sort(compare);
-    for (const [path, text] of await this.tree.readMany(rust)) this.sources.set(path, { path, text, tree: this.grammar.parse(text) });
-    try {
-      for (const operation of this.operations) {
-        if (!this.sources.has(operation.from)) this.warnings.push(`${operation.from} could not be read as a Rust source file`);
-      }
-      for (const source of this.sources.values()) this.paths(source);
-      for (const operation of this.operations) this.moduleDeclaration(operation);
-      for (const operation of this.operations) this.devDependencies(operation);
-      this.apply();
-    } finally {
-      for (const source of this.sources.values()) source.tree.delete();
+    for (const operation of this.operations) {
+      if (!this.sources.has(operation.from)) this.warnings.push(`${operation.from} could not be read as a Rust source file`);
     }
+    for (const source of this.sources.values()) this.paths(source);
+    for (const operation of this.operations) this.moduleDeclaration(operation);
+    for (const operation of this.operations) this.devDependencies(operation);
+    this.apply();
     this.rewrites.sort((a, b) => compare(a.path, b.path) || a.line - b.line || compare(a.from, b.from));
     return { rewrites: this.rewrites, texts: this.texts, warnings: this.warnings, breaks: this.breaks };
   }
@@ -140,13 +177,10 @@ var RustMove = class {
     const newPath = this.moved(source.path);
     const newPlace = this.after.placeOf(newPath);
     if (place === void 0 || newPlace === void 0) return;
-    const root = source.tree.rootNode;
+    const sites = this.project.sitesOf(source);
     const mods = new Set(this.declared(source.path).map((declaration) => declaration.name));
     const context = { source, place, newPlace, newPath, mods };
-    for (const declaration of root.descendantsOfType("use_declaration")) {
-      const leaves = [];
-      leavesOf(declaration.childForFieldName("argument"), [], leaves);
-      const inline = insideInlineModule(declaration);
+    for (const { declaration, leaves, inline } of sites.uses) {
       const rendered = leaves.map((leaf) => ({ leaf, path: this.render(context, leaf.segments, inline, leaf.line) }));
       if (rendered.every((entry) => entry.path === void 0)) continue;
       const indent = /[ \t]*$/.exec(source.text.slice(source.text.lastIndexOf("\n", declaration.startIndex - 1) + 1, declaration.startIndex))?.[0] ?? "";
@@ -161,11 +195,8 @@ ${indent}`) });
         if (path !== void 0) this.rewrites.push({ path: newPath, line: leaf.line, from: leaf.segments.join("::"), to: path });
       }
     }
-    for (const node of [...root.descendantsOfType("scoped_identifier"), ...root.descendantsOfType("scoped_type_identifier")]) {
-      if (within(node, "use_declaration") || node.parent?.type === "scoped_identifier" || node.parent?.type === "scoped_type_identifier") continue;
-      const segments = [];
-      if (!pathSegments(node, segments)) continue;
-      const path = this.render(context, segments, insideInlineModule(node), node.startPosition.row + 1);
+    for (const { node, segments, inline } of sites.scoped) {
+      const path = this.render(context, segments, inline, node.startPosition.row + 1);
       if (path === void 0) continue;
       this.edit(source.path, { start: node.startIndex, end: node.endIndex, text: path });
       this.rewrites.push({ path: newPath, line: node.startPosition.row + 1, from: segments.join("::"), to: path });
@@ -416,9 +447,6 @@ ${blankAfter}` });
     }
   }
 };
-async function readConfigs(tree) {
-  return tree.readMany([...tree.files.keys()].filter(isManifestPath));
-}
 
 // packages/locality/src/movers/rust-backend.ts
 var grammar;
@@ -434,8 +462,9 @@ async function loadGrammar() {
   }
   return grammar;
 }
+var projectOf = oncePerTree(async (tree) => readProject(tree, await loadGrammar()));
 async function performMove(tree, operations) {
-  const move = new RustMove(tree, operations, await loadGrammar(), await readConfigs(tree));
+  const move = new RustMove(tree, operations, await projectOf(tree));
   return move.run();
 }
 function skeleton(_path, text) {

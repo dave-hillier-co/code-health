@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Commercial. Third-party licences: THIRD_PARTY_NOTICES.md.
 import { createRequire as __codeHealthCreateRequire } from "node:module"; import { fileURLToPath as __codeHealthFileURLToPath } from "node:url"; import { dirname as __codeHealthDirname } from "node:path"; var require = __codeHealthCreateRequire(import.meta.url); var __filename = __codeHealthFileURLToPath(import.meta.url); var __dirname = __codeHealthDirname(__filename);
 import {
+  oncePerTree,
   sourceFilesOf
-} from "./chunk-L66PW574.mjs";
-import "./chunk-LS633N4T.mjs";
+} from "./chunk-INFC25BD.mjs";
+import "./chunk-BVIRNGKV.mjs";
 import "./chunk-OQRLKAKZ.mjs";
 
 // packages/locality/src/movers/csharp-backend.ts
@@ -179,16 +180,32 @@ async function confirmWithRoslyn(tree, operations, tool, perform, options = {}) 
 var isSource = sourceFilesOf("csharp");
 var partialTypes = (text) => [...text.matchAll(/\bpartial\s+(?:class|struct|interface|record(?:\s+(?:class|struct))?)\s+(\w+)/g)].map((match) => match[1]);
 var directoryOf = (path) => posix.dirname(path) === "." ? "" : posix.dirname(path);
+var projectOf = oncePerTree(async (tree) => {
+  const sources = [...tree.files.keys()].filter(isSource).sort();
+  const texts = await tree.readMany(sources);
+  const partials = /* @__PURE__ */ new Map();
+  const declarers = /* @__PURE__ */ new Map();
+  for (const path of sources) {
+    const types = partialTypes(texts.get(path) ?? "");
+    partials.set(path, types);
+    for (const type of new Set(types)) {
+      const found = declarers.get(type);
+      if (found === void 0) declarers.set(type, [path]);
+      else found.push(path);
+    }
+  }
+  const projects = await tree.readMany([...tree.files.keys()].filter((path) => path.endsWith(".csproj")).sort());
+  return { partials, declarers, projects };
+});
 async function partialWarnings(tree, moved) {
   const warnings = [];
   const destination = new Map(moved.map((operation) => [operation.from, operation.to]));
-  const sources = [...tree.files.keys()].filter(isSource).sort();
-  const texts = await tree.readMany(sources);
+  const { partials, declarers } = await projectOf(tree);
   for (const operation of moved) {
-    for (const type of new Set(partialTypes(texts.get(operation.from) ?? ""))) {
+    for (const type of new Set(partials.get(operation.from) ?? [])) {
       const folders = /* @__PURE__ */ new Set();
-      for (const path of sources) {
-        if (path === operation.from || !partialTypes(texts.get(path) ?? "").includes(type)) continue;
+      for (const path of declarers.get(type) ?? []) {
+        if (path === operation.from) continue;
         folders.add(directoryOf(destination.get(path) ?? path));
       }
       if (folders.size > 0 && !(folders.size === 1 && folders.has(directoryOf(operation.to)))) {
@@ -221,8 +238,7 @@ async function performMove(tree, operations) {
   for (const operation of moved) if (!tree.files.has(operation.from)) warnings.push(`${operation.from} could not be read as a source file`);
   const rewrites = [];
   const texts = /* @__PURE__ */ new Map();
-  const projects = [...tree.files.keys()].filter((path) => path.endsWith(".csproj")).sort();
-  for (const [path, text] of await tree.readMany(projects)) {
+  for (const [path, text] of (await projectOf(tree)).projects) {
     const result = rewriteProject(path, text, destination);
     if (result.text === text) continue;
     rewrites.push(...result.rewrites);

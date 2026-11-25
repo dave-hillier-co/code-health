@@ -72,15 +72,23 @@ function folderOf(path) {
   return slash === -1 ? "" : path.slice(0, slash);
 }
 function depthOf(folder) {
-  return folder === "" ? 0 : folder.split("/").length;
+  if (folder === "") return 0;
+  let depth = 1;
+  for (let at = folder.indexOf("/"); at !== -1; at = folder.indexOf("/", at + 1)) depth++;
+  return depth;
 }
+var SLASH = 47;
 function commonDepth(a, b) {
   if (a === "" || b === "") return 0;
-  const left = a.split("/");
-  const right = b.split("/");
+  const shorter = Math.min(a.length, b.length);
   let shared = 0;
-  while (shared < left.length && shared < right.length && left[shared] === right[shared]) shared++;
-  return shared;
+  for (let at = 0; at < shorter; at++) {
+    const code = a.charCodeAt(at);
+    if (code !== b.charCodeAt(at)) return shared;
+    if (code === SLASH) shared++;
+  }
+  if (a.length === b.length) return shared + 1;
+  return (a.length > shorter ? a : b).charCodeAt(shorter) === SLASH ? shared + 1 : shared;
 }
 function folderDistance(a, b) {
   return depthOf(a) + depthOf(b) - 2 * commonDepth(a, b);

@@ -15,7 +15,7 @@ import {
   resolveBySymbols,
   supportedAdapters,
   treeFromRef
-} from "./chunk-GQQ2SMPA.mjs";
+} from "./chunk-5AWXAUIB.mjs";
 
 // packages/cochange/src/risk/signatures.ts
 import { readFileSync as readFileSync2 } from "node:fs";
@@ -4234,6 +4234,8 @@ async function factsForBlob(language, blob, source, cache) {
 }
 
 // packages/parse/src/import-model.ts
+var MAX_CHAIN = 64;
+var MAX_NESTED_RESOLUTIONS = 32;
 var ImportModel = class {
   facts;
   resolver;
@@ -4244,10 +4246,20 @@ var ImportModel = class {
   fileEdges = /* @__PURE__ */ new Map();
   unresolved = /* @__PURE__ */ new Map();
   externals = /* @__PURE__ */ new Map();
+  resolving = /* @__PURE__ */ new Set();
+  exportResults = /* @__PURE__ */ new Map();
+  exportsInProgress = /* @__PURE__ */ new Set();
   constructor(facts, resolver, isTest) {
     this.facts = facts;
     this.resolver = resolver;
     this.isTest = isTest;
+    resolver.followReexports?.((file, name2) => {
+      const result = this.exportOf(file, name2);
+      if (result.status === "namespace") return result.file;
+      if (result.status === "external") return null;
+      if (result.status === "defined" && this.facts.get(result.file)?.exports.some((exported) => exported.exported === result.exportName && exported.kind === "namespace") === true) return result.file;
+      return void 0;
+    });
   }
   build() {
     const barrels = [];
@@ -4265,35 +4277,47 @@ var ImportModel = class {
       unresolved: [...this.unresolved.values()]
     };
   }
-  /** A file that defines nothing of its own and only passes other modules' exports along. */
+  /**
+   * A file that defines nothing of its own and only passes other modules' exports along. A namespace written out in the
+   * file (a Rust inline module) is not something of its own: what it holds is listed among the file's exports.
+   */
   isBarrel(file) {
     if (file.units.length > 0) return false;
     const imported = new Set(file.imports.flatMap((fact) => fact.bindings.map((binding) => binding.local)));
-    const passThrough = file.exports.filter((exported) => exported.local !== void 0 && imported.has(exported.local));
-    return file.reexports.length + passThrough.length > 0 && passThrough.length === file.exports.length;
+    const own = file.exports.filter((exported) => !(exported.kind === "namespace" && exported.local === void 0));
+    const passThrough = own.filter((exported) => exported.local !== void 0 && imported.has(exported.local));
+    return file.reexports.length + passThrough.length > 0 && passThrough.length === own.length;
   }
   resolve(from, specifier) {
     const key = `${from}\0${specifier}`;
     let resolution = this.resolutions.get(key);
     if (!resolution) {
-      resolution = this.resolver.resolve(from, specifier);
+      if (this.resolving.has(key) || this.resolving.size >= MAX_NESTED_RESOLUTIONS) return { kind: "not-found" };
+      this.resolving.add(key);
+      try {
+        resolution = this.resolver.resolve(from, specifier);
+      } finally {
+        this.resolving.delete(key);
+      }
       this.resolutions.set(key, resolution);
     }
     return resolution;
   }
-  addUnresolved(from, line, specifier, reason) {
-    this.unresolved.set(`${from}\0${line}\0${specifier}\0${reason}`, { from, line, specifier, reason });
+  /** `name` and `to` are given for a name a module does not export: the name, and the module's file. */
+  addUnresolved(from, line, specifier, reason, name2, to) {
+    this.unresolved.set(`${from}\0${line}\0${specifier}\0${reason}\0${name2 ?? ""}`, { from, line, specifier, reason, ...name2 === void 0 ? {} : { name: name2 }, ...to === void 0 ? {} : { to } });
   }
   /** Records an import edge. It is `test` while every statement behind it is test code. */
-  addImportEdge(from, to, kind, typeOnly, test = false) {
+  addImportEdge(from, to, kind, typeOnly, test = false, nominal = false, named) {
     if (from === to && this.resolver.dropsSelfDependencies === true) return;
-    const key = `${from}\0${to}\0${kind}\0${typeOnly}`;
+    const via = named === to || named === from ? void 0 : named;
+    const key = `${from}\0${to}\0${kind}\0${typeOnly}\0${nominal}\0${via ?? ""}`;
     const existing = this.importEdges.get(key);
     if (existing !== void 0) {
       if (!test) delete existing.test;
       return;
     }
-    this.importEdges.set(key, { from, to, kind, typeOnly, ...test ? { test: true } : {} });
+    this.importEdges.set(key, { from, to, kind, typeOnly, ...nominal ? { nominal: true } : {}, ...via === void 0 ? {} : { via }, ...test ? { test: true } : {} });
   }
   addExternal(from, packageName, typeOnly) {
     this.externals.set(`${from}\0${packageName}\0${typeOnly}`, { from, packageName, typeOnly });
@@ -4306,7 +4330,7 @@ var ImportModel = class {
       for (const name2 of this.namesExportedBy(path, /* @__PURE__ */ new Set())) {
         if (seen.has(name2)) continue;
         seen.add(name2);
-        const result = this.resolveExport(path, name2, /* @__PURE__ */ new Set());
+        const result = this.exportOf(path, name2);
         if (result.status !== "defined") continue;
         const definition = this.facts.get(result.file)?.exports.find((exported) => exported.exported === result.exportName);
         if (definition?.internal === true) continue;
@@ -4332,6 +4356,7 @@ var ImportModel = class {
     visiting.add(path);
     const names = file.exports.map((exported) => exported.exported);
     for (const reexport of file.reexports) {
+      if (reexport.visibility !== void 0) continue;
       if (reexport.exported !== "*") {
         names.push(reexport.exported);
         continue;
@@ -4342,11 +4367,19 @@ var ImportModel = class {
     return names;
   }
   fileDependencies(path, file) {
+    const reach = this.resolver.edgesReachDefinitions === true;
+    const globs = [];
     for (const reexport of file.reexports) {
       const target = this.resolve(path, reexport.specifier);
       if (target.kind === "external") this.addExternal(path, target.packageName, reexport.typeOnly);
-      if (target.kind === "file") this.addImportEdge(path, target.path, "reexport", reexport.typeOnly);
-      else if (target.kind === "not-found") this.addUnresolved(path, reexport.line, reexport.specifier, "not-found");
+      if (target.kind === "not-found") this.addUnresolved(path, reexport.line, reexport.specifier, "not-found");
+      if (target.kind !== "file") continue;
+      if (!reach) this.addImportEdge(path, target.path, "reexport", reexport.typeOnly);
+      else if (reexport.exported === "*") globs.push({ target: target.path, named: target.via ?? target.path, reexport });
+      else {
+        const result = this.exportOf(target.path, reexport.imported);
+        this.addImportEdge(path, result.status === "defined" || result.status === "namespace" ? result.file : target.path, "reexport", reexport.typeOnly, false, true, target.via ?? target.path);
+      }
     }
     const unitNames = new Set(file.units.map((unit) => unit.qualifiedName));
     const implicitIsReexport = this.resolver.reexportsImplicitly?.(path) === true;
@@ -4362,42 +4395,101 @@ var ImportModel = class {
       if (target.kind === "not-found") this.addUnresolved(path, imported.line, imported.specifier, "not-found");
       if (target.kind !== "file") continue;
       const test = imported.test === true;
-      this.addImportEdge(path, target.path, imported.kind === "require" ? "require" : "import", imported.typeOnly, test);
-      if (imported.bindings.length === 0) this.touch(path, target.path, test);
+      const kind = imported.kind === "require" ? "require" : "import";
+      const declares = imported.declares === true;
+      const named = target.via ?? target.path;
+      let testUse = test;
+      const land = (to) => {
+        if (reach) this.addImportEdge(path, to, kind, imported.typeOnly, testUse, false, named);
+      };
+      if (declares) this.addImportEdge(path, target.path, kind, imported.typeOnly, test, true);
+      else if (!reach) this.addImportEdge(path, target.path, kind, imported.typeOnly, test);
+      if (imported.bindings.length === 0) {
+        this.touch(path, target.path, test);
+        land(target.path);
+      }
       for (const binding of imported.bindings) {
         const uses = file.references.filter((reference) => reference.local === binding.local);
+        if (declares && uses.length === 0) continue;
+        const onlyTests = uses.length > 0 && uses.every((use) => use.test === true);
+        testUse = test || onlyTests;
         const passThrough = uses.length === 0 && exportedLocals.has(binding.local);
-        if (passThrough) {
-          const exposed = binding.imported === "*" ? void 0 : this.resolveExport(target.path, binding.imported, /* @__PURE__ */ new Set());
+        if (passThrough || reach && onlyTests && !test && exportedLocals.has(binding.local)) {
+          const exposed = binding.imported === "*" ? void 0 : this.exportOf(target.path, binding.imported);
           if (exposed?.status === "namespace" && exposed.submodule === true) this.addImportEdge(path, exposed.file, "import", imported.typeOnly, test);
-          continue;
+          if (reach) {
+            if (exposed === void 0) this.addImportEdge(path, target.path, "reexport", imported.typeOnly, test, true, named);
+            else if (exposed.status === "missing" && passThrough) this.addUnresolved(path, imported.line, imported.specifier, "export-not-found", binding.imported, target.path);
+            else if (exposed.status !== "external" && exposed.status !== "missing") this.addImportEdge(path, exposed.file, "reexport", imported.typeOnly, test, true, named);
+          }
+          if (passThrough) continue;
         }
         if (binding.imported === "*") {
-          this.useNamespace(path, target.path, uses, unitNames, test);
+          this.useNamespace(path, target.path, uses, unitNames, testUse, land);
           continue;
         }
-        const result = this.resolveExport(target.path, binding.imported, /* @__PURE__ */ new Set());
+        const result = this.exportOf(target.path, binding.imported);
         switch (result.status) {
           case "defined":
-            this.touch(path, result.file, test);
+            this.touch(path, result.file, testUse);
+            land(result.file);
             for (const use of uses) {
               this.consume(path, use, unitNames, result.file, result.exportName, result.symbol, false);
+            }
+            if (reach && uses.length === 0) {
+              this.consume(path, { local: binding.local, kind: "reference", line: imported.line, ...test ? { test: true } : {} }, unitNames, result.file, result.exportName, result.symbol, false);
             }
             break;
           case "namespace":
             if (result.submodule === true) this.addImportEdge(path, result.file, "import", imported.typeOnly, test);
-            this.useNamespace(path, result.file, uses, unitNames, test);
+            this.useNamespace(path, result.file, uses, unitNames, testUse, land);
             break;
           case "opaque":
-            this.touch(path, result.file, test);
+            this.touch(path, result.file, testUse);
+            land(result.file);
             for (const use of uses) this.consume(path, use, unitNames, result.file, binding.imported, void 0, false);
             break;
           case "missing":
-            this.addUnresolved(path, imported.line, imported.specifier, "export-not-found");
+            this.addUnresolved(path, imported.line, imported.specifier, "export-not-found", binding.imported, target.path);
             break;
           case "external":
             break;
         }
+      }
+    }
+    if (globs.length > 0) this.globDependencies(path, file, globs, unitNames);
+  }
+  /**
+   * The glob imports of a file whose edges run to definitions. A name the file uses and neither declares nor imports
+   * is looked up in each glob's module, in order, and is a use of the file that defines it. A glob that is `pub` in
+   * any form passes names along, which is a nominal edge. A private one through which no use was found is still an
+   * import of its module: what it brings in may be used in a way no name shows, as a trait's methods are.
+   */
+  globDependencies(path, file, globs, unitNames) {
+    const used = /* @__PURE__ */ new Set();
+    if (this.resolver.globsBindNames === true) {
+      const bound = new Set(file.imports.flatMap((imported) => imported.bindings.map((binding) => binding.local)));
+      for (const use of file.references) {
+        if (bound.has(use.local)) continue;
+        const test = use.test === true;
+        for (const [index, glob] of globs.entries()) {
+          const land = (to) => this.addImportEdge(path, to, "import", false, test, false, glob.named);
+          const result = this.exportOf(glob.target, use.local);
+          if (result.status === "defined") {
+            this.consume(path, use, unitNames, result.file, result.exportName, result.symbol, false);
+            land(result.file);
+          } else if (result.status === "namespace") this.useNamespace(path, result.file, [use], unitNames, test, land);
+          else continue;
+          used.add(index);
+          break;
+        }
+      }
+    }
+    for (const [index, glob] of globs.entries()) {
+      if (glob.reexport.visibility !== "private") this.addImportEdge(path, glob.target, "reexport", glob.reexport.typeOnly, false, true, glob.named);
+      else if (!used.has(index)) {
+        this.touch(path, glob.target);
+        this.addImportEdge(path, glob.target, "import", glob.reexport.typeOnly, false, false, glob.named);
       }
     }
   }
@@ -4416,19 +4508,27 @@ var ImportModel = class {
     } else if (!testUse && edge.kind === "test") edge.kind = "reference";
     return edge;
   }
-  useNamespace(from, namespace, uses, unitNames, test) {
-    if (uses.length === 0) this.touch(from, namespace, test);
+  /** Counts the uses of a module imported whole. `land` is told each file a use reaches. */
+  useNamespace(from, namespace, uses, unitNames, test, land = () => {
+  }) {
+    if (uses.length === 0) {
+      this.touch(from, namespace, test);
+      land(namespace);
+    }
     for (const use of uses) {
       if (use.member === void 0) {
         this.consume(from, use, unitNames, namespace, "*", void 0, false);
+        land(namespace);
         continue;
       }
-      const result = this.resolveExport(namespace, use.member, /* @__PURE__ */ new Set());
+      const result = this.exportOf(namespace, use.member);
       if (result.status === "defined") {
         this.consume(from, use, unitNames, result.file, result.exportName, result.symbol, true);
+        land(result.file);
       } else {
         const file = result.status === "namespace" || result.status === "opaque" ? result.file : namespace;
         this.consume(from, use, unitNames, file, use.member, void 0, true);
+        land(file);
       }
     }
   }
@@ -4463,21 +4563,35 @@ var ImportModel = class {
     if (toSymbol !== void 0) consumer.toSymbol = toSymbol;
     this.consumers.set(key, consumer);
   }
+  /** What a name exported by a file is, followed to its definition. Each answer is worked out once. */
+  exportOf(path, name2) {
+    const key = `${path}\0${name2}`;
+    const known = this.exportResults.get(key);
+    if (known !== void 0) return known;
+    if (this.exportsInProgress.has(key)) return { status: "missing" };
+    this.exportsInProgress.add(key);
+    try {
+      const result = this.resolveExport(path, name2, /* @__PURE__ */ new Set());
+      this.exportResults.set(key, result);
+      return result;
+    } finally {
+      this.exportsInProgress.delete(key);
+    }
+  }
   /** Follows an exported name through re-exports and barrels to the file that defines it. */
   resolveExport(path, name2, visiting) {
     const file = this.facts.get(path);
     if (!file) return { status: "opaque", file: path };
     const key = `${path}\0${name2}`;
-    if (visiting.has(key)) return { status: "missing" };
+    if (visiting.has(key) || visiting.size >= MAX_CHAIN) return { status: "missing" };
     visiting.add(key);
     for (const exported of file.exports) {
       if (exported.exported !== name2) continue;
       if (exported.local === void 0) return { status: "defined", file: path, exportName: name2 };
+      const unit = file.units.find((candidate) => candidate.qualifiedName === exported.local && !candidate.parent);
+      if (unit) return { status: "defined", file: path, exportName: name2, symbol: unit.qualifiedName };
       const binding = this.importBinding(file, exported.local);
-      if (!binding) {
-        const unit = file.units.find((candidate) => candidate.qualifiedName === exported.local && !candidate.parent);
-        return unit ? { status: "defined", file: path, exportName: name2, symbol: unit.qualifiedName } : { status: "defined", file: path, exportName: name2 };
-      }
+      if (!binding) return { status: "defined", file: path, exportName: name2 };
       const target = this.resolve(path, binding.specifier);
       if (target.kind === "file" && target.path === path && binding.imported === name2) continue;
       return this.followBinding(path, binding.specifier, binding.imported, visiting);
@@ -4485,19 +4599,26 @@ var ImportModel = class {
     for (const reexport of file.reexports) {
       if (reexport.exported === name2) return this.followBinding(path, reexport.specifier, reexport.imported, visiting);
     }
+    let unlisted;
     if (name2 !== "default") {
       for (const reexport of file.reexports) {
         if (reexport.exported !== "*") continue;
         const result = this.followBinding(path, reexport.specifier, name2, visiting);
-        if (result.status !== "missing") return result;
+        if (result.status === "missing") continue;
+        if (result.status === "external" || result.status === "opaque" && result.guessed === true) unlisted ??= result;
+        else return result;
       }
     }
     if (this.resolver.importsAreVisible === true) {
       const binding = this.importBinding(file, name2);
       if (binding) return this.followBinding(path, binding.specifier, binding.imported, visiting);
     }
+    const elsewhere = this.resolver.exportedElsewhere?.(path, name2);
+    if (elsewhere !== void 0) return this.resolveExport(elsewhere.file, elsewhere.name, visiting);
     const submodule = this.resolver.submodule?.(path, name2);
     if (submodule !== void 0) return { status: "namespace", file: submodule, submodule: true };
+    if (file.itemMacros === true) return { status: "opaque", file: path, guessed: true };
+    if (unlisted !== void 0) return unlisted;
     return file.exports.length === 0 && file.reexports.length === 0 ? { status: "opaque", file: path } : { status: "missing" };
   }
   followBinding(from, specifier, imported, visiting) {
@@ -4579,7 +4700,7 @@ async function analyseTree(tree, options = {}) {
     const input = { facts: groupFacts, paths: sortedPaths, configs, isTestPath: isTest, untrackedConfigs, includeRoots: options.includeRoots ?? [] };
     const dependencies = group[0].dependencies;
     resolved.push(
-      dependencies.model === "import-based" ? new ImportModel(groupFacts, dependencies.createResolver(sortedPaths, configs), isTest).build() : dependencies.resolve?.(input) ?? resolveBySymbols(input)
+      dependencies.model === "import-based" ? new ImportModel(groupFacts, dependencies.createResolver(sortedPaths, configs, groupFacts), isTest).build() : dependencies.resolve?.(input) ?? resolveBySymbols(input)
     );
   }
   return { ...assemble(facts, resolved), stats };
@@ -4619,7 +4740,7 @@ function assemble(facts, resolved) {
   return {
     units,
     importEdges: all("importEdges").sort(
-      (a, b) => compareUtf8(a.from, b.from) || compareUtf8(a.to, b.to) || compareUtf8(a.kind, b.kind) || Number(a.typeOnly) - Number(b.typeOnly)
+      (a, b) => compareUtf8(a.from, b.from) || compareUtf8(a.to, b.to) || compareUtf8(a.kind, b.kind) || Number(a.typeOnly) - Number(b.typeOnly) || Number(a.nominal === true) - Number(b.nominal === true) || compareUtf8(a.via ?? "", b.via ?? "")
     ),
     consumers: all("consumers").sort(
       (a, b) => compareUtf8(a.from, b.from) || compareUtf8(a.fromUnit ?? "", b.fromUnit ?? "") || compareUtf8(a.to, b.to) || compareUtf8(a.toSymbol ?? a.toExport, b.toSymbol ?? b.toExport) || compareUtf8(a.kind, b.kind)
@@ -4630,7 +4751,7 @@ function assemble(facts, resolved) {
     externalImports: all("externalImports").sort(
       (a, b) => compareUtf8(a.from, b.from) || compareUtf8(a.packageName, b.packageName) || Number(a.typeOnly) - Number(b.typeOnly)
     ),
-    unresolved: all("unresolved").sort((a, b) => compareUtf8(a.from, b.from) || a.line - b.line || compareUtf8(a.specifier ?? "", b.specifier ?? "")),
+    unresolved: all("unresolved").sort((a, b) => compareUtf8(a.from, b.from) || a.line - b.line || compareUtf8(a.specifier ?? "", b.specifier ?? "") || compareUtf8(a.name ?? "", b.name ?? "")),
     filesWithSyntaxErrors,
     syntaxErrors,
     filesWithMacroCode,
@@ -4748,8 +4869,17 @@ async function changedSignatures(root, change) {
       set.add(consumer.from);
       users.set(key, set);
     }
+    const unfollowed = /* @__PURE__ */ new Map();
+    const unfollow = (name2, from, to) => {
+      const set = unfollowed.get(name2) ?? /* @__PURE__ */ new Set();
+      set.add({ from, to });
+      unfollowed.set(name2, set);
+    };
+    for (const entry of analysis.unresolved) if (entry.name !== void 0) unfollow(entry.name, entry.from, entry.to);
+    for (const consumer of analysis.consumers) if (consumer.kind !== "test" && consumer.toSymbol === void 0 && consumer.toExport !== "*") unfollow(consumer.toExport, consumer.from, consumer.to);
+    const unresolvedUsers = (file, symbol) => new Set([...unfollowed.get(symbol) ?? []].filter((use) => use.to !== file && use.from !== file).map((use) => use.from)).size;
     const population = analysis.units.filter((unit) => unit.exported && unit.parent === void 0).map((unit) => users.get(`${unit.path}\0${unit.qualifiedName}`)?.size ?? 0);
-    const changes = moved.map((m) => ({ ...m, fanIn: users.get(`${m.file}\0${m.symbol}`)?.size ?? 0 }));
+    const changes = moved.map((m) => ({ ...m, fanIn: users.get(`${m.file}\0${m.symbol}`)?.size ?? 0, fanInUnresolved: unresolvedUsers(m.file, m.symbol) }));
     return { files, changes, population };
   } catch {
     return null;
@@ -4757,6 +4887,7 @@ async function changedSignatures(root, change) {
 }
 function withSignatures(factor, result, risk) {
   const fanIn = result.changes.reduce((most, row) => Math.max(most, row.fanIn), 0);
+  const fanInUnresolved = result.changes.reduce((most, row) => Math.max(most, row.fanInUnresolved), 0);
   const cutoffs = result.changes.length === 0 || result.population.length < risk.minBaseline ? null : cutoffsOf(result.population, risk.moderatePercentile, risk.highPercentile);
   const placed = cutoffs === null ? null : bandAgainst(fanIn, cutoffs);
   const band = placed === null ? factor.band : factor.band === null ? placed : higherBand(factor.band, placed);
@@ -4767,10 +4898,10 @@ function withSignatures(factor, result, risk) {
     band,
     reason: band === null ? factor.reason : null,
     source: joinSources(factor.source, "parse"),
-    value: { ...factor.value, signatureChanges: result.changes.length, symbolFanIn: fanIn },
+    value: { ...factor.value, signatureChanges: result.changes.length, symbolFanIn: fanIn, symbolFanInUnresolved: fanInUnresolved },
     guidelines: { ...factor.guidelines, ...cutoffs === null ? {} : { symbolFanIn: { moderate: cutoffs.moderate, high: cutoffs.high } } },
     evidenceTotal: (factor.evidenceTotal ?? factor.evidence.length) + rows.length,
-    evidence: [...factor.evidence, ...rows.slice(0, 5).map((row) => ({ file: row.file, symbol: row.symbol, change: row.change, fanIn: row.fanIn, from: "parse" }))]
+    evidence: [...factor.evidence, ...rows.slice(0, 5).map((row) => ({ file: row.file, symbol: row.symbol, change: row.change, fanIn: row.fanIn, fanInUnresolved: row.fanInUnresolved, from: "parse" }))]
   };
 }
 function joinSources(source, added) {

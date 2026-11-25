@@ -3339,6 +3339,16 @@ function resolveBySymbols(input, options = {}) {
     return edge;
   };
   const unitNames = (facts) => new Set(facts.units.map((unit) => unit.qualifiedName));
+  const byWritten = /* @__PURE__ */ new Map();
+  const declaredAs = (written, scope, entries) => {
+    const scopes2 = byWritten.get(written);
+    if (scopes2 === void 0) byWritten.set(written, /* @__PURE__ */ new Map([[scope, entries]]));
+    else scopes2.set(scope, entries);
+  };
+  for (const [name12, entries] of table3) {
+    declaredAs(name12, "", entries);
+    for (let dot = name12.indexOf(".", 1); dot !== -1; dot = name12.indexOf(".", dot + 1)) declaredAs(name12.slice(dot + 1), name12.slice(0, dot), entries);
+  }
   for (const [file, facts] of input.facts) {
     const symbols = facts.symbols;
     if (symbols === void 0) continue;
@@ -3350,8 +3360,9 @@ function resolveBySymbols(input, options = {}) {
       const known = resolved.get(name12);
       if (known !== void 0) return known;
       let found = null;
-      for (const scope of scopes2) {
-        const candidates = table3.get(scope === "" ? name12 : `${scope}.${name12}`)?.filter((entry) => entry.declaration.internal !== true || entry.file === file);
+      const declared = byWritten.get(name12);
+      for (const scope of declared === void 0 ? [] : scopes2) {
+        const candidates = declared.get(scope)?.filter((entry) => entry.declaration.internal !== true || entry.file === file);
         if (candidates !== void 0 && candidates.length > 0) {
           found = candidates;
           break;
@@ -11849,6 +11860,7 @@ var ModuleTree = class {
   tree;
   implicitRoots;
   places = /* @__PURE__ */ new Map();
+  crateOfDirectory = /* @__PURE__ */ new Map();
   constructor(paths, crates) {
     this.tree = new Set(paths);
     this.crates = crates;
@@ -11858,13 +11870,17 @@ var ModuleTree = class {
   has(path) {
     return this.tree.has(path);
   }
+  /** The crate with the deepest directory above the file. Files of one directory have one crate, so it is found once per directory. */
   crateOf(file) {
+    const directory = posix14.dirname(file);
+    if (this.crateOfDirectory.has(directory)) return this.crateOfDirectory.get(directory);
     let best;
     for (const crate of this.crates) {
       if (crate.name === null) continue;
       if (crate.dir !== "." && !file.startsWith(`${crate.dir}/`)) continue;
       if (best === void 0 || crate.dir.length > best.dir.length) best = crate;
     }
+    this.crateOfDirectory.set(directory, best);
     return best;
   }
   placeOf(file) {
@@ -11875,9 +11891,11 @@ var ModuleTree = class {
     if (roots.includes(file)) root = file;
     else {
       const rank = (candidate) => candidate === crate?.libRoot || /(^|\/)lib\.rs$/.test(candidate) ? 0 : /(^|\/)main\.rs$/.test(candidate) ? 1 : 2;
+      const libDir = crate?.libRoot === void 0 ? void 0 : posix14.dirname(crate.libRoot);
+      const insideLibrary = (candidate) => libDir !== void 0 && candidate !== crate?.libRoot && file.startsWith(`${libDir}/`) && candidate.startsWith(`${libDir}/`) && !candidate.startsWith(`${libDir}/bin/`) && posix14.basename(candidate) !== "main.rs";
       const candidates = roots.filter((candidate) => {
         const dir = posix14.dirname(candidate);
-        return dir === "." || file.startsWith(`${dir}/`);
+        return (dir === "." || file.startsWith(`${dir}/`)) && !insideLibrary(candidate);
       });
       candidates.sort((a, b) => posix14.dirname(b).length - posix14.dirname(a).length || rank(a) - rank(b) || compare2(a, b));
       const shortest = candidates[0] === void 0 ? void 0 : posix14.dirname(candidates[0]).length;
@@ -11906,23 +11924,38 @@ var ModuleTree = class {
    * for an inline module and stepped over, so the files of modules declared inside it are still found. A
    * name that starts with a capital is an item, which ends the walk. `consumed` counts the names up to the
    * last file reached, so the rest name items of that file.
+   *
+   * `reexported`, when given, says which file a name of a module file is when the module only re-exports it
+   * (`pub use other::name`), and the walk moves into that file, which may be in another crate. It says null for
+   * a name that is re-exported from outside the tree, which ends the walk with `outside` set.
    */
-  walk(from, names2) {
+  walk(from, names2, reexported) {
     let file = from.file;
-    let directory = moduleDirectory(file, from.root);
+    let root = from.root;
+    let directory = moduleDirectory(file, root);
     let consumed = 0;
+    let via;
     for (let index = 0; index < names2.length; index++) {
       const name12 = names2[index];
       const found = this.child(directory, name12);
+      const elsewhere = found === void 0 ? reexported?.(file, name12) : void 0;
       if (found !== void 0) {
         file = found;
-        directory = moduleDirectory(found, from.root);
+        directory = moduleDirectory(found, root);
+        consumed = index + 1;
+      } else if (elsewhere === null) {
+        return { file, consumed, outside: true };
+      } else if (elsewhere !== void 0 && elsewhere !== file) {
+        via ??= file;
+        file = elsewhere;
+        root = this.placeOf(elsewhere)?.root ?? elsewhere;
+        directory = moduleDirectory(elsewhere, root);
         consumed = index + 1;
       } else if (/^[a-z_]/.test(name12)) {
         directory = posix14.join(directory, name12);
       } else break;
     }
-    return { file, consumed };
+    return { file, consumed, ...via === void 0 ? {} : { via } };
   }
 };
 
@@ -12207,7 +12240,7 @@ function requiresTest(predicate) {
 }
 
 // packages/parse/src/languages/rust/extract-facts.ts
-var extractorVersion4 = 5;
+var extractorVersion4 = 6;
 function visibilityOf(node) {
   const modifier = node.namedChildren.find((child) => child.type === "visibility_modifier");
   if (modifier === void 0) return "private";
@@ -12219,6 +12252,18 @@ function attributeNamed(node, name12) {
 }
 function isProcMacro(node) {
   return attributesOf(node).some((item) => /^#\[\s*proc_macro(_attribute|_derive)?\b/.test(item.text.trim()));
+}
+function derivedName(node) {
+  for (const item of attributesOf(node)) {
+    const found = /^#\[\s*proc_macro_derive\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)/.exec(item.text.trim());
+    if (found !== null) return found[1];
+  }
+  return void 0;
+}
+function standsForItems(node) {
+  let parent = node.parent;
+  if (parent?.type === "expression_statement") parent = parent.parent;
+  return parent?.type === "source_file" || parent?.type === "declaration_list";
 }
 function pathAttribute(node) {
   const value = attributeNamed(node, "path")?.childForFieldName("value");
@@ -12325,6 +12370,94 @@ function inlineModulesOf(scope, prefix, out2) {
 var primitives = /* @__PURE__ */ new Set(["bool", "char", "str", "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i64", "i128", "isize", "f32", "f64"]);
 var builtinCrates = /* @__PURE__ */ new Set(["std", "core", "alloc", "proc_macro", "test"]);
 var compareLines = (a, b) => a.line - b.line;
+var standardMacros = /* @__PURE__ */ new Set([
+  "addr_of",
+  "addr_of_mut",
+  "asm",
+  "assert",
+  "assert_eq",
+  "assert_ne",
+  "cfg",
+  "column",
+  "compile_error",
+  "concat",
+  "concat_idents",
+  "const_format_args",
+  "dbg",
+  "debug_assert",
+  "debug_assert_eq",
+  "debug_assert_ne",
+  "env",
+  "eprint",
+  "eprintln",
+  "file",
+  "format",
+  "format_args",
+  "global_asm",
+  "include",
+  "include_bytes",
+  "include_str",
+  "is_x86_feature_detected",
+  "line",
+  "macro_rules",
+  "matches",
+  "module_path",
+  "option_env",
+  "panic",
+  "pin",
+  "print",
+  "println",
+  "ready",
+  "stringify",
+  "thread_local",
+  "todo",
+  "try",
+  "unimplemented",
+  "unreachable",
+  "vec",
+  "write",
+  "writeln"
+]);
+var preludeNames = /* @__PURE__ */ new Set([
+  "Self",
+  "Some",
+  "None",
+  "Ok",
+  "Err",
+  "Option",
+  "Result",
+  "Vec",
+  "String",
+  "Box",
+  "Default",
+  "Clone",
+  "Copy",
+  "Send",
+  "Sync",
+  "Sized",
+  "Drop",
+  "Fn",
+  "FnMut",
+  "FnOnce",
+  "From",
+  "Into",
+  "TryFrom",
+  "TryInto",
+  "Iterator",
+  "IntoIterator",
+  "Extend",
+  "AsRef",
+  "AsMut",
+  "ToOwned",
+  "ToString",
+  "PartialEq",
+  "Eq",
+  "PartialOrd",
+  "Ord",
+  "Debug",
+  "Hash",
+  "drop"
+]);
 var Extractor8 = class {
   units = [];
   imports = [];
@@ -12335,6 +12468,11 @@ var Extractor8 = class {
   nameCounts = /* @__PURE__ */ new Map();
   inlineModules = /* @__PURE__ */ new Set();
   inlinePaths = [];
+  /** Paths in code that start at `crate`, `self` or `super`, already counted from the file's own module. */
+  relativePaths = [];
+  macroUses = [];
+  macros = /* @__PURE__ */ new Set();
+  itemMacros = false;
   testRanges = [];
   codeRows;
   root;
@@ -12352,10 +12490,16 @@ var Extractor8 = class {
       names2.add(inner2.exported);
       this.exports.push(inner2);
     }
+    this.ownMacros();
+    this.pathsThroughBindings();
     const locals = /* @__PURE__ */ new Set();
     for (const imported of this.imports) for (const binding of imported.bindings) locals.add(binding.local);
     this.inlineCrates(root, locals);
+    this.bareMacros(locals);
     for (const imported of this.imports) for (const binding of imported.bindings) locals.add(binding.local);
+    const globs = this.reexports.some((reexport) => reexport.exported === "*");
+    const declared = /* @__PURE__ */ new Set([...this.exports.map((exported) => exported.exported), ...this.units.map((unit) => unit.qualifiedName)]);
+    const mayBeGlobbed = (reference) => globs && !declared.has(reference.local) && !preludeNames.has(reference.local) && !primitives.has(reference.local) && (upper.test(reference.local) || reference.kind === "call" || reference.member !== void 0);
     const classes = new Set(this.units.filter((unit) => unit.kind === "class").map((unit) => unit.qualifiedName));
     for (const unit of this.units) {
       const dot = unit.qualifiedName.lastIndexOf(".");
@@ -12366,9 +12510,10 @@ var Extractor8 = class {
       imports: this.imports,
       reexports: this.reexports,
       exports: this.exports,
-      references: this.references.filter((reference) => locals.has(reference.local)),
+      references: this.references.filter((reference) => locals.has(reference.local) || mayBeGlobbed(reference)),
       nodes: nodeCount(root, (node) => isComment4(node) || node.type === "use_declaration") - 1,
       hasSyntaxErrors: root.hasError,
+      ...this.itemMacros ? { itemMacros: true } : {},
       ...this.testRanges.length === 0 ? {} : { testRanges: this.testRanges }
     };
   }
@@ -12379,11 +12524,14 @@ var Extractor8 = class {
   inlineCrates(root, locals) {
     const modules = new Set(root.descendantsOfType("mod_item").map((item) => item.childForFieldName("name")?.text));
     const known = /* @__PURE__ */ new Map();
-    for (const path of this.inlinePaths) {
+    const outside = this.inlinePaths.filter((path) => {
       const [first] = path.segments;
-      if (locals.has(first) || modules.has(first) || primitives.has(first) || builtinCrates.has(first)) continue;
+      return !(locals.has(first) || modules.has(first) || primitives.has(first) || builtinCrates.has(first));
+    });
+    for (const path of [...outside, ...this.relativePaths]) {
       let item = path.segments.findIndex((segment3, index) => index > 0 && upper.test(segment3));
       if (item < 0) item = path.segments.length - 1;
+      if (item < 1 || isOwnModule(path.segments.slice(0, item), this.inlineModules)) continue;
       const local = path.segments.slice(0, item + 1).join("::");
       const imported = known.get(local);
       if (imported === void 0) {
@@ -12401,7 +12549,71 @@ var Extractor8 = class {
     }
   }
   inlinePath(segments, line, kind, context) {
-    if (segments.length >= 2 && /^[a-z_]/.test(segments[0])) this.inlinePaths.push({ segments, line, kind, unit: context.unit, test: context.inTests === true });
+    if (segments.length < 2) return;
+    const [first] = segments;
+    if (first === "crate" || first === "self" || first === "super") {
+      const counted = normalise2(segments, context);
+      if (counted !== void 0 && counted.every((segment3) => !segment3.startsWith("$"))) this.relativePaths.push({ segments: counted, line, kind, unit: context.unit, test: context.inTests === true });
+    } else if (/^[a-z_]/.test(first)) this.inlinePaths.push({ segments, line, kind, unit: context.unit, test: context.inTests === true });
+  }
+  /**
+   * `use a::b; use b::Name;`: the second path starts with a name the first binds, not with a crate, so it is
+   * written out from what that name is. One step is followed, which is what the idiom uses.
+   */
+  pathsThroughBindings() {
+    const bound = /* @__PURE__ */ new Map();
+    for (const imported of this.imports) {
+      if (imported.specifier === null || imported.declares === true || imported.specifier.startsWith("mod ")) continue;
+      for (const binding of imported.bindings) {
+        if (!/^[a-z_]/.test(binding.local) || bound.has(binding.local)) continue;
+        bound.set(binding.local, binding.imported === "*" ? imported.specifier : `${imported.specifier}::${binding.imported}`);
+      }
+    }
+    if (bound.size === 0) return;
+    const through = (specifier) => {
+      const split = specifier.indexOf("::");
+      const first = split < 0 ? specifier : specifier.slice(0, split);
+      const target2 = bound.get(first);
+      if (target2 === void 0 || target2 === specifier || target2.startsWith(`${first}::`)) return specifier;
+      return split < 0 ? target2 : `${target2}${specifier.slice(split)}`;
+    };
+    for (const imported of this.imports) {
+      if (imported.specifier === null || imported.declares === true) continue;
+      if (imported.bindings.some((binding) => bound.get(binding.local) === (binding.imported === "*" ? imported.specifier : `${imported.specifier}::${binding.imported}`))) continue;
+      imported.specifier = through(imported.specifier);
+    }
+    for (const reexport of this.reexports) reexport.specifier = through(reexport.specifier);
+  }
+  /** A `use name;` of a macro the file defines (`pub(crate) use name;` after `macro_rules! name`) exports the macro under the plain name. */
+  ownMacros() {
+    if (this.macros.size === 0) return;
+    const rebound = /* @__PURE__ */ new Set();
+    for (const imported of this.imports) {
+      const [binding] = imported.bindings;
+      if (binding === void 0 || imported.bindings.length !== 1 || binding.imported !== "*" || imported.specifier !== binding.local || !this.macros.has(binding.local)) continue;
+      rebound.add(imported);
+      for (const exported of [...this.exports, ...this.innerExports]) if (exported.local === binding.local) exported.local = `${binding.local}!`;
+    }
+    if (rebound.size > 0) this.imports.splice(0, this.imports.length, ...this.imports.filter((imported) => !rebound.has(imported)));
+  }
+  /** A bare `name!(..)` that neither a `use` nor the file itself gives a meaning is a macro of the crate, or of a crate it depends on. */
+  bareMacros(locals) {
+    const known = /* @__PURE__ */ new Map();
+    for (const use of this.macroUses) {
+      if (locals.has(use.name) || this.macros.has(use.name) || standardMacros.has(use.name)) continue;
+      const local = `${use.name}!`;
+      const imported = known.get(local);
+      if (imported === void 0) {
+        const fact2 = { specifier: `macro ${use.name}`, kind: "import", typeOnly: false, line: use.line, bindings: [{ imported: local, local, typeOnly: false }] };
+        if (use.test) fact2.test = true;
+        known.set(local, fact2);
+        this.imports.push(fact2);
+      } else if (!use.test) delete imported.test;
+      const fact = { local, kind: "call", line: use.line };
+      if (use.unit !== void 0) fact.inUnit = use.unit;
+      if (use.test) fact.test = true;
+      this.references.push(fact);
+    }
   }
   /** The modules a scope declares, so a path that starts with one is relative to the scope. */
   declaredMods(scope) {
@@ -12422,7 +12634,7 @@ var Extractor8 = class {
     for (let i2 = 0; i2 < node.childCount; i2++) {
       const child = node.child(i2);
       if (child === null || !child.isNamed) continue;
-      if (node.fieldNameForChild(i2) === "name" && !node.type.startsWith("scoped_")) continue;
+      if (node.fieldNameForChild(i2) === "name" && !node.type.startsWith("scoped_") && node.type !== "struct_expression") continue;
       this.visit(child, context);
     }
   }
@@ -12455,6 +12667,18 @@ var Extractor8 = class {
     this.units.push(unit);
     return qualifiedName;
   }
+  /** A `macro_rules!` definition as a unit named `name!`. It has no metrics: its body is token patterns, which are not parsed. */
+  declareMacro(name12, node, context) {
+    const base = [this.prefix(context), `${name12}!`].filter((part) => part !== "").join(".");
+    const seen = this.nameCounts.get(base) ?? 0;
+    this.nameCounts.set(base, seen + 1);
+    const qualifiedName = seen === 0 ? base : `${base}~${seen + 1}`;
+    const unit = { qualifiedName, kind: "macro", startLine: node.startPosition.row + 1, endLine: node.endPosition.row + 1, source: "structural" };
+    if (context.unit !== void 0) unit.parent = context.unit;
+    if (context.inTests === true || isTestItem(node)) unit.test = true;
+    this.units.push(unit);
+    return qualifiedName;
+  }
   export(node, name12, local, kind, visibility, context) {
     if (context.owner !== void 0 || context.unit !== void 0) return;
     const exposed = visibility === "public" && context.exposed;
@@ -12484,6 +12708,8 @@ var Extractor8 = class {
         const kind = member === void 0 ? "function" : "method";
         const qualified = this.declareUnit(name12, kind, node, context, node, member);
         this.export(node, name12, qualified, "function", visibilityOf(node), context);
+        const derives = member === void 0 ? derivedName(node) : void 0;
+        if (derives !== void 0) this.export(node, derives, qualified, "function", "public", context);
         this.functionParts(node, { ...context, unit: qualified, owner: void 0 });
         return;
       }
@@ -12520,7 +12746,10 @@ var Extractor8 = class {
       }
       case "macro_definition": {
         const name12 = node.childForFieldName("name")?.text;
-        if (name12 !== void 0) this.export(node, name12, void 0, void 0, attributeNamed(node, "macro_export") === void 0 ? "private" : "public", context);
+        if (name12 === void 0) return;
+        const qualified = this.declareMacro(name12, node, context);
+        this.export(node, `${name12}!`, qualified, void 0, attributeNamed(node, "macro_export") === void 0 ? "private" : "public", { ...context, exposed: true });
+        if (context.owner === void 0 && context.unit === void 0) this.macros.add(name12);
         return;
       }
       case "let_declaration":
@@ -12607,9 +12836,9 @@ var Extractor8 = class {
       return;
     }
     const written = pathAttribute(node);
-    const specifier = `mod ${[...context.mods, name12].join("::")}${written === void 0 ? "" : `@${written}`}`;
+    const specifier = `mod ${[...context.mods, name12.replace(/^r#/, "")].join("::")}${written === void 0 ? "" : `@${written}`}`;
     const line = node.startPosition.row + 1;
-    this.imports.push({ specifier, kind: "import", typeOnly: false, line, bindings: [{ imported: "*", local: name12, typeOnly: false }], ...context.inTests === true ? { test: true } : {} });
+    this.imports.push({ specifier, kind: "import", typeOnly: false, line, bindings: [{ imported: "*", local: name12, typeOnly: false }], declares: true, ...context.inTests === true ? { test: true } : {} });
     this.export(node, name12, name12, "namespace", visibility, context);
   }
   useDeclaration(node, context) {
@@ -12620,10 +12849,31 @@ var Extractor8 = class {
       const segments = normalise2(leaf.segments, context);
       if (segments === void 0) continue;
       if (isOwnModule(segments, this.inlineModules)) continue;
+      const test = context.inTests === true ? { test: true } : {};
       if (leaf.glob) {
+        const last = segments.at(-1);
+        if (segments.length > 1 && upper.test(last)) {
+          this.imports.push({ specifier: segments.slice(0, -1).join("::"), kind: "import", typeOnly: false, line: leaf.line, bindings: [{ imported: last, local: `${last}::*`, typeOnly: false }], ...test });
+          continue;
+        }
         const specifier2 = segments.join("::");
-        if (visibility === "public" && context.mods.length === 0) this.reexports.push({ specifier: specifier2, typeOnly: false, line: leaf.line, imported: "*", exported: "*" });
-        else this.imports.push({ specifier: specifier2, kind: "import", typeOnly: false, line: leaf.line, bindings: [], ...context.inTests === true ? { test: true } : {} });
+        if (context.inTests === true) {
+          this.imports.push({ specifier: specifier2, kind: "import", typeOnly: false, line: leaf.line, bindings: [], ...test });
+          continue;
+        }
+        const exposed = visibility === "public" && context.exposed;
+        this.reexports.push({ specifier: specifier2, typeOnly: false, line: leaf.line, imported: "*", exported: "*", ...exposed ? {} : { visibility: visibility === "private" ? "private" : "restricted" } });
+        continue;
+      }
+      if (segments.length === 1) {
+        const local2 = leaf.alias ?? segments[0];
+        if (local2 === "_") continue;
+        this.imports.push({ specifier: segments[0], kind: "import", typeOnly: false, line: leaf.line, bindings: [{ imported: "*", local: local2, typeOnly: false }], ...test });
+        if (visibility !== "private" && context.owner === void 0 && context.unit === void 0) {
+          const fact = { exported: local2, local: local2, line: leaf.line };
+          if (visibility === "restricted" || !context.exposed) fact.internal = true;
+          (context.mods.length === 0 ? this.exports : this.innerExports).push(fact);
+        }
         continue;
       }
       let item = segments.findIndex((segment3, index) => index > 0 && upper.test(segment3));
@@ -12710,7 +12960,11 @@ var Extractor8 = class {
       return;
     }
     const [first, second] = segments;
-    if (first === "self" || first === "crate" || first === "super" || first === "Self") return;
+    if (first === "Self") return;
+    if (first === "self" || first === "crate" || first === "super") {
+      this.inlinePath(segments, node.startPosition.row + 1, kind, context);
+      return;
+    }
     this.reference(first, node, context, kind, second);
     this.inlinePath(segments, node.startPosition.row + 1, kind, context);
     for (const generic of node.descendantsOfType("type_arguments")) this.visitChildren(generic, context);
@@ -12729,8 +12983,11 @@ var Extractor8 = class {
   }
   macro(node, context) {
     const name12 = node.childForFieldName("macro");
-    if (name12?.type === "identifier") this.reference(name12.text, name12, context, "call");
-    else if (name12?.type === "scoped_identifier") this.path(name12, context, "call");
+    if (context.owner === void 0 && context.unit === void 0 && standsForItems(node)) this.itemMacros = true;
+    if (name12?.type === "identifier") {
+      this.reference(name12.text, name12, context, "call");
+      this.macroUses.push({ name: name12.text, line: name12.startPosition.row + 1, unit: context.unit, test: context.inTests === true });
+    } else if (name12?.type === "scoped_identifier") this.path(name12, context, "call");
     for (const tree of node.namedChildren.filter((child) => child.type === "token_tree")) this.tokens(tree, context);
   }
   /** Macro arguments are not parsed, so names in them are read from the tokens: `a`, or `a::b`. */
@@ -12739,14 +12996,14 @@ var Extractor8 = class {
     for (let i2 = 0; i2 < children.length; i2++) {
       const token = children[i2];
       if (token.type === "token_tree") this.tokens(token, context);
-      else if (token.type === "identifier" || token.type === "type_identifier") {
+      else if (token.type === "identifier" || token.type === "type_identifier" || (token.type === "crate" || token.type === "super" || token.type === "self") && children[i2 + 1]?.type === "::") {
         const segments = [token.text];
         let next = i2 + 1;
-        while (children[next]?.type === "::" && children[next + 1]?.type === "identifier") {
+        while (children[next]?.type === "::" && (children[next + 1]?.type === "identifier" || children[next + 1]?.type === "super")) {
           segments.push(children[next + 1].text);
           next += 2;
         }
-        this.reference(token.text, token, context, "reference", segments[1]);
+        if (token.type === "identifier" || token.type === "type_identifier") this.reference(token.text, token, context, "reference", segments[1]);
         this.inlinePath(segments, token.startPosition.row + 1, "reference", context);
         i2 = next - 1;
       }
@@ -13045,17 +13302,90 @@ function closingOf(source, open, opener, closer) {
 import { posix as posix15 } from "node:path";
 var isConfigPath3 = isManifestPath;
 var builtinCrates2 = /* @__PURE__ */ new Set(["std", "core", "alloc", "proc_macro", "test"]);
+var noMacros = /* @__PURE__ */ new Map();
 var PathResolver = class {
   tree;
   /** A `use` of an inline module of the file itself is no dependency. */
   dropsSelfDependencies = true;
   /** A module's own `use` declarations are visible to its child modules, so `use super::Name` finds a name the parent only imports. */
   importsAreVisible = true;
-  constructor(paths, configs) {
+  /** A `use` depends on the file that defines the item, whichever modules re-export it on the way. */
+  edgesReachDefinitions = true;
+  globsBindNames = true;
+  facts;
+  reexported;
+  /** `macro_rules!` definitions by the crate that holds them, then by name. The first file in path order defines a name. */
+  macros;
+  pathParents;
+  constructor(paths, configs, facts = /* @__PURE__ */ new Map()) {
     this.tree = new ModuleTree(paths, readCrates(paths, configs));
+    this.facts = facts;
+  }
+  followReexports(moduleNamed) {
+    this.reexported = moduleNamed;
   }
   resolve(from, specifier) {
-    return specifier.startsWith("mod ") ? this.declaredModule(from, specifier.slice(4)) : this.usedPath(from, specifier.split("::"));
+    if (specifier.startsWith("mod ")) return this.declaredModule(from, specifier.slice(4));
+    if (specifier.startsWith("macro ")) return this.bareMacro(from, specifier.slice(6));
+    return this.usedPath(from, specifier.split("::"));
+  }
+  exportedElsewhere(modulePath, name12) {
+    const place = this.tree.placeOf(modulePath);
+    if (place === void 0 || place.root !== modulePath) return void 0;
+    const bare = name12.endsWith("!");
+    const macro = bare ? name12.slice(0, -1) : name12;
+    const definition = this.macrosOf(modulePath).get(macro);
+    if (definition?.exported === true) return { file: definition.file, name: `${macro}!` };
+    if (bare && this.facts.get(modulePath)?.exports.some((exported) => exported.exported === macro && exported.local !== void 0) === true) return { file: modulePath, name: macro };
+    return void 0;
+  }
+  /** What scopes a macro: the crate of the file, or its root file when no manifest owns it. */
+  scopeOf(file) {
+    const place = this.tree.placeOf(file);
+    return place === void 0 ? void 0 : place.crate?.manifest ?? place.root;
+  }
+  macrosOf(file) {
+    if (this.macros === void 0) {
+      this.macros = /* @__PURE__ */ new Map();
+      for (const [path, facts] of this.facts) {
+        for (const exported of facts.exports) {
+          if (!exported.exported.endsWith("!")) continue;
+          const scope2 = this.scopeOf(path);
+          if (scope2 === void 0) continue;
+          let names2 = this.macros.get(scope2);
+          if (names2 === void 0) this.macros.set(scope2, names2 = /* @__PURE__ */ new Map());
+          const name12 = exported.exported.slice(0, -1);
+          if (!names2.has(name12)) names2.set(name12, { file: path, exported: exported.internal !== true });
+        }
+      }
+    }
+    const scope = this.scopeOf(file);
+    return (scope === void 0 ? void 0 : this.macros.get(scope)) ?? noMacros;
+  }
+  /** The file whose `#[path = ".."] mod name;` names the file, when one does and the declaration is not inside an inline module. */
+  declaringFile(file) {
+    if (this.pathParents === void 0) {
+      this.pathParents = /* @__PURE__ */ new Map();
+      for (const [path, facts] of this.facts) {
+        for (const imported of facts.imports) {
+          const at2 = imported.specifier?.indexOf("@") ?? -1;
+          if (imported.declares !== true || imported.specifier === null || at2 < 0 || imported.specifier.slice(4, at2).includes("::")) continue;
+          const target2 = posix15.normalize(posix15.join(posix15.dirname(path), imported.specifier.slice(at2 + 1)));
+          if (target2 !== path && !this.pathParents.has(target2)) this.pathParents.set(target2, path);
+        }
+      }
+    }
+    return this.pathParents.get(file);
+  }
+  bareMacro(from, name12) {
+    const own = this.macrosOf(from).get(name12);
+    if (own !== void 0) return { kind: "file", path: own.file };
+    const crate = this.tree.placeOf(from)?.crate;
+    for (const [, dir] of [...crate?.dependencies ?? []].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
+      const root = this.tree.crates.find((candidate) => candidate.dir === dir && candidate.name !== null)?.libRoot;
+      if (root !== void 0 && this.exportedElsewhere(root, `${name12}!`) !== void 0) return { kind: "file", path: root };
+    }
+    return { kind: "builtin" };
   }
   declaredModule(from, declaration) {
     const at2 = declaration.indexOf("@");
@@ -13076,8 +13406,14 @@ var PathResolver = class {
     const place = this.tree.placeOf(from);
     if (first === "crate" || first === "self" || first === "super") {
       if (place === void 0) return { kind: "not-found" };
-      if (first === "crate") return this.fileOf(this.tree.walk({ file: place.root, root: place.root }, rest));
-      if (first === "self") return this.fileOf(this.tree.walk({ file: from, root: place.root }, rest));
+      if (first === "crate") {
+        const named2 = rest[0] === void 0 || this.tree.child(posix15.dirname(place.root), rest[0]) !== void 0 ? void 0 : this.crateNamed(place.crate, rest[0]);
+        if (named2?.libRoot !== void 0 && named2.libRoot !== place.root) return this.fileOf(this.tree.walk({ file: named2.libRoot, root: named2.libRoot }, rest.slice(1), this.reexported));
+        return this.fileOf(this.tree.walk({ file: place.root, root: place.root }, rest, this.reexported));
+      }
+      if (first === "self") return this.fileOf(this.tree.walk({ file: from, root: place.root }, rest, this.reexported));
+      const declaring = this.declaringFile(from);
+      if (declaring !== void 0) return this.usedPath(declaring, ["self", ...rest]);
       let up = 1;
       let remainder = rest;
       while (remainder[0] === "super") {
@@ -13086,16 +13422,18 @@ var PathResolver = class {
       }
       if (up > place.path.length) return { kind: "not-found" };
       const parent = this.tree.walk({ file: place.root, root: place.root }, place.path.slice(0, place.path.length - up));
-      return this.fileOf(this.tree.walk({ file: parent.file, root: place.root }, remainder));
+      return this.fileOf(this.tree.walk({ file: parent.file, root: place.root }, remainder, this.reexported));
     }
     if (builtinCrates2.has(first)) return { kind: "builtin" };
     const crate = this.crateNamed(place?.crate, first);
     if (crate === void 0) return { kind: "external", packageName: first };
     if (crate.libRoot === void 0) return { kind: "not-found" };
-    return this.fileOf(this.tree.walk({ file: crate.libRoot, root: crate.libRoot }, rest));
+    return this.fileOf(this.tree.walk({ file: crate.libRoot, root: crate.libRoot }, rest, this.reexported));
   }
+  /** The file a walk ended in. A walk that left the tree through a re-export names nothing in it. */
   fileOf(walked) {
-    return { kind: "file", path: walked.file };
+    if (walked.outside === true) return { kind: "builtin" };
+    return { kind: "file", path: walked.file, ...walked.via === void 0 ? {} : { via: walked.via } };
   }
   /** The crate a name in a `use` path stands for: the importing crate's own library, one of its path dependencies, or a crate of the tree by that name. */
   crateNamed(importer, name12) {
@@ -13121,7 +13459,7 @@ var adapter8 = {
   dependencies: {
     model: "import-based",
     isConfigPath: isConfigPath3,
-    createResolver: (paths, configs) => new PathResolver(paths, configs)
+    createResolver: (paths, configs, facts) => new PathResolver(paths, configs, facts)
   },
   boundaries: rustBoundaries,
   census: { extract: extractFileCensus8 },
@@ -13489,7 +13827,7 @@ var recorded6 = { units: 68, found: 65, exact: 65, blocks: 73, spurious: 0 };
 var recorded7 = { units: 70, found: 70, exact: 70, blocks: 71, spurious: 0 };
 
 // packages/lexical/src/agreement-rates/rust.ts
-var recorded8 = { units: 61, found: 59, exact: 56, blocks: 56, spurious: 0 };
+var recorded8 = { units: 79, found: 77, exact: 74, blocks: 74, spurious: 0 };
 
 // packages/lexical/src/agreement-rates.ts
 var recordedAgreement = { ...recorded_agreement_exports };
@@ -18684,15 +19022,18 @@ function groupByLanding(changes, landings) {
 
 // packages/complexity/src/fix-ranges.ts
 var COMMIT_LINE = /^[0-9a-f]{40}$/;
-var INDEX = /^index ([0-9a-f]+)\.\.[0-9a-f]+/;
+var INDEX = /^index ([0-9a-f]+)\.\.([0-9a-f]+)/;
 var NO_BLOB = /^0+$/;
-var HUNK = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/;
+var HUNK = /^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 function parseDiffs(output) {
   const commits = /* @__PURE__ */ new Map();
   let files;
   let file;
   let added = false;
   let oldBlob;
+  let newBlob;
+  let oldPath;
+  let inHunks = false;
   for (const line of output.split("\n")) {
     if (COMMIT_LINE.test(line)) {
       files = /* @__PURE__ */ new Map();
@@ -18702,21 +19043,41 @@ function parseDiffs(output) {
       file = void 0;
       added = false;
       oldBlob = void 0;
+      newBlob = void 0;
+      oldPath = void 0;
+      inHunks = false;
     } else if (line.startsWith("new file mode")) {
       added = true;
+    } else if (line.startsWith("rename from ")) {
+      oldPath = line.slice("rename from ".length);
+    } else if (line.startsWith("rename to ")) {
+      const target2 = line.slice("rename to ".length);
+      if (files !== void 0 && oldPath !== void 0 && !oldPath.startsWith('"') && !target2.startsWith('"')) {
+        file = { added: false, oldPath, ranges: [] };
+        files.set(target2, file);
+      }
     } else if (INDEX.test(line)) {
-      const old = INDEX.exec(line)[1];
+      const [, old, next] = INDEX.exec(line);
       if (!NO_BLOB.test(old)) oldBlob = old;
-    } else if (line.startsWith("+++ ")) {
+      if (!NO_BLOB.test(next)) newBlob = next;
+    } else if (!inHunks && line.startsWith("--- ")) {
+      const source = line.slice(4).replace(/\t$/, "");
+      if (source.startsWith("a/")) oldPath = source.slice(2);
+    } else if (!inHunks && line.startsWith("+++ ")) {
       const target2 = line.slice(4).replace(/\t$/, "");
       file = void 0;
       if (files !== void 0 && target2.startsWith("b/")) {
-        file = { added, ...oldBlob === void 0 ? {} : { oldBlob }, ranges: [] };
+        file = { added, ...oldBlob === void 0 ? {} : { oldBlob }, ...newBlob === void 0 ? {} : { newBlob }, ...added || oldPath === void 0 ? {} : { oldPath }, ranges: [] };
         files.set(target2.slice(2), file);
+      } else if (files !== void 0 && target2 === "/dev/null" && oldPath !== void 0) {
+        files.set(oldPath, { added: false, ...oldBlob === void 0 ? {} : { oldBlob }, oldPath, deleted: true, ranges: [] });
       }
     } else if (file !== void 0) {
       const hunk = HUNK.exec(line);
-      if (hunk !== null) file.ranges.push({ start: Number(hunk[1]), count: hunk[2] === void 0 ? 1 : Number(hunk[2]) });
+      if (hunk !== null) {
+        inHunks = true;
+        file.ranges.push({ start: Number(hunk[2]), count: hunk[3] === void 0 ? 1 : Number(hunk[3]), removed: hunk[1] === void 0 ? 1 : Number(hunk[1]) });
+      }
     }
   }
   return commits;
@@ -18822,6 +19183,16 @@ function matchUnits(before, after, threshold, cache = /* @__PURE__ */ new Map())
   for (const body2 of oldBodies.values()) matches.push({ before: body2.unit, after: void 0, moved: false, changed: true });
   return matches.sort((a, b) => compare3((a.after ?? a.before).id, (b.after ?? b.before).id));
 }
+function followUnits(earlier, earlierUnits, later, laterUnits, threshold, cache) {
+  const original = /* @__PURE__ */ new Map();
+  const moved = earlierUnits.map((unit) => {
+    const relocated = { ...unit, path: later.path, id: `${later.path}${unit.id.slice(earlier.path.length)}` };
+    original.set(relocated.id, unit);
+    return relocated;
+  });
+  const matches = matchUnits([{ ...earlier, path: later.path, units: moved }], [{ ...later, units: [...laterUnits] }], threshold, cache);
+  return matches.flatMap((match) => match.before === void 0 ? [] : [{ before: original.get(match.before.id), after: match.after }]);
+}
 function compare3(a, b) {
   return Buffer.compare(Buffer.from(a), Buffer.from(b));
 }
@@ -18835,16 +19206,6 @@ var utf8 = (a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b));
 var isLowEvidence = (fixes, minRevisions) => fixes.revisions < minRevisions;
 function byFixes(minRevisions) {
   return (a, b) => b.fixCommits - a.fixCommits || Number(isLowEvidence(a, minRevisions)) - Number(isLowEvidence(b, minRevisions)) || (b.fixShare ?? 0) - (a.fixShare ?? 0) || utf8(a.id, b.id);
-}
-function followUnits(earlier, earlierUnits, later, laterUnits, threshold, cache) {
-  const original = /* @__PURE__ */ new Map();
-  const moved = earlierUnits.map((unit) => {
-    const relocated = { ...unit, path: later.path, id: `${later.path}${unit.id.slice(earlier.path.length)}` };
-    original.set(relocated.id, unit);
-    return relocated;
-  });
-  const matches = matchUnits([{ ...earlier, path: later.path, units: moved }], [{ ...later, units: [...laterUnits] }], threshold, cache);
-  return matches.flatMap((match) => match.before === void 0 ? [] : [{ before: original.get(match.before.id), after: match.after }]);
 }
 async function diffsOf(root, shas) {
   const diffs = /* @__PURE__ */ new Map();
@@ -18928,7 +19289,7 @@ async function measureFixes(root, settings, exclude, current, request) {
   cacheStats.cached += currentMeasure.stats.cached;
   const currentFiles = new Map(currentMeasure.files.map((file) => [file.path, file]));
   const currentUnits = new Map(currentMeasure.files.flatMap((file) => file.units).map((unit) => [unit.id, unit]));
-  const pairKey = (path, blob) => `${path}\0${blob}`;
+  const pairKey2 = (path, blob) => `${path}\0${blob}`;
   const blobsByPath = /* @__PURE__ */ new Map();
   const touchesByPair = /* @__PURE__ */ new Map();
   const latestPair = /* @__PURE__ */ new Map();
@@ -18937,7 +19298,7 @@ async function measureFixes(root, settings, exclude, current, request) {
     const blobs = blobsByPath.get(touch.path) ?? [];
     if (!blobs.includes(touch.blob)) blobs.push(touch.blob);
     blobsByPath.set(touch.path, blobs);
-    const key = pairKey(touch.path, touch.blob);
+    const key = pairKey2(touch.path, touch.blob);
     const pairTouches = touchesByPair.get(key);
     if (pairTouches === void 0) touchesByPair.set(key, [touch]);
     else pairTouches.push(touch);
@@ -18965,11 +19326,11 @@ async function measureFixes(root, settings, exclude, current, request) {
     const records = new Map(measurement.files.map((file) => [file.path, file]));
     for (const { path, blob } of wanted) {
       const record = records.get(path);
-      if (record !== void 0 && record.source !== null) parents.set(pairKey(path, blob), record);
+      if (record !== void 0 && record.source !== null) parents.set(pairKey2(path, blob), record);
     }
   }
   const createdBy = (touch, record) => {
-    const parent = touch.oldBlob === void 0 ? void 0 : parents.get(pairKey(touch.path, touch.oldBlob));
+    const parent = touch.oldBlob === void 0 ? void 0 : parents.get(pairKey2(touch.path, touch.oldBlob));
     if (parent === void 0) return /* @__PURE__ */ new Set();
     const existed = new Set(followUnits(parent, parent.units, record, record.units, settings.moveSimilarity, bodyCache).flatMap((match) => match.after === void 0 ? [] : [match.after.id]));
     return new Set(record.units.map((unit) => unit.id).filter((id) => !existed.has(id)));
@@ -18992,7 +19353,7 @@ async function measureFixes(root, settings, exclude, current, request) {
     for (const { path, blob } of wanted) {
       const record = records.get(path);
       if (record === void 0) continue;
-      const key = pairKey(path, blob);
+      const key = pairKey2(path, blob);
       const pairTouches = touchesByPair.get(key) ?? [];
       if (record.source === null) {
         skipped.noAdapter += pairTouches.length;
@@ -19831,7 +20192,10 @@ function folderOf(path) {
   return slash === -1 ? "" : path.slice(0, slash);
 }
 function depthOf(folder) {
-  return folder === "" ? 0 : folder.split("/").length;
+  if (folder === "") return 0;
+  let depth = 1;
+  for (let at2 = folder.indexOf("/"); at2 !== -1; at2 = folder.indexOf("/", at2 + 1)) depth++;
+  return depth;
 }
 
 // packages/graph/src/folders.ts
@@ -19943,12 +20307,29 @@ var MEASURE_SUMMARIES = {
   priorChanges: "Landed changes that touched the file in the period before the sample, as long as the period after it",
   hotspot: "Indentation complexity times prior changes"
 };
-var OUTCOMES = ["changes", "linesChurned", "linesPerChange", "fixShare"];
+var FUNCTION_MEASURES = ["codeLines", "cyclomatic", "cognitive", "nesting", "parameters", "priorChanges"];
+var FUNCTION_MEASURE_SUMMARIES = {
+  codeLines: "Lines of code of the function, blank and comment lines excluded, a nested function's lines included",
+  cyclomatic: "Cyclomatic complexity of the function",
+  cognitive: "Cognitive complexity of the function",
+  nesting: "Deepest nesting of control structures in the function",
+  parameters: "Declared parameters of the function",
+  priorChanges: "Landed changes that changed lines of the function in the period before the sample, as long as the period after it, the change that created it included"
+};
+var OUTCOMES = ["changes", "linesChurned", "linesPerChange", "fixShare", "fixesPerLine"];
 var OUTCOME_SUMMARIES = {
   changes: "Landed changes that touched the file, over every file",
   linesChurned: "Lines added plus deleted in the file, over every file",
   linesPerChange: "Lines added plus deleted per landed change, over the files that changed",
-  fixShare: "Share of the file's landed changes that are fixes, over the files with at least the minimum number of changes"
+  fixShare: "Share of the file's landed changes that are fixes, over the files with at least the minimum number of changes",
+  fixesPerLine: "Landed changes that are fixes and touched the file, per code line at the sample, over every file"
+};
+var FUNCTION_OUTCOME_SUMMARIES = {
+  changes: "Landed changes that changed lines of the function, over every function",
+  linesChurned: "Lines added inside the function plus the deleted lines of the hunks that touched it, over every function. A hunk that touched several functions shares its deleted lines between them equally",
+  linesPerChange: "Lines churned per landed change, over the functions that changed",
+  fixShare: "Share of the function's landed changes that are fixes, over the functions with at least the minimum number of changes",
+  fixesPerLine: "Landed changes that are fixes and changed lines of the function, per code line of the function at the sample, over every function"
 };
 function fileSamples(files, settings) {
   const samples = [];
@@ -20026,57 +20407,325 @@ function partial(x2, y2, control) {
   if (xy === null || xz === null || yz === null || Math.abs(xz) > 0.9999 || Math.abs(yz) > 0.9999) return null;
   return (xy - xz * yz) / Math.sqrt((1 - xz ** 2) * (1 - yz ** 2));
 }
-function population(outcome, files, minChanges) {
+function population(outcome, samples, minChanges) {
   if (outcome === "linesPerChange") {
-    const changed = files.filter((file) => file.changes > 0);
-    return { files: changed, values: changed.map((file) => file.linesChurned / file.changes) };
+    const changed = samples.filter((sample) => sample.changes > 0);
+    return { samples: changed, values: changed.map((sample) => sample.linesChurned / sample.changes) };
   }
   if (outcome === "fixShare") {
-    const busy = files.filter((file) => file.changes >= minChanges);
-    return { files: busy, values: busy.map((file) => file.fixes / file.changes) };
+    const busy = samples.filter((sample) => sample.changes >= minChanges);
+    return { samples: busy, values: busy.map((sample) => sample.fixes / sample.changes) };
   }
-  return { files: [...files], values: files.map((file) => file[outcome]) };
+  if (outcome === "fixesPerLine") return { samples: [...samples], values: samples.map((sample) => sample.fixes / Math.max(sample.codeLines, 1)) };
+  return { samples: [...samples], values: samples.map((sample) => sample[outcome]) };
 }
 var round32 = (value) => Math.round(value * 1e3) / 1e3;
-function correlate(periods, minFiles, minChanges) {
+var scaledRanks = (values) => ranks(values).map((rank) => (rank - 0.5) / values.length);
+function correlate(periods, measures, minSamples, minChanges) {
   const out2 = [];
   for (const outcome of OUTCOMES) {
-    const sums = new Map(MEASURES.map((measure) => [measure, { raw: 0, rawN: 0, part: 0, partN: 0, n: 0, periods: 0 }]));
+    const sums = new Map(measures.map((measure) => [measure, { raw: 0, rawN: 0, part: 0, partN: 0, n: 0, periods: 0 }]));
+    const pool = { x: new Map(measures.map((measure) => [measure, []])), y: [], control: [], changed: 0, periods: 0 };
     for (const period of periods) {
-      const { files, values } = population(outcome, period, minChanges);
-      if (files.length < minFiles || files.filter((file) => file.changes > 0).length < minFiles) continue;
+      const { samples, values } = population(outcome, period, minChanges);
+      if (samples.length > 0) {
+        pool.periods++;
+        pool.changed += samples.filter((sample) => sample.changes > 0).length;
+        pool.y.push(...scaledRanks(values));
+        pool.control.push(...scaledRanks(samples.map((sample) => sample.codeLines)));
+        for (const measure of measures) pool.x.get(measure).push(...scaledRanks(samples.map((sample) => sample[measure])));
+      }
+      if (samples.length < minSamples || samples.filter((sample) => sample.changes > 0).length < minSamples) continue;
       const y2 = ranks(values);
-      const control = ranks(files.map((file) => file.codeLines));
-      for (const measure of MEASURES) {
-        const x2 = ranks(files.map((file) => file[measure]));
+      const control = ranks(samples.map((sample) => sample.codeLines));
+      for (const measure of measures) {
+        const x2 = ranks(samples.map((sample) => sample[measure]));
         const sum = sums.get(measure);
-        sum.n += files.length;
+        sum.n += samples.length;
         sum.periods++;
         const raw = pearson(x2, y2);
         if (raw !== null) {
-          sum.raw += raw * files.length;
-          sum.rawN += files.length;
+          sum.raw += raw * samples.length;
+          sum.rawN += samples.length;
         }
         const held = measure === "codeLines" ? null : partial(x2, y2, control);
         if (held !== null) {
-          sum.part += held * files.length;
-          sum.partN += files.length;
+          sum.part += held * samples.length;
+          sum.partN += samples.length;
         }
       }
     }
-    for (const measure of MEASURES) {
+    const enough = pool.y.length >= minSamples && pool.changed >= minSamples;
+    for (const measure of measures) {
       const sum = sums.get(measure);
+      const x2 = pool.x.get(measure);
+      const pooled = enough ? pearson(x2, pool.y) : null;
+      const pooledHeld = enough && measure !== "codeLines" ? partial(x2, pool.y, pool.control) : null;
       out2.push({
         outcome,
         measure,
         correlation: sum.rawN === 0 ? null : round32(sum.raw / sum.rawN),
         partialOnCodeLines: sum.partN === 0 ? null : round32(sum.part / sum.partN),
-        fileSamples: sum.n,
-        periods: sum.periods
+        samples: sum.n,
+        periods: sum.periods,
+        pooledCorrelation: pooled === null ? null : round32(pooled),
+        pooledPartialOnCodeLines: pooledHeld === null ? null : round32(pooledHeld),
+        pooledSamples: pool.y.length,
+        pooledPeriods: pool.periods
       });
     }
   }
   return out2;
+}
+
+// packages/complexity/src/function-history.ts
+var CHUNK = 200;
+function followedUnits(file) {
+  if (file.test) return [];
+  return topLevelUnits(file.units).filter((unit) => !unit.test && unit.values.cyclomatic !== void 0);
+}
+var pairKey = (path, blob) => `${path}\0${blob}`;
+var FunctionFollower = class {
+  constructor(root, settings, line, start2, measure) {
+    this.root = root;
+    this.settings = settings;
+    this.line = line;
+    this.measure = measure;
+    this.position = start2;
+  }
+  root;
+  settings;
+  line;
+  measure;
+  /** Index on the line of the last commit followed. */
+  position;
+  state = /* @__PURE__ */ new Map();
+  /** The path a file had at the start, by its path now, for files renamed without a change and not read since. */
+  origin = /* @__PURE__ */ new Map();
+  touches = /* @__PURE__ */ new Map();
+  /** Index on the line of the commit at which each lineage that ended was last seen. */
+  ended = /* @__PURE__ */ new Map();
+  stats = { parsed: 0, cached: 0 };
+  /** The lineage of a function of the revision the follower has reached, or undefined when the follower lost track of it. */
+  lineageOf(path, unitId2) {
+    const tracked = this.state.get(path);
+    if (tracked !== void 0) return tracked.lineage.get(unitId2);
+    return `${this.origin.get(path) ?? path}${unitId2.slice(path.length)}`;
+  }
+  /** Follows every commit of the line after the one reached, up to and including the one at `index`. */
+  async advanceTo(index) {
+    while (this.position < index) {
+      const first = this.position + 1;
+      const last = Math.min(index, this.position + CHUNK);
+      await this.follow(first, last);
+      this.position = last;
+    }
+  }
+  analysable(path) {
+    return adapterForPath(path) !== void 0 && !this.settings.isExcluded(path) && !this.settings.isTest(path);
+  }
+  async follow(first, last) {
+    const input = [];
+    for (let k = first; k <= last; k++) input.push(k === 0 ? this.line[k].sha : `${this.line[k].sha} ${this.line[k - 1].sha}`);
+    const out2 = await runGit(this.root, ["-c", "core.quotePath=false", "diff-tree", "--stdin", "-p", "-U0", "-M", "--no-color", "--no-ext-diff", "--full-index", "--root", "-r"], { input: `${input.join("\n")}
+` });
+    const diffs = parseDiffs(out2);
+    const commits = [];
+    for (let k = first; k <= last; k++) commits.push({ at: k, files: [...diffs.get(this.line[k].sha) ?? /* @__PURE__ */ new Map()] });
+    const known = new Set(this.state.keys());
+    const wanted = /* @__PURE__ */ new Map();
+    const want = (path, blob) => {
+      const blobs = wanted.get(path) ?? [];
+      if (!blobs.includes(blob)) blobs.push(blob);
+      wanted.set(path, blobs);
+    };
+    for (const { files } of commits) {
+      for (const [path, diff] of files) {
+        const earlier = diff.oldPath ?? path;
+        if (diff.deleted) {
+          known.delete(earlier);
+          continue;
+        }
+        if (diff.newBlob === void 0) {
+          if (known.delete(earlier)) known.add(path);
+          continue;
+        }
+        if (!diff.added && !known.has(earlier) && diff.oldBlob !== void 0 && this.analysable(earlier)) want(earlier, diff.oldBlob);
+        known.delete(earlier);
+        if (this.analysable(path)) {
+          want(path, diff.newBlob);
+          known.add(path);
+        }
+      }
+    }
+    const records = /* @__PURE__ */ new Map();
+    const layers = Math.max(0, ...[...wanted.values()].map((blobs) => blobs.length));
+    for (let layer = 0; layer < layers; layer++) {
+      const pairs = [...wanted].flatMap(([path, blobs]) => blobs[layer] === void 0 ? [] : [{ path, blob: blobs[layer] }]);
+      const texts = await readBlobs(this.root, pairs.map((pair) => pair.blob));
+      const tree = treeFromTexts(Object.fromEntries(pairs.flatMap((pair) => texts.has(pair.blob) ? [[pair.path, texts.get(pair.blob)]] : [])));
+      const measurement = await measureTree(tree, { settings: this.settings, layer: "structural", cache: this.measure.cache, keepText: true, grammars: this.measure.grammars });
+      this.stats.parsed += measurement.stats.parsed;
+      this.stats.cached += measurement.stats.cached;
+      const byPath = new Map(measurement.files.map((file) => [file.path, file]));
+      for (const pair of pairs) {
+        const record = byPath.get(pair.path);
+        if (record !== void 0) records.set(pairKey(pair.path, pair.blob), record);
+      }
+    }
+    const bodies = /* @__PURE__ */ new Map();
+    for (const { at: at2, files } of commits) for (const [path, diff] of files) this.apply(at2, path, diff, records, bodies);
+  }
+  end(tracked, at2) {
+    for (const lineage of tracked?.lineage.values() ?? []) this.ended.set(lineage, at2);
+  }
+  fromStart(path, record) {
+    const origin = this.origin.get(path) ?? path;
+    return { record, lineage: new Map(followedUnits(record).map((unit) => [unit.id, `${origin}${unit.id.slice(path.length)}`])) };
+  }
+  apply(at2, path, diff, records, bodies) {
+    const earlierPath = diff.oldPath ?? path;
+    if (diff.deleted) {
+      this.end(this.state.get(earlierPath), at2);
+      this.state.delete(earlierPath);
+      this.origin.delete(earlierPath);
+      return;
+    }
+    if (diff.newBlob === void 0) {
+      if (earlierPath === path) return;
+      const tracked = this.state.get(earlierPath);
+      this.state.delete(earlierPath);
+      if (tracked === void 0) this.origin.set(path, this.origin.get(earlierPath) ?? earlierPath);
+      else {
+        const relocate = (id) => `${path}${id.slice(earlierPath.length)}`;
+        const record = { ...tracked.record, path, units: tracked.record.units.map((unit) => ({ ...unit, path, id: relocate(unit.id) })) };
+        this.state.set(path, { record, lineage: new Map([...tracked.lineage].map(([id, lineage2]) => [relocate(id), lineage2])) });
+      }
+      this.origin.delete(earlierPath);
+      return;
+    }
+    let earlier;
+    if (!diff.added) {
+      earlier = this.state.get(earlierPath);
+      if (earlier === void 0 && diff.oldBlob !== void 0) {
+        const record = records.get(pairKey(earlierPath, diff.oldBlob));
+        if (record !== void 0) earlier = this.fromStart(earlierPath, record);
+      }
+    }
+    this.state.delete(earlierPath);
+    this.origin.delete(earlierPath);
+    this.origin.delete(path);
+    const later = records.get(pairKey(path, diff.newBlob));
+    if (later === void 0) {
+      this.end(earlier, at2);
+      return;
+    }
+    const units = followedUnits(later);
+    const lineage = /* @__PURE__ */ new Map();
+    const created = /* @__PURE__ */ new Set();
+    if (earlier !== void 0) {
+      for (const { before, after } of followUnits(earlier.record, followedUnits(earlier.record), later, units, this.settings.moveSimilarity, bodies)) {
+        const own = earlier.lineage.get(before.id);
+        if (own === void 0) continue;
+        if (after === void 0) this.ended.set(own, at2);
+        else lineage.set(after.id, own);
+      }
+    }
+    for (const unit of units) {
+      if (lineage.has(unit.id)) continue;
+      lineage.set(unit.id, `${at2}:${unit.id}`);
+      created.add(unit.id);
+    }
+    this.state.set(path, { record: later, lineage });
+    const churn = /* @__PURE__ */ new Map();
+    for (const range of diff.ranges) {
+      const hit = touchedUnits(units, [range]).units;
+      if (hit.size === 0) continue;
+      const last = range.start + range.count - 1;
+      for (const unit of units) {
+        if (!hit.has(unit.id)) continue;
+        const added = Math.max(0, Math.min(last, unit.endLine) - Math.max(range.start, unit.startLine) + 1);
+        churn.set(unit.id, (churn.get(unit.id) ?? 0) + added + (range.removed ?? 0) / hit.size);
+      }
+    }
+    for (const [unitId2, lines2] of churn) {
+      const own = lineage.get(unitId2);
+      const list2 = this.touches.get(own) ?? [];
+      list2.push({ at: at2, churn: lines2, created: created.has(unitId2) });
+      this.touches.set(own, list2);
+    }
+  }
+};
+
+// packages/complexity/src/function-backtest.ts
+async function functionSamples(root, settings, line, commits, priorStarts, counted, measure) {
+  const index = new Map(line.map((commit, i2) => [commit.sha, i2]));
+  const at2 = commits.map((commit) => index.get(commit.sha));
+  const startOf = priorStarts.map((time, i2) => Math.min(at2[i2], line.findLastIndex((commit) => commit.date <= time)));
+  const follower = new FunctionFollower(root, settings, line, Math.min(...startOf), measure);
+  const stats = { parsed: 0, cached: 0 };
+  const atSample = [];
+  const periods = [];
+  for (let i2 = 0; i2 + 1 < commits.length; i2++) {
+    await follower.advanceTo(at2[i2]);
+    const { files, stats: own } = await measureTree(await treeFromRef(root, commits[i2].sha), { settings, layer: "structural", ...measure });
+    stats.parsed += own.parsed;
+    stats.cached += own.cached;
+    const rows11 = [];
+    let notFollowed = 0;
+    let withFunctions = 0;
+    for (const file of productionCode(files, settings)) {
+      const units = followedUnits(file);
+      if (units.length > 0) withFunctions++;
+      for (const unit of units) {
+        const lineage = follower.lineageOf(file.path, unit.id);
+        if (lineage === void 0) {
+          notFollowed++;
+          continue;
+        }
+        rows11.push({
+          lineage,
+          sample: {
+            path: file.path,
+            id: unit.id,
+            codeLines: unit.values.length ?? unit.endLine - unit.startLine + 1,
+            cyclomatic: unit.values.cyclomatic ?? 0,
+            cognitive: unit.values.cognitive ?? 0,
+            nesting: unit.values.nesting ?? 0,
+            parameters: unit.values.parameters ?? 0,
+            priorChanges: 0,
+            changes: 0,
+            linesChurned: 0,
+            fixes: 0
+          }
+        });
+      }
+    }
+    atSample.push(rows11);
+    periods.push({ files: withFunctions, functions: rows11.length, ended: 0, notFollowed });
+  }
+  await follower.advanceTo(at2.at(-1));
+  stats.parsed += follower.stats.parsed;
+  stats.cached += follower.stats.cached;
+  for (let i2 = 0; i2 < atSample.length; i2++) {
+    const from = at2[i2];
+    const to = at2[i2 + 1];
+    for (const { sample, lineage } of atSample[i2]) {
+      for (const touch of follower.touches.get(lineage) ?? []) {
+        const landing = counted.get(line[touch.at].sha);
+        if (landing === void 0) continue;
+        if (touch.at > startOf[i2] && touch.at <= from) sample.priorChanges++;
+        else if (touch.at > from && touch.at <= to) {
+          sample.changes++;
+          sample.linesChurned += touch.churn;
+          if (landing.fix && !touch.created) sample.fixes++;
+        }
+      }
+      const ended = follower.ended.get(lineage);
+      if (ended !== void 0 && ended > from && ended <= to) periods[i2].ended++;
+    }
+  }
+  return { samples: atSample.map((rows11) => rows11.map((row) => row.sample)), periods, stats };
 }
 
 // packages/complexity/src/commands/backtest.ts
@@ -20085,15 +20734,29 @@ var DEFAULT_SAMPLES = 7;
 var MAX_SAMPLES = 60;
 var DEFAULT_MONTHS = 36;
 var MIN_FILES = 20;
-var LIMITS = [
-  "A correlation says how well a measure orders the files by what followed. It does not say the measure caused it, and it is not a threshold for any measure.",
-  "A larger file is touched by more changes because there is more of it. The partial correlation holds code lines fixed, and is the figure that says whether a measure adds anything to size.",
-  "The unit is a file. Whether a function's complexity predicts changes to that function is not measured.",
-  "Changes are counted for the files that had a measured function at the sample. A file added after the sample, or read by the lexical layer alone, is not in the period.",
+var UNITS = ["file", "function"];
+var COMMON_LIMITS = [
   "A change with more files than `history.maxChangesetSize` is left out, as are commits made through the suite's skills.",
   "A fix is a landed change whose text matches `history.fixPatterns`. Some matches are not defects, and a repository that does not name its fixes gives no fix share.",
+  "The pooled figures rank each sample within its own period and then take one correlation over every period, so a period with too few samples to count on its own still adds to them. Samples of the same file or function in several periods are not independent, so the pooled sample size overstates the evidence.",
   "Every sample is read with the config of the checkout and the parsers of this version, not those of the time."
 ];
+var FILE_LIMITS = [
+  "A correlation says how well a measure orders the files by what followed. It does not say the measure caused it, and it is not a threshold for any measure.",
+  "A larger file is touched by more changes because there is more of it. The partial correlation holds code lines fixed, and is the figure that says whether a measure adds anything to size.",
+  "The unit is a file. `--unit function` measures functions instead.",
+  "Changes are counted for the files that had a measured function at the sample. A file added after the sample, or read by the lexical layer alone, is not in the period.",
+  ...COMMON_LIMITS
+];
+var FUNCTION_LIMITS = [
+  "A correlation says how well a measure orders the functions by what followed. It does not say the measure caused it, and it is not a threshold for any measure.",
+  "A larger function is touched by more changes because there is more of it. The partial correlation holds the function's code lines fixed, and is the figure that says whether a measure adds anything to size.",
+  "A landed change counts for a function when its diff against the commit before it on the first-parent line changed a line of the function, so an edit a branch made and undid before it merged is not counted.",
+  "A change that deletes a function, or changes it past recognition, is not counted for it, and the function is not followed after it. `ended` in each period counts such functions.",
+  "Changes are counted for the top-level production functions the structural layer measured at the sample. A nested function counts in the function that holds it, and a function added after the sample is not in the period.",
+  ...COMMON_LIMITS
+];
+var MATCHING = "A function is followed from each revision of its file to the next on the first-parent line, as `complexity fixes` follows it: by its identity (path and qualified name), then by body similarity of at least complexity.moveSimilarity, and through the file renames git detects. A function created by a change is not counted as fixed by it.";
 function wholeNumber(context, option, fallback, least, most) {
   const value = context.values[option];
   if (value === void 0) return fallback;
@@ -20102,18 +20765,41 @@ function wholeNumber(context, option, fallback, least, most) {
   }
   return Number(value);
 }
+function unitOf(context) {
+  const value = context.values.unit;
+  if (value === void 0) return "file";
+  if (typeof value !== "string" || !UNITS.includes(value)) throw usageError(`--unit must be one of ${UNITS.join(", ")}`);
+  return value;
+}
+function rowsFor(rows11, unit) {
+  const key = unit === "file" ? "fileSamples" : "functionSamples";
+  return rows11.map(({ samples, ...rest }) => ({
+    outcome: rest.outcome,
+    measure: rest.measure,
+    correlation: rest.correlation,
+    partialOnCodeLines: rest.partialOnCodeLines,
+    [key]: samples,
+    periods: rest.periods,
+    pooledCorrelation: rest.pooledCorrelation,
+    pooledPartialOnCodeLines: rest.pooledPartialOnCodeLines,
+    pooledSamples: rest.pooledSamples,
+    pooledPeriods: rest.pooledPeriods
+  }));
+}
 var command2 = {
-  summary: "Whether a file's size and complexity at past revisions order the files by the changes, lines churned and fixes of the period that followed, with code lines held fixed",
+  summary: "Whether a file's or a function's size and complexity at past revisions order the files or functions by the changes, lines churned and fixes of the period that followed, with code lines held fixed",
   hidden: true,
-  options: { samples: { type: "string" }, months: { type: "string" } },
+  options: { samples: { type: "string" }, months: { type: "string" }, unit: { type: "string" } },
   optionHelp: {
     samples: `how many revisions to sample, 3 to ${MAX_SAMPLES}; each one but the last starts a period that ends at the next (default ${DEFAULT_SAMPLES})`,
-    months: `how many months before HEAD's commit date the samples span (default ${DEFAULT_MONTHS})`
+    months: `how many months before HEAD's commit date the samples span; more months give longer periods and more changes per period (default ${DEFAULT_MONTHS})`,
+    unit: "what each sample is: file, or function, which follows each production function through the history (default file)"
   },
   async run(context) {
     if (context.positionals.length > 0) throw usageError("backtest takes no arguments");
     const wanted = wholeNumber(context, "samples", DEFAULT_SAMPLES, 3, MAX_SAMPLES);
     const months = wholeNumber(context, "months", DEFAULT_MONTHS, 1, 600);
+    const unit = unitOf(context);
     const settings = readSettings(context.config);
     const { root, head } = context.repo;
     if ((await readShallowInfo(root)).isShallow) throw usageError("history is shallow, so the periods after each sample cannot be measured");
@@ -20126,6 +20812,45 @@ var command2 = {
     const groups = groupByLanding(changes.filter((change) => !change.oversized), await readLandings(root, history.view.headSha));
     const cache = await ParseCache.forRepository(root);
     const grammars = new GrammarSet();
+    const minChanges = settings.fixes.minRevisions;
+    const periodOf = (i2) => {
+      const from = commits[i2];
+      const to = commits[i2 + 1];
+      return {
+        from: labels[i2],
+        to: labels[i2 + 1],
+        revision: from.sha,
+        landedChanges: groups.filter(({ landing }) => landing.time > from.date && landing.time <= to.date).length,
+        oversizedSkipped: changes.filter((change) => change.oversized && change.committerDate > from.date && change.committerDate <= to.date).length
+      };
+    };
+    const inputs = { samples: wanted, months, unit, revisions: commits.map((commit) => commit.sha) };
+    const extra = { evidence: { grade: history.evidence.grade, logicalChangesInWindow: history.evidence.logicalChangesInWindow, usableHistoryMonths: history.evidence.usableHistoryMonths } };
+    if (unit === "function") {
+      const counted = new Map(groups.map(({ landing }) => [landing.id, { fix: findFix(settings.fix, landing.id, [landing.text]) !== null }]));
+      const priorStarts = commits.slice(0, -1).map((from, i2) => from.date - (commits[i2 + 1].date - from.date));
+      const followed = await functionSamples(root, settings, line, commits, priorStarts, counted, { cache, grammars });
+      return withNonProductionFolders(
+        {
+          inputs,
+          extra,
+          results: {
+            periods: followed.periods.map((period, i2) => {
+              const { from, to, revision, landedChanges, oversizedSkipped } = periodOf(i2);
+              return { from, to, revision, files: period.files, functions: period.functions, ended: period.ended, notFollowed: period.notFollowed, landedChanges, oversizedSkipped };
+            }),
+            matching: MATCHING,
+            minFunctions: MIN_FILES,
+            minChanges,
+            measures: FUNCTION_MEASURE_SUMMARIES,
+            outcomes: FUNCTION_OUTCOME_SUMMARIES,
+            correlations: rowsFor(correlate(followed.samples, FUNCTION_MEASURES, MIN_FILES, minChanges), unit),
+            limits: FUNCTION_LIMITS
+          }
+        },
+        [...new Set((followed.samples.at(-1) ?? []).map((row) => row.path))]
+      );
+    }
     const identityAt = /* @__PURE__ */ new Map();
     let seen = 0;
     const periods = [];
@@ -20138,11 +20863,9 @@ var command2 = {
       const rows11 = fileSamples(files, settings);
       const byIdentity = new Map(rows11.map((row) => [identityAt.get(row.path) ?? row.path, row]));
       const before = from.date - (to.date - from.date);
-      let landed = 0;
       for (const { landing, changes: inLanding } of groups) {
         const after = landing.time > from.date && landing.time <= to.date;
         if (!after && !(landing.time > before && landing.time <= from.date)) continue;
-        if (after) landed++;
         const churn = /* @__PURE__ */ new Map();
         for (const change of inLanding) {
           for (const file of change.files) {
@@ -20163,29 +20886,25 @@ var command2 = {
       }
       for (const row of rows11) row.hotspot = row.indentation * row.priorChanges;
       samples.push(rows11);
-      periods.push({
-        from: labels[i2],
-        to: labels[i2 + 1],
-        revision: from.sha,
-        files: rows11.length,
-        landedChanges: landed,
-        oversizedSkipped: changes.filter((change) => change.oversized && change.committerDate > from.date && change.committerDate <= to.date).length
-      });
+      const { from: fromLabel, to: toLabel, revision, landedChanges, oversizedSkipped } = periodOf(i2);
+      periods.push({ from: fromLabel, to: toLabel, revision, files: rows11.length, landedChanges, oversizedSkipped });
     }
-    const minChanges = settings.fixes.minRevisions;
-    return withNonProductionFolders({
-      inputs: { samples: wanted, months, revisions: commits.map((commit) => commit.sha) },
-      extra: { evidence: { grade: history.evidence.grade, logicalChangesInWindow: history.evidence.logicalChangesInWindow, usableHistoryMonths: history.evidence.usableHistoryMonths } },
-      results: {
-        periods,
-        minFiles: MIN_FILES,
-        minChanges,
-        measures: MEASURE_SUMMARIES,
-        outcomes: OUTCOME_SUMMARIES,
-        correlations: correlate(samples, MIN_FILES, minChanges),
-        limits: LIMITS
-      }
-    }, (samples.at(-1) ?? []).map((row) => row.path));
+    return withNonProductionFolders(
+      {
+        inputs,
+        extra,
+        results: {
+          periods,
+          minFiles: MIN_FILES,
+          minChanges,
+          measures: MEASURE_SUMMARIES,
+          outcomes: OUTCOME_SUMMARIES,
+          correlations: rowsFor(correlate(samples, MEASURES, MIN_FILES, minChanges), unit),
+          limits: FILE_LIMITS
+        }
+      },
+      (samples.at(-1) ?? []).map((row) => row.path)
+    );
   }
 };
 

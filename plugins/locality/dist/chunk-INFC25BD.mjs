@@ -2,14 +2,27 @@
 // SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Commercial. Third-party licences: THIRD_PARTY_NOTICES.md.
 import { createRequire as __codeHealthCreateRequire } from "node:module"; import { fileURLToPath as __codeHealthFileURLToPath } from "node:url"; import { dirname as __codeHealthDirname } from "node:path"; var require = __codeHealthCreateRequire(import.meta.url); var __filename = __codeHealthFileURLToPath(import.meta.url); var __dirname = __codeHealthDirname(__filename);
 import {
-  absolutePath,
-  buildProject
-} from "./chunk-IA634Z7L.mjs";
-import "./chunk-7KKGBP3S.mjs";
-import "./chunk-L66PW574.mjs";
-import "./chunk-LS633N4T.mjs";
-import "./chunk-OQRLKAKZ.mjs";
+  adapterById
+} from "./chunk-BVIRNGKV.mjs";
+
+// packages/locality/src/movers/mover-language.ts
+function oncePerTree(read) {
+  const known = /* @__PURE__ */ new WeakMap();
+  return (tree) => {
+    let found = known.get(tree);
+    if (found === void 0) {
+      found = read(tree);
+      known.set(tree, found);
+    }
+    return found;
+  };
+}
+function sourceFilesOf(adapterId) {
+  const extensions = adapterById(adapterId)?.mover.sourceExtensions ?? [];
+  return (path) => extensions.some((extension) => path.endsWith(extension));
+}
+
 export {
-  absolutePath,
-  buildProject
+  oncePerTree,
+  sourceFilesOf
 };

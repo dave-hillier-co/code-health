@@ -2,15 +2,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Commercial. Third-party licences: THIRD_PARTY_NOTICES.md.
 import { createRequire as __codeHealthCreateRequire } from "node:module"; import { fileURLToPath as __codeHealthFileURLToPath } from "node:url"; import { dirname as __codeHealthDirname } from "node:path"; var require = __codeHealthCreateRequire(import.meta.url); var __filename = __codeHealthFileURLToPath(import.meta.url); var __dirname = __codeHealthDirname(__filename);
 import {
-  buildProject
-} from "./chunk-IA634Z7L.mjs";
+  projectFromFiles,
+  readProjectFiles
+} from "./chunk-PXP3VSAO.mjs";
 import {
   require_ts_morph
 } from "./chunk-7KKGBP3S.mjs";
 import {
+  oncePerTree,
   sourceFilesOf
-} from "./chunk-L66PW574.mjs";
-import "./chunk-LS633N4T.mjs";
+} from "./chunk-INFC25BD.mjs";
+import "./chunk-BVIRNGKV.mjs";
 import {
   __toESM
 } from "./chunk-OQRLKAKZ.mjs";
@@ -47,6 +49,8 @@ var MODULE_PATH_CALLS = /* @__PURE__ */ new Set([
 function modulePaths(file) {
   const literals = [...file.getImportStringLiterals()];
   const computed = [];
+  const text = file.getFullText();
+  if (![...MODULE_PATH_CALLS].some((call) => text.includes(call))) return { literals: literals.sort((a, b) => a.getStart() - b.getStart()), computed };
   file.forEachDescendant((node) => {
     if (!import_ts_morph.Node.isCallExpression(node)) return;
     const call = node.getExpression().getText();
@@ -69,16 +73,24 @@ function resolveSpecifier(project, specifier, from) {
   const resolved = import_ts_morph.ts.resolveModuleName(specifier, from.getFilePath(), project.getCompilerOptions(), project.getModuleResolutionHost());
   return resolved.resolvedModule?.resolvedFileName;
 }
+var baselineOf = oncePerTree(async (tree) => {
+  const files = await readProjectFiles(tree);
+  const { project, relative } = projectFromFiles(files);
+  const originalText = /* @__PURE__ */ new Map();
+  const before = /* @__PURE__ */ new Map();
+  const computed = /* @__PURE__ */ new Map();
+  for (const file of project.getSourceFiles()) {
+    const path = relative(file.getFilePath());
+    const paths = modulePaths(file);
+    originalText.set(path, file.getFullText());
+    before.set(path, paths.literals.map((literal) => ({ specifier: literal.getLiteralValue(), target: resolveSpecifier(project, literal.getLiteralValue(), file) })));
+    computed.set(path, paths.computed);
+  }
+  return { files, originalText, before, computed };
+});
 async function performMove(tree, operations) {
-  const { project, relative, absolute, warnings } = await buildProject(tree);
-  const sources = project.getSourceFiles();
-  const originalText = new Map(sources.map((file) => [relative(file.getFilePath()), file.getFullText()]));
-  const before = new Map(
-    sources.map((file) => [
-      relative(file.getFilePath()),
-      modulePaths(file).literals.map((literal) => ({ specifier: literal.getLiteralValue(), target: resolveSpecifier(project, literal.getLiteralValue(), file) }))
-    ])
-  );
+  const { files, originalText, before, computed: computedBefore } = await baselineOf(tree);
+  const { project, relative, absolute, warnings } = projectFromFiles(files);
   const origin = /* @__PURE__ */ new Map();
   const destination = /* @__PURE__ */ new Map();
   for (const operation of operations) {
@@ -97,6 +109,14 @@ async function performMove(tree, operations) {
     const path = relative(file.getFilePath());
     const was = before.get(origin.get(path) ?? path);
     if (was === void 0) continue;
+    const untouched = !origin.has(path) && file.getFullText() === originalText.get(path);
+    if (untouched && was.every((old) => old.target === void 0 || resolveSpecifier(project, old.specifier, file) === (destination.get(old.target) ?? old.target))) {
+      for (const site of computedBefore.get(path) ?? []) {
+        const referred = [...destination.values()].find((moved) => site.text.includes(stemOf(moved)));
+        if (referred !== void 0) warnings.push(`${path}:${site.line} ${site.call}(...) takes a computed path that may refer to ${relative(referred)}: check it by hand`);
+      }
+      continue;
+    }
     const { literals, computed } = modulePaths(file);
     for (const site of computed) {
       const referred = [...destination.values()].find((moved) => site.text.includes(stemOf(moved)));
