@@ -230,10 +230,17 @@ Code lines is the raw correlation with later changes. The other columns are with
 - **A quiet period used to count for as much as a busy one.** Neon had 8 and 3 landed changes in its last two periods, and those periods carried full weight. A period now counts for an outcome only when at least 20 of its files changed, which moved neon's code lines figure from 0.396 to 0.622.
 - **A syntax tree thousands of levels deep stopped the run.** A checkstyle test input holds a string built from thousands of `+`, and the extractors' recursion ran out of stack. A file whose tree nests deeper than 1,000 levels is now read as empty and reported.
 - **The busier last period is real.** Several repositories have three to six times as many landed changes in the last six months as before. Each period's count was checked against git's own first-parent commit count between the two sampled revisions, and they agree.
-- **Inline tests are counted in a Rust file's code lines.** A Rust file's `#[cfg(test)]` module adds to its size, so size is overstated for heavily tested files in the seven Rust repositories.
+- **Inline tests were counted in a Rust file's code lines in these runs.** A Rust file's `#[cfg(test)]` module added to its size, so size is overstated for heavily tested files in the seven Rust repositories. The command reads a Rust file's code lines without its `#[cfg(test)]` code, so a rerun gives different figures for them.
 - **Generated database migrations are counted** in `bitwarden/server` (422 files under `util/*Migrations`).
 
 These are correlations over files, not functions. They say what orders files by later change, not what causes it, and they set no threshold.
+
+### Functions as the unit, and pooled periods
+
+The figures above leave two questions open, and the command has options for both.
+
+- **A complex function in a large file.** A file-level correlation cannot see it. `--unit function` takes each top-level production function at a sample as the unit: its code lines, cyclomatic and cognitive complexity, nesting, parameters and prior changes, against the landed changes that changed its lines in the following period, the lines churned inside it and the fixes among those changes. The partial correlation then holds the function's own code lines fixed. A function is followed from one revision of its file to the next on the first-parent line as `complexity fixes` follows it, by identity and then by body similarity, and a change that creates a function is not a fix of it. Each period says how many of its functions ended (deleted, or changed past recognition) before the period's end.
+- **Too few samples for fix share.** Every correlation row also has a pooled figure: each sample is ranked within its own period, and one correlation is taken over the samples of every period, with `pooledSamples` stated beside it. A period too small to count on its own still adds to the pool. Samples of the same file in several periods are not independent, so the pooled sample size overstates the evidence. A further outcome, fixes per code line, is taken over every sample rather than over the busy ones. A longer span (`--months`) gives longer periods with more changes in each.
 
 ## What it means for the suite
 

@@ -14,7 +14,8 @@
       "fef6f2662fc8140b31860111d4e9fcd766daa2ee",
       "3e3ac5c3ef7c05414fb50ef680a151b26de12aae"
     ],
-    "samples": 4
+    "samples": 4,
+    "unit": "file"
   },
   "repo": {
     "dirty": false,
@@ -28,7 +29,11 @@
         "measure": "codeLines",
         "outcome": "changes",
         "partialOnCodeLines": null,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.869,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       },
       {
         "correlation": null,
@@ -36,7 +41,11 @@
         "measure": "functions",
         "outcome": "changes",
         "partialOnCodeLines": null,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": null,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       },
       {
         "correlation": 0.89,
@@ -44,7 +53,11 @@
         "measure": "cyclomaticSum",
         "outcome": "changes",
         "partialOnCodeLines": 0.456,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.89,
+        "pooledPartialOnCodeLines": 0.402,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       },
       {
         "correlation": 0.89,
@@ -52,7 +65,11 @@
         "measure": "cyclomaticMean",
         "outcome": "changes",
         "partialOnCodeLines": 0.456,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.89,
+        "pooledPartialOnCodeLines": 0.402,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       },
       {
         "correlation": 0.89,
@@ -60,7 +77,11 @@
         "measure": "cyclomaticMax",
         "outcome": "changes",
         "partialOnCodeLines": 0.456,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.89,
+        "pooledPartialOnCodeLines": 0.402,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       },
       {
         "correlation": 0.924,
@@ -68,7 +89,11 @@
         "measure": "shareAbove",
         "outcome": "changes",
         "partialOnCodeLines": 0.728,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.924,
+        "pooledPartialOnCodeLines": 0.719,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       },
       {
         "correlation": 0.89,
@@ -76,7 +101,11 @@
         "measure": "cognitiveSum",
         "outcome": "changes",
         "partialOnCodeLines": 0.456,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.89,
+        "pooledPartialOnCodeLines": 0.402,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       },
       {
         "correlation": 0.89,
@@ -84,7 +113,11 @@
         "measure": "cognitiveMax",
         "outcome": "changes",
         "partialOnCodeLines": 0.456,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.89,
+        "pooledPartialOnCodeLines": 0.402,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       },
       {
         "correlation": 0.89,
@@ -92,7 +125,11 @@
         "measure": "indentation",
         "outcome": "changes",
         "partialOnCodeLines": 0.456,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.89,
+        "pooledPartialOnCodeLines": 0.402,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       },
       {
         "correlation": 0.94,
@@ -100,7 +137,11 @@
         "measure": "priorChanges",
         "outcome": "changes",
         "partialOnCodeLines": 0.758,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.767,
+        "pooledPartialOnCodeLines": 0.409,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       },
       {
         "correlation": 0.889,
@@ -108,7 +149,11 @@
         "measure": "hotspot",
         "outcome": "changes",
         "partialOnCodeLines": 0.447,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.726,
+        "pooledPartialOnCodeLines": 0.189,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       },
       {
         "correlation": 0.799,
@@ -116,7 +161,11 @@
         "measure": "codeLines",
         "outcome": "linesChurned",
         "partialOnCodeLines": null,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.799,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       },
       {
         "correlation": null,
@@ -124,7 +173,11 @@
         "measure": "functions",
         "outcome": "linesChurned",
         "partialOnCodeLines": null,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": null,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       },
       {
         "correlation": 0.678,
@@ -132,7 +185,11 @@
         "measure": "cyclomaticSum",
         "outcome": "linesChurned",
         "partialOnCodeLines": -0.768,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.678,
+        "pooledPartialOnCodeLines": -0.525,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       },
       {
         "correlation": 0.678,
@@ -140,7 +197,11 @@
         "measure": "cyclomaticMean",
         "outcome": "linesChurned",
         "partialOnCodeLines": -0.768,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.678,
+        "pooledPartialOnCodeLines": -0.525,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       },
       {
         "correlation": 0.678,
@@ -148,7 +209,11 @@
         "measure": "cyclomaticMax",
         "outcome": "linesChurned",
         "partialOnCodeLines": -0.768,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.678,
+        "pooledPartialOnCodeLines": -0.525,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       },
       {
         "correlation": 0.666,
@@ -156,7 +221,11 @@
         "measure": "shareAbove",
         "outcome": "linesChurned",
         "partialOnCodeLines": -0.056,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.666,
+        "pooledPartialOnCodeLines": -0.023,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       },
       {
         "correlation": 0.678,
@@ -164,7 +233,11 @@
         "measure": "cognitiveSum",
         "outcome": "linesChurned",
         "partialOnCodeLines": -0.768,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.678,
+        "pooledPartialOnCodeLines": -0.525,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       },
       {
         "correlation": 0.678,
@@ -172,7 +245,11 @@
         "measure": "cognitiveMax",
         "outcome": "linesChurned",
         "partialOnCodeLines": -0.768,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.678,
+        "pooledPartialOnCodeLines": -0.525,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       },
       {
         "correlation": 0.678,
@@ -180,7 +257,11 @@
         "measure": "indentation",
         "outcome": "linesChurned",
         "partialOnCodeLines": -0.768,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.678,
+        "pooledPartialOnCodeLines": -0.525,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       },
       {
         "correlation": 0.714,
@@ -188,7 +269,11 @@
         "measure": "priorChanges",
         "outcome": "linesChurned",
         "partialOnCodeLines": -0.221,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.584,
+        "pooledPartialOnCodeLines": 0.018,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       },
       {
         "correlation": 0.682,
@@ -196,7 +281,11 @@
         "measure": "hotspot",
         "outcome": "linesChurned",
         "partialOnCodeLines": -0.777,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.558,
+        "pooledPartialOnCodeLines": -0.142,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       },
       {
         "correlation": 0.276,
@@ -204,7 +293,11 @@
         "measure": "codeLines",
         "outcome": "linesPerChange",
         "partialOnCodeLines": null,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.275,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 66
       },
       {
         "correlation": null,
@@ -212,7 +305,11 @@
         "measure": "functions",
         "outcome": "linesPerChange",
         "partialOnCodeLines": null,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": null,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 66
       },
       {
         "correlation": 0.064,
@@ -220,7 +317,11 @@
         "measure": "cyclomaticSum",
         "outcome": "linesPerChange",
         "partialOnCodeLines": -0.832,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.064,
+        "pooledPartialOnCodeLines": -0.648,
+        "pooledPeriods": 3,
+        "pooledSamples": 66
       },
       {
         "correlation": 0.064,
@@ -228,7 +329,11 @@
         "measure": "cyclomaticMean",
         "outcome": "linesPerChange",
         "partialOnCodeLines": -0.832,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.064,
+        "pooledPartialOnCodeLines": -0.648,
+        "pooledPeriods": 3,
+        "pooledSamples": 66
       },
       {
         "correlation": 0.064,
@@ -236,7 +341,11 @@
         "measure": "cyclomaticMax",
         "outcome": "linesPerChange",
         "partialOnCodeLines": -0.832,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.064,
+        "pooledPartialOnCodeLines": -0.648,
+        "pooledPeriods": 3,
+        "pooledSamples": 66
       },
       {
         "correlation": 0.067,
@@ -244,7 +353,11 @@
         "measure": "shareAbove",
         "outcome": "linesPerChange",
         "partialOnCodeLines": -0.292,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.067,
+        "pooledPartialOnCodeLines": -0.287,
+        "pooledPeriods": 3,
+        "pooledSamples": 66
       },
       {
         "correlation": 0.064,
@@ -252,7 +365,11 @@
         "measure": "cognitiveSum",
         "outcome": "linesPerChange",
         "partialOnCodeLines": -0.832,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.064,
+        "pooledPartialOnCodeLines": -0.648,
+        "pooledPeriods": 3,
+        "pooledSamples": 66
       },
       {
         "correlation": 0.064,
@@ -260,7 +377,11 @@
         "measure": "cognitiveMax",
         "outcome": "linesPerChange",
         "partialOnCodeLines": -0.832,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.064,
+        "pooledPartialOnCodeLines": -0.648,
+        "pooledPeriods": 3,
+        "pooledSamples": 66
       },
       {
         "correlation": 0.064,
@@ -268,7 +389,11 @@
         "measure": "indentation",
         "outcome": "linesPerChange",
         "partialOnCodeLines": -0.832,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.064,
+        "pooledPartialOnCodeLines": -0.648,
+        "pooledPeriods": 3,
+        "pooledSamples": 66
       },
       {
         "correlation": 0.019,
@@ -276,7 +401,11 @@
         "measure": "priorChanges",
         "outcome": "linesPerChange",
         "partialOnCodeLines": -0.566,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.016,
+        "pooledPartialOnCodeLines": -0.264,
+        "pooledPeriods": 3,
+        "pooledSamples": 66
       },
       {
         "correlation": 0.029,
@@ -284,7 +413,11 @@
         "measure": "hotspot",
         "outcome": "linesPerChange",
         "partialOnCodeLines": -0.838,
-        "periods": 3
+        "periods": 3,
+        "pooledCorrelation": 0.024,
+        "pooledPartialOnCodeLines": -0.3,
+        "pooledPeriods": 3,
+        "pooledSamples": 66
       },
       {
         "correlation": null,
@@ -292,7 +425,11 @@
         "measure": "codeLines",
         "outcome": "fixShare",
         "partialOnCodeLines": null,
-        "periods": 0
+        "periods": 0,
+        "pooledCorrelation": -0.14,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 47
       },
       {
         "correlation": null,
@@ -300,7 +437,11 @@
         "measure": "functions",
         "outcome": "fixShare",
         "partialOnCodeLines": null,
-        "periods": 0
+        "periods": 0,
+        "pooledCorrelation": null,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 47
       },
       {
         "correlation": null,
@@ -308,7 +449,11 @@
         "measure": "cyclomaticSum",
         "outcome": "fixShare",
         "partialOnCodeLines": null,
-        "periods": 0
+        "periods": 0,
+        "pooledCorrelation": -0.083,
+        "pooledPartialOnCodeLines": 0.085,
+        "pooledPeriods": 3,
+        "pooledSamples": 47
       },
       {
         "correlation": null,
@@ -316,7 +461,11 @@
         "measure": "cyclomaticMean",
         "outcome": "fixShare",
         "partialOnCodeLines": null,
-        "periods": 0
+        "periods": 0,
+        "pooledCorrelation": -0.083,
+        "pooledPartialOnCodeLines": 0.085,
+        "pooledPeriods": 3,
+        "pooledSamples": 47
       },
       {
         "correlation": null,
@@ -324,7 +473,11 @@
         "measure": "cyclomaticMax",
         "outcome": "fixShare",
         "partialOnCodeLines": null,
-        "periods": 0
+        "periods": 0,
+        "pooledCorrelation": -0.083,
+        "pooledPartialOnCodeLines": 0.085,
+        "pooledPeriods": 3,
+        "pooledSamples": 47
       },
       {
         "correlation": null,
@@ -332,7 +485,11 @@
         "measure": "shareAbove",
         "outcome": "fixShare",
         "partialOnCodeLines": null,
-        "periods": 0
+        "periods": 0,
+        "pooledCorrelation": 0.005,
+        "pooledPartialOnCodeLines": 0.083,
+        "pooledPeriods": 3,
+        "pooledSamples": 47
       },
       {
         "correlation": null,
@@ -340,7 +497,11 @@
         "measure": "cognitiveSum",
         "outcome": "fixShare",
         "partialOnCodeLines": null,
-        "periods": 0
+        "periods": 0,
+        "pooledCorrelation": -0.083,
+        "pooledPartialOnCodeLines": 0.085,
+        "pooledPeriods": 3,
+        "pooledSamples": 47
       },
       {
         "correlation": null,
@@ -348,7 +509,11 @@
         "measure": "cognitiveMax",
         "outcome": "fixShare",
         "partialOnCodeLines": null,
-        "periods": 0
+        "periods": 0,
+        "pooledCorrelation": -0.083,
+        "pooledPartialOnCodeLines": 0.085,
+        "pooledPeriods": 3,
+        "pooledSamples": 47
       },
       {
         "correlation": null,
@@ -356,7 +521,11 @@
         "measure": "indentation",
         "outcome": "fixShare",
         "partialOnCodeLines": null,
-        "periods": 0
+        "periods": 0,
+        "pooledCorrelation": -0.083,
+        "pooledPartialOnCodeLines": 0.085,
+        "pooledPeriods": 3,
+        "pooledSamples": 47
       },
       {
         "correlation": null,
@@ -364,7 +533,11 @@
         "measure": "priorChanges",
         "outcome": "fixShare",
         "partialOnCodeLines": null,
-        "periods": 0
+        "periods": 0,
+        "pooledCorrelation": 0.005,
+        "pooledPartialOnCodeLines": 0.09,
+        "pooledPeriods": 3,
+        "pooledSamples": 47
       },
       {
         "correlation": null,
@@ -372,16 +545,153 @@
         "measure": "hotspot",
         "outcome": "fixShare",
         "partialOnCodeLines": null,
-        "periods": 0
+        "periods": 0,
+        "pooledCorrelation": -0.099,
+        "pooledPartialOnCodeLines": -0.003,
+        "pooledPeriods": 3,
+        "pooledSamples": 47
+      },
+      {
+        "correlation": 0.051,
+        "fileSamples": 72,
+        "measure": "codeLines",
+        "outcome": "fixesPerLine",
+        "partialOnCodeLines": null,
+        "periods": 3,
+        "pooledCorrelation": 0.048,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": null,
+        "fileSamples": 72,
+        "measure": "functions",
+        "outcome": "fixesPerLine",
+        "partialOnCodeLines": null,
+        "periods": 3,
+        "pooledCorrelation": null,
+        "pooledPartialOnCodeLines": null,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": 0.127,
+        "fileSamples": 72,
+        "measure": "cyclomaticSum",
+        "outcome": "fixesPerLine",
+        "partialOnCodeLines": 0.393,
+        "periods": 3,
+        "pooledCorrelation": 0.123,
+        "pooledPartialOnCodeLines": 0.273,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": 0.127,
+        "fileSamples": 72,
+        "measure": "cyclomaticMean",
+        "outcome": "fixesPerLine",
+        "partialOnCodeLines": 0.393,
+        "periods": 3,
+        "pooledCorrelation": 0.123,
+        "pooledPartialOnCodeLines": 0.273,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": 0.127,
+        "fileSamples": 72,
+        "measure": "cyclomaticMax",
+        "outcome": "fixesPerLine",
+        "partialOnCodeLines": 0.393,
+        "periods": 3,
+        "pooledCorrelation": 0.123,
+        "pooledPartialOnCodeLines": 0.273,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": 0.178,
+        "fileSamples": 72,
+        "measure": "shareAbove",
+        "outcome": "fixesPerLine",
+        "partialOnCodeLines": 0.26,
+        "periods": 3,
+        "pooledCorrelation": 0.173,
+        "pooledPartialOnCodeLines": 0.246,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": 0.127,
+        "fileSamples": 72,
+        "measure": "cognitiveSum",
+        "outcome": "fixesPerLine",
+        "partialOnCodeLines": 0.393,
+        "periods": 3,
+        "pooledCorrelation": 0.123,
+        "pooledPartialOnCodeLines": 0.273,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": 0.127,
+        "fileSamples": 72,
+        "measure": "cognitiveMax",
+        "outcome": "fixesPerLine",
+        "partialOnCodeLines": 0.393,
+        "periods": 3,
+        "pooledCorrelation": 0.123,
+        "pooledPartialOnCodeLines": 0.273,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": 0.127,
+        "fileSamples": 72,
+        "measure": "indentation",
+        "outcome": "fixesPerLine",
+        "partialOnCodeLines": 0.393,
+        "periods": 3,
+        "pooledCorrelation": 0.123,
+        "pooledPartialOnCodeLines": 0.273,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": 0.522,
+        "fileSamples": 72,
+        "measure": "priorChanges",
+        "outcome": "fixesPerLine",
+        "partialOnCodeLines": 0.681,
+        "periods": 3,
+        "pooledCorrelation": 0.424,
+        "pooledPartialOnCodeLines": 0.563,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
+      },
+      {
+        "correlation": 0.361,
+        "fileSamples": 72,
+        "measure": "hotspot",
+        "outcome": "fixesPerLine",
+        "partialOnCodeLines": 0.391,
+        "periods": 3,
+        "pooledCorrelation": 0.291,
+        "pooledPartialOnCodeLines": 0.397,
+        "pooledPeriods": 3,
+        "pooledSamples": 72
       }
     ],
     "limits": [
       "A correlation says how well a measure orders the files by what followed. It does not say the measure caused it, and it is not a threshold for any measure.",
       "A larger file is touched by more changes because there is more of it. The partial correlation holds code lines fixed, and is the figure that says whether a measure adds anything to size.",
-      "The unit is a file. Whether a function's complexity predicts changes to that function is not measured.",
+      "The unit is a file. `--unit function` measures functions instead.",
       "Changes are counted for the files that had a measured function at the sample. A file added after the sample, or read by the lexical layer alone, is not in the period.",
       "A change with more files than `history.maxChangesetSize` is left out, as are commits made through the suite's skills.",
       "A fix is a landed change whose text matches `history.fixPatterns`. Some matches are not defects, and a repository that does not name its fixes gives no fix share.",
+      "The pooled figures rank each sample within its own period and then take one correlation over every period, so a period with too few samples to count on its own still adds to them. Samples of the same file or function in several periods are not independent, so the pooled sample size overstates the evidence.",
       "Every sample is read with the config of the checkout and the parsers of this version, not those of the time."
     ],
     "measures": {
@@ -402,6 +712,7 @@
     "outcomes": {
       "changes": "Landed changes that touched the file, over every file",
       "fixShare": "Share of the file's landed changes that are fixes, over the files with at least the minimum number of changes",
+      "fixesPerLine": "Landed changes that are fixes and touched the file, per code line at the sample, over every file",
       "linesChurned": "Lines added plus deleted in the file, over every file",
       "linesPerChange": "Lines added plus deleted per landed change, over the files that changed"
     },

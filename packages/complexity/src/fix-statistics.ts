@@ -12,7 +12,7 @@ import { readBlobs, restrictTree, treeFromTexts, type SourceTree } from "@code-h
 import type { ComplexitySettings } from "./config.ts";
 import { pathSelector } from "./current-tree.ts";
 import { parseDiffs, touchedUnits, type FileDiff } from "./fix-ranges.ts";
-import { matchUnits, type BodyCache } from "./match-units.ts";
+import { followUnits, type BodyCache } from "./match-units.ts";
 import { measureTree, type FileRecord, type UnitRecord } from "./measure.ts";
 
 /** Rows kept in each secondary list, deleted units and files with fixes outside any unit. The output says how many were left out. */
@@ -134,29 +134,6 @@ export function byFixes(minRevisions: number): (a: UnitFixes, b: UnitFixes) => n
     Number(isLowEvidence(a, minRevisions)) - Number(isLowEvidence(b, minRevisions)) ||
     (b.fixShare ?? 0) - (a.fixShare ?? 0) ||
     utf8(a.id, b.id);
-}
-
-/**
- * Matches some units of an earlier revision of a file with some of a later one. The earlier units are given the later path first, so
- * a file renamed in git keeps its functions by identity and only a function renamed inside it is matched by body. Returns, for each
- * earlier unit, the later unit it became, or undefined when none did.
- */
-function followUnits(
-  earlier: FileRecord,
-  earlierUnits: readonly UnitRecord[],
-  later: FileRecord,
-  laterUnits: readonly UnitRecord[],
-  threshold: number,
-  cache: BodyCache,
-): { before: UnitRecord; after: UnitRecord | undefined }[] {
-  const original = new Map<string, UnitRecord>();
-  const moved = earlierUnits.map((unit) => {
-    const relocated = { ...unit, path: later.path, id: `${later.path}${unit.id.slice(earlier.path.length)}` };
-    original.set(relocated.id, unit);
-    return relocated;
-  });
-  const matches = matchUnits([{ ...earlier, path: later.path, units: moved }], [{ ...later, units: [...laterUnits] }], threshold, cache);
-  return matches.flatMap((match) => (match.before === undefined ? [] : [{ before: original.get(match.before.id)!, after: match.after }]));
 }
 
 async function diffsOf(root: string, shas: readonly string[]): Promise<Map<string, Map<string, FileDiff>>> {

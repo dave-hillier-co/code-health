@@ -1,6 +1,12 @@
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { ExitCode } from "@code-health/cli-kit/errors";
 import { GitFixture } from "@code-health/fixtures/git-fixture";
+import { loadConfig } from "@code-health/cli-kit/config";
+import { treeFromRef } from "@code-health/parse/source-tree";
+import { fileSamples } from "../src/backtest.ts";
+import { complexityConfig, readSettings } from "../src/config.ts";
+import { followedUnits } from "../src/function-history.ts";
+import { measureTree } from "../src/measure.ts";
 import { runComplexity } from "./support/run.ts";
 
 /** A Rust file whose unit tests sit in a `#[cfg(test)]` module of the same file. */
@@ -72,4 +78,13 @@ test("report xray lists the file's production functions and counts its test func
   expect(run.code).toBe(ExitCode.Success);
   expect(run.stdout).not.toContain("tests.helper");
   expect(run.stdout).toContain("Test functions left out");
+});
+
+test("the backtest measures the file by its production code: its code lines, and in function mode its production functions", async () => {
+  const settings = readSettings(loadConfig(repo.path, complexityConfig));
+  const tree = await treeFromRef(repo.path, "HEAD");
+  const auto = await measureTree(tree, { settings, layer: "auto" });
+  expect(fileSamples(auto.files, settings)).toMatchObject([{ path: "src/lib.rs", codeLines: 7, functions: 1, cyclomaticSum: 2 }]);
+  const structural = await measureTree(tree, { settings, layer: "structural" });
+  expect(followedUnits(structural.files.find((file) => file.path === "src/lib.rs")!).map((unit) => [unit.name, unit.values.length])).toEqual([["double", 7]]);
 });

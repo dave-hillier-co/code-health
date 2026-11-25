@@ -40,28 +40,60 @@ describe("correlate", () => {
 
   test("gives one row per outcome and measure, within periods and never across them", () => {
     // The second period is ten times busier and larger, which would link size and change if the periods were pooled.
-    const rows = correlate([period(0), period(1000).map((f) => ({ ...f, changes: f.changes * 10, linesChurned: f.linesChurned * 10 }))], 5, 4);
+    const rows = correlate([period(0), period(1000).map((f) => ({ ...f, changes: f.changes * 10, linesChurned: f.linesChurned * 10 }))], MEASURES, 5, 4);
     expect(rows).toHaveLength(OUTCOMES.length * MEASURES.length);
     const of = (outcome: string, measure: string) => rows.find((row) => row.outcome === outcome && row.measure === measure)!;
-    expect(of("changes", "codeLines")).toEqual({ outcome: "changes", measure: "codeLines", correlation: 1, partialOnCodeLines: null, fileSamples: 10, periods: 2 });
+    expect(of("changes", "codeLines")).toEqual({
+      outcome: "changes",
+      measure: "codeLines",
+      correlation: 1,
+      partialOnCodeLines: null,
+      samples: 10,
+      periods: 2,
+      pooledCorrelation: 1,
+      pooledPartialOnCodeLines: null,
+      pooledSamples: 10,
+      pooledPeriods: 2,
+    });
     expect(of("changes", "cyclomaticMax").correlation).toBe(-1);
     // A measure with no variation in any period has no correlation.
-    expect(of("changes", "functions")).toMatchObject({ correlation: null, partialOnCodeLines: null, fileSamples: 10 });
+    expect(of("changes", "functions")).toMatchObject({ correlation: null, partialOnCodeLines: null, samples: 10, pooledCorrelation: null });
   });
 
   test("a period in which too few files changed is left out, so a quiet period does not count for as much as a busy one", () => {
     const quiet = period(0).map((f, i) => ({ ...f, changes: i === 0 ? 1 : 0, linesChurned: i === 0 ? 3 : 0, fixes: 0 }));
-    const rows = correlate([period(0), quiet], 5, 4);
-    expect(rows.find((row) => row.outcome === "changes" && row.measure === "codeLines")).toMatchObject({ correlation: 1, fileSamples: 5, periods: 1 });
+    const rows = correlate([period(0), quiet], MEASURES, 5, 4);
+    expect(rows.find((row) => row.outcome === "changes" && row.measure === "codeLines")).toMatchObject({ correlation: 1, samples: 5, periods: 1 });
   });
 
   test("lines per change covers the files that changed, fix share the files with enough changes, and a small period is left out", () => {
-    const rows = correlate([period(0)], 2, 4);
+    const rows = correlate([period(0)], MEASURES, 2, 4);
     const of = (outcome: string) => rows.find((row) => row.outcome === outcome && row.measure === "codeLines")!;
-    expect(of("linesPerChange").fileSamples).toBe(5);
+    expect(of("linesPerChange").samples).toBe(5);
     // Two files have four or more changes, and both have one fix: fix shares of 1/4 and 1/5.
-    expect(of("fixShare")).toMatchObject({ fileSamples: 2, correlation: -1 });
-    expect(correlate([period(0)], 6, 4).every((row) => row.fileSamples === 0 && row.correlation === null && row.periods === 0)).toBe(true);
+    expect(of("fixShare")).toMatchObject({ samples: 2, correlation: -1 });
+    const small = correlate([period(0)], MEASURES, 6, 4);
+    expect(small.every((row) => row.samples === 0 && row.correlation === null && row.periods === 0)).toBe(true);
+    // Below the minimum the pooled figures are null too, with the samples they would rest on stated.
+    expect(small.every((row) => row.pooledCorrelation === null && row.pooledPartialOnCodeLines === null)).toBe(true);
+    expect(small.find((row) => row.outcome === "changes")!.pooledSamples).toBe(5);
+  });
+
+  test("fixes per line divides a sample's fixes by its code lines, over every sample", () => {
+    const rows = correlate([period(0)], MEASURES, 2, 4);
+    // The two files with a fix are the two largest, and a fix in a larger file is a smaller share of its lines: 1/40 and 1/50.
+    expect(rows.find((row) => row.outcome === "fixesPerLine" && row.measure === "codeLines")).toMatchObject({ samples: 5, periods: 1 });
+    expect(rows.find((row) => row.outcome === "fixesPerLine" && row.measure === "codeLines")!.correlation).toBeGreaterThan(0.5);
+  });
+
+  test("pooling ranks each sample within its period, so periods too small on their own add up, and a busier period is not a link", () => {
+    // Four periods of five files: each is below a minimum of ten, and together they reach it.
+    const periods = [0, 1, 2, 3].map((k) => period(k * 1000).map((f) => ({ ...f, changes: f.changes * (k + 1) })));
+    const rows = correlate(periods, MEASURES, 10, 4);
+    const row = rows.find((candidate) => candidate.outcome === "changes" && candidate.measure === "codeLines")!;
+    expect(row).toMatchObject({ correlation: null, samples: 0, periods: 0, pooledCorrelation: 1, pooledSamples: 20, pooledPeriods: 4 });
+    // Within each period the largest cyclomatic complexity falls as the changes rise; across periods both rise, and pooling keeps the fall.
+    expect(rows.find((candidate) => candidate.outcome === "changes" && candidate.measure === "cyclomaticMax")!.pooledCorrelation).toBe(-1);
   });
 });
 

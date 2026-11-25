@@ -4,6 +4,8 @@ import type { UnitRecord } from "./measure.ts";
 export interface ChangedRange {
   start: number;
   count: number;
+  /** Lines of the earlier revision the range replaced. */
+  removed?: number;
 }
 
 /** What `git diff-tree -p -U0` says one commit did to one file, by the file's new path. */
@@ -12,18 +14,25 @@ export interface FileDiff {
   added: boolean;
   /** The blob of the file before the commit, from the diff's `index` line, when it names one. */
   oldBlob?: string;
+  /** The blob of the file after the commit, from the same line. Absent for a rename that changed nothing in the file. */
+  newBlob?: string;
+  /** The file's path before the commit, when it had one: the same path, or the one it was renamed from. */
+  oldPath?: string;
+  /** The commit deleted the file. The entry is keyed by the deleted path and has no ranges. */
+  deleted?: true;
   ranges: ChangedRange[];
 }
 
 const COMMIT_LINE = /^[0-9a-f]{40}$/;
-const INDEX = /^index ([0-9a-f]+)\.\.[0-9a-f]+/;
+const INDEX = /^index ([0-9a-f]+)\.\.([0-9a-f]+)/;
 const NO_BLOB = /^0+$/;
-const HUNK = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/;
+const HUNK = /^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 
 /**
  * Parses the output of `git diff-tree --stdin -p -U0 -M --full-index`: for each commit a line with its id, then a diff against
- * its first parent. A path git quotes (a name with a quote, backslash or control character) is left out, so its changes
- * count for nothing, and a deleted file has no new revision to map.
+ * its first parent (or against the commit given after it on the same input line). A path git quotes (a name with a quote,
+ * backslash or control character) is left out, so its changes count for nothing. A deleted file has no new revision to map,
+ * and is listed by the path it had. A rename that changed nothing in the file has no ranges.
  */
 export function parseDiffs(output: string): Map<string, Map<string, FileDiff>> {
   const commits = new Map<string, Map<string, FileDiff>>();
@@ -31,6 +40,10 @@ export function parseDiffs(output: string): Map<string, Map<string, FileDiff>> {
   let file: FileDiff | undefined;
   let added = false;
   let oldBlob: string | undefined;
+  let newBlob: string | undefined;
+  let oldPath: string | undefined;
+  // A removed or added line can start with "--- " or "+++ ", so those are headers only before the first hunk of a file.
+  let inHunks = false;
   for (const line of output.split("\n")) {
     if (COMMIT_LINE.test(line)) {
       files = new Map();
@@ -40,21 +53,41 @@ export function parseDiffs(output: string): Map<string, Map<string, FileDiff>> {
       file = undefined;
       added = false;
       oldBlob = undefined;
+      newBlob = undefined;
+      oldPath = undefined;
+      inHunks = false;
     } else if (line.startsWith("new file mode")) {
       added = true;
+    } else if (line.startsWith("rename from ")) {
+      oldPath = line.slice("rename from ".length);
+    } else if (line.startsWith("rename to ")) {
+      const target = line.slice("rename to ".length);
+      if (files !== undefined && oldPath !== undefined && !oldPath.startsWith('"') && !target.startsWith('"')) {
+        file = { added: false, oldPath, ranges: [] };
+        files.set(target, file);
+      }
     } else if (INDEX.test(line)) {
-      const old = INDEX.exec(line)![1]!;
-      if (!NO_BLOB.test(old)) oldBlob = old;
-    } else if (line.startsWith("+++ ")) {
+      const [, old, next] = INDEX.exec(line)!;
+      if (!NO_BLOB.test(old!)) oldBlob = old;
+      if (!NO_BLOB.test(next!)) newBlob = next;
+    } else if (!inHunks && line.startsWith("--- ")) {
+      const source = line.slice(4).replace(/\t$/, "");
+      if (source.startsWith("a/")) oldPath = source.slice(2);
+    } else if (!inHunks && line.startsWith("+++ ")) {
       const target = line.slice(4).replace(/\t$/, "");
       file = undefined;
       if (files !== undefined && target.startsWith("b/")) {
-        file = { added, ...(oldBlob === undefined ? {} : { oldBlob }), ranges: [] };
+        file = { added, ...(oldBlob === undefined ? {} : { oldBlob }), ...(newBlob === undefined ? {} : { newBlob }), ...(added || oldPath === undefined ? {} : { oldPath }), ranges: [] };
         files.set(target.slice(2), file);
+      } else if (files !== undefined && target === "/dev/null" && oldPath !== undefined) {
+        files.set(oldPath, { added: false, ...(oldBlob === undefined ? {} : { oldBlob }), oldPath, deleted: true, ranges: [] });
       }
     } else if (file !== undefined) {
       const hunk = HUNK.exec(line);
-      if (hunk !== null) file.ranges.push({ start: Number(hunk[1]), count: hunk[2] === undefined ? 1 : Number(hunk[2]) });
+      if (hunk !== null) {
+        inHunks = true;
+        file.ranges.push({ start: Number(hunk[2]), count: hunk[3] === undefined ? 1 : Number(hunk[3]), removed: hunk[1] === undefined ? 1 : Number(hunk[1]) });
+      }
     }
   }
   return commits;
