@@ -14,11 +14,13 @@ concurrency:
 
 jobs:
   check:
-    # The owner's self-hosted Mac mini, to save hosted-runner minutes.
-    # Pull requests from forks never run here, so outside code cannot
-    # execute on that machine if the repository is ever made public.
+    # The owner's self-hosted Mac minis, to save hosted-runner minutes: any
+    # runner in the organisation's Default group, whatever labels it has, so
+    # the job runs on whichever machine is online. Pull requests from forks
+    # never run here, so outside code cannot execute on those machines.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, macOS, ARM64]
+    runs-on:
+      group: Default
     steps:
       - uses: actions/checkout@v4
         with:
