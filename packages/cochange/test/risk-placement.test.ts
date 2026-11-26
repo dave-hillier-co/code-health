@@ -282,15 +282,8 @@ describe("reviewers", () => {
     return { code, stdout, stderr, areas: results?.areas, basis: results?.basis };
   }
 
-  test("without --names the areas are listed with counts of who could review them, and no one is named", async () => {
-    const { areas, stdout, basis } = await reviewers("main..dave");
-    expect(basis).toBe("blame");
-    expect(areas).toEqual([{ area: "src/ledger", files: 1, coupledFiles: 0, candidates: 2, suggested: null }]);
-    expect(stdout).not.toMatch(/Bob|Alice|@example\.com/);
-  });
-
-  test("with --names they are the active developers who last wrote the touched files, most lines first", async () => {
-    const { areas } = await reviewers("main..dave", "--names");
+  test("they are the active developers who last wrote the touched files, most lines first", async () => {
+    const { areas } = await reviewers("main..dave");
     expect(areas[0]!.suggested).toEqual([
       { name: "Bob", email: "bob@example.com", authorship: 0.6, coupledChanges: 0 },
       { name: "Alice", email: "alice@example.com", authorship: 0.4, coupledChanges: 0 },
@@ -298,7 +291,7 @@ describe("reviewers", () => {
   });
 
   test("the change's own authors are not suggested to review it", async () => {
-    const { areas } = await reviewers("main..alice", "--names");
+    const { areas } = await reviewers("main..alice");
     expect(areas[0]!.suggested!.map((c) => c.name)).toEqual(["Bob"]);
   });
 
@@ -309,7 +302,7 @@ describe("reviewers", () => {
     const before = readFileSync(file, "utf8");
     writeFileSync(file, `${before}// an uncommitted edit\n`);
     try {
-      const named = await reviewers("main", "--worktree", "--names");
+      const named = await reviewers("main", "--worktree");
       expect(named.code).toBe(ExitCode.Success);
       expect(named.areas[0]!.suggested!.map((c) => c.name)).toEqual(["Alice"]);
       const counted = await reviewers("main", "--worktree");
@@ -321,13 +314,13 @@ describe("reviewers", () => {
 
   test("a bot is never suggested, and its lines belong to nobody", async () => {
     writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { risk: { newIdentityChanges: 2 }, botPatterns: ["^Bob "] } }));
-    const { areas } = await reviewers("main..dave", "--names");
+    const { areas } = await reviewers("main..dave");
     expect(areas[0]!.suggested!.map((c) => c.name)).toEqual(["Alice"]);
   });
 
   test("a developer who has left the recent window is not active, so not suggested", async () => {
     writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { knowledge: { activityWindowMonths: 1 }, risk: { newIdentityChanges: 2 } } }));
-    const { areas } = await reviewers("main..dave", "--names");
+    const { areas } = await reviewers("main..dave");
     expect(areas[0]).toMatchObject({ candidates: 0, suggested: [] });
   });
 
@@ -344,14 +337,13 @@ describe("reviewers", () => {
   });
 
   test("the suggestions, byte for byte", async () => {
-    const { stdout } = await runCochange(repo.path, ["risk", "reviewers", "main..dave", "--names"]);
+    const { stdout } = await runCochange(repo.path, ["risk", "reviewers", "main..dave"]);
     expectGolden("placement", "risk.reviewers", stdout);
   });
 });
 
-describe("a sweep for names", () => {
-  const people = /Alice|Bob|Carol|Dave|@example\.com/;
-  // Every subcommand and every branch, in JSON and in the terminal table. Only `reviewers --names` may name anyone.
+describe("what risk stores", () => {
+  // Every subcommand and every branch.
   const commands: string[][] = [
     ["risk", "main..alice"],
     ["risk", "main..bob"],
@@ -370,27 +362,11 @@ describe("a sweep for names", () => {
     return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => (entry.isDirectory() ? filesUnder(join(directory, entry.name)) : [join(directory, entry.name)]));
   }
 
-  test.each(["self", "any"])("with placement %s no risk output names a developer or prints an address", async (placement) => {
-    config({ placement });
-    for (const argv of commands) {
-      for (const run of [await runCochange(repo.path, argv), await runCochange(repo.path, [...argv, "--json"]), await runCochangeOnTerminal(repo.path, argv)]) {
-        expect(`${run.stdout}\n${run.stderr}`, argv.join(" ")).not.toMatch(people);
-      }
-    }
-  }, 180_000);
-
-  test("only --names names anyone, and only the developers who could review", async () => {
-    config({ placement: "any" });
-    const { stdout } = await runCochange(repo.path, ["risk", "reviewers", "main..dave", "--names", "--json"]);
-    expect(stdout).toMatch(/Bob|Alice/);
-    expect(stdout).not.toMatch(/Carol|Dave/);
-  });
-
   // The history cache holds commit authors by design, to count them. What risk adds to disk is the blame cache and the stored reports.
   test("the blame cache and the stored reports carry no address or name, whichever commands ran", async () => {
     config({ placement: "any" });
     for (const argv of commands) await runCochange(repo.path, argv);
-    await runCochange(repo.path, ["risk", "reviewers", "main..dave", "--names"]);
+    await runCochange(repo.path, ["risk", "reviewers", "main..dave"]);
     const cache = join(repo.path, ".cache", "code-health");
     const files = [join(cache, "blame.sqlite"), ...filesUnder(join(cache, "reports"))];
     expect(files.length).toBeGreaterThan(1);

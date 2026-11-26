@@ -1,7 +1,7 @@
 schema_version: "1.0"
 name: identities-lone-name-pair
 description: Two authors share only a name. The skill must ask the user about the pair and must not write a mapping that merges them.
-tags: [identities, behaviour]
+tags: [identities, behaviour, negative]
 plugins: [cochange]
 context:
   scaffold_script: scaffold.sh

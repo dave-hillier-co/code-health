@@ -92,11 +92,10 @@ describe("without the sibling plugins", () => {
     expect(factor(await risk("main..quiet"), "complexity-delta").value).toMatchObject({ count: 0 });
   });
 
-  test("structure-delta and abandoned-touched are unavailable, never low, and say what would supply them", async () => {
+  test("structure-delta is unavailable, never low, and says what would supply it", async () => {
     const result = await risk("main..nest");
     expect(factor(result, "structure-delta")).toMatchObject({ status: "unavailable", band: null });
     expect(factor(result, "structure-delta").reason).toMatch(/--evidence/);
-    expect(factor(result, "abandoned-touched")).toMatchObject({ status: "unavailable", band: null });
   });
 });
 

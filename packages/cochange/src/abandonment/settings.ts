@@ -16,7 +16,7 @@ export type RankMode = (typeof RANK_MODES)[number];
  * people (see the privacy rules of the abandonment spec).
  */
 export const KNOWLEDGE_DEFAULTS = {
-  enabled: false,
+  enabled: true,
   /** Months without a commit after which a developer counts as having left. */
   activityWindowMonths: 6,
   /** Months in one period of the turnover rate. */
@@ -127,7 +127,7 @@ export function readKnowledgeSettings(effective: Record<string, unknown>): Knowl
   const ratio = section.concentratedTailRatio;
   if (typeof ratio !== "number" || !(ratio >= 1)) throw configError(`code-health.json: ${at("concentratedTailRatio")} must be a number of at least 1`);
   return {
-    enabled: section.enabled === true,
+    enabled: section.enabled !== false,
     activityWindowMonths: whole("activityWindowMonths", 1),
     periodMonths: whole("periodMonths", 1),
     horizonPeriods: whole("horizonPeriods", 1),
@@ -156,8 +156,8 @@ export function readKnowledgeSettings(effective: Record<string, unknown>): Knowl
 }
 
 /**
- * The privacy gate. Every command of the abandonment analysis starts here and
- * stops with a usage error unless the repository's own config has opted in.
+ * Every command of the abandonment analysis starts here, and stops with a usage
+ * error when the repository's config sets `cochange.knowledge.enabled` to false.
  */
 export function requireKnowledge(context: CommandContext): KnowledgeSettings {
   const settings = readKnowledgeSettings(context.config.effective);
@@ -165,7 +165,7 @@ export function requireKnowledge(context: CommandContext): KnowledgeSettings {
     throw new CliError(
       ExitCode.Usage,
       "knowledge-disabled",
-      "the abandonment analysis is off by default because it reasons about people; set cochange.knowledge.enabled to true in code-health.json to opt in",
+      "the abandonment analysis is switched off in code-health.json (cochange.knowledge.enabled is false)",
     );
   }
   return settings;

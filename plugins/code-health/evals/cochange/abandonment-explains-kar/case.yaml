@@ -25,11 +25,6 @@ graders:
     input_match: "cochange\\.mjs identities check"
     min: 1
     arm: with-only
-  - type: tool_used
-    name: no-names-were-asked-for
-    tool: Bash
-    input_match: "--names|identities list|git shortlog"
-    max: 0
   - type: llm
     name: explains-expected-loss-and-knowledge-at-risk
     criteria: >-

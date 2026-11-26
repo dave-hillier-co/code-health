@@ -448,17 +448,28 @@
         "value": {}
       },
       {
-        "band": null,
+        "band": "low",
         "evidence": [],
         "family": "history",
-        "guidelines": {},
+        "guidelines": {
+          "count": {
+            "high": 3,
+            "moderate": 1
+          }
+        },
         "layer": "history",
         "name": "abandoned-touched",
-        "reason": "knowledge analysis is not enabled (cochange.knowledge.enabled)",
+        "reason": null,
         "scored": false,
         "source": "knowledge analysis",
-        "status": "unavailable",
-        "value": {}
+        "status": "ok",
+        "value": {
+          "baseline": 0,
+          "count": 0,
+          "files": 1,
+          "margin": 0,
+          "unknown": 0
+        }
       }
     ],
     "findings": [],
@@ -648,7 +659,7 @@
           "recentChanges": 0
         }
       ],
-      "mode": "self",
+      "mode": "any",
       "newIdentity": true,
       "reason": null,
       "shares": {

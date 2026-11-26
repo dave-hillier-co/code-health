@@ -13,16 +13,14 @@ export const name = "successors";
 
 /**
  * Who could pick up a file's knowledge: active developers ranked by their changes to the files that
- * change with it, plus their own lines in it. Behind the privacy gate. Without `--names` a successor is
- * a rank and a score. With it the developer's name is shown, without the address, and only ever an active developer's:
- * the command never lists the people who have left, or the people whose departure would lose the most.
+ * change with it, plus their own lines in it. Each successor is named, without the address. Only active
+ * developers are candidates, because someone who has left cannot pick a file up.
  */
 export const command: Command = {
   summary: "Ranked successors for files at risk, from the files that change with them",
-  options: { names: { type: "boolean" }, top: { type: "string" }, "no-refresh": { type: "boolean" } },
+  options: { top: { type: "string" }, "no-refresh": { type: "boolean" } },
   async run(context) {
-    if (context.positionals.length === 0) throw usageError("usage: successors PATH... [--names]");
-    const names = context.values.names === true;
+    if (context.positionals.length === 0) throw usageError("usage: successors PATH...");
     const top = integerOption(context, "top", 5, 1, 1000);
     const p = await prepare(context);
     const { model } = p.knowledge;
@@ -45,7 +43,7 @@ export const command: Command = {
         noSuccessor: hasNoSuccessor(successors),
         successors: successors.slice(0, top).map((s, i) => ({
           rank: i + 1,
-          ...(names ? { developer: displayNameOf(s.developer) } : {}),
+          developer: displayNameOf(s.developer),
           score: s.score,
           coupledChanges: s.coupledChanges,
           ownShare: s.ownShare,
@@ -56,7 +54,6 @@ export const command: Command = {
     return {
       inputs: commonInputs(p, "successors", {
         paths: rows.map((r) => r.path),
-        names,
         top,
         minSupport: p.history.settings.minSupport,
       }),

@@ -75,23 +75,6 @@ test.each(Object.entries(smokeCommands))("%s runs after standalone installation 
     const run = (args: string[]) => spawnSync(process.execPath, [join(installed, "scripts", `${plugin}.mjs`), ...args, "--json"], { cwd: repo.path, encoding: "utf8", timeout: 60_000 });
     for (const args of commands) {
       const result = run(args);
-      if (name === "abandonment") {
-        expect(result.status).toBe(2);
-        expect(result.stderr + result.stdout).toContain("knowledge-disabled");
-        // Opt in only inside the disposable fixture, then exercise the blame runtime.
-        const configPath = join(repo.path, "code-health.json");
-        const previous = readFileSync(configPath, "utf8");
-        const config = JSON.parse(previous);
-        writeFileSync(configPath, JSON.stringify({ ...config, cochange: { knowledge: { enabled: true } } }));
-        try {
-          const enabled = run(args);
-          expect(enabled.status, enabled.stderr).toBe(0);
-          expect(JSON.parse(enabled.stdout).command).toBe("abandonment");
-        } finally {
-          writeFileSync(configPath, previous);
-        }
-        continue;
-      }
       expect(result.status, result.stderr).toBe(0);
       const document = JSON.parse(result.stdout);
       if (args[0] === "report") {

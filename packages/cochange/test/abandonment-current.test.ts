@@ -36,8 +36,8 @@ const paths = (document: { results: { path: string }[] }) => document.results.ma
 const abandonedRows = (document: { results: { path: string; abandoned: boolean; score: number }[] }) => document.results.filter((r) => r.abandoned);
 const abandonedPaths = (document: { results: { path: string; abandoned: boolean; score: number }[] }) => abandonedRows(document).map((r) => r.path);
 
-test("the analysis is off until the repository opts in, and says how", async () => {
-  writeFileSync(join(repo.path, "code-health.json"), "{}");
+test("the analysis refuses when the repository switches it off, and says which setting", async () => {
+  writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { knowledge: { enabled: false } } }));
   const { code, stderr, stdout } = await abandonment("current");
   expect(code).toBe(ExitCode.Usage);
   expect(stdout).toBe("");

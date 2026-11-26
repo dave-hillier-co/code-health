@@ -60,7 +60,7 @@ Commit counts are named for what they cover. `windowCommits` in `check` counts c
 
 | Command | Use |
 |---|---|
-| `identities check` | Conflicts, the unmapped identities (those holding lines or with many commits first, marked `aboveGuideline`), and the measurement. Lists 20 rows unless given `--limit all`. Exit 1 on conflicts only. A finding about a person with no commit in the activity window omits their name, address and last-active date and gives the count in `formerContributors`; `--names` prints them. |
+| `identities check` | Conflicts, the unmapped identities (those holding lines or with many commits first, marked `aboveGuideline`), and the measurement. Lists 20 rows unless given `--limit all`. Exit 1 on conflicts only. `formerContributors` counts the people a finding is about who have no commit in the activity window. |
 | `identities list [--unmapped]` | Every identity as written, with commits, dates, top areas and current mapping. |
 | `identities propose` | Clusters and chains with each link's signals and strength, strong clusters first. Each identity is in one cluster at most. Recorded rejections are left out. |
 | `identities classify` | Bot, service and agent candidates with the pattern that matched. |

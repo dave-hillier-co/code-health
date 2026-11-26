@@ -54,7 +54,7 @@ interface Area {
 }
 
 async function reviewers(range: string): Promise<{ areas: Area[]; note: string }> {
-  const { stdout } = await runCochange(repo.path, ["risk", "reviewers", range, "--names", "--json"]);
+  const { stdout } = await runCochange(repo.path, ["risk", "reviewers", range, "--json"]);
   return JSON.parse(stdout).results;
 }
 

@@ -37,7 +37,7 @@ const unavailable = (reason: string): Measurement => ({
 
 /**
  * Touched files that were already abandoned at the base, or are likely to be abandoned within the
- * horizon, when the repository has opted in to the knowledge analysis (`cochange.knowledge.enabled`).
+ * horizon, unless the repository switches the knowledge analysis off (`cochange.knowledge.enabled`).
  *
  * Abandonment output is never stored, so this is computed here from the blame cache of the touched files
  * at the base and the same model and simulation `abandonment` uses, judged at the date of the change's tip.
@@ -46,7 +46,7 @@ const unavailable = (reason: string): Measurement => ({
  */
 export async function abandonedTouched(context: CommandContext, history: LoadedHistory, change: BranchChange): Promise<AbandonedTouched> {
   const section = (context.config.effective[TOOL] as { knowledge?: { enabled?: unknown } }).knowledge;
-  if (section?.enabled !== true) return { measurement: unavailable("knowledge analysis is not enabled (cochange.knowledge.enabled)"), report: null };
+  if (section?.enabled === false) return { measurement: unavailable("knowledge analysis is switched off (cochange.knowledge.enabled is false)"), report: null };
   const settings = readKnowledgeSettings(context.config.effective);
   const root = context.repo.root;
 

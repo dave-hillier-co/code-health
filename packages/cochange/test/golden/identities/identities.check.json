@@ -2,7 +2,6 @@
   "command": "identities",
   "config": "0000000000000000",
   "inputs": {
-    "names": false,
     "subcommand": "check"
   },
   "measurement": {

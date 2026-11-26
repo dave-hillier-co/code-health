@@ -2090,7 +2090,7 @@ function writeDecisions(root, location, decisions) {
 var TOOL = "cochange";
 var RANK_MODES = ["hotspot", "abandonment"];
 var KNOWLEDGE_DEFAULTS = {
-  enabled: false,
+  enabled: true,
   /** Months without a commit after which a developer counts as having left. */
   activityWindowMonths: 6,
   /** Months in one period of the turnover rate. */
@@ -2163,7 +2163,7 @@ function readKnowledgeSettings(effective) {
   const ratio = section2.concentratedTailRatio;
   if (typeof ratio !== "number" || !(ratio >= 1)) throw configError(`code-health.json: ${at2("concentratedTailRatio")} must be a number of at least 1`);
   return {
-    enabled: section2.enabled === true,
+    enabled: section2.enabled !== false,
     activityWindowMonths: whole("activityWindowMonths", 1),
     periodMonths: whole("periodMonths", 1),
     horizonPeriods: whole("horizonPeriods", 1),
@@ -2196,7 +2196,7 @@ function requireKnowledge(context) {
     throw new CliError(
       ExitCode.Usage,
       "knowledge-disabled",
-      "the abandonment analysis is off by default because it reasons about people; set cochange.knowledge.enabled to true in code-health.json to opt in"
+      "the abandonment analysis is switched off in code-health.json (cochange.knowledge.enabled is false)"
     );
   }
   return settings;
@@ -2408,7 +2408,7 @@ var riskDefaults = {
   /** Backtest: a fix that touches a change's files within this many days counts as trouble. */
   followUpDays: 30,
   /** Whose placement `risk` computes: `self`, `any` or `off`. */
-  placement: "self",
+  placement: "any",
   /** Factors to switch off, by name. */
   disable: []
 };
@@ -2535,7 +2535,7 @@ var cochangeConfig = {
       /** Commits in the analysis window that make an unmapped identity significant, whether or not it holds lines. */
       significantCommits: 3
     },
-    /** The abandonment analysis. Off until `enabled` is true. */
+    /** The abandonment analysis. On unless `enabled` is false. */
     knowledge: { ...KNOWLEDGE_DEFAULTS, alphas: [...KNOWLEDGE_DEFAULTS.alphas] }
   }
 };
@@ -8934,12 +8934,11 @@ function writePlan(root, plan) {
 // packages/cochange/src/identities/check.ts
 var CONFLICT_SCORE = 100;
 var compare5 = (x2, y2) => x2 < y2 ? -1 : x2 > y2 ? 1 : 0;
-function conflict(kind, identities, detail, unnamed, about) {
-  return { score: CONFLICT_SCORE, kind, identities: [...new Set(identities)].sort(compare5), detail, windowCommits: null, lines: null, linesShare: null, aboveGuideline: null, about, unnamed };
+function conflict(kind, identities, detail, about) {
+  return { score: CONFLICT_SCORE, kind, identities: [...new Set(identities)].sort(compare5), detail, windowCommits: null, lines: null, linesShare: null, aboveGuideline: null, about };
 }
-function checkMapping(analysis, detail, privacy) {
+function checkMapping(analysis, detail, activity) {
   const findings = [];
-  const nodeOf = (identity2) => analysis.nodeOfRaw.get(identity2) ?? identity2;
   const { significantCommits } = analysis.history.settings.identities;
   const byAddress = /* @__PURE__ */ new Map();
   for (const raw of analysis.raws) {
@@ -8952,7 +8951,7 @@ function checkMapping(analysis, detail, privacy) {
   }
   const rewritten = new Set(analysis.nodes.filter((n) => n.aliases.some((a) => identityKey(a) !== n.key)).map((n) => n.key));
   for (const [email, nodes] of [...byAddress].sort(([p], [q]) => compare5(p, q))) {
-    if (nodes.size > 1 && [...nodes].some((n) => rewritten.has(n))) findings.push(conflict("email-conflict", [...nodes], `${email} belongs to ${nodes.size} different mapped identities`, `an address belongs to ${nodes.size} different mapped identities`, [...nodes]));
+    if (nodes.size > 1 && [...nodes].some((n) => rewritten.has(n))) findings.push(conflict("email-conflict", [...nodes], `${email} belongs to ${nodes.size} different mapped identities`, [...nodes]));
   }
   const rejected = analysis.history.identities.decisions.rejectedMerges.map((r) => r.identities.map((i) => i.toLowerCase()));
   const groups = /* @__PURE__ */ new Map();
@@ -8966,32 +8965,29 @@ function checkMapping(analysis, detail, privacy) {
     for (const pair of rejected) {
       if (pair.every((k) => keys.has(k))) {
         findings.push(
-          conflict("rejected-merge-applied", group.map(identityKey), `the mailmap maps ${pair.join(" and ")} to ${node}, which a recorded decision says are different people`, `the mailmap joins ${pair.length} identities that a recorded decision says are different people`, [node])
+          conflict("rejected-merge-applied", group.map(identityKey), `the mailmap maps ${pair.join(" and ")} to ${node}, which a recorded decision says are different people`, [node])
         );
       }
     }
     for (const { a, b, signal } of counterEvidenceWithin(group)) {
-      findings.push(conflict("counter-evidence", [a, b], `joined into ${node} by the mailmap, but ${signal.detail}`, `joined by the mailmap, but the evidence says they are different people (${signal.signal})`, [node]));
+      findings.push(conflict("counter-evidence", [a, b], `joined into ${node} by the mailmap, but ${signal.detail}`, [node]));
     }
   }
   for (const proposal of proposeRows(analysis).filter((p) => p.counterEvidence)) {
     const counter = proposal.links.flatMap((l) => l.signals).find((s) => s.strength === "counter");
     const members = proposal.members.map((m) => m.identity);
-    findings.push(conflict("counter-evidence", members, `${proposal.id} is proposed but ${counter?.detail ?? "has counter-evidence"}`, `${proposal.id} is proposed but has counter-evidence${counter ? ` (${counter.signal})` : ""}`, members.map(nodeOf)));
+    findings.push(conflict("counter-evidence", members, `${proposal.id} is proposed but ${counter?.detail ?? "has counter-evidence"}`, members.map((m) => analysis.nodeOfRaw.get(m) ?? m)));
   }
   const peopleLines = detail.measurement.headLines.people;
   for (const node of analysis.nodes.filter((n) => analysis.unresolved.has(n.key))) {
     const lines2 = detail.linesByNode.get(node.key) ?? 0;
     const commits = detail.windowCommitsByNode.get(node.key) ?? 0;
     const related = [...new Set(analysis.proposals.filter((p) => p.members.includes(node.key)).flatMap((p) => p.members).filter((m) => m !== node.key))].sort(compare5);
-    const formerRelated = related.filter(privacy.isFormer).length;
-    const namedRelated = [...related.filter((m) => !privacy.isFormer(m)), ...formerRelated === 0 ? [] : [`${formerRelated} former contributor${formerRelated === 1 ? "" : "s"}`]];
     findings.push({
       score: lines2,
       kind: "unmapped",
       identities: [node.key],
       detail: `proposed to be the same person as ${related.join("; ")}, last active ${isoDay2(node.last)}`,
-      unnamed: `proposed to be the same person as ${namedRelated.join("; ")}${privacy.isFormer(node.key) ? "" : `, last active ${isoDay2(node.last)}`}`,
       about: [node.key, ...related],
       windowCommits: commits,
       lines: lines2,
@@ -9000,12 +8996,10 @@ function checkMapping(analysis, detail, privacy) {
     });
   }
   findings.sort((x2, y2) => y2.score - x2.score || (y2.windowCommits ?? 0) - (x2.windowCommits ?? 0) || compare5(x2.kind, y2.kind) || compare5(x2.identities.join(), y2.identities.join()));
-  return { findings: findings.map((draft) => withholdFormer(draft, privacy, nodeOf)), failed: findings.some((f) => f.kind !== "unmapped") };
-}
-function withholdFormer({ about, unnamed, ...finding }, privacy, nodeOf) {
-  const formerContributors = new Set(about.filter(privacy.isFormer)).size;
-  if (privacy.names || formerContributors === 0) return { ...finding, formerContributors };
-  return { ...finding, identities: finding.identities.filter((i) => !privacy.isFormer(nodeOf(i))), detail: unnamed, formerContributors };
+  return {
+    findings: findings.map(({ about, ...finding }) => ({ ...finding, formerContributors: new Set(about.filter(activity.isFormer)).size })),
+    failed: findings.some((f) => f.kind !== "unmapped")
+  };
 }
 
 // packages/cochange/src/commands/identities.ts
@@ -9017,7 +9011,7 @@ var command10 = {
     propose: { summary: "Clusters of identities that look like one person, with the evidence", options: ["no-refresh"] },
     classify: { summary: "Identities classified as bots, services or agents, and how", options: ["no-refresh"] },
     apply: { summary: "Write approved decisions to the mapping (a dry run unless --apply is given)", options: ["from", "apply", "location", "no-refresh"] },
-    check: { summary: "Findings about the mapping as it stands, with former contributors as counts unless --names is given", options: ["names", "no-refresh"] }
+    check: { summary: "Findings about the mapping as it stands", options: ["no-refresh"] }
   },
   summary: "Resolve who is who: list, propose, classify, apply and check the identity mapping",
   options: {
@@ -9025,8 +9019,7 @@ var command10 = {
     unmapped: { type: "boolean" },
     from: { type: "string" },
     apply: { type: "boolean" },
-    location: { type: "string" },
-    names: { type: "boolean" }
+    location: { type: "string" }
   },
   async run(context) {
     const [sub, ...rest] = context.positionals;
@@ -9049,12 +9042,11 @@ var command10 = {
         return { inputs: inputs(), results: classifyRows(analysis), columns: ["kind", "identity", "commits", "source", "signal", "pattern", "decided"] };
       case "check": {
         const detail = await measureMapping(context, analysis, { noRefresh: context.values["no-refresh"] === true });
-        const names2 = context.values.names === true;
         const active = await readActiveDevelopers(context, analysis.history, analysis.history.view.headDate);
         const isFormer = (node) => !analysis.nonPerson.has(node) && !active.has(emailOf2(node));
-        const { findings, failed } = checkMapping(analysis, detail, { names: names2, isFormer });
+        const { findings, failed } = checkMapping(analysis, detail, { isFormer });
         return {
-          inputs: inputs({ names: names2 }),
+          inputs: inputs(),
           extra: { measurement: detail.measurement },
           results: findings,
           columns: ["kind", "identities", "detail", "windowCommits", "lines", "linesShare", "aboveGuideline", "formerContributors"],
@@ -9080,7 +9072,7 @@ var command10 = {
   }
 };
 function rejectOptionsOutsideTheirCommand2(sub, context) {
-  const only = { unmapped: "list", from: "apply", apply: "apply", location: "apply", names: "check" };
+  const only = { unmapped: "list", from: "apply", apply: "apply", location: "apply" };
   for (const [option, owner] of Object.entries(only)) {
     if (context.values[option] !== void 0 && sub !== owner) throw usageError(`--${option} belongs to identities ${owner}`);
   }
@@ -14622,7 +14614,7 @@ var unavailable2 = (reason) => ({
 });
 async function abandonedTouched(context, history, change3) {
   const section2 = context.config.effective[TOOL2].knowledge;
-  if (section2?.enabled !== true) return { measurement: unavailable2("knowledge analysis is not enabled (cochange.knowledge.enabled)"), report: null };
+  if (section2?.enabled === false) return { measurement: unavailable2("knowledge analysis is switched off (cochange.knowledge.enabled is false)"), report: null };
   const settings = readKnowledgeSettings(context.config.effective);
   const root = context.repo.root;
   const report = change3.worktree ? null : readAbandonmentReport(root, change3.head, context.config.hash, readOverrides(root).stamp);
@@ -15632,7 +15624,7 @@ var RESPONSES = {
     step: "review",
     response: "Add the owner as a reviewer.",
     summary: "Touched files have a clear owner who is not among the change's authors",
-    explanation: "Ownership research finds more failures when low-ownership contributors change owned code, and the owner is the obvious reviewer. Needs placement. `cochange risk reviewers --names` names who to ask.",
+    explanation: "Ownership research finds more failures when low-ownership contributors change owned code, and the owner is the obvious reviewer. Needs placement. `cochange risk reviewers` names who to ask.",
     redFlag: null
   }
 };
@@ -15991,7 +15983,7 @@ function guidanceSlot() {
     id: "guidance",
     title: "Judgement: reviewer guidance",
     about: { kind: "report", ref: "change", label: "the change" },
-    task: "In at most three sentences, tell the reviewer where to look first and what to ask the author, using only the findings and values shown in this report. When nothing needs attention, say what a quick review can skip. Do not name people.",
+    task: "In at most three sentences, tell the reviewer where to look first and what to ask the author, using only the findings and values shown in this report. When nothing needs attention, say what a quick review can skip.",
     verdicts: [],
     maxChars: 500
   };
@@ -16319,8 +16311,7 @@ function limitsOf(assessed, level, evidence, compact) {
     ...unavailable3.length === 0 ? [] : [`No band for ${unavailable3.join(", ")}: the factor could not be computed.`],
     ...level.status === "shown" || compact ? [] : ["No level is shown, because no stored backtest of this repository says the levels separate past changes."],
     ...evidence.complexity === null ? ["No complexity comparison was passed in, so complexity before and after is not shown."] : [],
-    ...evidence.structure === null ? ["No structure check was passed in, so new cycles and layer violations are not shown."] : [],
-    ...compact ? [] : ["Who wrote the touched code (placement) is about people, so this report leaves it out. Names of people appear nowhere on this page."]
+    ...evidence.structure === null ? ["No structure check was passed in, so new cycles and layer violations are not shown."] : []
   ];
 }
 async function commitsSince(root, from, to) {
@@ -17666,8 +17657,8 @@ function activeHolders(model, byPath, path) {
   if (file === void 0) return "";
   return file.holders.filter((h) => model.developers[h.dev].active).sort((a, b) => b.lines - a.lines || a.dev - b.dev).map((h) => model.developers[h.dev].key.replace(/\s*<[^>]*>$/, "")).join("; ");
 }
-var holdersColumn = (names2, label2) => names2.enabled ? [{ key: "holders", label: label2 }] : [];
-var holdersCell = (names2, path) => names2.enabled ? { holders: activeHolders(names2.model, names2.byPath, path) || null } : {};
+var holdersColumn = (_names, label2) => [{ key: "holders", label: label2 }];
+var holdersCell = (names2, path) => ({ holders: activeHolders(names2.model, names2.byPath, path) || null });
 function patternRow(file, names2) {
   return {
     path: file.path,
@@ -17950,7 +17941,7 @@ function limitsOf3(p, measured, notices) {
     "Guidelines order and label results. They are heuristics for investigation and decide nothing, and every file is listed under its pattern or under none.",
     "Authorship is git blame ignoring whitespace and following moved and copied lines. It says who last wrote a line, which is not who understands it.",
     `A developer counts as having left after ${s.activityWindowMonths} months without a commit. Someone on leave looks the same, and local overrides correct it.`,
-    "The simulation assumes turnover is random. The report names nobody unless run with --names, which lists active developers only.",
+    "The simulation assumes turnover is random. The holders column names the active developers who hold each file's lines.",
     `Each table shows the top ${TOP5} of its result and says how many rows it leaves out; \`cochange abandonment patterns\` prints every file.`,
     `Complexity is ${measured.complexity.source === "indentation" ? "the indentation proxy, because no `complexity files` result is stored for this commit" : "from the stored `complexity files` result"}. Test files and files that are not code have none, so the complex-code pattern does not apply to them (${measured.summary.complexityUnknown} files with a blame have no complexity).`,
     ...evidence.grade === "weak" ? ["The evidence grade is weak, so history-based results are tentative."] : [],
@@ -17959,10 +17950,9 @@ function limitsOf3(p, measured, notices) {
   ];
 }
 var knowledge = {
-  summary: "Where knowledge is concentrated and lost: knowledge-risk patterns, bus factor of the hotspots, knowledge lost so far and the simulated turnover (needs cochange.knowledge.enabled)",
-  options: { names: { type: "boolean" }, "no-refresh": { type: "boolean" } },
+  summary: "Where knowledge is concentrated and lost: knowledge-risk patterns, bus factor of the hotspots, knowledge lost so far and the simulated turnover ",
+  options: { "no-refresh": { type: "boolean" } },
   optionHelp: {
-    names: "show the names, without addresses, of the active developers who hold the lines of each listed file (never developers who have left)",
     "no-refresh": "read the history and blame caches without bringing them up to date"
   },
   async build(context) {
@@ -17971,7 +17961,7 @@ var knowledge = {
     const measured = await measurePatterns(context, p);
     const code = await readCodeMapFiles(context, p.history.view.headSha);
     const { model } = p.knowledge;
-    const names2 = { enabled: context.values.names === true, model, byPath: new Map(model.files.map((f) => [f.path, f])) };
+    const names2 = { model, byPath: new Map(model.files.map((f) => [f.path, f])) };
     const { evidence, window } = p.history;
     const single = model.developers.length === 1;
     const abandonment2 = await abandonmentBlocks(p, measured);
@@ -17980,7 +17970,7 @@ var knowledge = {
     const excluded = excludedCounts(p.history.filtersApplied, droppedCounts(), builtinOmissions(), { leftOutOf: "the hotspot ranking" });
     return dropEmptySlots({
       title: "Knowledge report",
-      inputs: { ...commonInputs(p, "report", { names: names2.enabled, guidelines: measured.guidelines, complexityReport: measured.complexity.input }) },
+      inputs: { ...commonInputs(p, "report", { guidelines: measured.guidelines, complexityReport: measured.complexity.input }) },
       header: {
         evidenceGrade: evidence.grade,
         historyWindow: historyWindowText(evidence, window, "; authorship is the blame at the analysed commit"),
@@ -18493,7 +18483,7 @@ var FACTOR_DOCS = [
     layer: "history",
     banding: "count",
     signal: "Touched files already abandoned, or with high abandonment probability",
-    definition: "Needs the knowledge analysis (cochange.knowledge.enabled), and is unavailable without it. Counts the touched files that existed at the base and are abandoned there (at least cochange.knowledge.abandonmentGuideline percent of the lines held by people belong to people who have left, judged at the tip's date), or whose simulated probability of becoming abandoned within the horizon reaches cochange.knowledge.atRiskProbability percent. Banded on the count. Computed from the blame cache and never stored, and the evidence names files, not people.",
+    definition: "From the knowledge analysis, and unavailable when cochange.knowledge.enabled is false. Counts the touched files that existed at the base and are abandoned there (at least cochange.knowledge.abandonmentGuideline percent of the lines held by people belong to people who have left, judged at the tip's date), or whose simulated probability of becoming abandoned within the horizon reaches cochange.knowledge.atRiskProbability percent. Banded on the count. Computed from the blame cache and never stored, and the evidence names files, not people.",
     why: "Nobody is left who can review these with first-hand knowledge."
   },
   {
@@ -19284,15 +19274,13 @@ async function runRisk(context, history, range2) {
 }
 async function runReviewers(context, history, range2) {
   const worktree = context.values.worktree === true;
-  const names2 = context.values.names === true;
   if (context.values.evidence !== void 0) throw usageError("risk reviewers does not take --evidence");
   const assessed = await assessBranch(context, history, { range: range2, worktree });
   const { areas, basis: basis2 } = await reviewersFor(context, assessed, context.values["no-refresh"] === true);
   return {
-    inputs: { range: range2 ?? null, worktree, names: names2 },
+    inputs: { range: range2 ?? null, worktree },
     results: {
       kind: "reviewers",
-      names: names2,
       basis: basis2,
       perArea: REVIEWERS_PER_AREA,
       areas: areas.map((area) => ({
@@ -19300,9 +19288,9 @@ async function runReviewers(context, history, range2) {
         files: area.files,
         coupledFiles: area.coupledFiles,
         candidates: area.candidates.length,
-        suggested: names2 ? area.candidates.slice(0, REVIEWERS_PER_AREA).map((c2) => ({ name: c2.name, email: c2.email, authorship: c2.authorship, coupledChanges: c2.coupledChanges })) : null
+        suggested: area.candidates.slice(0, REVIEWERS_PER_AREA).map((c2) => ({ name: c2.name, email: c2.email, authorship: c2.authorship, coupledChanges: c2.coupledChanges }))
       })),
-      note: names2 ? "Active developers only, as people to ask: ranked by authorship, their average share of the lines of the area's touched files they last wrote (0 to 1), then by coupledChanges, their changes in the window to the area's coupledFiles (files outside the change at the missing-co-change guidelines towards a touched file). coupledChanges is 0 for everyone in an area whose coupledFiles is 0. The change's own authors are not listed." : "Counts of active developers who could review each area, and of the files coupled with its touched files. Pass --names to see them."
+      note: "Active developers only, as people to ask: ranked by authorship, their average share of the lines of the area's touched files they last wrote (0 to 1), then by coupledChanges, their changes in the window to the area's coupledFiles (files outside the change at the missing-co-change guidelines towards a touched file). coupledChanges is 0 for everyone in an area whose coupledFiles is 0. The change's own authors are not listed."
     },
     columns: ["area", "files", "coupledFiles", "candidates"]
   };
@@ -19330,13 +19318,13 @@ function requestOf(context) {
     const isStatic = doc.family === "placement" || range2 === void 0 && !worktree;
     return { sub, range: range2, factor, isStatic };
   }
-  if (words3.length > 1) throw usageError(sub === "reviewers" ? "usage: risk reviewers [BASE[..HEAD]] [--names]" : "usage: risk [BASE[..HEAD]] [--worktree]");
+  if (words3.length > 1) throw usageError(sub === "reviewers" ? "usage: risk reviewers [BASE[..HEAD]]" : "usage: risk [BASE[..HEAD]] [--worktree]");
   if (sub === "reviewers" && context.values.evidence !== void 0) throw usageError("risk reviewers does not take --evidence");
   return { sub, range: words3[0], isStatic: false };
 }
 var analysed = analysisCommand(name16, {
   summary: "How much a branch puts at risk before it is merged, and how to review it: risk [BASE[..HEAD]] | explain [FACTOR [BASE[..HEAD]]] | reviewers",
-  options: { worktree: { type: "boolean" }, evidence: { type: "string", multiple: true }, names: { type: "boolean" }, since: { type: "string" }, adopted: { type: "string" } },
+  options: { worktree: { type: "boolean" }, evidence: { type: "string", multiple: true }, since: { type: "string" }, adopted: { type: "string" } },
   subcommands: {
     backtest: {
       summary: "Every merged change on the main line, scored as of itself, against whether it was later reverted or fixed within the follow-up window",
@@ -19465,10 +19453,9 @@ __export(successors_exports, {
 var name18 = "successors";
 var command17 = {
   summary: "Ranked successors for files at risk, from the files that change with them",
-  options: { names: { type: "boolean" }, top: { type: "string" }, "no-refresh": { type: "boolean" } },
+  options: { top: { type: "string" }, "no-refresh": { type: "boolean" } },
   async run(context) {
-    if (context.positionals.length === 0) throw usageError("usage: successors PATH... [--names]");
-    const names2 = context.values.names === true;
+    if (context.positionals.length === 0) throw usageError("usage: successors PATH...");
     const top3 = integerOption(context, "top", 5, 1, 1e3);
     const p = await prepare(context);
     const { model } = p.knowledge;
@@ -19488,7 +19475,7 @@ var command17 = {
         noSuccessor: hasNoSuccessor(successors),
         successors: successors.slice(0, top3).map((s, i) => ({
           rank: i + 1,
-          ...names2 ? { developer: displayNameOf(s.developer) } : {},
+          developer: displayNameOf(s.developer),
           score: s.score,
           coupledChanges: s.coupledChanges,
           ownShare: s.ownShare,
@@ -19499,7 +19486,6 @@ var command17 = {
     return {
       inputs: commonInputs(p, "successors", {
         paths: rows11.map((r) => r.path),
-        names: names2,
         top: top3,
         minSupport: p.history.settings.minSupport
       }),

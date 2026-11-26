@@ -67,18 +67,16 @@ export async function runRisk(context: CommandContext, history: LoadedHistory, r
   };
 }
 
-/** `risk reviewers [BASE[..HEAD]] [--names]`: who to ask to look at each touched area. Names only with `--names`. */
+/** `risk reviewers [BASE[..HEAD]]`: who to ask to look at each touched area. */
 export async function runReviewers(context: CommandContext, history: LoadedHistory, range: string | undefined): Promise<CommandOutput> {
   const worktree = context.values.worktree === true;
-  const names = context.values.names === true;
   if (context.values.evidence !== undefined) throw usageError("risk reviewers does not take --evidence");
   const assessed = await assessBranch(context, history, { range, worktree });
   const { areas, basis } = await reviewersFor(context, assessed, context.values["no-refresh"] === true);
   return {
-    inputs: { range: range ?? null, worktree, names },
+    inputs: { range: range ?? null, worktree },
     results: {
       kind: "reviewers",
-      names,
       basis,
       perArea: REVIEWERS_PER_AREA,
       areas: areas.map((area) => ({
@@ -86,11 +84,9 @@ export async function runReviewers(context: CommandContext, history: LoadedHisto
         files: area.files,
         coupledFiles: area.coupledFiles,
         candidates: area.candidates.length,
-        suggested: names ? area.candidates.slice(0, REVIEWERS_PER_AREA).map((c) => ({ name: c.name, email: c.email, authorship: c.authorship, coupledChanges: c.coupledChanges })) : null,
+        suggested: area.candidates.slice(0, REVIEWERS_PER_AREA).map((c) => ({ name: c.name, email: c.email, authorship: c.authorship, coupledChanges: c.coupledChanges })),
       })),
-      note: names
-        ? "Active developers only, as people to ask: ranked by authorship, their average share of the lines of the area's touched files they last wrote (0 to 1), then by coupledChanges, their changes in the window to the area's coupledFiles (files outside the change at the missing-co-change guidelines towards a touched file). coupledChanges is 0 for everyone in an area whose coupledFiles is 0. The change's own authors are not listed."
-        : "Counts of active developers who could review each area, and of the files coupled with its touched files. Pass --names to see them.",
+      note: "Active developers only, as people to ask: ranked by authorship, their average share of the lines of the area's touched files they last wrote (0 to 1), then by coupledChanges, their changes in the window to the area's coupledFiles (files outside the change at the missing-co-change guidelines towards a touched file). coupledChanges is 0 for everyone in an area whose coupledFiles is 0. The change's own authors are not listed.",
     },
     columns: ["area", "files", "coupledFiles", "candidates"],
   };

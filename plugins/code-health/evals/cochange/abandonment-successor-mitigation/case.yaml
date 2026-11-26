@@ -20,11 +20,6 @@ graders:
     min: 1
     arm: with-only
   - type: tool_used
-    name: names-only-on-request-and-through-successors
-    tool: Bash
-    input_match: "identities list|git shortlog|git blame"
-    max: 0
-  - type: tool_used
     name: makes-no-edits
     tool: Edit
     max: 0

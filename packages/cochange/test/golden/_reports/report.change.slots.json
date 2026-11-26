@@ -12,9 +12,8 @@
     "limits": [
       "Guidelines order and label what is shown. They are heuristics for review and decide nothing.",
       "The evidence grade is weak, so the history-based bands are tentative and the static results should lead.",
-      "No band for defect-history, abandoned-touched: the factor could not be computed.",
-      "No level is shown, because no stored backtest of this repository says the levels separate past changes.",
-      "Who wrote the touched code (placement) is about people, so this report leaves it out. Names of people appear nowhere on this page."
+      "No band for defect-history: the factor could not be computed.",
+      "No level is shown, because no stored backtest of this repository says the levels separate past changes."
     ],
     "sections": [
       {
@@ -384,11 +383,11 @@
                 "value": "count 2"
               },
               {
-                "band": "unavailable",
+                "band": "low",
                 "evidence": 0,
                 "factor": "abandoned-touched",
-                "guideline": "none",
-                "value": "none"
+                "guideline": "count: moderate from 1, high from 3",
+                "value": "count 0, files 1, unknown 0, baseline 0, margin 0"
               }
             ],
             "type": "ranked-table"
@@ -398,10 +397,6 @@
               {
                 "id": "defect-history",
                 "text": "unavailable: fewer than 10 merged changes in the baseline, so a value of 0.142857 cannot be placed"
-              },
-              {
-                "id": "abandoned-touched",
-                "text": "unavailable: knowledge analysis is not enabled (cochange.knowledge.enabled)"
               }
             ],
             "title": "Factors with no band",
@@ -657,7 +652,7 @@
         "blocks": [
           {
             "level": "notice",
-            "text": "Abandoned touched files could not be computed: knowledge analysis is not enabled (cochange.knowledge.enabled).",
+            "text": "No touched file is abandoned or above the repository's baseline abandonment probability of 0.",
             "type": "notice"
           }
         ],
@@ -848,7 +843,7 @@
       },
       "id": "guidance",
       "maxChars": 500,
-      "task": "In at most three sentences, tell the reviewer where to look first and what to ask the author, using only the findings and values shown in this report. When nothing needs attention, say what a quick review can skip. Do not name people.",
+      "task": "In at most three sentences, tell the reviewer where to look first and what to ask the author, using only the findings and values shown in this report. When nothing needs attention, say what a quick review can skip.",
       "title": "Judgement: reviewer guidance",
       "verdicts": []
     },

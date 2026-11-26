@@ -24,12 +24,12 @@ The change is `close` when most of its churn is in `owner` or `regular` files, `
 - Without it: the authors' earlier changes to the file weighted by recency, which needs only history. The output says which basis it used (`blame`, `history`, or `mixed`).
 - Also shown, as counts and paths: `neighbourhood` (the authors' changes to coupled files, to the same folder and, when components are configured, to the same component), `first-touch-share`, `owner-distance` (files with a clear owner who is not an author) and `no-owner`.
 
-## What bounds it
+## Settings and storage
 
-- **Self by default.** Placement is computed when the change's authors are the invoking git identity: a self-check before asking for review. It is a default, not an access control. For someone else's branch the CLI withholds it, with the reason. `cochange.risk.placement: "any"` computes it for anyone's, and `"off"` never does. That setting is a team's decision to make together, so do not change it for the user.
+- **Any change by default.** Placement is computed for whoever wrote the change. `cochange.risk.placement: "self"` computes it only when the change's authors are the invoking git identity, and withholds it for anyone else's, with the reason. `"off"` never computes it.
 - **One change at a time.** No command lists placement or levels by author. No command reports per person.
 - **Nothing kept.** Placement, the level and the findings that rest on it are not written to `reports/` and are not stored. The impact factors are.
-- **No one is named by a factor.** `owner-distance` counts files with an owner who is not an author. Who that owner is appears only through `reviewers --names`, as someone to ask.
+- **Owners are named by `reviewers`.** `owner-distance` counts files with an owner who is not an author. `risk reviewers` names them, as people to ask.
 
 ## What you say
 

@@ -5,7 +5,7 @@ import type { Activity } from "./activity.ts";
 import type { KnowledgeOverrides } from "./settings.ts";
 
 export interface Developer {
-  /** The mapped identity, `Name <email>`. Never printed except by `successors --names`, and then only for active developers. */
+  /** The mapped identity, `Name <email>`. */
   key: string;
   active: boolean;
 }

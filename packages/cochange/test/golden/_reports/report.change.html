@@ -301,14 +301,13 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <tr><th scope="row">sensitive-paths</th><td>low</td><td>count 0</td><td>count: moderate from 1, high from 3</td><td class="number">0</td></tr>
 <tr><th scope="row"><a href="#complexity">complexity-delta</a></th><td>low</td><td>indentation proxy, not a complexity comparison: count 0, files 1, newFiles 0</td><td>count: moderate from 1, high from 3</td><td class="number">0</td></tr>
 <tr><th scope="row"><a href="#structure">structure-delta</a></th><td>moderate</td><td>count 2</td><td>count: moderate from 1, high from 3</td><td class="number">2</td></tr>
-<tr><th scope="row"><a href="#abandoned">abandoned-touched</a></th><td>unavailable</td><td>none</td><td>none</td><td class="number">0</td></tr>
+<tr><th scope="row"><a href="#abandoned">abandoned-touched</a></th><td>low</td><td>count 0, files 1, unknown 0, baseline 0, margin 0</td><td>count: moderate from 1, high from 3</td><td class="number">0</td></tr>
 </tbody>
 </table>
 <section class="evidence">
 <h3>Factors with no band</h3>
 <ul>
 <li><code>defect-history</code> unavailable: fewer than 10 merged changes in the baseline, so a value of 0.142857 cannot be placed</li>
-<li><code>abandoned-touched</code> unavailable: knowledge analysis is not enabled (cochange.knowledge.enabled)</li>
 </ul>
 </section>
 <aside class="notice notice" role="note"><strong>Notice:</strong> No level is shown: a level is shown only where a stored backtest shows that the levels separate past changes, and none is stored for this configuration.</aside>
@@ -370,7 +369,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 </section>
 <section id="abandoned" aria-labelledby="abandoned-heading">
 <h2 id="abandoned-heading">Abandoned files touched</h2>
-<aside class="notice notice" role="note"><strong>Notice:</strong> Abandoned touched files could not be computed: knowledge analysis is not enabled (cochange.knowledge.enabled).</aside>
+<aside class="notice notice" role="note"><strong>Notice:</strong> No touched file is abandoned or above the repository's baseline abandonment probability of 0.</aside>
 </section>
 <section id="evidence" aria-labelledby="evidence-heading">
 <h2 id="evidence-heading">Evidence behind the factors</h2>
@@ -413,9 +412,8 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <ul>
 <li>Guidelines order and label what is shown. They are heuristics for review and decide nothing.</li>
 <li>The evidence grade is weak, so the history-based bands are tentative and the static results should lead.</li>
-<li>No band for defect-history, abandoned-touched: the factor could not be computed.</li>
+<li>No band for defect-history: the factor could not be computed.</li>
 <li>No level is shown, because no stored backtest of this repository says the levels separate past changes.</li>
-<li>Who wrote the touched code (placement) is about people, so this report leaves it out. Names of people appear nowhere on this page.</li>
 </ul>
 <section class="judgement" id="judgement-limits-8a46fd">
 <h3>Judgement: what limits this summary</h3>

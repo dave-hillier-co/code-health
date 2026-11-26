@@ -180,7 +180,7 @@ function guidanceSlot(): Slot {
     id: "guidance",
     title: "Judgement: reviewer guidance",
     about: { kind: "report", ref: "change", label: "the change" },
-    task: "In at most three sentences, tell the reviewer where to look first and what to ask the author, using only the findings and values shown in this report. When nothing needs attention, say what a quick review can skip. Do not name people.",
+    task: "In at most three sentences, tell the reviewer where to look first and what to ask the author, using only the findings and values shown in this report. When nothing needs attention, say what a quick review can skip.",
     verdicts: [],
     maxChars: 500,
   };
@@ -539,7 +539,6 @@ function limitsOf(assessed: Assessed, level: LevelResult, evidence: ChangeEviden
     ...(level.status === "shown" || compact ? [] : ["No level is shown, because no stored backtest of this repository says the levels separate past changes."]),
     ...(evidence.complexity === null ? ["No complexity comparison was passed in, so complexity before and after is not shown."] : []),
     ...(evidence.structure === null ? ["No structure check was passed in, so new cycles and layer violations are not shown."] : []),
-    ...(compact ? [] : ["Who wrote the touched code (placement) is about people, so this report leaves it out. Names of people appear nowhere on this page."]),
   ];
 }
 

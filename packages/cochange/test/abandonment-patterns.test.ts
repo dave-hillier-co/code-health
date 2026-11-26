@@ -43,8 +43,8 @@ const patterns = async (...args: string[]) => {
 };
 const patternOf = (document: { results: { path: string; pattern: string | null }[] }) => Object.fromEntries(document.results.map((r) => [r.path, r.pattern]));
 
-test("the patterns are off until the repository opts in, like the rest of the analysis", async () => {
-  writeFileSync(join(repo.path, "code-health.json"), "{}");
+test("the patterns refuse when the repository switches the analysis off, like the rest of it", async () => {
+  writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { knowledge: { enabled: false } } }));
   const { code, stdout, stderr } = await runCochange(repo.path, ["abandonment", "patterns"]);
   expect(code).toBe(ExitCode.Usage);
   expect(stdout).toBe("");

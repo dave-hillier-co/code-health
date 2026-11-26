@@ -30,14 +30,13 @@ const cases = readdirSync(evals, { withFileTypes: true })
 
 test("the abandonment scaffolds build the same repository every time, from pinned dates", () => {
   expect(head(scaffold("abandonment-scaffold.sh"))).toBe(head(scaffold("abandonment-scaffold.sh")));
-  expect(head(scaffold("abandonment-off-scaffold.sh"))).toBe(head(scaffold("abandonment-scaffold.sh")));
 });
 
-test("every scaffold a case names exists, and the cases share the two scaffolds rather than copy them", () => {
+test("every scaffold a case names exists, and the cases share one scaffold rather than copy it", () => {
   const scaffolded = cases.filter((c) => c.context?.scaffold_script);
   expect(scaffolded.length).toBeGreaterThan(0);
   for (const c of scaffolded) expect(existsSync(join(evals, c.name, c.context.scaffold_script as string))).toBe(true);
-  expect([...new Set(scaffolded.map((c) => c.context.scaffold_script as string))].sort()).toEqual(["../abandonment-off-scaffold.sh", "../abandonment-scaffold.sh"]);
+  expect([...new Set(scaffolded.map((c) => c.context.scaffold_script as string))].sort()).toEqual(["../abandonment-scaffold.sh"]);
 });
 
 test("the scaffold gives the answers the cases' graders look for", async () => {
@@ -54,14 +53,7 @@ test("the scaffold gives the answers the cases' graders look for", async () => {
   expect(files["src/api/auth.ts"]).toEqual(["at-risk-hot"]);
   expect(files["src/core/engine.ts"]).toEqual(["abandoned", "no-successor"]);
 
-  const successors = JSON.parse((await run(dir, "successors", "src/api/auth.ts", "--names")).stdout);
+  const successors = JSON.parse((await run(dir, "successors", "src/api/auth.ts")).stdout);
   expect(successors.results[0].successors.map((s: { developer: string }) => s.developer)).toEqual(["Ann Active", "Bob Builder"]);
 });
 
-test("the off scaffold has not opted in, so the analysis refuses until the repository does", async () => {
-  const dir = scaffold("abandonment-off-scaffold.sh");
-  expect(existsSync(join(dir, "code-health.json"))).toBe(false);
-  const result = await run(dir, "abandonment", "current");
-  expect(result.code).toBe(2);
-  expect(result.stderr).toContain("cochange.knowledge.enabled");
-});

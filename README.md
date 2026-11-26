@@ -22,7 +22,7 @@ The plugin installs four tools together. Each tool is a CLI that prints facts an
 
 | Tool | Question | Skills |
 |---|---|---|
-| `cochange` | Where does change effort concentrate, and what changes together? Hotspots, temporal coupling, change spread, fix counts and a briefing before an edit. | `cochange`; `change-risk`, how a branch should be reviewed before it merges; `abandonment`, knowledge lost when people leave (off until the repository opts in); `identities`, a reviewed `.mailmap` |
+| `cochange` | Where does change effort concentrate, and what changes together? Hotspots, temporal coupling, change spread, fix counts and a briefing before an edit. | `cochange`; `change-risk`, how a branch should be reviewed before it merges; `abandonment`, knowledge lost when people leave and who could pick it up; `identities`, a reviewed `.mailmap` |
 | `complexity` | Which functions are hard to understand, and where does the complexity come from? Cognitive and cyclomatic complexity, nesting, interface depth, and a check for CI that exits with 1 only on a regression. | `complexity` |
 | `locality` | Which code lives far from the code that uses it? Recommends moving, inlining or splitting, and makes moves as one move-only commit each. | `locality` |
 | `structure` | Which dependencies make change expensive? Import cycles with their smallest breaking sets, layer rules, dependencies from stable code onto volatile code, pairs that change together without an import between them, registration hubs, and the decoupling mechanisms already in use. | `structure`; `packaging`, whether the packages are the right ones |
@@ -57,9 +57,9 @@ The output is `.cache/codex/skills/`, with one directory per skill. Copy the des
 
 Packaging refuses to overwrite an existing directory. For a new build, provide a fresh output path with `npm run package:codex -- /absolute/new/path/skills`. To package just one skill, use `npm run package:codex -- --skill locality /absolute/new/path/locality` (without an output path, this uses `.cache/codex/skills/locality`). After changing CLI source, run `npm run build` before packaging; the existing `check:dist` check verifies that bundles match source. Generated skills use absolute executable paths while running in the target repository and follow Codex's sandbox permissions. Analyses write caches; worktrees share the main checkout's history cache.
 
-The generated instructions preserve the abandonment opt-in and identity review safeguards. Refactoring follows the user's requested scope; commit guidance applies when commits are requested. Locality apply examples use `--no-commit` to leave edits staged by default. Commit-based verification is deferred until a requested commit exists.
+The generated instructions keep the identity review steps. Refactoring follows the user's requested scope; commit guidance applies when commits are requested. Locality apply examples use `--no-commit` to leave edits staged by default. Commit-based verification is deferred until a requested commit exists.
 
-The packaging tests relocate each skill outside the checkout and run its CLI against isolated Git repositories without installing dependencies there. They cover report generation, the complete runtime and reference links, abandonment opt-in, read-only analyses, and a locality move that leaves changes staged without a commit. This verifies packaging and execution, not model-level skill selection or judgement.
+The packaging tests relocate each skill outside the checkout and run its CLI against isolated Git repositories without installing dependencies there. They cover report generation, the complete runtime and reference links, read-only analyses, and a locality move that leaves changes staged without a commit. This verifies packaging and execution, not model-level skill selection or judgement.
 
 ## Use
 

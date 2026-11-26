@@ -124,13 +124,12 @@ function activeHolders(model: KnowledgeModel, byPath: ReadonlyMap<string, Knowle
 }
 
 interface Names {
-  enabled: boolean;
   model: KnowledgeModel;
   byPath: ReadonlyMap<string, KnowledgeModel["files"][number]>;
 }
 
-const holdersColumn = (names: Names, label: string) => (names.enabled ? [{ key: "holders", label }] : []);
-const holdersCell = (names: Names, path: string): Record<string, Cell> => (names.enabled ? { holders: activeHolders(names.model, names.byPath, path) || null } : {});
+const holdersColumn = (_names: Names, label: string) => [{ key: "holders", label }];
+const holdersCell = (names: Names, path: string): Record<string, Cell> => ({ holders: activeHolders(names.model, names.byPath, path) || null });
 
 function patternRow(file: PatternFile, names: Names): Record<string, Cell> {
   return {
@@ -457,7 +456,7 @@ function limitsOf(p: Prepared, measured: MeasuredPatterns, notices: string[]): s
     "Guidelines order and label results. They are heuristics for investigation and decide nothing, and every file is listed under its pattern or under none.",
     "Authorship is git blame ignoring whitespace and following moved and copied lines. It says who last wrote a line, which is not who understands it.",
     `A developer counts as having left after ${s.activityWindowMonths} months without a commit. Someone on leave looks the same, and local overrides correct it.`,
-    "The simulation assumes turnover is random. The report names nobody unless run with --names, which lists active developers only.",
+    "The simulation assumes turnover is random. The holders column names the active developers who hold each file's lines.",
     `Each table shows the top ${TOP} of its result and says how many rows it leaves out; \`cochange abandonment patterns\` prints every file.`,
     `Complexity is ${measured.complexity.source === "indentation" ? "the indentation proxy, because no `complexity files` result is stored for this commit" : "from the stored `complexity files` result"}. Test files and files that are not code have none, so the complex-code pattern does not apply to them (${measured.summary.complexityUnknown} files with a blame have no complexity).`,
     ...(evidence.grade === "weak" ? ["The evidence grade is weak, so history-based results are tentative."] : []),
@@ -467,10 +466,9 @@ function limitsOf(p: Prepared, measured: MeasuredPatterns, notices: string[]): s
 }
 
 export const knowledge: ReportKind = {
-  summary: "Where knowledge is concentrated and lost: knowledge-risk patterns, bus factor of the hotspots, knowledge lost so far and the simulated turnover (needs cochange.knowledge.enabled)",
-  options: { names: { type: "boolean" }, "no-refresh": { type: "boolean" } },
+  summary: "Where knowledge is concentrated and lost: knowledge-risk patterns, bus factor of the hotspots, knowledge lost so far and the simulated turnover ",
+  options: { "no-refresh": { type: "boolean" } },
   optionHelp: {
-    names: "show the names, without addresses, of the active developers who hold the lines of each listed file (never developers who have left)",
     "no-refresh": "read the history and blame caches without bringing them up to date",
   },
   async build(context: CommandContext): Promise<ReportBuild> {
@@ -479,7 +477,7 @@ export const knowledge: ReportKind = {
     const measured = await measurePatterns(context, p);
     const code = await readCodeMapFiles(context, p.history.view.headSha);
     const { model } = p.knowledge;
-    const names: Names = { enabled: context.values.names === true, model, byPath: new Map(model.files.map((f) => [f.path, f])) };
+    const names: Names = { model, byPath: new Map(model.files.map((f) => [f.path, f])) };
     const { evidence, window } = p.history;
     const single = model.developers.length === 1;
     const abandonment = await abandonmentBlocks(p, measured);
@@ -488,7 +486,7 @@ export const knowledge: ReportKind = {
     const excluded = excludedCounts(p.history.filtersApplied, droppedCounts(), builtinOmissions(), { leftOutOf: "the hotspot ranking" });
     return dropEmptySlots({
       title: "Knowledge report",
-      inputs: { ...commonInputs(p, "report", { names: names.enabled, guidelines: measured.guidelines, complexityReport: measured.complexity.input }) },
+      inputs: { ...commonInputs(p, "report", { guidelines: measured.guidelines, complexityReport: measured.complexity.input }) },
       header: {
         evidenceGrade: evidence.grade,
         historyWindow: historyWindowText(evidence, window, "; authorship is the blame at the analysed commit"),

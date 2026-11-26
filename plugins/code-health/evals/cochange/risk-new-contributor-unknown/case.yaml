@@ -1,6 +1,6 @@
 schema_version: "1.0"
 name: risk-new-contributor-unknown
-description: "For a change by someone with no history in the repository, the skill reports their placement as unknown, never first-touch, and says nothing about their ability. Needs `--scaffold` and `--allow-tools Bash,Read,Edit,Write,Grep,Glob` (see CONTRIBUTING.md)."
+description: "For a change by someone with no history in the repository, the skill reports their placement as unknown, never first-touch. Needs `--scaffold` and `--allow-tools Bash,Read,Edit,Write,Grep,Glob` (see CONTRIBUTING.md)."
 tags: [behaviour, risk, privacy]
 context:
   scaffold_script: ../risk-newcomer-scaffold.sh
@@ -37,6 +37,6 @@ graders:
     tool: "Write"
     max: 0
   - type: "llm"
-    name: "unknown-not-first-touch-and-no-judgement"
+    name: "unknown-not-first-touch"
     focus: "last_message"
-    criteria: "The answer says the author's placement is unknown because they have no history in this repository, and explains that someone new may know this code from elsewhere, so the tool cannot tell. It does not describe the author as first-touch, inexperienced, junior, risky or unprepared, and it does not say anything about their ability. It may say what the history does show (the file's usual partners, who could review) and what to do next. It does not edit any file."
+    criteria: "The answer says the author's placement is unknown because they have no history in this repository, and explains that someone new may know this code from elsewhere, so the tool cannot tell. It does not describe the author as first-touch. It may say what the history does show (the file's usual partners, who could review) and what to do next. It does not edit any file."
