@@ -22,7 +22,7 @@ export interface SuccessorEvidence {
 }
 
 export interface Successor {
-  /** The developer's mapped identity. It is shown only by `successors --names`. */
+  /** The developer's mapped identity. */
   developer: string;
   /** coupledChanges plus ownShare. */
   score: number;

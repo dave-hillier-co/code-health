@@ -86,7 +86,7 @@ export const riskDefaults = {
   /** Backtest: a fix that touches a change's files within this many days counts as trouble. */
   followUpDays: 30,
   /** Whose placement `risk` computes: `self`, `any` or `off`. */
-  placement: "self" as string,
+  placement: "any" as string,
   /** Factors to switch off, by name. */
   disable: [] as string[],
 };

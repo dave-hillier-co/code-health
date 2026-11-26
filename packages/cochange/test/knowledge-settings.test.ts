@@ -17,9 +17,9 @@ function settingsFor(document: unknown) {
   return readKnowledgeSettings(loadConfig(dir, cochangeConfig).effective);
 }
 
-test("the analysis is off by default and the defaults follow the spec", () => {
+test("the analysis is on by default and the defaults follow the spec", () => {
   expect(settingsFor({})).toEqual({
-    enabled: false,
+    enabled: true,
     activityWindowMonths: 6,
     periodMonths: 3,
     horizonPeriods: 4,

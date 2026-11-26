@@ -59,9 +59,9 @@ Knowledge sits with a few people and the history is short.
 
 **Top files whose first pattern is single-owner hotspot, hottest first**
 
-| # | File | Hotspot | Complexity | Lines held by people | Active holders | Former holders | Top active holder (%) | Held by former (%) | Bus factor |
-| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | src/api/auth.ts | yes | 0 | 10 | 1 | 0 | 100 | 0 | 1 |
+| # | File | Hotspot | Complexity | Lines held by people | Active holders | Former holders | Top active holder (%) | Held by former (%) | Bus factor | Active developers holding lines |
+| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 1 | src/api/auth.ts | yes | 0 | 10 | 1 | 0 | 100 | 0 | 1 | Ann Active |
 
 **Judgement: single-owner hotspot**
 
@@ -69,11 +69,11 @@ Knowledge sits with a few people and the history is short.
 
 **Top files whose first pattern is complex code by former contributors, hottest first**
 
-| # | File | Hotspot | Complexity | Lines held by people | Active holders | Former holders | Top active holder (%) | Held by former (%) | Bus factor |
-| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | src/core/engine.ts | no | 0 | 10 | 0 | 1 | 0 | 100 | – |
-| 2 | src/core/lexer.ts | no | 0 | 10 | 1 | 1 | 20 | 80 | – |
-| 3 | src/core/parser.ts | no | 0 | 10 | 1 | 1 | 10 | 90 | – |
+| # | File | Hotspot | Complexity | Lines held by people | Active holders | Former holders | Top active holder (%) | Held by former (%) | Bus factor | Active developers holding lines |
+| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 1 | src/core/engine.ts | no | 0 | 10 | 0 | 1 | 0 | 100 | – | – |
+| 2 | src/core/lexer.ts | no | 0 | 10 | 1 | 1 | 20 | 80 | – | Bob Builder |
+| 3 | src/core/parser.ts | no | 0 | 10 | 1 | 1 | 10 | 90 | – | Ann Active |
 
 **Judgement: complex code by former contributors**
 
@@ -81,10 +81,10 @@ Knowledge sits with a few people and the history is short.
 
 **Top files whose first pattern is single owner, hottest first**
 
-| # | File | Hotspot | Complexity | Lines held by people | Active holders | Former holders | Top active holder (%) | Held by former (%) | Bus factor |
-| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | src/ui/view.ts | no | 0 | 10 | 1 | 0 | 100 | 0 | 1 |
-| 2 | src/util/log.ts | no | 0 | 10 | 1 | 0 | 100 | 0 | 1 |
+| # | File | Hotspot | Complexity | Lines held by people | Active holders | Former holders | Top active holder (%) | Held by former (%) | Bus factor | Active developers holding lines |
+| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 1 | src/ui/view.ts | no | 0 | 10 | 1 | 0 | 100 | 0 | 1 | Eve Newer |
+| 2 | src/util/log.ts | no | 0 | 10 | 1 | 0 | 100 | 0 | 1 | Bob Builder |
 
 **Judgement: single owner**
 
@@ -92,9 +92,9 @@ Knowledge sits with a few people and the history is short.
 
 **Top files whose first pattern is inconclusive, hottest first**
 
-| # | File | Hotspot | Complexity | Lines held by people | Active holders | Former holders | Top active holder (%) | Held by former (%) | Bus factor |
-| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | src/gen/deps.ts | no | 0 | 5 | 0 | 1 | 0 | 100 | – |
+| # | File | Hotspot | Complexity | Lines held by people | Active holders | Former holders | Top active holder (%) | Held by former (%) | Bus factor | Active developers holding lines |
+| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 1 | src/gen/deps.ts | no | 0 | 5 | 0 | 1 | 0 | 100 | – | – |
 
 **Judgement: inconclusive**
 
@@ -104,10 +104,10 @@ Knowledge sits with a few people and the history is short.
 
 **Bus factor of the top hotspots: the fewest active developers who together hold 80% of a file's lines held by people**
 
-| # | Hotspot | Hotspot score | Lines held by people | Active holders | Bus factor | Top active holder (%) | Held by former (%) | First pattern |
-| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| 1 | src/api/auth.ts | 0.33 | 10 | 1 | 1 | 100 | 0 | Single-owner hotspot |
-| 2 | src/api/routes.ts | 0.33 | 10 | 2 | 2 | 50 | 0 | – |
+| # | Hotspot | Hotspot score | Lines held by people | Active holders | Bus factor | Top active holder (%) | Held by former (%) | First pattern | Active developers holding lines |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| 1 | src/api/auth.ts | 0.33 | 10 | 1 | 1 | 100 | 0 | Single-owner hotspot | Ann Active |
+| 2 | src/api/routes.ts | 0.33 | 10 | 2 | 2 | 50 | 0 | – | Ann Active; Bob Builder |
 
 > **Notice:** A dash in the bus factor column means active developers together hold less than 80% of the file's lines held by people, so the rest sits with developers who have left or with lines nobody holds.
 
@@ -180,7 +180,7 @@ _Guidelines order and label the rows and decide nothing. Tail ratio 3 (cochange.
 - Guidelines order and label results. They are heuristics for investigation and decide nothing, and every file is listed under its pattern or under none.
 - Authorship is git blame ignoring whitespace and following moved and copied lines. It says who last wrote a line, which is not who understands it.
 - A developer counts as having left after 6 months without a commit. Someone on leave looks the same, and local overrides correct it.
-- The simulation assumes turnover is random. It says nothing about any person, and the report names nobody unless run with --names, which lists active developers only.
+- The simulation assumes turnover is random. The holders column names the active developers who hold each file's lines.
 - Each table shows the top 10 of its result and says how many rows it leaves out; `cochange abandonment patterns` prints every file.
 - Complexity is the indentation proxy, because no `complexity files` result is stored for this commit. Test files and files that are not code have none, so the complex-code pattern does not apply to them (0 files with a blame have no complexity).
 - The evidence grade is weak, so history-based results are tentative.

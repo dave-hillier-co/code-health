@@ -122,8 +122,8 @@ describe("on the knowledge history", () => {
     expect(points.stderr).toContain("--points belongs to abandonment trend");
   });
 
-  test("the instruments are behind the privacy gate", async () => {
-    writeFileSync(join(repo.path, "code-health.json"), "{}");
+  test("the instruments refuse when the repository switches the analysis off", async () => {
+    writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { knowledge: { enabled: false } } }));
     for (const sub of ["redundancy", "trend", "adoption"]) {
       const { code, stderr } = await run(repo, sub);
       expect(code).toBe(ExitCode.Usage);

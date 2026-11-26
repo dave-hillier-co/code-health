@@ -379,12 +379,10 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/identity"
-          },
-          "description": "Without --names, former contributors are left out, so the list can be empty."
+          }
         },
         "detail": {
-          "type": "string",
-          "description": "Without --names, a finding about a former contributor says it in words that hold no name, address or date of theirs."
+          "type": "string"
         },
         "windowCommits": {
           "type": [
@@ -420,7 +418,7 @@
         },
         "formerContributors": {
           "$ref": "common.schema.json#/$defs/count",
-          "description": "People the finding is about with no commit in cochange.knowledge.activityWindowMonths. Without --names their identities are not shown."
+          "description": "People the finding is about with no commit in cochange.knowledge.activityWindowMonths."
         }
       },
       "required": [
@@ -471,10 +469,6 @@
         },
         "apply": {
           "type": "boolean"
-        },
-        "names": {
-          "type": "boolean",
-          "description": "`check` only. Whether former contributors are named."
         }
       },
       "required": [
@@ -643,12 +637,10 @@
           "properties": {
             "subcommand": {
               "const": "check"
-            },
-            "names": true
+            }
           },
           "required": [
-            "subcommand",
-            "names"
+            "subcommand"
           ]
         },
         "results": {

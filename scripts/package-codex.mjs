@@ -10,7 +10,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const codexSkills = {
   cochange: { tool: "cochange", title: "Co-change", description: "Find hotspots and files that change together" },
   "change-risk": { tool: "cochange", title: "Change risk", description: "Review branch risk using history and ownership" },
-  abandonment: { tool: "cochange", title: "Abandonment risk", description: "Assess knowledge loss with repository opt-in" },
+  abandonment: { tool: "cochange", title: "Abandonment risk", description: "Assess knowledge loss and who could pick it up" },
   identities: { tool: "cochange", title: "Identities", description: "Review and resolve Git author identity mappings" },
   complexity: { tool: "complexity", title: "Complexity", description: "Measure complexity and guide local simplifications" },
   locality: { tool: "locality", title: "Locality", description: "Place code closer to its consumers with evidence" },

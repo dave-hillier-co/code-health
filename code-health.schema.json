@@ -395,7 +395,7 @@
             },
             "placement": {
               "type": "string",
-              "default": "self"
+              "default": "any"
             },
             "disable": {
               "type": "array",
@@ -442,7 +442,7 @@
               "requirements.txt"
             ],
             "followUpDays": 30,
-            "placement": "self",
+            "placement": "any",
             "disable": []
           }
         },
@@ -483,7 +483,7 @@
           "properties": {
             "enabled": {
               "type": "boolean",
-              "default": false
+              "default": true
             },
             "activityWindowMonths": {
               "type": "number",
@@ -585,7 +585,7 @@
           },
           "additionalProperties": false,
           "default": {
-            "enabled": false,
+            "enabled": true,
             "activityWindowMonths": 6,
             "periodMonths": 3,
             "horizonPeriods": 4,

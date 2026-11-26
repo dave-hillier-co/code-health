@@ -532,17 +532,28 @@
         "value": {}
       },
       {
-        "band": null,
+        "band": "low",
         "evidence": [],
         "family": "history",
-        "guidelines": {},
+        "guidelines": {
+          "count": {
+            "high": 3,
+            "moderate": 1
+          }
+        },
         "layer": "history",
         "name": "abandoned-touched",
-        "reason": "knowledge analysis is not enabled (cochange.knowledge.enabled)",
+        "reason": null,
         "scored": false,
         "source": "knowledge analysis",
-        "status": "unavailable",
-        "value": {}
+        "status": "ok",
+        "value": {
+          "baseline": 0,
+          "count": 0,
+          "files": 0,
+          "margin": 0,
+          "unknown": 0
+        }
       }
     ],
     "findings": [
@@ -619,20 +630,369 @@
       "value": null
     },
     "placement": {
-      "band": null,
-      "basis": null,
+      "band": "unknown",
+      "basis": "history",
       "blame": {
         "missing": 0,
         "refreshed": false,
         "used": false
       },
-      "factors": [],
-      "files": [],
-      "mode": "self",
-      "newIdentity": false,
-      "reason": "the change was not written only by the invoking git identity; cochange.risk.placement: any computes placement for someone else's branch",
-      "shares": null,
-      "status": "withheld"
+      "factors": [
+        {
+          "band": null,
+          "evidence": [],
+          "family": "placement",
+          "guidelines": {},
+          "layer": "placement",
+          "name": "authorship",
+          "reason": "no blame is cached for the touched files at the base; the labels come from change-familiarity alone",
+          "scored": false,
+          "source": "blame",
+          "status": "unavailable",
+          "value": {}
+        },
+        {
+          "band": null,
+          "evidence": [
+            {
+              "earlierChanges": 0,
+              "familiarity": 0,
+              "file": "src/area0/module0.ts",
+              "recentChanges": 0
+            },
+            {
+              "earlierChanges": 0,
+              "familiarity": 0,
+              "file": "src/area0/module6.ts",
+              "recentChanges": 0
+            },
+            {
+              "earlierChanges": 0,
+              "familiarity": 0,
+              "file": "src/area1/module1.ts",
+              "recentChanges": 0
+            },
+            {
+              "earlierChanges": 0,
+              "familiarity": 0,
+              "file": "src/area1/module7.ts",
+              "recentChanges": 0
+            },
+            {
+              "earlierChanges": 0,
+              "familiarity": 0,
+              "file": "src/area2/module2.ts",
+              "recentChanges": 0
+            },
+            {
+              "earlierChanges": 0,
+              "familiarity": 0,
+              "file": "src/area2/module8.ts",
+              "recentChanges": 0
+            },
+            {
+              "earlierChanges": 0,
+              "familiarity": 0,
+              "file": "src/area3/module3.ts",
+              "recentChanges": 0
+            },
+            {
+              "earlierChanges": 0,
+              "familiarity": 0,
+              "file": "src/area3/module9.ts",
+              "recentChanges": 0
+            },
+            {
+              "earlierChanges": 0,
+              "familiarity": 0,
+              "file": "src/area4/module10.ts",
+              "recentChanges": 0
+            },
+            {
+              "earlierChanges": 0,
+              "familiarity": 0,
+              "file": "src/area4/module4.ts",
+              "recentChanges": 0
+            },
+            {
+              "earlierChanges": 0,
+              "familiarity": 0,
+              "file": "src/area5/module11.ts",
+              "recentChanges": 0
+            },
+            {
+              "earlierChanges": 0,
+              "familiarity": 0,
+              "file": "src/area5/module5.ts",
+              "recentChanges": 0
+            }
+          ],
+          "family": "placement",
+          "guidelines": {},
+          "layer": "placement",
+          "name": "change-familiarity",
+          "reason": null,
+          "scored": false,
+          "source": "history",
+          "status": "ok",
+          "value": {
+            "familiarity": 0,
+            "files": 12
+          }
+        },
+        {
+          "band": null,
+          "evidence": [
+            {
+              "component": null,
+              "coupled": 0,
+              "file": "src/area0/module0.ts",
+              "folder": 0
+            },
+            {
+              "component": null,
+              "coupled": 0,
+              "file": "src/area0/module6.ts",
+              "folder": 0
+            },
+            {
+              "component": null,
+              "coupled": 0,
+              "file": "src/area1/module1.ts",
+              "folder": 0
+            },
+            {
+              "component": null,
+              "coupled": 0,
+              "file": "src/area1/module7.ts",
+              "folder": 0
+            },
+            {
+              "component": null,
+              "coupled": 0,
+              "file": "src/area2/module2.ts",
+              "folder": 0
+            },
+            {
+              "component": null,
+              "coupled": 0,
+              "file": "src/area2/module8.ts",
+              "folder": 0
+            },
+            {
+              "component": null,
+              "coupled": 0,
+              "file": "src/area3/module3.ts",
+              "folder": 0
+            },
+            {
+              "component": null,
+              "coupled": 0,
+              "file": "src/area3/module9.ts",
+              "folder": 0
+            },
+            {
+              "component": null,
+              "coupled": 0,
+              "file": "src/area4/module10.ts",
+              "folder": 0
+            },
+            {
+              "component": null,
+              "coupled": 0,
+              "file": "src/area4/module4.ts",
+              "folder": 0
+            },
+            {
+              "component": null,
+              "coupled": 0,
+              "file": "src/area5/module11.ts",
+              "folder": 0
+            },
+            {
+              "component": null,
+              "coupled": 0,
+              "file": "src/area5/module5.ts",
+              "folder": 0
+            }
+          ],
+          "family": "placement",
+          "guidelines": {},
+          "layer": "placement",
+          "name": "neighbourhood",
+          "reason": null,
+          "scored": false,
+          "source": "history",
+          "status": "ok",
+          "value": {
+            "component": null,
+            "coupled": 0,
+            "folder": 0
+          }
+        },
+        {
+          "band": null,
+          "evidence": [],
+          "family": "placement",
+          "guidelines": {},
+          "layer": "placement",
+          "name": "first-touch-share",
+          "reason": null,
+          "scored": false,
+          "source": "history",
+          "status": "ok",
+          "value": {
+            "share": 0
+          }
+        },
+        {
+          "band": null,
+          "evidence": [],
+          "family": "placement",
+          "guidelines": {},
+          "layer": "placement",
+          "name": "owner-distance",
+          "reason": "no blame is cached for the touched files at the base; the labels come from change-familiarity alone",
+          "scored": false,
+          "source": "blame",
+          "status": "unavailable",
+          "value": {}
+        },
+        {
+          "band": null,
+          "evidence": [],
+          "family": "placement",
+          "guidelines": {},
+          "layer": "placement",
+          "name": "no-owner",
+          "reason": "no blame is cached for the touched files at the base; the labels come from change-familiarity alone",
+          "scored": false,
+          "source": "blame",
+          "status": "unavailable",
+          "value": {}
+        }
+      ],
+      "files": [
+        {
+          "authorship": null,
+          "churn": 30,
+          "earlierChanges": 0,
+          "familiarity": 0,
+          "file": "src/area0/module0.ts",
+          "label": "unknown",
+          "recentChanges": 0
+        },
+        {
+          "authorship": null,
+          "churn": 30,
+          "earlierChanges": 0,
+          "familiarity": 0,
+          "file": "src/area0/module6.ts",
+          "label": "unknown",
+          "recentChanges": 0
+        },
+        {
+          "authorship": null,
+          "churn": 30,
+          "earlierChanges": 0,
+          "familiarity": 0,
+          "file": "src/area1/module1.ts",
+          "label": "unknown",
+          "recentChanges": 0
+        },
+        {
+          "authorship": null,
+          "churn": 30,
+          "earlierChanges": 0,
+          "familiarity": 0,
+          "file": "src/area1/module7.ts",
+          "label": "unknown",
+          "recentChanges": 0
+        },
+        {
+          "authorship": null,
+          "churn": 30,
+          "earlierChanges": 0,
+          "familiarity": 0,
+          "file": "src/area2/module2.ts",
+          "label": "unknown",
+          "recentChanges": 0
+        },
+        {
+          "authorship": null,
+          "churn": 30,
+          "earlierChanges": 0,
+          "familiarity": 0,
+          "file": "src/area2/module8.ts",
+          "label": "unknown",
+          "recentChanges": 0
+        },
+        {
+          "authorship": null,
+          "churn": 30,
+          "earlierChanges": 0,
+          "familiarity": 0,
+          "file": "src/area3/module3.ts",
+          "label": "unknown",
+          "recentChanges": 0
+        },
+        {
+          "authorship": null,
+          "churn": 30,
+          "earlierChanges": 0,
+          "familiarity": 0,
+          "file": "src/area3/module9.ts",
+          "label": "unknown",
+          "recentChanges": 0
+        },
+        {
+          "authorship": null,
+          "churn": 30,
+          "earlierChanges": 0,
+          "familiarity": 0,
+          "file": "src/area4/module10.ts",
+          "label": "unknown",
+          "recentChanges": 0
+        },
+        {
+          "authorship": null,
+          "churn": 30,
+          "earlierChanges": 0,
+          "familiarity": 0,
+          "file": "src/area4/module4.ts",
+          "label": "unknown",
+          "recentChanges": 0
+        },
+        {
+          "authorship": null,
+          "churn": 30,
+          "earlierChanges": 0,
+          "familiarity": 0,
+          "file": "src/area5/module11.ts",
+          "label": "unknown",
+          "recentChanges": 0
+        },
+        {
+          "authorship": null,
+          "churn": 30,
+          "earlierChanges": 0,
+          "familiarity": 0,
+          "file": "src/area5/module5.ts",
+          "label": "unknown",
+          "recentChanges": 0
+        }
+      ],
+      "mode": "any",
+      "newIdentity": true,
+      "reason": null,
+      "shares": {
+        "first-touch": 0,
+        "occasional": 0,
+        "owner": 0,
+        "regular": 0,
+        "unknown": 1
+      },
+      "status": "computed"
     }
   },
   "schemaVersion": 1,

@@ -110,12 +110,11 @@ Each band compares the change with the 16 merged changes measured as of their ow
 | sensitive-paths | low | count 0 | count: moderate from 1, high from 3 | 0 |
 | complexity-delta | low | indentation proxy, not a complexity comparison: count 0, files 1, newFiles 0 | count: moderate from 1, high from 3 | 0 |
 | structure-delta | moderate | count 2 | count: moderate from 1, high from 3 | 2 |
-| abandoned-touched | unavailable | none | none | 0 |
+| abandoned-touched | low | count 0, files 1, unknown 0, baseline 0, margin 0 | count: moderate from 1, high from 3 | 0 |
 
 **Factors with no band**
 
 - `defect-history` unavailable: fewer than 10 merged changes in the baseline, so a value of 0.142857 cannot be placed
-- `abandoned-touched` unavailable: knowledge analysis is not enabled (cochange.knowledge.enabled)
 
 > **Notice:** No level is shown: a level is shown only where a stored backtest shows that the levels separate past changes, and none is stored for this configuration.
 
@@ -169,7 +168,7 @@ _Guidelines order and label the rows and decide nothing. Confidence (%) 80 (coch
 
 ## Abandoned files touched
 
-> **Notice:** Abandoned touched files could not be computed: knowledge analysis is not enabled (cochange.knowledge.enabled).
+> **Notice:** No touched file is abandoned or above the repository's baseline abandonment probability of 0.
 
 ## Evidence behind the factors
 
@@ -200,9 +199,8 @@ _Guidelines order and label the rows and decide nothing. Confidence (%) 80 (coch
 
 - Guidelines order and label what is shown. They are heuristics for review and decide nothing.
 - The evidence grade is weak, so the history-based bands are tentative and the static results should lead.
-- No band for defect-history, abandoned-touched: the factor could not be computed.
+- No band for defect-history: the factor could not be computed.
 - No level is shown, because no stored backtest of this repository says the levels separate past changes.
-- Who wrote the touched code (placement) is about people, so this report leaves it out. Names of people appear nowhere on this page.
 
 **Judgement: what limits this summary**
 

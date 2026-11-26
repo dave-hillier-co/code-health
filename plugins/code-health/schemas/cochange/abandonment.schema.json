@@ -119,7 +119,7 @@
     },
     "turnoverSummary": {
       "type": "object",
-      "description": "The turnover observed in history, pooled over its usable periods. Counts of people, never names.",
+      "description": "The turnover observed in history, pooled over its usable periods.",
       "properties": {
         "rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "Departures over developers on the team at each period's start. Null when no period is usable." },
         "atRisk": { "$ref": "common.schema.json#/$defs/count", "description": "Developer-periods: developers on the team at the start of each usable period, summed." },

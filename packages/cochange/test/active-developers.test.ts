@@ -61,7 +61,7 @@ describe("suggested reviewers use that same definition", () => {
 
   const configure = (knowledge: Record<string, unknown>) => writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { knowledge } }));
   async function suggested(): Promise<string[]> {
-    const run = await runCochange(repo.path, ["risk", "reviewers", "main..lex", "--names", "--json"]);
+    const run = await runCochange(repo.path, ["risk", "reviewers", "main..lex", "--json"]);
     expect(run.code, run.stderr).toBe(0);
     const areas = JSON.parse(run.stdout).results.areas as { suggested: { email: string }[] }[];
     return areas.flatMap((a) => a.suggested.map((s) => s.email)).sort();

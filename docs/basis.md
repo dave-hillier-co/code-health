@@ -32,7 +32,7 @@ History-based signals need history. A codebase with years of commits and many co
 6. **Deep over shallow, and inline by default.** Remedies hide decisions behind simple interfaces. Inlining single-use indirection is a first-class remedy, and no tool creates shared helpers or abstractions. The one stated exception is breaking a dependency, which sometimes needs an interface owned by the stable side.
 7. **Scrutinise what is widely used.** High fan-in multiplies the cost of every flaw. A utility with many consumers has earned its location, and it is the first place to look for design problems.
 8. **Built for agents, usable by people.** Output is compact, ranked and capped by default, because an agent should never receive a 5,000-row dump by accident. JSON is the contract and a table is the default in a terminal.
-9. **Local and private.** No network access and no telemetry. Data about people is off by default, and each exception is stated and bounded (see [People](#people)).
+9. **Local and private.** No network access and no telemetry.
 10. **Self-contained tools, composed by data.** No tool needs another at run time. They share code at build time and read each other's stored results when those exist.
 11. **Patterns emerge from the codebase.** Where a remedy needs a design mechanism (an interface, events, a mediator), the skill prefers what the codebase already uses nearby and asks before introducing anything new.
 12. **Guidelines, not hard limits.** A number from CodeScene, a book or a judgement call orders and annotates results. It never hides, drops or fails them (see [Guidelines](#guidelines)).
@@ -207,13 +207,3 @@ Each tool has an outcome measure, and they share the instruments.
 - **Caches that can always be deleted.** Commits are stored by SHA and parse results by blob, so neither is ever invalidated, and a stored result is reused only when its commit, config, code and inputs all match. State that cannot be regenerated (measurement baselines, local identity decisions) lives apart from the cache.
 - **Reports separate data from judgement.** The CLI computes every number and renders the page. The agent writes only the judgement, into slots the CLI defines, against a stamp that ties the notes to the commit and config they were written for. A report shows guidelines as legend values beside the numbers and never as one score or a red, yellow and green rating.
 - **Sociable tests on real repositories.** Tests build real git repositories with fixed dates and run the real CLI, and every JSON output has a golden file and a schema. A language counts as supported only when hand-counted conformance fixtures pass for every tool.
-
-## People
-
-The suite measures code, not people.
-
-- Default outputs contain no author identities. Counts are per file and per component.
-- The knowledge analysis is off until the repository's config turns it on. It models random turnover only: it never predicts who will leave, never ranks people by the loss their departure would cause, and names only active developers, as suggested successors or reviewers, when asked to.
-- A change's risk includes its author's placement in the touched code. That describes one change, by default the author's own, and is never aggregated per person.
-- Identity resolution necessarily shows names and emails. It shows only what `git log` shows, uses git history alone, and its output is never stored where another tool could read it.
-- The skills decline to use any of this to assess individuals, and say why.

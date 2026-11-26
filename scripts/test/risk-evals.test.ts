@@ -38,8 +38,8 @@ const read = (name: string) => parse(readFileSync(join(evals, name, "case.yaml")
 describe("the change-risk eval cases", () => {
   test("cover triggering, the negative case, behaviour and the decline cases", () => {
     const tags = new Set(cases.flatMap((name) => read(name).tags));
-    for (const tag of ["trigger", "positive", "negative", "behaviour", "privacy"]) expect(tags, tag).toContain(tag);
-    expect(cases).toEqual(expect.arrayContaining(["risk-declines-ranking-authors", "risk-colleague-placement-withheld", "risk-new-contributor-unknown", "risk-leads-with-completeness"]));
+    for (const tag of ["trigger", "positive", "negative", "behaviour"]) expect(tags, tag).toContain(tag);
+    expect(cases).toEqual(expect.arrayContaining(["risk-new-contributor-unknown", "risk-leads-with-completeness"]));
   });
 
   test("every scaffold a case names exists, and the behaviour cases that edit nothing say so", () => {
@@ -74,13 +74,11 @@ describe("the risk scaffold", () => {
     expect(document.results.findings[0]).toMatchObject({ id: "missing-co-change", step: "complete" });
   });
 
-  test("the author's own branch gets placement, and a colleague's does not", async () => {
+  test("the author's own branch and a colleague's both get placement", async () => {
     const dir = scaffold("risk-scaffold.sh");
     expect((await risk(dir, "main..feature/discount")).document.results.placement.status).toBe("computed");
     const bob = (await risk(dir, "main..feature/bob-change")).document.results;
-    expect(bob.placement).toMatchObject({ status: "withheld", band: null, files: [] });
-    expect(bob.placement.reason).toMatch(/placement: any/);
-    // The impact is still there.
+    expect(bob.placement.status).toBe("computed");
     expect(bob.factors.length).toBeGreaterThan(0);
   });
 });

@@ -47,7 +47,7 @@ Mines git history to show where change effort concentrates and which files chang
 |---|---|
 | `cochange` | Hotspots, temporal coupling, change spread, fix counts, and a briefing before an edit. |
 | `change-risk` | How much a branch or pull request puts at risk, how to review it and who should review it. |
-| `abandonment` | Knowledge lost when people leave. Off until the repository sets `cochange.knowledge.enabled`. |
+| `abandonment` | Knowledge lost when people leave, and who could pick it up. |
 | `identities` | A reviewed `.mailmap` that maps the names and emails people commit under to one identity each. |
 
 | Command | Prints |
@@ -65,8 +65,6 @@ Mines git history to show where change effort concentrates and which files chang
 | `report` | An HTML or Markdown page: `overview`, `hotspots`, `coupling`, `knowledge`, or `change` (a pull request summary). |
 
 `refresh` and `blame` update the shared caches.
-
-Default outputs contain no author identities. The knowledge analysis is off until `cochange.knowledge.enabled` is set, models random turnover only, and never ranks or predicts individuals.
 
 ## complexity
 

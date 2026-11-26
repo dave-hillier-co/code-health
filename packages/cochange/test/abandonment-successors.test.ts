@@ -42,45 +42,43 @@ test("successors are ranked by the changes they made to coupled files, weighted 
   expect(row.candidates).toBe(2);
   expect(row.noSuccessor).toBe(false);
   expect(row.successors).toEqual([
-    { rank: 1, score: 5, coupledChanges: 4, ownShare: 1, evidence: [{ path: routes, degree: 100, changes: 4 }] },
-    { rank: 2, score: 2, coupledChanges: 2, ownShare: 0, evidence: [{ path: routes, degree: 100, changes: 2 }] },
+    { rank: 1, developer: "Ann Active", score: 5, coupledChanges: 4, ownShare: 1, evidence: [{ path: routes, degree: 100, changes: 4 }] },
+    { rank: 2, developer: "Bob Builder", score: 2, coupledChanges: 2, ownShare: 0, evidence: [{ path: routes, degree: 100, changes: 2 }] },
   ]);
 });
 
-test("without --names a successor is a rank and never an identity", async () => {
+test("the successors of two files, byte for byte, named without their addresses", async () => {
   const { stdout } = await successors(auth, routes);
-  for (const hidden of ["example.com", "Ann", "Bob", "Cy", "Di ", "Eve", "\"developer\""]) expect(stdout).not.toContain(hidden);
+  expect(stdout).not.toContain("example.com");
   expectGolden("abandonment", "successors", stdout);
 });
 
-test("--names shows the active developers who could pick the file up, and only them", async () => {
-  const document = await json(auth, routes, engine, lexer, "--names");
+test("the successors are the active developers who could pick the file up", async () => {
+  const document = await json(auth, routes, engine, lexer);
   expect(rowOf(document, auth).successors.map((s) => s.developer)).toEqual(["Ann Active", "Bob Builder"]);
   // Routes: Ann 4 x 1.0 + her half of the lines, Bob 2 x 1.0 + his.
   expect(rowOf(document, routes).successors.map((s) => [s.developer, s.score])).toEqual([
     ["Ann Active", 4.5],
     ["Bob Builder", 2.5],
   ]);
-  // The lexer is Di's, who has left, and Bob's two lines: only Bob can be named.
+  // The lexer is Di's, who has left, and Bob's two lines: only Bob can pick it up.
   expect(rowOf(document, lexer).successors.map((s) => s.developer)).toEqual(["Bob Builder"]);
-  // The engine is all Cy's: nobody active holds a line, and Cy is never listed.
+  // The engine is all Cy's: nobody active holds a line, so there is no successor.
   expect(rowOf(document, engine)).toMatchObject({ abandoned: true, candidates: 0, noSuccessor: true, successors: [] });
-  const text = JSON.stringify(document);
-  for (const leaver of ["Cy Gone", "Di Departed", "cy@example.com", "di@example.com", "Eve Newer"]) expect(text).not.toContain(leaver);
-  expect(document.inputs.names).toBe(true);
+  expect(document.inputs).not.toHaveProperty("names");
 });
 
 test("a file with no coupled files still has a successor in the active developer who holds its lines", async () => {
   const row = rowOf(await json(log), log);
   expect(row).toMatchObject({ coupledFiles: [], noSuccessor: false, candidates: 1 });
-  expect(row.successors).toEqual([{ rank: 1, score: 1, coupledChanges: 0, ownShare: 1, evidence: [] }]);
+  expect(row.successors).toEqual([{ rank: 1, developer: expect.any(String), score: 1, coupledChanges: 0, ownShare: 1, evidence: [] }]);
 });
 
 test("an override that returns someone to the active makes them a candidate, and one that removes them does not", async () => {
   const dir = join(repo.path, ".code-health", "local");
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, "knowledge-overrides.json"), JSON.stringify({ schemaVersion: 1, active: ["Cy Gone <cy@example.com>"], inactive: ["Bob Builder <bob@example.com>"] }));
-  const document = await json(engine, auth, "--names");
+  const document = await json(engine, auth);
   expect(rowOf(document, engine).successors.map((s) => s.developer)).toEqual(["Cy Gone"]);
   expect(rowOf(document, auth).successors.map((s) => s.developer)).toEqual(["Ann Active"]);
 });
@@ -91,11 +89,11 @@ test("--top limits the successors per file, and candidates counts them all", asy
   expect(row.candidates).toBe(2);
 });
 
-test("a file that is not there, or no file at all, or no opt-in, is refused", async () => {
+test("a file that is not there, or no file at all, or the analysis switched off, is refused", async () => {
   expect((await successors("src/nowhere.ts")).code).toBe(ExitCode.Usage);
   expect((await successors()).code).toBe(ExitCode.Usage);
-  writeFileSync(join(repo.path, "code-health.json"), "{}");
-  const off = await successors(auth, "--names");
+  writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { knowledge: { enabled: false } } }));
+  const off = await successors(auth);
   expect(off.code).toBe(ExitCode.Usage);
   expect(off.stdout).toBe("");
   expect(off.stderr).toContain("cochange.knowledge.enabled");

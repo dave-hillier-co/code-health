@@ -102,7 +102,6 @@
     "oversizedChanges": 0
   },
   "inputs": {
-    "names": true,
     "range": "main..dave",
     "worktree": false
   },
@@ -135,7 +134,6 @@
     ],
     "basis": "blame",
     "kind": "reviewers",
-    "names": true,
     "note": "Active developers only, as people to ask: ranked by authorship, their average share of the lines of the area's touched files they last wrote (0 to 1), then by coupledChanges, their changes in the window to the area's coupledFiles (files outside the change at the missing-co-change guidelines towards a touched file). coupledChanges is 0 for everyone in an area whose coupledFiles is 0. The change's own authors are not listed.",
     "perArea": 3
   },

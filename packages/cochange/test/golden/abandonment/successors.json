@@ -114,7 +114,6 @@
     "activityWindowMonths": 6,
     "copyDetection": true,
     "minSupport": 5,
-    "names": false,
     "overrides": {
       "active": 0,
       "hash": null,
@@ -148,6 +147,7 @@
       "successors": [
         {
           "coupledChanges": 4,
+          "developer": "Ann Active",
           "evidence": [
             {
               "changes": 4,
@@ -161,6 +161,7 @@
         },
         {
           "coupledChanges": 2,
+          "developer": "Bob Builder",
           "evidence": [
             {
               "changes": 2,
@@ -189,6 +190,7 @@
       "successors": [
         {
           "coupledChanges": 4,
+          "developer": "Ann Active",
           "evidence": [
             {
               "changes": 4,
@@ -202,6 +204,7 @@
         },
         {
           "coupledChanges": 2,
+          "developer": "Bob Builder",
           "evidence": [
             {
               "changes": 2,

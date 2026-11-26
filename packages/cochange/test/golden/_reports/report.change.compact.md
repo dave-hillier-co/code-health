@@ -20,7 +20,7 @@ Open the files the tables name first, then ask the author about each item.
 
 - Guidelines order and label what is shown. They are heuristics for review and decide nothing.
 - The evidence grade is weak, so the history-based bands are tentative and the static results should lead.
-- No band for defect-history, abandoned-touched: the factor could not be computed.
+- No band for defect-history: the factor could not be computed.
 
 **Judgement: what limits this summary**
 

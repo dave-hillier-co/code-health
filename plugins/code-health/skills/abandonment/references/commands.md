@@ -4,11 +4,11 @@ Invocation: `node ${CLAUDE_PLUGIN_ROOT}/dist/cochange.mjs <command> [options] --
 
 Exit codes: 0 success, 2 usage or config error (including `knowledge-disabled`), 3 environment error. With `--json`, errors are JSON on stderr.
 
-Every document of `abandonment` and `successors` carries the history's `window`, `filtersApplied` and `evidence` (its grade says how far to trust anything history-based), `developers` (`active` and `inactive`, as counts) and `blame` (`unknownFiles`, the authored files the cache holds nothing right for, and `unattributedLines`). They are never stored as reports. Names appear nowhere except `successors --names`, which prints the names of active developers without their addresses.
+Every document of `abandonment` and `successors` carries the history's `window`, `filtersApplied` and `evidence` (its grade says how far to trust anything history-based), `developers` (`active` and `inactive`, as counts) and `blame` (`unknownFiles`, the authored files the cache holds nothing right for, and `unattributedLines`). They are never stored as reports. `successors` names active developers without their addresses.
 
 ## blame refresh
 
-Brings the blame cache up to date: `git blame -w -M -C` of every authored file whose stored blame is missing or no longer right. Not behind the opt-in, because the cache holds commits and never people. Results: `head`, `files`, `blamed`, `reused`, `noText` (binary or empty files, remembered), `failed` (paths git could not blame), `pruned`, `rebuilt`, `aborted`. An interrupted run keeps what finished and the next run resumes.
+Brings the blame cache up to date: `git blame -w -M -C` of every authored file whose stored blame is missing or no longer right. It runs whether or not the knowledge analysis is switched off. Results: `head`, `files`, `blamed`, `reused`, `noText` (binary or empty files, remembered), `failed` (paths git could not blame), `pruned`, `rebuilt`, `aborted`. An interrupted run keeps what finished and the next run resumes.
 
 ## abandonment current [--by file|component] [--rank hotspot|abandonment]
 
@@ -38,9 +38,9 @@ One row per usable period: `start`, `end`, `developers` (on the team at its star
 
 `--k` needs `--mode k-leavers` and cannot exceed the active developers. `--mode historical` needs at least one usable period and ignores a configured rate. Rate mode with no usable period and no configured rate stops and asks for one.
 
-## successors PATH... [--names] [--top N]
+## successors PATH... [--top N]
 
-One row per path: `abandoned`, `coupledFiles` (`path`, `degree`, `support`), `candidates` (active developers with a score), `noSuccessor` (no candidate: no active developer holds a line of the file or has changed a file coupled with it), and `successors` (the top N, default 5): `rank`, `score`, `coupledChanges`, `ownShare`, `evidence` (coupled files they changed, with `degree` and `changes`). `--names` adds `developer` to each: the developer's name, without the address. Only active developers are candidates.
+One row per path: `abandoned`, `coupledFiles` (`path`, `degree`, `support`), `candidates` (active developers with a score), `noSuccessor` (no candidate: no active developer holds a line of the file or has changed a file coupled with it), and `successors` (the top N, default 5): `rank`, `developer` (the developer's name, without the address), `score`, `coupledChanges`, `ownShare`, `evidence` (coupled files they changed, with `degree` and `changes`). Only active developers are candidates.
 
 ## Configuration (`cochange.knowledge`)
 

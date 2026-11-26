@@ -119,7 +119,7 @@ export const RESPONSES: Record<string, { step: Step; response: string; summary: 
     step: "review",
     response: "Add the owner as a reviewer.",
     summary: "Touched files have a clear owner who is not among the change's authors",
-    explanation: "Ownership research finds more failures when low-ownership contributors change owned code, and the owner is the obvious reviewer. Needs placement. `cochange risk reviewers --names` names who to ask.",
+    explanation: "Ownership research finds more failures when low-ownership contributors change owned code, and the owner is the obvious reviewer. Needs placement. `cochange risk reviewers` names who to ask.",
     redFlag: null,
   },
 };

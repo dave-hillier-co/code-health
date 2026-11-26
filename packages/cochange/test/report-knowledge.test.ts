@@ -66,13 +66,13 @@ function expectGolden(name: string, text: string) {
   expect(text).toBe(readFileSync(goldenFile(name), "utf8"));
 }
 
-test("the report is off until the repository opts in, with the same message as the analysis", async () => {
-  writeFileSync(join(repo.path, "code-health.json"), "{}");
+test("the report refuses when the repository switches the analysis off, with the same message as the analysis", async () => {
+  writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { knowledge: { enabled: false } } }));
   for (const args of [["--slots"], ["--format", "md"]]) {
     const { code, stdout, stderr } = await run(...args);
     expect(code).toBe(ExitCode.Usage);
     expect(stdout).toBe("");
-    expect(stderr).toContain("the abandonment analysis is off by default");
+    expect(stderr).toContain("the abandonment analysis is switched off");
     expect(stderr).toContain("cochange.knowledge.enabled");
   }
 });
@@ -84,7 +84,7 @@ test("--slots prints the stamp, the data and one slot per pattern that has files
   const document = JSON.parse(stdout);
   expect(validate(document), JSON.stringify(validate.errors)).toBe(true);
   expect(document.report).toBe("knowledge");
-  expect(document.stamp).toMatchObject({ kind: "knowledge", head: repo.git("rev-parse", "HEAD").trim(), inputs: { names: false, subcommand: "report" } });
+  expect(document.stamp).toMatchObject({ kind: "knowledge", head: repo.git("rev-parse", "HEAD").trim(), inputs: { subcommand: "report" } });
   expect(document.slots.map((s: { id: string }) => s.id)).toEqual(["summary", "pattern-single-owner-hotspot", "pattern-former-contributors-complex", "pattern-single-owner", "pattern-inconclusive", "limits"]);
   const pattern = document.slots.find((s: { id: string }) => s.id === "pattern-single-owner");
   expect(pattern.verdicts).toEqual(["pair", "document", "rotate-reviews", "leave"]);
@@ -158,29 +158,17 @@ test("a weak turnover estimate and an unmapped share are carried to the page as 
   expect(stdout).toContain("The notices above say where the identities or the turnover estimate weaken the results.");
 });
 
-test("no names appear, and with --names only the active developers who hold a file's lines", async () => {
+test("the holders column names the active developers who hold each file's lines", async () => {
   const document = await slots();
-  const plain = await run("--notes", writeNotes("notes-n0.json", fullNotes(document)), "--format", "md");
-  for (const name of ["example.com", "Ann Active", "Bob Builder", "Cy Gone", "Di Departed", "Eve Newer", "dependabot"]) expect(plain.stdout).not.toContain(name);
-
-  const named = await slots2("--names");
-  expect(named.stamp.inputs.names).toBe(true);
-  const { stdout } = await run("--names", "--notes", writeNotes("notes-n1.json", fullNotes(named)), "--format", "md");
+  expect(document.stamp.inputs).not.toHaveProperty("names");
+  const { stdout } = await run("--notes", writeNotes("notes-n1.json", fullNotes(document)), "--format", "md");
   expect(stdout).toContain("Active developers holding lines");
   expect(stdout).toContain("Ann Active");
   expect(stdout).toContain("Bob Builder");
   expect(stdout).toContain("Eve Newer");
-  // Developers who have left, and bots, are never named.
-  for (const name of ["Cy Gone", "Di Departed", "dependabot", "example.com"]) expect(stdout).not.toContain(name);
-  // The names are part of the stamp, so notes written without them are refused with them.
-  const refused = await run("--names", "--notes", writeNotes("notes-n2.json", fullNotes(document)), "--format", "md");
-  expect(refused.code).toBe(ExitCode.Usage);
-  expect(refused.stderr).toContain("names");
 });
 
-async function slots2(...args: string[]) {
-  return JSON.parse((await run("--slots", ...args)).stdout);
-}
+
 
 test("rendering is refused with exit 2 and a message naming the problem", async () => {
   const document = await slots();
@@ -223,7 +211,7 @@ test("the report command lists knowledge and its options in --help", async () =>
   const help = (await runCochange(repo.path, ["report", "--help"])).stdout;
   expect(help).toMatch(/knowledge\s+Where knowledge/);
   const sub = (await runCochange(repo.path, ["report", "knowledge", "--help"])).stdout;
-  expect(sub).toContain("--names");
+  expect(sub).not.toContain("--names");
   expect(sub).toContain("--notes <notes>");
 });
 

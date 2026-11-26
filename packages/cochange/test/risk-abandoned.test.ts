@@ -64,8 +64,8 @@ async function risk(...args: string[]) {
 }
 
 describe("abandoned-touched", () => {
-  test("is unavailable until the repository opts in to the knowledge analysis", async () => {
-    configure(null);
+  test("is unavailable when the repository switches the knowledge analysis off", async () => {
+    writeFileSync(join(repo.path, "code-health.json"), JSON.stringify({ cochange: { knowledge: { enabled: false } } }));
     const { factor, findings } = await risk("main..orphans");
     expect(factor).toMatchObject({ status: "unavailable", band: null });
     expect(factor.reason).toMatch(/cochange\.knowledge\.enabled/);

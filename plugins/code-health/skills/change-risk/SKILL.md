@@ -1,6 +1,6 @@
 ---
 name: change-risk
-description: Assesses a branch, merge request or pull request before it is reviewed or merged, and says how it should be reviewed. Use when someone asks "how risky is this change", "what should the reviewer look at", "who should review this", "is this ready for review", or wants a pre-flight check of their own branch before asking for review. It shows how much of the codebase the change puts at risk, files that usually change with the touched files and are missing, and how well placed the author is in that code, then recommends completing, splitting, testing or routing review. History only. It never gates a merge, ranks authors or judges a person.
+description: Assesses a branch, merge request or pull request before it is reviewed or merged, and says how it should be reviewed. Use when someone asks "how risky is this change", "what should the reviewer look at", "who should review this", "is this ready for review", or wants a pre-flight check of their own branch before asking for review. It shows how much of the codebase the change puts at risk, files that usually change with the touched files and are missing, and how well placed the author is in that code, then recommends completing, splitting, testing or routing review. History only. It never gates a merge.
 allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/dist/cochange.mjs *)
 ---
 
@@ -12,14 +12,12 @@ All commands run as `node ${CLAUDE_PLUGIN_ROOT}/dist/cochange.mjs risk <command>
 
 ## Rules
 
-- **Placement is a fact about history, never a verdict on a person.** `first-touch` means the author has not changed this file before. It says nothing about ability, and you never let it. A new contributor is `unknown`, not `first-touch`: someone with no history here may know this code from elsewhere. Never write "inexperienced", "junior", "unqualified" or the like about an author.
-- **Never compare authors or build a record of a person.** Decline to rank authors by risk, to compare who has the "riskier" changes, to summarise anyone's levels over time, or to use any of this in a performance review, a coaching plan or any other assessment of a person. Say why: placement describes one change against one author's history in that code, it is deliberately never aggregated per person, and it would misread ability. Offer what you can do: assess each change on its own merits, or show where review attention is needed.
-- **Placement is for the invoking user's own change by default.** When the CLI withholds it for someone else's branch, say that it was withheld and why. Do not turn it on. `cochange.risk.placement: "any"` is a team's decision to make together in `code-health.json`, so never edit the config to get it. If the user wants it for a colleague's branch, explain the setting and leave the choice to them. The impact factors are about code and are always shown.
+- **Placement is a fact about history.** `first-touch` means the author has not changed this file before. A new contributor is `unknown`, not `first-touch`: someone with no history here may know this code from elsewhere.
+- **Placement is shown for any change.** `cochange.risk.placement` set to `"self"` limits it to the invoking user's own changes, and `"off"` turns it off; when the CLI withholds it, say why. The impact factors are always shown.
 - **The level is advice.** Never call a change safe, approved or blocked, and never present the level as a gate on merging. A level that blocks merges gets gamed, and the cheapest way to lower it is to split a change into pieces that hide the same risk.
 - **Report a level only when the CLI shows one.** The CLI shows a level only where it states, beside the level, the stored evidence that the levels separate past changes in this repository. Where it shows none, there are only bands, findings and responses. Do not invent a level from the bands.
 - **Unavailable is not low.** A factor the CLI could not compute adds nothing and says nothing about safety. Say which were unavailable.
 - **You read a branch that is checked out or fetched locally.** Do not talk to a forge. Fetching a pull request, and posting your result as a comment, are the user's actions. Offer the text, do not post it.
-- Names appear only through `reviewers --names`, in this conversation, as people to ask. Do not copy them into a file, a comment or a commit message.
 
 ## Workflow
 
@@ -28,7 +26,7 @@ All commands run as `node ${CLAUDE_PLUGIN_ROOT}/dist/cochange.mjs risk <command>
 3. **Run `risk`**, for example `risk main..feature/x --evidence /tmp/diff.json`. Without a range it takes the branch that is checked out against the main branch. Report the level, or the bands where there is none, in one sentence with the two or three factors that drove it. Do not paste the table. The factors, their bands and what each means are in [references/factors.md](references/factors.md).
 4. **Deal with completeness first.** For each `missing-co-change` file, open it and judge whether the change needs it. These files changed with the touched ones almost every other time, and this is the finding most likely to be a real defect. Say which you checked and what you concluded. A file deliberately left alone should be recorded as such.
 5. **Propose the responses from the findings, cheapest first**: complete the change, split it, add tests, simplify, check the new dependency, then route review. Each finding carries its response and a `step`. Use the red-flag vocabulary where a finding matches one: a missing co-change is usually *information leakage*, and a novel coupling may be the start of it ([references/red-flags.md](references/red-flags.md)).
-6. **Route review.** Run `risk reviewers [RANGE] --names` and say what each suggested reviewer is being asked to look at: the area, and why they know it. Without `--names` it lists counts only.
+6. **Route review.** Run `risk reviewers [RANGE]` and say what each suggested reviewer is being asked to look at: the area, and why they know it.
 7. **State the limits.** Which factors were unavailable, the evidence grade (a `weak` grade means history findings are tentative), whether placement came from blame or from change familiarity alone, and, when the CLI shows a level, the evidence it states beside the level. When there is no level, say so and go on with the bands and findings.
 
 When the author is the user, your stance is a pre-flight check: what to fix before asking for review. When the user is the reviewer, it is a reading guide: where to spend attention. In both, say what the numbers cannot tell: the tool shows where history says to look, and whether the code is correct is a review task.
@@ -39,7 +37,7 @@ When the author is the user, your stance is a pre-flight check: what to fix befo
 |---|---|
 | `risk [BASE[..HEAD]] [--worktree] [--evidence FILE]...` | The impact band, placement when allowed, the level when earned, every factor with its value, band and evidence, and the findings with their responses |
 | `risk explain [FACTOR [BASE[..HEAD]]]` | The rules behind the level, or one factor's definition and guidelines, without reading history. With a range, also the factor as computed on that change: its value, band and the files that drove it |
-| `risk reviewers [BASE[..HEAD]] [--names]` | Active developers per touched area, ranked by authorship (their average share, 0 to 1, of the lines of the area's touched files they last wrote) and by their changes to the area's `coupledFiles`. When an area has no coupled files, `coupledChanges` is 0 for everyone |
+| `risk reviewers [BASE[..HEAD]]` | Active developers per touched area, ranked by authorship (their average share, 0 to 1, of the lines of the area's touched files they last wrote) and by their changes to the area's `coupledFiles`. When an area has no coupled files, `coupledChanges` is 0 for everyone |
 | `report change [BASE[..HEAD]] [--evidence FILE]...` | A change summary page (html or markdown, and a compact form for a pull request comment) with your verdict on each item needing attention. Steps in [references/reports.md](references/reports.md) |
 
 `BASE..HEAD` may name any local refs. `--no-refresh` skips the cache refreshes. `cochange explain risk-<finding>` describes a finding's rule.

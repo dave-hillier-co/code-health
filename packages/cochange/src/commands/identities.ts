@@ -24,7 +24,7 @@ export const command: Command = {
     propose: { summary: "Clusters of identities that look like one person, with the evidence", options: ["no-refresh"] },
     classify: { summary: "Identities classified as bots, services or agents, and how", options: ["no-refresh"] },
     apply: { summary: "Write approved decisions to the mapping (a dry run unless --apply is given)", options: ["from", "apply", "location", "no-refresh"] },
-    check: { summary: "Findings about the mapping as it stands, with former contributors as counts unless --names is given", options: ["names", "no-refresh"] },
+    check: { summary: "Findings about the mapping as it stands", options: ["no-refresh"] },
   },
   summary: "Resolve who is who: list, propose, classify, apply and check the identity mapping",
   options: {
@@ -33,7 +33,6 @@ export const command: Command = {
     from: { type: "string" },
     apply: { type: "boolean" },
     location: { type: "string" },
-    names: { type: "boolean" },
   },
   async run(context) {
     const [sub, ...rest] = context.positionals;
@@ -57,12 +56,11 @@ export const command: Command = {
         return { inputs: inputs(), results: classifyRows(analysis), columns: ["kind", "identity", "commits", "source", "signal", "pattern", "decided"] };
       case "check": {
         const detail = await measureMapping(context, analysis, { noRefresh: context.values["no-refresh"] === true });
-        const names = context.values.names === true;
         const active = await readActiveDevelopers(context, analysis.history, analysis.history.view.headDate);
         const isFormer = (node: string) => !analysis.nonPerson.has(node) && !active.has(emailOf(node));
-        const { findings, failed } = checkMapping(analysis, detail, { names, isFormer });
+        const { findings, failed } = checkMapping(analysis, detail, { isFormer });
         return {
-          inputs: inputs({ names }),
+          inputs: inputs(),
           extra: { measurement: detail.measurement },
           results: findings,
           columns: ["kind", "identities", "detail", "windowCommits", "lines", "linesShare", "aboveGuideline", "formerContributors"],
@@ -89,7 +87,7 @@ export const command: Command = {
 };
 
 function rejectOptionsOutsideTheirCommand(sub: Subcommand, context: CommandContext): void {
-  const only: Record<string, Subcommand> = { unmapped: "list", from: "apply", apply: "apply", location: "apply", names: "check" };
+  const only: Record<string, Subcommand> = { unmapped: "list", from: "apply", apply: "apply", location: "apply" };
   for (const [option, owner] of Object.entries(only)) {
     if (context.values[option] !== undefined && sub !== owner) throw usageError(`--${option} belongs to identities ${owner}`);
   }

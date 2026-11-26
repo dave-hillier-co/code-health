@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "successors.schema.json",
-  "title": "cochange successors PATH... [--names] --json",
-  "description": "Who could pick up a file's knowledge. Without --names a successor is a rank and a score. With it the developer's name is shown, without the address, and only an active developer's: the command never lists people who have left. Never stored as a report.",
+  "title": "cochange successors PATH... --json",
+  "description": "Who could pick up a file's knowledge: active developers, each named without the address. Never stored as a report.",
   "$defs": {
     "evidence": {
       "type": "object",
@@ -19,7 +19,7 @@
       "type": "object",
       "properties": {
         "rank": { "type": "integer", "minimum": 1 },
-        "developer": { "type": "string", "description": "The name of an active developer, without the address (the part of the address before @ when the identity has no name). Only with --names.", "not": { "pattern": "@" } },
+        "developer": { "type": "string", "description": "The name of an active developer, without the address (the part of the address before @ when the identity has no name).", "not": { "pattern": "@" } },
         "score": { "type": "number", "minimum": 0, "description": "coupledChanges plus ownShare." },
         "coupledChanges": { "type": "number", "minimum": 0, "description": "Sum over coupled files of the coupling degree (as a fraction) times the developer's changes to that file." },
         "ownShare": { "type": "number", "minimum": 0, "maximum": 1, "description": "The share of the people's lines in the file that the developer holds." },
@@ -63,7 +63,6 @@
       "properties": {
         "subcommand": { "const": "successors" },
         "paths": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
-        "names": { "type": "boolean" },
         "top": { "type": "integer", "minimum": 1 },
         "minSupport": { "type": "integer", "minimum": 1 },
         "activityWindowMonths": { "type": "integer", "minimum": 1 },
@@ -82,7 +81,7 @@
         },
         "identityInputs": { "$ref": "common.schema.json#/$defs/identityInputs" }
       },
-      "required": ["subcommand", "paths", "names", "top", "minSupport", "activityWindowMonths", "periodMonths", "abandonmentGuideline", "copyDetection", "overrides"],
+      "required": ["subcommand", "paths", "top", "minSupport", "activityWindowMonths", "periodMonths", "abandonmentGuideline", "copyDetection", "overrides"],
       "additionalProperties": false
     },
     "developers": {

@@ -54,7 +54,7 @@ export const cochangeConfig: PluginConfigSpec = {
       /** Commits in the analysis window that make an unmapped identity significant, whether or not it holds lines. */
       significantCommits: 3,
     },
-    /** The abandonment analysis. Off until `enabled` is true. */
+    /** The abandonment analysis. On unless `enabled` is false. */
     knowledge: { ...KNOWLEDGE_DEFAULTS, alphas: [...KNOWLEDGE_DEFAULTS.alphas] },
   },
 };

@@ -1365,14 +1365,11 @@
       "additionalProperties": false
     },
     "reviewers": {
-      "description": "`risk reviewers`: active developers who could review each touched area. Names only with --names.",
+      "description": "`risk reviewers`: active developers who could review each touched area.",
       "type": "object",
       "properties": {
         "kind": {
           "const": "reviewers"
-        },
-        "names": {
-          "type": "boolean"
         },
         "basis": {
           "enum": [
@@ -1460,7 +1457,6 @@
       },
       "required": [
         "kind",
-        "names",
         "basis",
         "perArea",
         "areas",
