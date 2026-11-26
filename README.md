@@ -82,10 +82,6 @@ Settings are optional and live in one committed file at the repository root, `co
 
 Results are cached in `.cache/code-health/`, which ignores itself in git and can be deleted at any time. State that cannot be regenerated, such as a measurement baseline, is kept in `.code-health/local/`.
 
-### People
-
-Default outputs contain no author identities. The knowledge analysis is off until `cochange.knowledge.enabled` is set, models random turnover only, and never ranks or predicts individuals. See "People" in [docs/basis.md](docs/basis.md).
-
 ## Repository layout
 
 - `plugins/code-health/` what users install: the one plugin, a self-contained folder with its manifest, README, every skill, each tool's schemas and evals, and the committed `dist/` that holds every tool's bundle and one copy of the grammars

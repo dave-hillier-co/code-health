@@ -66,8 +66,6 @@ Mines git history to show where change effort concentrates and which files chang
 
 `refresh` and `blame` update the shared caches.
 
-Default outputs contain no author identities. The knowledge analysis is off until `cochange.knowledge.enabled` is set, models random turnover only, and never ranks or predicts individuals.
-
 ## complexity
 
 Finds the functions that are hard to understand, explains line by line where their complexity comes from, guides simplifications that avoid shallow helpers, and gives CI a check that exits with 1 only on a regression.
