@@ -39,7 +39,7 @@ describe("the change-risk eval cases", () => {
   test("cover triggering, the negative case, behaviour and the decline cases", () => {
     const tags = new Set(cases.flatMap((name) => read(name).tags));
     for (const tag of ["trigger", "positive", "negative", "behaviour", "privacy"]) expect(tags, tag).toContain(tag);
-    expect(cases).toEqual(expect.arrayContaining(["risk-declines-ranking-authors", "risk-colleague-placement-withheld", "risk-new-contributor-unknown", "risk-leads-with-completeness"]));
+    expect(cases).toEqual(expect.arrayContaining(["risk-colleague-placement-withheld", "risk-new-contributor-unknown", "risk-leads-with-completeness"]));
   });
 
   test("every scaffold a case names exists, and the behaviour cases that edit nothing say so", () => {

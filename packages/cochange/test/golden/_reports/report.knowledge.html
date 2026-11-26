@@ -378,7 +378,7 @@ body > footer { border-top: 1px solid var(--rule); color: var(--muted); font-siz
 <li>Guidelines order and label results. They are heuristics for investigation and decide nothing, and every file is listed under its pattern or under none.</li>
 <li>Authorship is git blame ignoring whitespace and following moved and copied lines. It says who last wrote a line, which is not who understands it.</li>
 <li>A developer counts as having left after 6 months without a commit. Someone on leave looks the same, and local overrides correct it.</li>
-<li>The simulation assumes turnover is random. It says nothing about any person, and the report names nobody unless run with --names, which lists active developers only.</li>
+<li>The simulation assumes turnover is random. The report names nobody unless run with --names, which lists active developers only.</li>
 <li>Each table shows the top 10 of its result and says how many rows it leaves out; <code>cochange abandonment patterns</code> prints every file.</li>
 <li>Complexity is the indentation proxy, because no <code>complexity files</code> result is stored for this commit. Test files and files that are not code have none, so the complex-code pattern does not apply to them (0 files with a blame have no complexity).</li>
 <li>The evidence grade is weak, so history-based results are tentative.</li>

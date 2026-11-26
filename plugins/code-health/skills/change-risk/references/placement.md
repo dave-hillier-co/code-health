@@ -1,6 +1,6 @@
-# Placement and privacy
+# Placement
 
-Placement is how one change's authors stand to the code the change touches. It is the sensitive half of the assessment, because it is about a person's history, and it is bounded the way the rest of the suite bounds data about people.
+Placement is how one change's authors stand to the code the change touches.
 
 ## Labels
 
@@ -16,7 +16,7 @@ Each touched file gets one of five labels:
 
 The change is `close` when most of its churn is in `owner` or `regular` files, `distant` when most is in `first-touch` files or no one active holds a share, `mixed` otherwise, and `unknown` when most files are unknown.
 
-**A new contributor is `unknown`, not `first-touch`.** An identity is new when its first commit is within `cochange.risk.newIdentityDays` (90) or it has fewer than `newIdentityChanges` (10) changes. Someone with no history here may have years of experience with the code elsewhere, and the tool cannot tell. Say `unknown`, say why, and do not describe the person.
+**A new contributor is `unknown`, not `first-touch`.** An identity is new when its first commit is within `cochange.risk.newIdentityDays` (90) or it has fewer than `newIdentityChanges` (10) changes. Someone with no history here may have years of experience with the code elsewhere, and the tool cannot tell. Say `unknown` and say why.
 
 ## Where the labels come from
 
@@ -31,6 +31,6 @@ The change is `close` when most of its churn is in `owner` or `regular` files, `
 - **Nothing kept.** Placement, the level and the findings that rest on it are not written to `reports/` and are not stored. The impact factors are.
 - **No one is named by a factor.** `owner-distance` counts files with an owner who is not an author. Who that owner is appears only through `reviewers --names`, as someone to ask.
 
-## What you say and do not say
+## What you say
 
-Say that a file is `first-touch` for the author: they have not changed it before. Say what to do: a pre-change briefing, or a review by an owner of the file. Do not say the author is weak, risky or unprepared. Do not compare two authors, do not say who tends to produce the riskier changes, and do not summarise anyone's levels over time. If asked to rank authors, to feed this into a review of a person, or to track someone across changes, decline, give the reason above, and offer a per-change assessment instead.
+Say that a file is `first-touch` for the author: they have not changed it before. Say what to do: a pre-change briefing, or a review by an owner of the file.

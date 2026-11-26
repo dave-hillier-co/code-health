@@ -1,6 +1,6 @@
 ---
 name: abandonment
-description: Estimates how much of the codebase's knowledge would be lost when people leave, where that risk sits in code that matters, and who should pick it up first. Use for questions about knowledge loss, bus or truck factor, "what happens if someone leaves", onboarding priorities, who should review or pair to spread knowledge, "who knows this code", and code nobody on the team wrote. It models random turnover and reports files and components with developers as counts. It is off until the repository opts in, and it declines to rank people, judge anyone's contribution or predict who will leave.
+description: Estimates how much of the codebase's knowledge would be lost when people leave, where that risk sits in code that matters, and who should pick it up first. Use for questions about knowledge loss, bus or truck factor, "what happens if someone leaves", onboarding priorities, who should review or pair to spread knowledge, "who knows this code", and code nobody on the team wrote. It models random turnover and reports files and components with developers as counts. It is off until the repository opts in.
 allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/dist/cochange.mjs *)
 ---
 
@@ -10,15 +10,12 @@ Code whose authors have all left is costlier to change. Their assumptions are go
 
 The method is Rigby, Zhu, Donadelli and Mockus (ICSE 2016): a line is abandoned when its last author has left, a file when at least 90 percent of its lines are, and loss is simulated over many turnover scenarios. Definitions and guidelines: [references/method.md](references/method.md). Every command and field: [references/commands.md](references/commands.md).
 
-## Rules about people
-
-This is the most sensitive analysis in the suite. These rules are not optional.
+## Opt-in and names
 
 - **It is off by default.** Every command refuses until `cochange.knowledge.enabled` is `true` in the repository's `code-health.json` (exit 2, `knowledge-disabled`). Do not switch it on yourself. Tell the user what the analysis does, that it reasons about people from git history only, and ask them to opt in. Only edit the config when they say yes.
 - **No names by default.** Results are per file and per component, with developers as counts. Do not run `identities list` or any other command to find out who someone is, and do not guess from commit messages.
 - **`successors --names` is the one abandonment command that names people**, and it prints only the names of active developers, without addresses, as recommended reviewers and pair partners. Run it only when the user wants to assign people to files at risk. It never lists the people who have left, and you must not work them out another way.
-- **Do not rank people.** Decline to say who is most likely to leave, whose departure would hurt most, or who is "the risk". Decline to judge anyone's contribution or performance, and to speculate about individuals' plans. Say why: the model assumes departures are random and says nothing about any person, and a ranking of people reads as an evaluation of them. Offer what it can do: where knowledge concentrates, and who could pick it up.
-- **No named scenarios.** There is no "what if Dana leaves" mode and you must not build one by overriding activity. `--mode k-leavers` samples uniformly and reports distributions only.
+- **Departures are sampled.** `--mode k-leavers` samples departures uniformly and reports distributions.
 - **Overrides stay local.** If someone is on leave or has gone, `.code-health/local/knowledge-overrides.json` corrects who counts as active. It is ignored by git, and every abandonment command prints a warning on stderr if the file is tracked or not ignored. Never put identities in the committed config, in reports, issues or commit messages.
 - The output of these commands is never stored as a report for other tools to read. Keep it that way: do not copy it into files in the repository.
 

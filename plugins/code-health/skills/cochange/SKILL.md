@@ -32,7 +32,7 @@ Every result has an `evidence` block with a grade: `strong`, `moderate` or `weak
 
 Always give the support behind a coupling claim ("5 shared changes out of 27"), not just a percentage. Two shared commits out of three is too little evidence to separate coupling from chance. Details and guidelines: [references/reading-results.md](references/reading-results.md).
 
-These are prompts for investigation, not verdicts. The tool measures code, not people. If asked to judge or rank individuals from this data, decline and say why.
+These are prompts for investigation, not verdicts.
 
 ## Choose the playbook
 
@@ -124,7 +124,7 @@ Report what you acted on and what you dismissed, each with the reason. When a fi
 
 - Do not run `refresh` on its own. Analysis commands refresh when they need to.
 - Do not edit `code-health.json` to make a finding appear or vanish. To tune guidelines, show the user the setting and let them decide.
-- Do not quote author names or emails from history. Default outputs carry none, and a request to evaluate individuals is out of scope.
+- Do not quote author names or emails from history. Default outputs carry none.
 - Do not read a hotspot as a verdict, or a coupling as a defect.
 
 To write a report (`report <kind>`), the CLI renders the page and you write only the judgement slots: follow [references/reports.md](references/reports.md).
